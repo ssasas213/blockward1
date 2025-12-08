@@ -22,25 +22,9 @@ export default function Home() {
     try {
       const authenticated = await base44.auth.isAuthenticated();
       setIsAuthenticated(authenticated);
-      if (authenticated) {
-        // Redirect to appropriate dashboard
-        const user = await base44.auth.me();
-        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-        if (profiles.length > 0) {
-          const profile = profiles[0];
-          if (profile.user_type === 'admin') {
-            window.location.href = createPageUrl('AdminDashboard');
-          } else if (profile.user_type === 'teacher') {
-            window.location.href = createPageUrl('TeacherDashboard');
-          } else {
-            window.location.href = createPageUrl('StudentDashboard');
-          }
-        } else {
-          window.location.href = createPageUrl('Onboarding');
-        }
-      }
     } catch (e) {
       console.log('Not authenticated');
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }
