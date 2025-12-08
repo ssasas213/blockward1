@@ -5,6 +5,8 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import Classes from './pages/Classes';
 import ClassDetail from './pages/ClassDetail';
+import BlockWards from './pages/BlockWards';
+import IssuePoints from './pages/IssuePoints';
 import __Layout from './Layout.jsx';
 
 
@@ -16,6 +18,8 @@ export const PAGES = {
     "StudentDashboard": StudentDashboard,
     "Classes": Classes,
     "ClassDetail": ClassDetail,
+    "BlockWards": BlockWards,
+    "IssuePoints": IssuePoints,
 }
 
 export const pagesConfig = {
