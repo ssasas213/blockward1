@@ -46,8 +46,12 @@ export default function Home() {
     }
   };
 
+  const handleGetStarted = () => {
+    window.location.href = createPageUrl('Signup');
+  };
+
   const handleLogin = () => {
-    base44.auth.redirectToLogin(createPageUrl('Onboarding'));
+    window.location.href = createPageUrl('Login');
   };
 
   if (loading) {
@@ -107,13 +111,21 @@ export default function Home() {
               </div>
               <span className="font-bold text-xl text-slate-900">BlockWard</span>
             </div>
-            <Button 
-              onClick={handleLogin}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25"
-            >
-              Get Started
-              <ChevronRight className="h-4 w-4 ml-1" />
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleGetStarted}
+                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25"
+              >
+                Get Started
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+              <Button 
+                onClick={handleLogin}
+                variant="outline"
+              >
+                Sign In
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -143,7 +155,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button 
-                  onClick={handleLogin}
+                  onClick={handleGetStarted}
                   size="lg"
                   className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xl shadow-violet-500/25 h-14 px-8 text-lg"
                 >
@@ -271,7 +283,7 @@ export default function Home() {
                 Join schools worldwide using BlockWard to create verifiable, lasting records of student achievement
               </p>
               <Button 
-                onClick={handleLogin}
+                onClick={handleGetStarted}
                 size="lg"
                 className="bg-white text-violet-600 hover:bg-white/90 h-14 px-8 text-lg font-semibold"
               >
