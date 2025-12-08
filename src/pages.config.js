@@ -7,6 +7,8 @@ import Classes from './pages/Classes';
 import ClassDetail from './pages/ClassDetail';
 import BlockWards from './pages/BlockWards';
 import IssuePoints from './pages/IssuePoints';
+import Timetable from './pages/Timetable';
+import Resources from './pages/Resources';
 import __Layout from './Layout.jsx';
 
 
@@ -20,6 +22,8 @@ export const PAGES = {
     "ClassDetail": ClassDetail,
     "BlockWards": BlockWards,
     "IssuePoints": IssuePoints,
+    "Timetable": Timetable,
+    "Resources": Resources,
 }
 
 export const pagesConfig = {
