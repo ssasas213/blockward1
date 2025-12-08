@@ -9,6 +9,9 @@ import BlockWards from './pages/BlockWards';
 import IssuePoints from './pages/IssuePoints';
 import Timetable from './pages/Timetable';
 import Resources from './pages/Resources';
+import ManageUsers from './pages/ManageUsers';
+import MyPoints from './pages/MyPoints';
+import PointCategories from './pages/PointCategories';
 import __Layout from './Layout.jsx';
 
 
@@ -24,6 +27,9 @@ export const PAGES = {
     "IssuePoints": IssuePoints,
     "Timetable": Timetable,
     "Resources": Resources,
+    "ManageUsers": ManageUsers,
+    "MyPoints": MyPoints,
+    "PointCategories": PointCategories,
 }
 
 export const pagesConfig = {
