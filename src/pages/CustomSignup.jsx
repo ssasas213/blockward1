@@ -21,20 +21,7 @@ export default function CustomSignup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
 
-  const checkAuth = async () => {
-    try {
-      const authenticated = await base44.auth.isAuthenticated();
-      if (authenticated) {
-        window.location.href = createPageUrl('Onboarding');
-      }
-    } catch (e) {
-      console.log('Not authenticated');
-    }
-  };
 
   const handleSignup = async (e) => {
     e.preventDefault();

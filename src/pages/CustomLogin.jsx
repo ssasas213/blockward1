@@ -15,36 +15,7 @@ export default function CustomLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
 
-  const checkAuth = async () => {
-    try {
-      const authenticated = await base44.auth.isAuthenticated();
-      if (authenticated) {
-        const user = await base44.auth.me();
-        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-        if (profiles.length > 0) {
-          redirectToDashboard(profiles[0].user_type);
-        } else {
-          window.location.href = createPageUrl('Onboarding');
-        }
-      }
-    } catch (e) {
-      console.log('Not authenticated');
-    }
-  };
-
-  const redirectToDashboard = (userType) => {
-    if (userType === 'admin') {
-      window.location.href = createPageUrl('AdminDashboard');
-    } else if (userType === 'teacher') {
-      window.location.href = createPageUrl('TeacherDashboard');
-    } else {
-      window.location.href = createPageUrl('StudentDashboard');
-    }
-  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
