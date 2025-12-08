@@ -3,6 +3,8 @@ import Onboarding from './pages/Onboarding';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import Classes from './pages/Classes';
+import ClassDetail from './pages/ClassDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -12,6 +14,8 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "TeacherDashboard": TeacherDashboard,
     "StudentDashboard": StudentDashboard,
+    "Classes": Classes,
+    "ClassDetail": ClassDetail,
 }
 
 export const pagesConfig = {
