@@ -182,7 +182,7 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
-        <div className="flex items-center gap-3">
+        <Link to={createPageUrl('Home')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${roleColors[userType]} flex items-center justify-center shadow-lg shadow-violet-500/25`}>
             <Shield className="h-5 w-5 text-white" />
           </div>
@@ -190,7 +190,7 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
             <h1 className="font-bold text-slate-900">BlockWard</h1>
             <p className="text-xs text-slate-500">{roleLabels[userType]}</p>
           </div>
-        </div>
+        </Link>
         {onClose && (
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg lg:hidden">
             <X className="h-5 w-5 text-slate-500" />
@@ -242,13 +242,13 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
             <DropdownMenuItem asChild>
               <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
                 <UserCircle className="h-4 w-4" />
-                Profile
+                Profile & Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLogout} className="text-red-600">
+            <DropdownMenuItem onClick={onLogout} className="text-red-600 font-medium">
               <LogOut className="h-4 w-4 mr-2" />
-              Logout
+              Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
