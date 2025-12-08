@@ -31,11 +31,11 @@ export default function Home() {
   };
 
   const handleGetStarted = () => {
-    window.location.href = createPageUrl('CustomSignup');
+    window.location.href = createPageUrl('Signup');
   };
 
   const handleLogin = () => {
-    window.location.href = createPageUrl('CustomLogin');
+    window.location.href = createPageUrl('Login');
   };
 
   if (loading) {
