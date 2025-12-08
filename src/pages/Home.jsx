@@ -47,11 +47,11 @@ export default function Home() {
   };
 
   const handleGetStarted = () => {
-    window.location.href = createPageUrl('Signup');
+    window.location.href = createPageUrl('CustomSignup');
   };
 
   const handleLogin = () => {
-    window.location.href = createPageUrl('Login');
+    window.location.href = createPageUrl('CustomLogin');
   };
 
   if (loading) {

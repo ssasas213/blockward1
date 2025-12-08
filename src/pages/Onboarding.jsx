@@ -15,7 +15,7 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    user_type: '',
+    user_type: localStorage.getItem('pendingUserRole') || '',
     first_name: '',
     last_name: '',
     school_name: '',
@@ -25,6 +25,22 @@ export default function Onboarding() {
     department: '',
     join_code: ''
   });
+
+  useEffect(() => {
+    // Pre-fill name if available
+    const pendingName = localStorage.getItem('pendingUserName');
+    if (pendingName) {
+      const [firstName, ...lastNameParts] = pendingName.split(' ');
+      setFormData(prev => ({
+        ...prev,
+        first_name: firstName,
+        last_name: lastNameParts.join(' ')
+      }));
+      // Clear stored data
+      localStorage.removeItem('pendingUserName');
+      localStorage.removeItem('pendingUserRole');
+    }
+  }, []);
 
   useEffect(() => {
     checkUserProfile();

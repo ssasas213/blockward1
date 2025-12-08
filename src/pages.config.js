@@ -14,6 +14,8 @@ import MyPoints from './pages/MyPoints';
 import PointCategories from './pages/PointCategories';
 import Profile from './pages/Profile';
 import Reports from './pages/Reports';
+import CustomLogin from './pages/CustomLogin';
+import CustomSignup from './pages/CustomSignup';
 import __Layout from './Layout.jsx';
 
 
@@ -34,6 +36,8 @@ export const PAGES = {
     "PointCategories": PointCategories,
     "Profile": Profile,
     "Reports": Reports,
+    "CustomLogin": CustomLogin,
+    "CustomSignup": CustomSignup,
 }
 
 export const pagesConfig = {

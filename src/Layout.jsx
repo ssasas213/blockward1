@@ -44,7 +44,7 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const handleLogout = () => {
-    base44.auth.logout();
+    base44.auth.logout(createPageUrl('CustomLogin'));
   };
 
   // Public pages that don't need sidebar
