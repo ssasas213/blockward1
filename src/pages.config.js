@@ -12,6 +12,8 @@ import Resources from './pages/Resources';
 import ManageUsers from './pages/ManageUsers';
 import MyPoints from './pages/MyPoints';
 import PointCategories from './pages/PointCategories';
+import Profile from './pages/Profile';
+import Reports from './pages/Reports';
 import __Layout from './Layout.jsx';
 
 
@@ -30,6 +32,8 @@ export const PAGES = {
     "ManageUsers": ManageUsers,
     "MyPoints": MyPoints,
     "PointCategories": PointCategories,
+    "Profile": Profile,
+    "Reports": Reports,
 }
 
 export const pagesConfig = {
