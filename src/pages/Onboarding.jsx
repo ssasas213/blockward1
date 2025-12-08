@@ -22,6 +22,9 @@ export default function Onboarding() {
     school_code: '',
     student_id: '',
     grade_level: '',
+    parent_name: '',
+    parent_email: '',
+    parent_phone: '',
     department: '',
     join_code: ''
   });
@@ -120,6 +123,9 @@ export default function Onboarding() {
       if (formData.user_type === 'student') {
         profileData.student_id = formData.student_id;
         profileData.grade_level = formData.grade_level;
+        profileData.parent_name = formData.parent_name;
+        profileData.parent_email = formData.parent_email;
+        profileData.parent_phone = formData.parent_phone;
         profileData.total_achievement_points = 0;
         profileData.total_behaviour_points = 0;
       }
@@ -131,7 +137,7 @@ export default function Onboarding() {
 
       await base44.entities.UserProfile.create(profileData);
 
-      // Create default point categories for admin
+      // Create default point categories and codes for admin
       if (formData.user_type === 'admin' && school) {
         const defaultCategories = [
           { name: 'Excellence', type: 'achievement', default_points: 10, color: '#8B5CF6', school_id: school.id },
@@ -141,6 +147,21 @@ export default function Onboarding() {
           { name: 'Late', type: 'behaviour', default_points: -2, color: '#F59E0B', school_id: school.id },
         ];
         await base44.entities.PointCategory.bulkCreate(defaultCategories);
+
+        // Generate initial school codes
+        const generateCode = (prefix) => {
+          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+          let code = prefix;
+          for (let i = 0; i < 6; i++) {
+            code += chars[Math.floor(Math.random() * chars.length)];
+          }
+          return code;
+        };
+
+        await base44.entities.School.update(school.id, {
+          student_join_code: generateCode('STU-'),
+          teacher_join_code: generateCode('TCH-')
+        });
       }
 
       redirectToDashboard(formData.user_type);
@@ -308,6 +329,31 @@ export default function Onboarding() {
                         value={formData.grade_level}
                         onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
                         placeholder="Year 9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Parent/Guardian Name</Label>
+                      <Input
+                        value={formData.parent_name}
+                        onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
+                        placeholder="Jane Doe"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Parent/Guardian Email</Label>
+                      <Input
+                        type="email"
+                        value={formData.parent_email}
+                        onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
+                        placeholder="parent@email.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Parent/Guardian Phone</Label>
+                      <Input
+                        value={formData.parent_phone}
+                        onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
+                        placeholder="+44 123 456 7890"
                       />
                     </div>
                   </>
