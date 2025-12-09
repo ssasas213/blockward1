@@ -31,11 +31,11 @@ export default function Home() {
   };
 
   const handleGetStarted = () => {
-    window.location.href = createPageUrl('Signup');
+    base44.auth.redirectToLogin(createPageUrl('Onboarding'));
   };
 
   const handleLogin = () => {
-    window.location.href = createPageUrl('Login');
+    base44.auth.redirectToLogin(createPageUrl('Onboarding'));
   };
 
   if (loading) {
