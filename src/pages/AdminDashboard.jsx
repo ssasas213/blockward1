@@ -113,6 +113,12 @@ export default function AdminDashboard() {
               Manage Users
             </Link>
           </Button>
+          <Button variant="outline" asChild>
+            <Link to={createPageUrl('BlockchainDocs')}>
+              <Shield className="h-4 w-4 mr-2" />
+              Blockchain Docs
+            </Link>
+          </Button>
           <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
             <Link to={createPageUrl('BlockWards')}>
               <Shield className="h-4 w-4 mr-2" />

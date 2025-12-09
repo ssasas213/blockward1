@@ -16,6 +16,7 @@ import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import SchoolCodes from './pages/SchoolCodes';
 import ParentComms from './pages/ParentComms';
+import BlockchainDocs from './pages/BlockchainDocs';
 import __Layout from './Layout.jsx';
 
 
@@ -38,6 +39,7 @@ export const PAGES = {
     "Reports": Reports,
     "SchoolCodes": SchoolCodes,
     "ParentComms": ParentComms,
+    "BlockchainDocs": BlockchainDocs,
 }
 
 export const pagesConfig = {

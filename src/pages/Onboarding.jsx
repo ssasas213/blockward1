@@ -79,7 +79,15 @@ export default function Onboarding() {
   };
 
   const generateWallet = () => {
-    // Generate simulated wallet address
+    // Simulate custodial wallet creation
+    // In production: POST /api/wallet/create
+    // Backend would:
+    // 1. Generate new Ethereum wallet
+    // 2. Encrypt private key with master encryption key
+    // 3. Store encrypted key in secure database
+    // 4. Return only the wallet address to frontend
+    // 5. Student never sees or handles private keys
+
     const chars = '0123456789abcdef';
     let address = '0x';
     for (let i = 0; i < 40; i++) {
