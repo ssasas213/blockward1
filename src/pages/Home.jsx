@@ -95,21 +95,13 @@ export default function Home() {
               </div>
               <span className="font-bold text-xl text-slate-900">BlockWard</span>
             </div>
-            <div className="flex gap-3">
-              <Button 
-                onClick={handleGetStarted}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25"
-              >
-                Get Started
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-              <Button 
-                onClick={handleLogin}
-                variant="outline"
-              >
-                Sign In
-              </Button>
-            </div>
+            <Button 
+              onClick={handleGetStarted}
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-lg shadow-violet-500/25"
+            >
+              Get Started
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
           </div>
         </div>
       </header>
@@ -143,7 +135,7 @@ export default function Home() {
                   size="lg"
                   className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-xl shadow-violet-500/25 h-14 px-8 text-lg"
                 >
-                  Start Free
+                  Get Started
                   <ChevronRight className="h-5 w-5 ml-2" />
                 </Button>
                 <div className="flex items-center gap-2 text-slate-600">
