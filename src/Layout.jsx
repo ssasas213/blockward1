@@ -77,13 +77,14 @@ export default function Layout({ children, currentPageName }) {
   const navigationItems = {
     admin: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'AdminDashboard' },
-      { name: 'Users', icon: Users, page: 'ManageUsers' },
-      { name: 'Classes', icon: BookOpen, page: 'Classes' },
-      { name: 'School Codes', icon: Shield, page: 'SchoolCodes' },
-      { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
-      { name: 'BlockWards', icon: Award, page: 'BlockWards' },
-      { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
-      { name: 'Reports', icon: FileText, page: 'Reports' },
+      { name: 'Users', icon: Users, page: 'ManageUsers', permission: 'manage_users' },
+      { name: 'Classes', icon: BookOpen, page: 'Classes', permission: 'manage_classes' },
+      { name: 'School Codes', icon: Shield, page: 'SchoolCodes', permission: 'manage_school_settings' },
+      { name: 'Parent Comms', icon: FileText, page: 'ParentComms', permission: 'view_parent_contacts' },
+      { name: 'BlockWards', icon: Award, page: 'BlockWards', permission: 'issue_blockwards' },
+      { name: 'Point Categories', icon: Settings, page: 'PointCategories', permission: 'manage_categories' },
+      { name: 'Reports', icon: FileText, page: 'Reports', permission: 'view_reports' },
+      { name: 'Admin Permissions', icon: Shield, page: 'AdminPermissions', superAdminOnly: true },
     ],
     teacher: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
@@ -104,7 +105,27 @@ export default function Layout({ children, currentPageName }) {
     ],
   };
 
-  const navItems = navigationItems[userType] || navigationItems.student;
+  let navItems = navigationItems[userType] || navigationItems.student;
+
+  // Filter admin nav items based on permissions
+  if (userType === 'admin' && profile) {
+    navItems = navItems.filter(item => {
+      // Super admin only items
+      if (item.superAdminOnly) {
+        return profile.admin_level === 'super_admin' || !profile.admin_level;
+      }
+      // Permission-based items
+      if (item.permission) {
+        // If no admin_level set, grant all access (backward compatibility)
+        if (!profile.admin_level) return true;
+        // Super admins have all permissions
+        if (profile.admin_level === 'super_admin') return true;
+        // Check specific permission
+        return profile.admin_permissions?.[item.permission] === true;
+      }
+      return true;
+    });
+  }
 
   const roleColors = {
     admin: 'from-rose-500 to-orange-500',
