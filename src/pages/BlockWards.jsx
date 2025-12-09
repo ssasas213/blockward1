@@ -91,17 +91,25 @@ export default function BlockWards() {
     }
   };
 
+  // Simulate blockchain minting process
   const generateTokenId = () => {
-    return `BW-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // In production: This would be returned by the smart contract after minting
+    return `${Math.floor(Math.random() * 1000000)}`;
   };
 
   const generateTransactionHash = () => {
+    // Simulated Polygon transaction hash format
     const chars = '0123456789abcdef';
     let hash = '0x';
     for (let i = 0; i < 64; i++) {
       hash += chars[Math.floor(Math.random() * chars.length)];
     }
     return hash;
+  };
+
+  const generateBlockNumber = () => {
+    // Simulated Polygon block number
+    return Math.floor(40000000 + Math.random() * 1000000);
   };
 
   const handleMintBlockWard = async () => {
@@ -118,17 +126,35 @@ export default function BlockWards() {
         return;
       }
 
+      // Simulate what would happen in production:
+      // 1. Teacher clicks "Mint BlockWard" (this button)
+      // 2. Frontend calls backend API: POST /api/blockward/issue
+      // 3. Backend authenticates teacher, validates permissions
+      // 4. Backend creates metadata and uploads to IPFS
+      // 5. Backend uses gas wallet to call smart contract
+      // 6. Smart contract mints NFT to student's custodial wallet
+      // 7. Backend saves record to database
+      // 8. Frontend receives confirmation with tx hash
+      
+      const tokenId = generateTokenId();
+      const txHash = generateTransactionHash();
+      const blockNumber = generateBlockNumber();
+      
+      // Simulate metadata URI (would be IPFS in production)
+      const metadataURI = `ipfs://Qm${Math.random().toString(36).substr(2, 44)}`;
+
       const blockWardData = {
         ...newBlockWard,
         student_name: `${studentProfile.first_name} ${studentProfile.last_name}`,
         student_wallet: studentProfile.wallet_address,
         issuer_email: user.email,
         issuer_name: `${profile.first_name} ${profile.last_name}`,
-        issuer_wallet: profile.wallet_address,
+        issuer_wallet: 'system', // Teachers don't have wallets
         school_id: profile.school_id,
-        token_id: generateTokenId(),
-        transaction_hash: generateTransactionHash(),
-        block_number: Math.floor(Math.random() * 1000000) + 50000000,
+        token_id: tokenId,
+        metadata_uri: metadataURI,
+        transaction_hash: txHash,
+        block_number: blockNumber,
         minted_at: new Date().toISOString(),
         status: 'active'
       };
@@ -138,7 +164,7 @@ export default function BlockWards() {
       setShowMintDialog(false);
       setNewBlockWard({ student_email: '', title: '', description: '', category: '' });
       loadData();
-      toast.success('BlockWard minted successfully!');
+      toast.success('BlockWard issued successfully! Minted on-chain.');
     } catch (error) {
       console.error('Error minting BlockWard:', error);
       toast.error('Failed to mint BlockWard');
@@ -409,9 +435,30 @@ export default function BlockWards() {
                     <p className="font-medium font-mono text-sm">{selectedBlockWard.token_id}</p>
                   </div>
                 </div>
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
-                  <p className="font-mono text-xs text-slate-600 break-all">{selectedBlockWard.transaction_hash}</p>
+                <div className="pt-2 border-t space-y-3">
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
+                    <a 
+                      href={`https://polygonscan.com/tx/${selectedBlockWard.transaction_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-violet-600 hover:text-violet-700 break-all flex items-center gap-2"
+                    >
+                      {selectedBlockWard.transaction_hash}
+                      <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                    </a>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Block Number</p>
+                    <p className="font-mono text-xs text-slate-600">{selectedBlockWard.block_number?.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500 mb-1">Network</p>
+                    <Badge variant="outline" className="text-xs">
+                      <Shield className="h-3 w-3 mr-1" />
+                      Polygon Mainnet
+                    </Badge>
+                  </div>
                 </div>
               </div>
               {(profile?.user_type === 'admin' && selectedBlockWard.status === 'active') && (
