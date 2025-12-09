@@ -140,7 +140,7 @@ export default function Onboarding() {
 
       if (formData.user_type === 'teacher') {
         profileData.department = formData.department;
-        profileData.can_issue_blockwards = false;
+        profileData.can_issue_blockwards = true; // Teachers can mint by default
       }
 
       await base44.entities.UserProfile.create(profileData);
