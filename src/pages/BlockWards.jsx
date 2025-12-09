@@ -82,10 +82,12 @@ export default function BlockWards() {
           const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
           setStudents(allProfiles);
         }
-        setBlockWards(bwData);
+        setBlockWards(bwData || []);
       }
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading BlockWards:', error);
+      setBlockWards([]);
+      toast.error('Failed to load BlockWards');
     } finally {
       setLoading(false);
     }
