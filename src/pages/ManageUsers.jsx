@@ -68,12 +68,14 @@ export default function ManageUsers() {
 
   const handleToggleBlockWardPermission = async (user) => {
     try {
+      const newValue = !user.can_issue_blockwards;
       await base44.entities.UserProfile.update(user.id, {
-        can_issue_blockwards: !user.can_issue_blockwards
+        can_issue_blockwards: newValue
       });
       loadUsers();
-      toast.success(`BlockWard permission ${user.can_issue_blockwards ? 'revoked' : 'granted'}`);
+      toast.success(`BlockWard minting ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
+      console.error('Error updating permission:', error);
       toast.error('Failed to update permission');
     }
   };
