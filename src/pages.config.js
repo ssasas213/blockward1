@@ -21,6 +21,9 @@ import BlockWardContract from './pages/BlockWardContract';
 import AdminPermissions from './pages/AdminPermissions';
 import Messages from './pages/Messages';
 import SystemSettings from './pages/SystemSettings';
+import Attendance from './pages/Attendance';
+import GradeBook from './pages/GradeBook';
+import Analytics from './pages/Analytics';
 import __Layout from './Layout.jsx';
 
 
@@ -48,6 +51,9 @@ export const PAGES = {
     "AdminPermissions": AdminPermissions,
     "Messages": Messages,
     "SystemSettings": SystemSettings,
+    "Attendance": Attendance,
+    "GradeBook": GradeBook,
+    "Analytics": Analytics,
 }
 
 export const pagesConfig = {
