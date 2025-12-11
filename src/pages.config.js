@@ -20,6 +20,7 @@ import BlockchainDocs from './pages/BlockchainDocs';
 import BlockWardContract from './pages/BlockWardContract';
 import AdminPermissions from './pages/AdminPermissions';
 import Messages from './pages/Messages';
+import SystemSettings from './pages/SystemSettings';
 import __Layout from './Layout.jsx';
 
 
@@ -46,6 +47,7 @@ export const PAGES = {
     "BlockWardContract": BlockWardContract,
     "AdminPermissions": AdminPermissions,
     "Messages": Messages,
+    "SystemSettings": SystemSettings,
 }
 
 export const pagesConfig = {

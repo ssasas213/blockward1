@@ -145,18 +145,8 @@ export default function Onboarding() {
 
       await base44.entities.UserProfile.create(profileData);
 
-      // Create default point categories and codes for admin
+      // Generate initial school codes for admin
       if (formData.user_type === 'admin' && school) {
-        const defaultCategories = [
-          { name: 'Excellence', type: 'achievement', default_points: 10, color: '#8B5CF6', school_id: school.id },
-          { name: 'Participation', type: 'achievement', default_points: 5, color: '#3B82F6', school_id: school.id },
-          { name: 'Improvement', type: 'achievement', default_points: 5, color: '#10B981', school_id: school.id },
-          { name: 'Disruption', type: 'behaviour', default_points: -5, color: '#EF4444', school_id: school.id },
-          { name: 'Late', type: 'behaviour', default_points: -2, color: '#F59E0B', school_id: school.id },
-        ];
-        await base44.entities.PointCategory.bulkCreate(defaultCategories);
-
-        // Generate initial school codes
         const generateCode = (prefix) => {
           const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
           let code = prefix;

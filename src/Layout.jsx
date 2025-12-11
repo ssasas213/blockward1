@@ -85,7 +85,8 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Point Categories', icon: Settings, page: 'PointCategories', permission: 'manage_categories' },
       { name: 'Reports', icon: FileText, page: 'Reports', permission: 'view_reports' },
       { name: 'Admin Permissions', icon: Shield, page: 'AdminPermissions', superAdminOnly: true },
-    ],
+      { name: 'System Settings', icon: Settings, page: 'SystemSettings', superAdminOnly: true },
+      ],
     teacher: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
