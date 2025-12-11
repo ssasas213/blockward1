@@ -25,8 +25,11 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Users, BookOpen, FileText, Award, ArrowLeft,
-  Copy, Check, UserPlus, Trash2, Shield, Plus
+  Copy, Check, UserPlus, Trash2, Shield, Plus, Megaphone, Send
 } from 'lucide-react';
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function ClassDetail() {
@@ -38,6 +41,9 @@ export default function ClassDetail() {
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentEmail, setStudentEmail] = useState('');
+  const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
+  const [announcement, setAnnouncement] = useState({ subject: '', content: '' });
+  const [announcements, setAnnouncements] = useState([]);
 
   const urlParams = new URLSearchParams(window.location.search);
   const classId = urlParams.get('id');
@@ -69,6 +75,13 @@ export default function ClassDetail() {
         // Load resources
         const classResources = await base44.entities.Resource.filter({ class_id: classId });
         setResources(classResources);
+
+        // Load announcements
+        const announcementsData = await base44.entities.Message.filter({ 
+          type: 'announcement', 
+          class_id: classId 
+        }, '-created_date');
+        setAnnouncements(announcementsData || []);
       }
     } catch (error) {
       console.error('Error loading class:', error);
@@ -122,7 +135,7 @@ export default function ClassDetail() {
         school_id: classData.school_id,
         type: 'announcement',
         sender_email: user.email,
-        sender_name: `${classData.teacher_email}`,
+        sender_name: `${profile.first_name} ${profile.last_name}`,
         sender_type: 'teacher',
         class_id: classId,
         class_name: classData.name,
@@ -133,12 +146,14 @@ export default function ClassDetail() {
 
       setShowAnnouncementDialog(false);
       setAnnouncement({ subject: '', content: '' });
-      loadClassData();
+      loadData();
       toast.success('Announcement sent to all students');
     } catch (error) {
       toast.error('Failed to send announcement');
     }
   };
+
+
 
   const isTeacher = profile?.user_type === 'teacher' || profile?.user_type === 'admin';
 
@@ -182,6 +197,10 @@ export default function ClassDetail() {
             <Button variant="outline" onClick={copyJoinCode}>
               {copiedCode ? <Check className="h-4 w-4 mr-2 text-green-500" /> : <Copy className="h-4 w-4 mr-2" />}
               {classData.join_code}
+            </Button>
+            <Button variant="outline" onClick={() => setShowAnnouncementDialog(true)}>
+              <Megaphone className="h-4 w-4 mr-2" />
+              Announcement
             </Button>
             <Button className="bg-gradient-to-r from-violet-600 to-indigo-600" asChild>
               <Link to={createPageUrl(`IssuePoints?class=${classId}`)}>
@@ -234,6 +253,12 @@ export default function ClassDetail() {
       <Tabs defaultValue="students" className="space-y-6">
         <TabsList className="bg-slate-100">
           <TabsTrigger value="students">Students</TabsTrigger>
+          <TabsTrigger value="announcements">
+            Announcements
+            {announcements.length > 0 && (
+              <Badge className="ml-2 bg-violet-600 text-white">{announcements.length}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
         </TabsList>
 
@@ -383,6 +408,46 @@ export default function ClassDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Announcement Dialog */}
+      <Dialog open={showAnnouncementDialog} onOpenChange={setShowAnnouncementDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Send Class Announcement</DialogTitle>
+            <DialogDescription>
+              This will be visible to all students in this class
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Subject</Label>
+              <Input
+                value={announcement.subject}
+                onChange={(e) => setAnnouncement({ ...announcement, subject: e.target.value })}
+                placeholder="Announcement subject"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Message</Label>
+              <Textarea
+                value={announcement.content}
+                onChange={(e) => setAnnouncement({ ...announcement, content: e.target.value })}
+                placeholder="Type your announcement..."
+                rows={5}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAnnouncementDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendAnnouncement}>
+              <Send className="h-4 w-4 mr-2" />
+              Send to All Students
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Student Dialog */}
       <Dialog open={showAddStudent} onOpenChange={setShowAddStudent}>
