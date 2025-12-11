@@ -110,6 +110,36 @@ export default function ClassDetail() {
     }
   };
 
+  const handleSendAnnouncement = async () => {
+    if (!announcement.content) {
+      toast.error('Please enter an announcement message');
+      return;
+    }
+
+    try {
+      const user = await base44.auth.me();
+      await base44.entities.Message.create({
+        school_id: classData.school_id,
+        type: 'announcement',
+        sender_email: user.email,
+        sender_name: `${classData.teacher_email}`,
+        sender_type: 'teacher',
+        class_id: classId,
+        class_name: classData.name,
+        subject: announcement.subject || 'Class Announcement',
+        content: announcement.content,
+        read: false
+      });
+
+      setShowAnnouncementDialog(false);
+      setAnnouncement({ subject: '', content: '' });
+      loadClassData();
+      toast.success('Announcement sent to all students');
+    } catch (error) {
+      toast.error('Failed to send announcement');
+    }
+  };
+
   const isTeacher = profile?.user_type === 'teacher' || profile?.user_type === 'admin';
 
   if (loading) {
@@ -267,6 +297,41 @@ export default function ClassDetail() {
                   {isTeacher && (
                     <p className="text-sm mt-2">Share the join code: <span className="font-mono font-bold">{classData.join_code}</span></p>
                   )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="announcements">
+          <Card className="border-0 shadow-lg">
+            <CardHeader>
+              <CardTitle>Class Announcements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {announcements.length > 0 ? (
+                <div className="space-y-4">
+                  {announcements.map((ann) => (
+                    <div key={ann.id} className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Megaphone className="h-4 w-4 text-violet-600" />
+                            <h4 className="font-semibold text-slate-900">{ann.subject}</h4>
+                          </div>
+                          <p className="text-slate-700 whitespace-pre-wrap mb-2">{ann.content}</p>
+                          <p className="text-xs text-slate-500">
+                            Posted by {ann.sender_name} on {format(new Date(ann.created_date), 'PPp')}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-slate-400">
+                  <Megaphone className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>No announcements yet</p>
                 </div>
               )}
             </CardContent>

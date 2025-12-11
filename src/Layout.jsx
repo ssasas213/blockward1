@@ -89,6 +89,7 @@ export default function Layout({ children, currentPageName }) {
     teacher: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
+      { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
       { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
@@ -98,6 +99,7 @@ export default function Layout({ children, currentPageName }) {
     student: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
+      { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
       { name: 'My BlockWards', icon: Shield, page: 'BlockWards' },
