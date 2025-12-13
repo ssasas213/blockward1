@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { base44 } from '@/api/base44Client';
+import Web3Provider from '@/components/web3/Web3Provider';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
@@ -66,9 +67,11 @@ export default function Layout({ children, currentPageName }) {
 
   if (isPublicPage || !user) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        {children}
-      </div>
+      <Web3Provider>
+        <div className="min-h-screen bg-slate-50">
+          {children}
+        </div>
+      </Web3Provider>
     );
   }
 
@@ -85,6 +88,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Messages', icon: Bell, page: 'Messages' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
       { name: 'BlockWards', icon: Award, page: 'BlockWards' },
+      { name: 'Web3 NFTs', icon: Shield, page: 'Web3BlockWards' },
       { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
       { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
       { name: 'Reports', icon: FileText, page: 'Reports' },

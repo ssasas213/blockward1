@@ -24,6 +24,7 @@ import SystemSettings from './pages/SystemSettings';
 import Attendance from './pages/Attendance';
 import GradeBook from './pages/GradeBook';
 import Analytics from './pages/Analytics';
+import Web3BlockWards from './pages/Web3BlockWards';
 import __Layout from './Layout.jsx';
 
 
@@ -54,6 +55,7 @@ export const PAGES = {
     "Attendance": Attendance,
     "GradeBook": GradeBook,
     "Analytics": Analytics,
+    "Web3BlockWards": Web3BlockWards,
 }
 
 export const pagesConfig = {
