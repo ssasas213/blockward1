@@ -7,6 +7,11 @@ import { Shield, Wallet } from 'lucide-react';
 import NFTMinter from '@/components/web3/NFTMinter';
 import NFTGallery from '@/components/web3/NFTGallery';
 import WalletButton from '@/components/web3/WalletButton';
+import WalletStats from '@/components/web3/WalletStats';
+import NetworkSwitcher from '@/components/web3/NetworkSwitcher';
+import TransactionHistory from '@/components/web3/TransactionHistory';
+import GasEstimator from '@/components/web3/GasEstimator';
+import IPFSUploader from '@/components/web3/IPFSUploader';
 
 export default function Web3BlockWards() {
   const [loading, setLoading] = useState(true);
@@ -56,8 +61,14 @@ export default function Web3BlockWards() {
             Real blockchain NFTs on Base network
           </p>
         </div>
-        <WalletButton />
+        <div className="flex items-center gap-3">
+          <NetworkSwitcher />
+          <WalletButton />
+        </div>
       </div>
+
+      {/* Wallet Stats */}
+      <WalletStats />
 
       {/* Info Banner */}
       <Card className="border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50">
@@ -89,18 +100,50 @@ export default function Web3BlockWards() {
           <TabsList>
             <TabsTrigger value="mint">Mint NFT</TabsTrigger>
             <TabsTrigger value="gallery">My Collection</TabsTrigger>
+            <TabsTrigger value="ipfs">IPFS Upload</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
           </TabsList>
 
           <TabsContent value="mint">
-            <NFTMinter students={students} />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <NFTMinter students={students} />
+              </div>
+              <div>
+                <GasEstimator />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="gallery">
             <NFTGallery />
           </TabsContent>
+
+          <TabsContent value="ipfs">
+            <div className="max-w-2xl mx-auto">
+              <IPFSUploader />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="transactions">
+            <TransactionHistory />
+          </TabsContent>
         </Tabs>
       ) : (
-        <NFTGallery />
+        <Tabs defaultValue="gallery" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="gallery">My Collection</TabsTrigger>
+            <TabsTrigger value="transactions">Transactions</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="gallery">
+            <NFTGallery />
+          </TabsContent>
+
+          <TabsContent value="transactions">
+            <TransactionHistory />
+          </TabsContent>
+        </Tabs>
       )}
 
       {/* Setup Instructions */}

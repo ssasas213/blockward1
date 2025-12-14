@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Shield, ExternalLink, Loader2 } from 'lucide-react';
 import WalletButton from './WalletButton';
+import NFTDetailModal from './NFTDetailModal';
 import { motion } from 'framer-motion';
 
 // Contract ABI for reading
@@ -30,6 +31,7 @@ export default function NFTGallery() {
   const { address, isConnected } = useAccount();
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selectedNFT, setSelectedNFT] = useState(null);
 
   // Read user's NFT token IDs
   const { data: tokenIds } = useReadContract({
@@ -123,15 +125,19 @@ export default function NFTGallery() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {nfts.map((nft, i) => (
-        <motion.div
-          key={nft.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: i * 0.1 }}
-        >
-          <Card className="border-0 shadow-lg hover:shadow-xl transition-all overflow-hidden group">
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {nfts.map((nft, i) => (
+          <motion.div
+            key={nft.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.1 }}
+          >
+            <Card 
+              className="border-0 shadow-lg hover:shadow-xl transition-all overflow-hidden group cursor-pointer"
+              onClick={() => setSelectedNFT(nft)}
+            >
             <div className={`h-48 bg-gradient-to-br ${categoryColors[nft.category]} relative`}>
               <img 
                 src={nft.image} 
@@ -163,9 +169,16 @@ export default function NFTGallery() {
                 </a>
               </div>
             </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+      
+      <NFTDetailModal 
+        nft={selectedNFT} 
+        open={!!selectedNFT} 
+        onClose={() => setSelectedNFT(null)} 
+      />
+    </>
   );
 }
