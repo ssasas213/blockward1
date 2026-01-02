@@ -53,27 +53,27 @@ export default function Onboarding() {
 
     // Not logged in - redirect to home
     if (!user) {
-      navigate(createPageUrl('Home'));
+      window.location.href = createPageUrl('Home');
       return;
     }
 
-    // Already has profile - redirect to dashboard
+    // Already has profile - redirect to dashboard immediately
     if (profile) {
       redirectToDashboard(profile.user_type);
       return;
     }
 
     setChecking(false);
-  }, [user, profile, initialized, authLoading, navigate]);
+  }, [user, profile, initialized, authLoading]);
 
   const redirectToDashboard = (userType) => {
-    if (userType === 'admin') {
-      navigate(createPageUrl('AdminDashboard'));
-    } else if (userType === 'teacher') {
-      navigate(createPageUrl('TeacherDashboard'));
-    } else {
-      navigate(createPageUrl('StudentDashboard'));
-    }
+    const dashboardUrl = userType === 'admin' 
+      ? createPageUrl('AdminDashboard')
+      : userType === 'teacher'
+      ? createPageUrl('TeacherDashboard')
+      : createPageUrl('StudentDashboard');
+    
+    window.location.href = dashboardUrl;
   };
 
   const generateWallet = () => {
@@ -141,9 +141,9 @@ export default function Onboarding() {
         profileData.can_issue_blockwards = true;
       }
 
-      const newProfile = await base44.entities.UserProfile.create(profileData);
+      await base44.entities.UserProfile.create(profileData);
 
-      // Refresh auth context
+      // Refresh auth context and redirect
       await refreshProfile();
 
       // Generate initial school codes for admin

@@ -18,17 +18,23 @@ export default function Home() {
   useEffect(() => {
     if (!initialized || loading) return;
 
-    // If user is logged in with profile, redirect to appropriate dashboard
+    // If user is logged in with profile, redirect to appropriate dashboard immediately
     if (user && profile) {
-      if (profile.user_type === 'admin') {
-        navigate(createPageUrl('AdminDashboard'));
-      } else if (profile.user_type === 'teacher') {
-        navigate(createPageUrl('TeacherDashboard'));
-      } else {
-        navigate(createPageUrl('StudentDashboard'));
-      }
+      const dashboardUrl = profile.user_type === 'admin'
+        ? createPageUrl('AdminDashboard')
+        : profile.user_type === 'teacher'
+        ? createPageUrl('TeacherDashboard')
+        : createPageUrl('StudentDashboard');
+      
+      window.location.href = dashboardUrl;
+      return;
     }
-  }, [user, profile, loading, initialized, navigate]);
+
+    // If user is logged in but no profile, send to onboarding
+    if (user && !profile) {
+      window.location.href = createPageUrl('Onboarding');
+    }
+  }, [user, profile, loading, initialized]);
 
   const handleGetStarted = () => {
     base44.auth.redirectToLogin(createPageUrl('Onboarding'));
