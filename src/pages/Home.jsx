@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from "@/components/ui/button";
 import { 
   Shield, Award, Users, BookOpen, Calendar, 
@@ -11,24 +12,23 @@ import {
 import { motion } from 'framer-motion';
 
 export default function Home() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { user, profile, loading, initialized } = useAuth();
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (!initialized || loading) return;
 
-  const checkAuth = async () => {
-    try {
-      const authenticated = await base44.auth.isAuthenticated();
-      setIsAuthenticated(authenticated);
-    } catch (e) {
-      console.log('Not authenticated');
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
+    // If user is logged in with profile, redirect to appropriate dashboard
+    if (user && profile) {
+      if (profile.user_type === 'admin') {
+        navigate(createPageUrl('AdminDashboard'));
+      } else if (profile.user_type === 'teacher') {
+        navigate(createPageUrl('TeacherDashboard'));
+      } else {
+        navigate(createPageUrl('StudentDashboard'));
+      }
     }
-  };
+  }, [user, profile, loading, initialized, navigate]);
 
   const handleGetStarted = () => {
     base44.auth.redirectToLogin(createPageUrl('Onboarding'));

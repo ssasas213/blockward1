@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,7 @@ import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award } from 'lucide-reac
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-export default function IssueBlockWard() {
+function IssueBlockWardContent() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [students, setStudents] = useState([]);
@@ -501,5 +502,13 @@ export default function IssueBlockWard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function IssueBlockWard() {
+  return (
+    <ProtectedRoute>
+      <IssueBlockWardContent />
+    </ProtectedRoute>
   );
 }

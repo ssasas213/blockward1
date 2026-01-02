@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +14,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function StudentDashboard() {
+function StudentDashboardContent() {
+  const { user, profile: userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({
     myClasses: [],
     todaySchedule: [],
@@ -30,12 +32,7 @@ export default function StudentDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        const userProfile = profiles[0];
-        setProfile(userProfile);
+      if (!user) return;
 
         // Get classes where student is enrolled
         const allClasses = await base44.entities.Class.list();
@@ -64,15 +61,14 @@ export default function StudentDashboard() {
           else behaviourPoints += Math.abs(p.points);
         });
 
-        setStats({
-          myClasses,
-          todaySchedule: todaySchedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
-          recentPoints: points.slice(0, 5),
-          blockWards,
-          achievementPoints: userProfile.total_achievement_points || achievementPoints,
-          behaviourPoints: userProfile.total_behaviour_points || behaviourPoints
-        });
-      }
+      setStats({
+        myClasses,
+        todaySchedule: todaySchedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
+        recentPoints: points.slice(0, 5),
+        blockWards,
+        achievementPoints: userProfile?.total_achievement_points || achievementPoints,
+        behaviourPoints: userProfile?.total_behaviour_points || behaviourPoints
+      });
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -102,10 +98,10 @@ export default function StudentDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
-            Welcome, {profile?.first_name}!
+            Welcome, {userProfile?.first_name}!
           </h1>
           <p className="text-slate-500 mt-1">
-            {profile?.grade_level && `${profile.grade_level} • `}Student Dashboard
+            {userProfile?.grade_level && `${userProfile.grade_level} • `}Student Dashboard
           </p>
         </div>
         <div className="flex gap-3">
@@ -353,5 +349,13 @@ export default function StudentDashboard() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function StudentDashboard() {
+  return (
+    <ProtectedRoute>
+      <StudentDashboardContent />
+    </ProtectedRoute>
   );
 }

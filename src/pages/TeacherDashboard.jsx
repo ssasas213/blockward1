@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,9 +13,9 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function TeacherDashboard() {
+function TeacherDashboardContent() {
+  const { user, profile: userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState({
     myClasses: [],
     todaySchedule: [],
@@ -27,14 +29,10 @@ export default function TeacherDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
+      if (!user) return;
 
-        // Load teacher's classes
-        const classes = await base44.entities.Class.filter({ teacher_email: user.email });
+      // Load teacher's classes
+      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
         
         // Get today's schedule
         const today = new Date().getDay();
@@ -58,14 +56,13 @@ export default function TeacherDashboard() {
           todaySchedule: schedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
           recentPoints: points,
           totalStudents
-        });
-      }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+          });
+          } catch (error) {
+          console.error('Error loading dashboard:', error);
+          } finally {
+          setLoading(false);
+          }
+          };
 
   const statCards = [
     { title: 'My Classes', value: stats.myClasses.length, icon: BookOpen, color: 'from-violet-500 to-purple-500' },
@@ -96,7 +93,7 @@ export default function TeacherDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
-            Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}, {profile?.first_name}
+            Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}, {userProfile?.first_name}
           </h1>
           <p className="text-slate-500 mt-1">
             Here's your teaching overview
@@ -275,5 +272,13 @@ export default function TeacherDashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function TeacherDashboard() {
+  return (
+    <ProtectedRoute>
+      <TeacherDashboardContent />
+    </ProtectedRoute>
   );
 }

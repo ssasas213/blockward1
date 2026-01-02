@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import { api } from '@/components/blockwards/mockData';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
-export default function TeacherBlockWards() {
+function TeacherBlockWardsContent() {
   const [loading, setLoading] = useState(true);
   const [issuedBlockWards, setIssuedBlockWards] = useState([]);
   const [activityTimeline, setActivityTimeline] = useState([]);
@@ -257,5 +258,13 @@ export default function TeacherBlockWards() {
       {/* Activity Timeline */}
       <ActivityTimeline activities={activityTimeline} />
     </div>
+  );
+}
+
+export default function TeacherBlockWards() {
+  return (
+    <ProtectedRoute>
+      <TeacherBlockWardsContent />
+    </ProtectedRoute>
   );
 }

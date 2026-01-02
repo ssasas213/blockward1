@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,9 +14,9 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { motion } from 'framer-motion';
 
-export default function AdminDashboard() {
+function AdminDashboardContent() {
+  const { profile: userProfile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -32,16 +34,10 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
-        
-        if (profiles[0].school_id) {
-          const schools = await base44.entities.School.filter({ id: profiles[0].school_id });
-          if (schools.length > 0) setSchool(schools[0]);
-        }
+      if (userProfile?.school_id) {
+        const schools = await base44.entities.School.filter({ id: userProfile.school_id });
+        if (schools.length > 0) setSchool(schools[0]);
+      }
 
         // Load all stats
         const [students, teachers, classes, blockWards, points] = await Promise.all([
@@ -68,14 +64,13 @@ export default function AdminDashboard() {
           recentPoints: points.slice(0, 5),
           recentBlockWards: blockWards.slice(0, 5),
           pointsByCategory: Object.values(categoryTotals)
-        });
-      }
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+          });
+          } catch (error) {
+          console.error('Error loading dashboard:', error);
+          } finally {
+          setLoading(false);
+          }
+          };
 
   const statCards = [
     { title: 'Total Students', value: stats.totalStudents, icon: Users, color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50' },
@@ -100,7 +95,7 @@ export default function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">
-            Welcome back, {profile?.first_name}
+            Welcome back, {userProfile?.first_name}
           </h1>
           <p className="text-slate-500 mt-1">
             {school?.name || 'Admin Dashboard'} Overview
@@ -277,5 +272,13 @@ export default function AdminDashboard() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <ProtectedRoute>
+      <AdminDashboardContent />
+    </ProtectedRoute>
   );
 }

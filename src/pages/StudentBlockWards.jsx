@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +17,7 @@ import { api, blockWardCategories } from '@/components/blockwards/mockData';
 import { Shield, Award, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export default function StudentBlockWards() {
+function StudentBlockWardsContent() {
   const [loading, setLoading] = useState(true);
   const [blockWards, setBlockWards] = useState([]);
   const [vault, setVault] = useState(null);
@@ -209,5 +210,13 @@ export default function StudentBlockWards() {
         onClose={() => setShowVaultModal(false)}
       />
     </div>
+  );
+}
+
+export default function StudentBlockWards() {
+  return (
+    <ProtectedRoute>
+      <StudentBlockWardsContent />
+    </ProtectedRoute>
   );
 }

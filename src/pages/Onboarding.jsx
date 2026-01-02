@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,9 +12,10 @@ import { Shield, GraduationCap, Users, BookOpen, ArrowRight, Loader2 } from 'luc
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Onboarding() {
-  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+  const { user, profile, refreshProfile, loading: authLoading, initialized } = useAuth();
   const [step, setStep] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     user_type: localStorage.getItem('pendingUserRole') || '',
@@ -46,35 +49,30 @@ export default function Onboarding() {
   }, []);
 
   useEffect(() => {
-    checkUserProfile();
-  }, []);
+    if (!initialized || authLoading) return;
 
-  const checkUserProfile = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      
-      // Check if profile already exists
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      if (profiles.length > 0) {
-        const profile = profiles[0];
-        redirectToDashboard(profile.user_type);
-        return;
-      }
-    } catch (e) {
-      window.location.href = createPageUrl('Home');
-    } finally {
-      setLoading(false);
+    // Not logged in - redirect to home
+    if (!user) {
+      navigate(createPageUrl('Home'));
+      return;
     }
-  };
+
+    // Already has profile - redirect to dashboard
+    if (profile) {
+      redirectToDashboard(profile.user_type);
+      return;
+    }
+
+    setChecking(false);
+  }, [user, profile, initialized, authLoading, navigate]);
 
   const redirectToDashboard = (userType) => {
     if (userType === 'admin') {
-      window.location.href = createPageUrl('AdminDashboard');
+      navigate(createPageUrl('AdminDashboard'));
     } else if (userType === 'teacher') {
-      window.location.href = createPageUrl('TeacherDashboard');
+      navigate(createPageUrl('TeacherDashboard'));
     } else {
-      window.location.href = createPageUrl('StudentDashboard');
+      navigate(createPageUrl('StudentDashboard'));
     }
   };
 
@@ -143,7 +141,10 @@ export default function Onboarding() {
         profileData.can_issue_blockwards = true;
       }
 
-      await base44.entities.UserProfile.create(profileData);
+      const newProfile = await base44.entities.UserProfile.create(profileData);
+
+      // Refresh auth context
+      await refreshProfile();
 
       // Generate initial school codes for admin
       if (formData.user_type === 'admin' && school) {
@@ -169,7 +170,7 @@ export default function Onboarding() {
     }
   };
 
-  if (loading) {
+  if (authLoading || checking) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />

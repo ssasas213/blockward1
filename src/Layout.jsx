@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
-import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/components/auth/AuthProvider';
 import Web3Provider from '@/components/web3/Web3Provider';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
@@ -19,34 +19,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
+  const { user, profile, loading, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
-      }
-    } catch (e) {
-      console.log('User not logged in');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    base44.auth.logout(createPageUrl('Home'));
-  };
 
   // Public pages that don't need sidebar
   const publicPages = ['Home', 'Login'];
@@ -181,7 +155,7 @@ export default function Layout({ children, currentPageName }) {
               roleColors={roleColors}
               roleLabels={roleLabels}
               onClose={() => setSidebarOpen(false)}
-              onLogout={handleLogout}
+              onLogout={logout}
             />
           </div>
         </div>
@@ -198,7 +172,7 @@ export default function Layout({ children, currentPageName }) {
             userType={userType}
             roleColors={roleColors}
             roleLabels={roleLabels}
-            onLogout={handleLogout}
+            onLogout={logout}
           />
         </div>
       </aside>
