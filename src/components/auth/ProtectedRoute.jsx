@@ -26,12 +26,17 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
   // Show loading state while checking auth
   if (!initialized || loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center animate-pulse">
-            <Shield className="h-6 w-6 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
+            <div className="animate-pulse">
+              <Shield className="h-8 w-8 text-white" />
+            </div>
           </div>
-          <p className="text-slate-500 text-sm">Loading...</p>
+          <div className="h-1 w-32 bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-full w-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full animate-[shimmer_1s_ease-in-out_infinite]" />
+          </div>
+          <p className="text-slate-600 text-sm font-medium">Loading BlockWard...</p>
         </div>
       </div>
     );

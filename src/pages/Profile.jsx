@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/components/auth/AuthProvider';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,11 +14,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function Profile() {
+function ProfileContent() {
+  const { user, profile: userProfile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,25 +34,19 @@ export default function Profile() {
 
   const loadProfile = async () => {
     try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
+      if (!userProfile) return;
 
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      if (profiles.length > 0) {
-        const userProfile = profiles[0];
-        setProfile(userProfile);
-        setFormData({
-          first_name: userProfile.first_name || '',
-          last_name: userProfile.last_name || '',
-          department: userProfile.department || '',
-          grade_level: userProfile.grade_level || '',
-          student_id: userProfile.student_id || ''
-        });
+      setFormData({
+        first_name: userProfile.first_name || '',
+        last_name: userProfile.last_name || '',
+        department: userProfile.department || '',
+        grade_level: userProfile.grade_level || '',
+        student_id: userProfile.student_id || ''
+      });
 
-        if (userProfile.school_id) {
-          const schools = await base44.entities.School.filter({ id: userProfile.school_id });
-          if (schools.length > 0) setSchool(schools[0]);
-        }
+      if (userProfile.school_id) {
+        const schools = await base44.entities.School.filter({ id: userProfile.school_id });
+        if (schools.length > 0) setSchool(schools[0]);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -61,11 +56,12 @@ export default function Profile() {
   };
 
   const handleSave = async () => {
+    if (!userProfile) return;
     setSaving(true);
     try {
-      await base44.entities.UserProfile.update(profile.id, formData);
+      await base44.entities.UserProfile.update(userProfile.id, formData);
+      await refreshProfile();
       toast.success('Profile updated successfully');
-      loadProfile();
     } catch (error) {
       console.error('Error saving profile:', error);
       toast.error('Failed to update profile');
@@ -75,9 +71,10 @@ export default function Profile() {
   };
 
   const copyWalletAddress = () => {
-    if (profile?.wallet_address) {
-      navigator.clipboard.writeText(profile.wallet_address);
+    if (userProfile?.wallet_address) {
+      navigator.clipboard.writeText(userProfile.wallet_address);
       setCopiedWallet(true);
+      toast.success('Wallet address copied');
       setTimeout(() => setCopiedWallet(false), 2000);
     }
   };
@@ -94,7 +91,7 @@ export default function Profile() {
     student: 'Student'
   };
 
-  if (loading) {
+  if (loading || !userProfile) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
@@ -103,7 +100,7 @@ export default function Profile() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
@@ -111,29 +108,29 @@ export default function Profile() {
       </div>
 
       {/* Profile Card */}
-      <Card className="border-0 shadow-lg overflow-hidden">
-        <div className={`h-24 bg-gradient-to-r ${
-          profile?.user_type === 'admin' ? 'from-rose-500 to-orange-500' :
-          profile?.user_type === 'teacher' ? 'from-violet-500 to-purple-500' :
+      <Card className="border-0 shadow-lg overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className={`h-32 bg-gradient-to-r ${
+          userProfile?.user_type === 'admin' ? 'from-rose-500 to-orange-500' :
+          userProfile?.user_type === 'teacher' ? 'from-violet-500 to-purple-500' :
           'from-blue-500 to-cyan-500'
         }`} />
         <CardContent className="relative px-6 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-12 mb-6">
-            <div className={`h-24 w-24 rounded-2xl flex items-center justify-center text-3xl font-bold text-white shadow-xl ${
-              profile?.user_type === 'admin' ? 'bg-rose-500' :
-              profile?.user_type === 'teacher' ? 'bg-violet-500' :
-              'bg-blue-500'
+          <div className="flex flex-col sm:flex-row sm:items-end gap-4 -mt-16 mb-6">
+            <div className={`h-28 w-28 rounded-2xl flex items-center justify-center text-4xl font-bold text-white shadow-2xl border-4 border-white ${
+              userProfile?.user_type === 'admin' ? 'bg-gradient-to-br from-rose-500 to-orange-500' :
+              userProfile?.user_type === 'teacher' ? 'bg-gradient-to-br from-violet-500 to-purple-500' :
+              'bg-gradient-to-br from-blue-500 to-cyan-500'
             }`}>
-              {profile?.first_name?.[0]}
+              {userProfile?.first_name?.[0]}
             </div>
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-slate-900">
-                {profile?.first_name} {profile?.last_name}
+                {userProfile?.first_name} {userProfile?.last_name}
               </h2>
-              <div className="flex items-center gap-3 mt-2">
-                <Badge className={roleColors[profile?.user_type]}>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <Badge className={roleColors[userProfile?.user_type]}>
                   <Shield className="h-3 w-3 mr-1" />
-                  {roleLabels[profile?.user_type]}
+                  {roleLabels[userProfile?.user_type]}
                 </Badge>
                 {school && (
                   <Badge variant="outline">
@@ -166,7 +163,7 @@ export default function Profile() {
               <Label>Email</Label>
               <Input value={user?.email || ''} disabled className="bg-slate-50" />
             </div>
-            {profile?.user_type === 'teacher' && (
+            {userProfile?.user_type === 'teacher' && (
               <div className="space-y-2">
                 <Label>Department</Label>
                 <Input
@@ -176,7 +173,7 @@ export default function Profile() {
                 />
               </div>
             )}
-            {profile?.user_type === 'student' && (
+            {userProfile?.user_type === 'student' && (
               <>
                 <div className="space-y-2">
                   <Label>Student ID</Label>
@@ -196,14 +193,23 @@ export default function Profile() {
             )}
           </div>
 
-          <div className="mt-6">
+          <div className="flex gap-3 mt-6">
             <Button 
               onClick={handleSave} 
               disabled={saving}
-              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 active:scale-95"
             >
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              Save Changes
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
@@ -222,33 +228,38 @@ export default function Profile() {
             <p className="text-sm text-slate-500 mb-2">Wallet Address (Polygon)</p>
             <div className="flex items-center gap-3">
               <code className="flex-1 text-sm font-mono text-slate-700 truncate">
-                {profile?.wallet_address}
+                {userProfile?.wallet_address}
               </code>
-              <Button variant="outline" size="sm" onClick={copyWalletAddress}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={copyWalletAddress}
+                className="transition-all duration-200 active:scale-95"
+              >
                 {copiedWallet ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
           </div>
 
           <div className="p-4 bg-violet-50 rounded-xl border border-violet-200">
-            <h4 className="font-semibold text-violet-900 mb-2">Blockchain Role: {profile?.blockchain_role}</h4>
+            <h4 className="font-semibold text-violet-900 mb-2">Blockchain Role: {userProfile?.blockchain_role}</h4>
             <p className="text-sm text-violet-700">
-              {profile?.user_type === 'student' && 
+              {userProfile?.user_type === 'student' && 
                 "Your wallet can only receive BlockWards. You cannot send, transfer, or trade any tokens."}
-              {profile?.user_type === 'teacher' && 
+              {userProfile?.user_type === 'teacher' && 
                 "Your wallet can only mint BlockWards to students. You cannot hold or transfer tokens."}
-              {profile?.user_type === 'admin' && 
+              {userProfile?.user_type === 'admin' && 
                 "You have administrative control over role assignments and can revoke BlockWards if needed."}
             </p>
           </div>
 
-          {profile?.user_type === 'teacher' && (
-            <div className={`p-4 rounded-xl border ${profile?.can_issue_blockwards ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-              <h4 className={`font-semibold ${profile?.can_issue_blockwards ? 'text-green-900' : 'text-amber-900'}`}>
-                BlockWard Minting: {profile?.can_issue_blockwards ? 'Enabled' : 'Disabled'}
+          {userProfile?.user_type === 'teacher' && (
+            <div className={`p-4 rounded-xl border transition-all duration-200 ${userProfile?.can_issue_blockwards ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+              <h4 className={`font-semibold ${userProfile?.can_issue_blockwards ? 'text-green-900' : 'text-amber-900'}`}>
+                BlockWard Minting: {userProfile?.can_issue_blockwards ? 'Enabled' : 'Disabled'}
               </h4>
-              <p className={`text-sm mt-1 ${profile?.can_issue_blockwards ? 'text-green-700' : 'text-amber-700'}`}>
-                {profile?.can_issue_blockwards 
+              <p className={`text-sm mt-1 ${userProfile?.can_issue_blockwards ? 'text-green-700' : 'text-amber-700'}`}>
+                {userProfile?.can_issue_blockwards 
                   ? "You are authorized to mint BlockWards to students." 
                   : "Contact your admin to enable BlockWard minting permission."}
               </p>
@@ -258,25 +269,33 @@ export default function Profile() {
       </Card>
 
       {/* Points Summary (Students Only) */}
-      {profile?.user_type === 'student' && (
-        <Card className="border-0 shadow-lg">
+      {userProfile?.user_type === 'student' && (
+        <Card className="border-0 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-700">
           <CardHeader>
             <CardTitle className="text-lg">Points Summary</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="p-4 bg-green-50 rounded-xl text-center">
-                <p className="text-sm text-green-600">Achievement Points</p>
-                <p className="text-3xl font-bold text-green-700">{profile?.total_achievement_points || 0}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl text-center border border-green-100 transition-all duration-200 hover:shadow-lg hover:scale-105">
+                <p className="text-sm text-green-600 font-medium">Achievement Points</p>
+                <p className="text-4xl font-bold text-green-700 mt-2">{userProfile?.total_achievement_points || 0}</p>
               </div>
-              <div className="p-4 bg-amber-50 rounded-xl text-center">
-                <p className="text-sm text-amber-600">Behaviour Points</p>
-                <p className="text-3xl font-bold text-amber-700">{profile?.total_behaviour_points || 0}</p>
+              <div className="p-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl text-center border border-amber-100 transition-all duration-200 hover:shadow-lg hover:scale-105">
+                <p className="text-sm text-amber-600 font-medium">Behaviour Points</p>
+                <p className="text-4xl font-bold text-amber-700 mt-2">{userProfile?.total_behaviour_points || 0}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
     </div>
+  );
+}
+
+export default function Profile() {
+  return (
+    <ProtectedRoute>
+      <ProfileContent />
+    </ProtectedRoute>
   );
 }

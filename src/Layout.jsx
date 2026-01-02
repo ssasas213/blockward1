@@ -28,12 +28,17 @@ export default function Layout({ children, currentPageName }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center animate-pulse">
-            <Shield className="h-6 w-6 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
+          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
+            <div className="animate-pulse">
+              <Shield className="h-8 w-8 text-white" />
+            </div>
           </div>
-          <p className="text-slate-500 text-sm">Loading BlockWard...</p>
+          <div className="h-1 w-32 bg-slate-200 rounded-full overflow-hidden">
+            <div className="h-full w-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full animate-[shimmer_1s_ease-in-out_infinite]" />
+          </div>
+          <p className="text-slate-600 text-sm font-medium">Loading BlockWard...</p>
         </div>
       </div>
     );
@@ -128,8 +133,8 @@ export default function Layout({ children, currentPageName }) {
     <Web3Provider>
       <div className="min-h-screen bg-slate-50">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center justify-between">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 px-4 flex items-center justify-between">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200 active:scale-95">
           <Menu className="h-5 w-5 text-slate-600" />
         </button>
         <div className="flex items-center gap-2">
@@ -143,9 +148,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="lg:hidden fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-xl">
+        <div className="lg:hidden fixed inset-0 z-50 animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl animate-in slide-in-from-left duration-300">
             <SidebarContent 
               navItems={navItems} 
               currentPageName={currentPageName}
@@ -219,7 +224,7 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
               to={createPageUrl(item.page)}
               onClick={onClose}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 active:scale-[0.98]",
                 isActive 
                   ? `bg-gradient-to-r ${roleColors[userType]} text-white shadow-lg shadow-violet-500/25` 
                   : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -236,8 +241,8 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
       <div className="p-4 border-t border-slate-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 transition-colors">
-              <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${roleColors[userType]} flex items-center justify-center text-white font-semibold`}>
+            <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 transition-all duration-200 active:scale-[0.98]">
+              <div className={`h-10 w-10 rounded-full bg-gradient-to-br ${roleColors[userType]} flex items-center justify-center text-white font-semibold shadow-lg`}>
                 {profile?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 text-left">

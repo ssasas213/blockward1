@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { useAuth } from '@/components/auth/AuthProvider';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,9 +33,9 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function Classes() {
+function ClassesContent() {
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -55,27 +57,22 @@ export default function Classes() {
   }, []);
 
   const loadData = async () => {
+    if (!user || !profile) return;
+    
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
-        const userProfile = profiles[0];
-
-        let classData = [];
-        if (userProfile.user_type === 'teacher') {
-          classData = await base44.entities.Class.filter({ teacher_email: user.email });
-        } else if (userProfile.user_type === 'student') {
-          const allClasses = await base44.entities.Class.list();
-          classData = allClasses.filter(c => c.student_emails?.includes(user.email));
-        } else {
-          classData = await base44.entities.Class.list();
-        }
-        setClasses(classData);
+      let classData = [];
+      if (profile.user_type === 'teacher') {
+        classData = await base44.entities.Class.filter({ teacher_email: user.email });
+      } else if (profile.user_type === 'student') {
+        const allClasses = await base44.entities.Class.list();
+        classData = allClasses.filter(c => c.student_emails?.includes(user.email));
+      } else {
+        classData = await base44.entities.Class.list();
       }
+      setClasses(classData);
     } catch (error) {
       console.error('Error loading classes:', error);
+      toast.error('Failed to load classes');
     } finally {
       setLoading(false);
     }
@@ -91,10 +88,9 @@ export default function Classes() {
   };
 
   const handleCreateClass = async () => {
-    if (!newClass.name) return;
+    if (!newClass.name || !user) return;
     setCreating(true);
     try {
-      const user = await base44.auth.me();
       const classData = {
         ...newClass,
         teacher_email: user.email,
@@ -108,7 +104,7 @@ export default function Classes() {
       await base44.entities.Class.create(classData);
       setShowCreateDialog(false);
       setNewClass({ name: '', subject: '', description: '', room: '', grade_level: '' });
-      loadData();
+      await loadData();
       toast.success('Class created successfully!');
     } catch (error) {
       console.error('Error creating class:', error);
@@ -119,10 +115,9 @@ export default function Classes() {
   };
 
   const handleJoinClass = async () => {
-    if (!joinCode) return;
+    if (!joinCode || !user) return;
     setJoining(true);
     try {
-      const user = await base44.auth.me();
       const allClasses = await base44.entities.Class.list();
       const classToJoin = allClasses.find(c => c.join_code?.toUpperCase() === joinCode.toUpperCase());
       
@@ -143,8 +138,8 @@ export default function Classes() {
       
       setShowJoinDialog(false);
       setJoinCode('');
-      loadData();
-      toast.success(`Joined ${classToJoin.name}!`);
+      await loadData();
+      toast.success(`Successfully joined ${classToJoin.name}!`);
     } catch (error) {
       console.error('Error joining class:', error);
       toast.error('Failed to join class');
@@ -156,6 +151,7 @@ export default function Classes() {
   const copyJoinCode = (code) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
+    toast.success('Class code copied');
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
@@ -182,7 +178,7 @@ export default function Classes() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -230,9 +226,16 @@ export default function Classes() {
                   <Button 
                     onClick={handleJoinClass} 
                     disabled={!joinCode || joining}
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600"
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 active:scale-95"
                   >
-                    {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Join Class'}
+                    {joining ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      'Join Class'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -305,9 +308,16 @@ export default function Classes() {
                   <Button 
                     onClick={handleCreateClass} 
                     disabled={!newClass.name || creating}
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600"
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 transition-all duration-200 active:scale-95"
                   >
-                    {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Class'}
+                    {creating ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Class'
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -337,7 +347,7 @@ export default function Classes() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: i * 0.05 }}
             >
-              <Card className="border-0 shadow-lg hover:shadow-xl transition-all overflow-hidden group">
+              <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group cursor-pointer">
                 <div className={`h-2 bg-gradient-to-r ${classColors[i % classColors.length]}`} />
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
@@ -348,8 +358,11 @@ export default function Classes() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => copyJoinCode(cls.join_code)}
-                        className="text-slate-500 hover:text-slate-900"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          copyJoinCode(cls.join_code);
+                        }}
+                        className="text-slate-500 hover:text-slate-900 transition-all duration-200 active:scale-95"
                       >
                         {copiedCode === cls.join_code ? (
                           <Check className="h-4 w-4 text-green-500" />
@@ -374,9 +387,9 @@ export default function Classes() {
                   </div>
 
                   <Link to={createPageUrl(`ClassDetail?id=${cls.id}`)}>
-                    <Button variant="outline" className="w-full group-hover:bg-slate-100">
+                    <Button variant="outline" className="w-full group-hover:bg-slate-100 transition-all duration-200 active:scale-95">
                       View Class
-                      <ChevronRight className="h-4 w-4 ml-2" />
+                      <ChevronRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />
                     </Button>
                   </Link>
                 </CardContent>
@@ -398,5 +411,13 @@ export default function Classes() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function Classes() {
+  return (
+    <ProtectedRoute>
+      <ClassesContent />
+    </ProtectedRoute>
   );
 }
