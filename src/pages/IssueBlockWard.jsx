@@ -95,28 +95,33 @@ function IssueBlockWardContent() {
     }
 
     setIssuing(true);
-    setIssuingStage('Securing your BlockWard...');
+    setIssuingStage('Issuing on Polygon Amoy (testnet)...');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setIssuingStage('Finalizing award...');
-      
-      await api.issueBlockWard({
-        studentId: formData.selectedStudent.id,
-        studentName: formData.selectedStudent.name,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        rarity: formData.rarity,
-        icon: formData.icon,
-        issuedBy: 'Current Teacher'
+      const response = await fetch('/api/blockwards/issue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: formData.selectedStudent.id,
+          title: formData.title,
+          category: formData.category,
+          description: formData.description
+        })
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to issue BlockWard');
+      }
 
       setIssueSuccess(true);
       toast.success('BlockWard issued successfully!');
     } catch (error) {
       console.error('Error issuing BlockWard:', error);
-      setIssueError('Failed to issue BlockWard. Please try again.');
+      setIssueError(error.message || 'Failed to issue BlockWard. Please try again.');
       toast.error('Failed to issue BlockWard');
     } finally {
       setIssuing(false);

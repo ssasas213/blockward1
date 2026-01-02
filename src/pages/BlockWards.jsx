@@ -93,33 +93,13 @@ export default function BlockWards() {
     }
   };
 
-  // Simulate blockchain minting process
-  const generateTokenId = () => {
-    // In production: This would be returned by the smart contract after minting
-    return `${Math.floor(Math.random() * 1000000)}`;
-  };
 
-  const generateTransactionHash = () => {
-    // Simulated Polygon transaction hash format
-    const chars = '0123456789abcdef';
-    let hash = '0x';
-    for (let i = 0; i < 64; i++) {
-      hash += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return hash;
-  };
-
-  const generateBlockNumber = () => {
-    // Simulated Polygon block number
-    return Math.floor(40000000 + Math.random() * 1000000);
-  };
 
   const handleMintBlockWard = async () => {
     if (!newBlockWard.student_email || !newBlockWard.title || !newBlockWard.category) return;
     
     setMinting(true);
     try {
-      const user = await base44.auth.me();
       const studentProfile = students.find(s => s.user_email === newBlockWard.student_email);
       
       if (!studentProfile) {
@@ -128,48 +108,32 @@ export default function BlockWards() {
         return;
       }
 
-      // Simulate what would happen in production:
-      // 1. Teacher clicks "Mint BlockWard" (this button)
-      // 2. Frontend calls backend API: POST /api/blockward/issue
-      // 3. Backend authenticates teacher, validates permissions
-      // 4. Backend creates metadata and uploads to IPFS
-      // 5. Backend uses gas wallet to call smart contract
-      // 6. Smart contract mints NFT to student's custodial wallet
-      // 7. Backend saves record to database
-      // 8. Frontend receives confirmation with tx hash
-      
-      const tokenId = generateTokenId();
-      const txHash = generateTransactionHash();
-      const blockNumber = generateBlockNumber();
-      
-      // Simulate metadata URI (would be IPFS in production)
-      const metadataURI = `ipfs://Qm${Math.random().toString(36).substr(2, 44)}`;
+      const response = await fetch('/api/blockwards/issue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: studentProfile.id,
+          title: newBlockWard.title,
+          category: newBlockWard.category,
+          description: newBlockWard.description
+        })
+      });
 
-      const blockWardData = {
-        ...newBlockWard,
-        student_name: `${studentProfile.first_name} ${studentProfile.last_name}`,
-        student_wallet: studentProfile.wallet_address,
-        issuer_email: user.email,
-        issuer_name: `${profile.first_name} ${profile.last_name}`,
-        issuer_wallet: 'system', // Teachers don't have wallets
-        school_id: profile.school_id,
-        token_id: tokenId,
-        metadata_uri: metadataURI,
-        transaction_hash: txHash,
-        block_number: blockNumber,
-        minted_at: new Date().toISOString(),
-        status: 'active'
-      };
+      const data = await response.json();
 
-      await base44.entities.BlockWard.create(blockWardData);
-      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to issue BlockWard');
+      }
+
       setShowMintDialog(false);
       setNewBlockWard({ student_email: '', title: '', description: '', category: '' });
-      loadData();
-      toast.success('BlockWard issued successfully! Minted on-chain.');
+      await loadData();
+      toast.success('BlockWard issued successfully!');
     } catch (error) {
-      console.error('Error minting BlockWard:', error);
-      toast.error('Failed to mint BlockWard');
+      console.error('Error issuing BlockWard:', error);
+      toast.error(error.message || 'Failed to issue BlockWard');
     } finally {
       setMinting(false);
     }
@@ -213,7 +177,12 @@ export default function BlockWards() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
+            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+              Testnet: Polygon Amoy
+            </Badge>
+          </div>
           <p className="text-slate-500 mt-1">
             {profile?.user_type === 'student' 
               ? 'Your blockchain-verified achievements' 
@@ -225,15 +194,22 @@ export default function BlockWards() {
             <DialogTrigger asChild>
               <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
                 <Shield className="h-4 w-4 mr-2" />
-                Mint BlockWard
+                Issue BlockWard
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Mint New BlockWard</DialogTitle>
-                <DialogDescription>
-                  Issue a soulbound NFT achievement to a student
-                </DialogDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <DialogTitle>Issue BlockWard</DialogTitle>
+                    <DialogDescription>
+                      Award a blockchain-verified achievement to a student
+                    </DialogDescription>
+                  </div>
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                    Testnet
+                  </Badge>
+                </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
@@ -302,12 +278,12 @@ export default function BlockWards() {
                   {minting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Minting...
+                      Issuing...
                     </>
                   ) : (
                     <>
                       <Shield className="h-4 w-4 mr-2" />
-                      Mint BlockWard
+                      Issue BlockWard
                     </>
                   )}
                 </Button>
