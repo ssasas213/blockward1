@@ -67,11 +67,9 @@ export default function Layout({ children, currentPageName }) {
 
   if (isPublicPage || !user) {
     return (
-      <Web3Provider>
-        <div className="min-h-screen bg-slate-50">
-          {children}
-        </div>
-      </Web3Provider>
+      <div className="min-h-screen bg-slate-50">
+        {children}
+      </div>
     );
   }
 
@@ -153,7 +151,8 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <Web3Provider>
+      <div className="min-h-screen bg-slate-50">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center justify-between">
         <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg">
@@ -211,6 +210,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </main>
     </div>
+    </Web3Provider>
   );
 }
 
