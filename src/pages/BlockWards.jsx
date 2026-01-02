@@ -417,7 +417,7 @@ export default function BlockWards() {
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
                     <a 
-                      href={`https://polygonscan.com/tx/${selectedBlockWard.transaction_hash}`}
+                      href={`https://amoy.polygonscan.com/tx/${selectedBlockWard.transaction_hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-mono text-xs text-violet-600 hover:text-violet-700 break-all flex items-center gap-2"
@@ -432,9 +432,9 @@ export default function BlockWards() {
                   </div>
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Network</p>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                       <Shield className="h-3 w-3 mr-1" />
-                      Polygon Mainnet
+                      Polygon Amoy Testnet
                     </Badge>
                   </div>
                 </div>
