@@ -106,9 +106,9 @@ function TeacherDashboardContent() {
               Issue Points
             </Link>
           </Button>
-          {profile?.can_issue_blockwards && (
+          {userProfile?.can_issue_blockwards && (
             <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
-              <Link to={createPageUrl('BlockWards')}>
+              <Link to={createPageUrl('TeacherBlockWards')}>
                 <Shield className="h-4 w-4 mr-2" />
                 Issue BlockWard
               </Link>
@@ -259,9 +259,9 @@ function TeacherDashboardContent() {
               <FileText className="h-8 w-8" />
               <span className="text-sm font-medium">Upload Resource</span>
             </Link>
-            {profile?.can_issue_blockwards && (
+            {userProfile?.can_issue_blockwards && (
               <Link
-                to={createPageUrl('BlockWards')}
+                to={createPageUrl('TeacherBlockWards')}
                 className="flex flex-col items-center gap-3 p-6 bg-slate-50 rounded-xl hover:bg-violet-50 hover:text-violet-600 transition-colors"
               >
                 <Shield className="h-8 w-8" />

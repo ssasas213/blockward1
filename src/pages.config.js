@@ -28,6 +28,7 @@ import Web3BlockWards from './pages/Web3BlockWards';
 import TeacherBlockWards from './pages/TeacherBlockWards';
 import IssueBlockWard from './pages/IssueBlockWard';
 import StudentBlockWards from './pages/StudentBlockWards';
+import App from './pages/App';
 import __Layout from './Layout.jsx';
 
 
@@ -62,6 +63,7 @@ export const PAGES = {
     "TeacherBlockWards": TeacherBlockWards,
     "IssueBlockWard": IssueBlockWard,
     "StudentBlockWards": StudentBlockWards,
+    "App": App,
 }
 
 export const pagesConfig = {
