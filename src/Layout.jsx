@@ -6,7 +6,7 @@ import Web3Provider from '@/components/web3/Web3Provider';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  GraduationCap, Shield, UserCircle, Bell, Search
+  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
@@ -104,7 +104,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
       { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
-      { name: 'BlockWards', icon: Shield, page: 'BlockWards' },
+      { name: 'BlockWards', icon: Shield, page: 'TeacherBlockWards' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
     student: [
@@ -113,7 +113,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
-      { name: 'My BlockWards', icon: Shield, page: 'BlockWards' },
+      { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
   };
