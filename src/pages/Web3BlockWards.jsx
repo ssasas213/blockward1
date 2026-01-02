@@ -83,16 +83,23 @@ function Web3BlockWardsContent() {
             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center flex-shrink-0">
               <Shield className="h-6 w-6 text-white" />
             </div>
-            <div>
-              <h3 className="font-semibold text-slate-900 mb-1">
-                {isTeacherOrAdmin ? 'Authorized Issuer' : 'Secure BlockWard Vault'}
-              </h3>
-              <p className="text-sm text-slate-600">
-                {isTeacherOrAdmin 
-                  ? 'BlockWards are stored in student vaults automatically. No wallet setup required for students.'
-                  : 'BlockWards are stored in your secure BlockWard Vault. No wallet setup required.'}
-              </p>
-              <div className="flex items-center gap-2 mt-2">
+            <div className="flex-1">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-1">
+                    {isTeacherOrAdmin ? 'Authorized Issuer' : 'Secure BlockWard Vault'}
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    {isTeacherOrAdmin 
+                      ? 'BlockWards are stored in student vaults automatically. No wallet setup required for students.'
+                      : 'BlockWards are stored in your secure BlockWard Vault. No wallet setup required.'}
+                  </p>
+                </div>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 whitespace-nowrap">
+                  Testnet: Polygon Amoy
+                </Badge>
+              </div>
+              <div className="flex items-center gap-2 mt-3">
                 <Badge className="bg-violet-100 text-violet-700">
                   Fully Managed
                 </Badge>

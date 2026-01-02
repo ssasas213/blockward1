@@ -1,223 +1,228 @@
 import React, { useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
-import { toast } from 'sonner';
-import WalletButton from './WalletButton';
+import { Badge } from "@/components/ui/badge";
+import { Shield, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { toast } from "sonner";
 
-// Contract ABI - Update after deployment
-const BLOCKWARD_ABI = [
-  {
-    "inputs": [
-      {"internalType": "address", "name": "to", "type": "address"},
-      {"internalType": "string", "name": "metadataURI", "type": "string"}
-    ],
-    "name": "mintBlockWard",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
+const categories = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
 
-// Update with your deployed contract address
-const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-export default function NFTMinter({ students = [] }) {
-  const { address, isConnected } = useAccount();
+export default function NFTMinter({ students }) {
   const [formData, setFormData] = useState({
-    studentAddress: '',
+    studentId: '',
     title: '',
     description: '',
-    category: '',
-    imageUrl: ''
+    category: 'academic'
   });
+  const [issuing, setIssuing] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  const { writeContract, data: hash, isPending, error } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
-
-  const categories = [
-    { value: 'academic', label: 'Academic Excellence' },
-    { value: 'sports', label: 'Sports Achievement' },
-    { value: 'arts', label: 'Arts & Creativity' },
-    { value: 'leadership', label: 'Leadership' },
-    { value: 'community', label: 'Community Service' },
-    { value: 'special', label: 'Special Recognition' }
-  ];
-
-  const handleMint = async () => {
-    if (!formData.studentAddress || !formData.title || !formData.category) {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.studentId || !formData.title) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    // Create metadata JSON
-    const metadata = {
-      name: formData.title,
-      description: formData.description,
-      image: formData.imageUrl || 'ipfs://YOUR_DEFAULT_IMAGE',
-      attributes: [
-        { trait_type: 'Category', value: formData.category },
-        { trait_type: 'Issued By', value: address },
-        { trait_type: 'Date', value: new Date().toISOString() }
-      ]
-    };
-
-    // In production, upload to IPFS first
-    const metadataURI = `ipfs://QmYOUR_IPFS_HASH/${formData.title}`;
+    setIssuing(true);
+    setError(null);
+    setResult(null);
 
     try {
-      writeContract({
-        address: CONTRACT_ADDRESS,
-        abi: BLOCKWARD_ABI,
-        functionName: 'mintBlockWard',
-        args: [formData.studentAddress, metadataURI],
+      const response = await fetch('/api/blockwards/issue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: formData.studentId,
+          title: formData.title,
+          category: formData.category,
+          description: formData.description
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to issue BlockWard');
+      }
+
+      setResult({
+        txHash: data.txHash,
+        tokenId: data.tokenId,
+        network: data.network || 'polygon-amoy'
+      });
+
+      toast.success('BlockWard issued successfully!');
+      
+      // Reset form
+      setFormData({
+        studentId: '',
+        title: '',
+        description: '',
+        category: 'academic'
       });
     } catch (err) {
-      toast.error('Failed to mint NFT');
+      setError(err.message);
+      toast.error('Failed to issue BlockWard');
       console.error(err);
+    } finally {
+      setIssuing(false);
     }
   };
-
-  if (isSuccess) {
-    return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="pt-6 text-center">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h3 className="text-xl font-bold text-slate-900 mb-2">BlockWard Minted!</h3>
-          <p className="text-slate-600 mb-4">Your NFT has been successfully minted on Base.</p>
-          {hash && (
-            <Button variant="outline" asChild>
-              <a 
-                href={`https://basescan.org/tx/${hash}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="flex items-center gap-2"
-              >
-                View on Basescan
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </Button>
-          )}
-          <Button 
-            className="mt-4 w-full" 
-            onClick={() => {
-              setFormData({
-                studentAddress: '',
-                title: '',
-                description: '',
-                category: '',
-                imageUrl: ''
-              });
-              window.location.reload();
-            }}
-          >
-            Mint Another
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle>Mint BlockWard NFT</CardTitle>
-        <CardDescription>Issue a blockchain-verified achievement on Base</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {!isConnected ? (
-          <div className="text-center py-8">
-            <p className="text-slate-600 mb-4">Connect your wallet to mint NFTs</p>
-            <WalletButton />
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-violet-600" />
+              Issue BlockWard
+            </CardTitle>
+            <CardDescription>
+              Award a verified achievement NFT to a student
+            </CardDescription>
           </div>
-        ) : (
-          <>
-            <div className="space-y-2">
-              <Label>Student Wallet Address *</Label>
-              <Input
-                value={formData.studentAddress}
-                onChange={(e) => setFormData({ ...formData, studentAddress: e.target.value })}
-                placeholder="0x..."
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Achievement Title *</Label>
-              <Input
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                placeholder="e.g. Top in Mathematics - Term 1"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe the achievement..."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Image URL (optional)</Label>
-              <Input
-                value={formData.imageUrl}
-                onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                placeholder="ipfs://... or https://..."
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
-                {error.message}
-              </div>
-            )}
-
-            <Button
-              onClick={handleMint}
-              disabled={isPending || isConfirming}
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            Testnet Mode: Polygon Amoy
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label>Student *</Label>
+            <Select
+              value={formData.studentId}
+              onValueChange={(value) => setFormData({ ...formData, studentId: value })}
             >
-              {isPending || isConfirming ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {isPending ? 'Confirm in Wallet...' : 'Minting...'}
-                </>
-              ) : (
-                'Mint BlockWard NFT'
-              )}
-            </Button>
-          </>
-        )}
+              <SelectTrigger>
+                <SelectValue placeholder="Select a student" />
+              </SelectTrigger>
+              <SelectContent>
+                {students?.map((student) => (
+                  <SelectItem key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name} - {student.grade_level || 'N/A'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Achievement Title *</Label>
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="e.g., Top in Mathematics - Term 1"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Describe the achievement..."
+              rows={3}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Category</Label>
+            <Select
+              value={formData.category}
+              onValueChange={(value) => setFormData({ ...formData, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {issuing && (
+            <div className="p-4 rounded-lg bg-blue-50 text-blue-900">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="font-medium">Issuing on Polygon Amoy (testnet)...</span>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="p-4 rounded-lg bg-green-50 text-green-900 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Verified on Polygon Amoy</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-green-700">Token ID:</span>
+                  <span className="ml-2 font-mono">{result.tokenId}</span>
+                </div>
+                <div>
+                  <span className="text-green-700">Transaction Hash:</span>
+                  <span className="ml-2 font-mono text-xs break-all">{result.txHash}</span>
+                </div>
+                <a
+                  href={`https://amoy.polygonscan.com/tx/${result.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"
+                >
+                  View Transaction
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-4 rounded-lg bg-red-50 text-red-900">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <span className="font-medium">Failed</span>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={issuing || !formData.studentId || !formData.title}
+            className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+          >
+            {issuing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Issuing...
+              </>
+            ) : (
+              <>
+                <Shield className="h-4 w-4 mr-2" />
+                Issue BlockWard
+              </>
+            )}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   );

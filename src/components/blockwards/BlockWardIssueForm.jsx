@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Shield, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Shield, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 const categories = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
@@ -18,7 +19,8 @@ export default function BlockWardIssueForm({ students, onIssueSuccess }) {
     category: 'academic'
   });
   const [issuing, setIssuing] = useState(false);
-  const [status, setStatus] = useState(null); // null | 'pending' | 'minted' | 'failed'
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,23 +31,35 @@ export default function BlockWardIssueForm({ students, onIssueSuccess }) {
     }
 
     setIssuing(true);
-    setStatus('pending');
+    setError(null);
+    setResult(null);
 
     try {
-      // Simulate blockchain minting process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('/api/blockwards/issue', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          studentId: formData.studentId,
+          title: formData.title,
+          category: formData.category,
+          description: formData.description
+        })
+      });
 
-      const selectedStudent = students.find(s => s.id === formData.studentId);
-      
-      // In production: Call backend API to mint NFT to student's wallet
-      // const result = await base44.integrations.Core.MintBlockWard({
-      //   studentWallet: selectedStudent.wallet_address,
-      //   title: formData.title,
-      //   description: formData.description,
-      //   category: formData.category
-      // });
+      const data = await response.json();
 
-      setStatus('minted');
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to issue BlockWard');
+      }
+
+      setResult({
+        txHash: data.txHash,
+        tokenId: data.tokenId,
+        network: data.network || 'polygon-amoy'
+      });
+
       toast.success('BlockWard issued successfully!');
       
       // Reset form
@@ -57,26 +71,32 @@ export default function BlockWardIssueForm({ students, onIssueSuccess }) {
       });
 
       if (onIssueSuccess) onIssueSuccess();
-    } catch (error) {
-      setStatus('failed');
+    } catch (err) {
+      setError(err.message);
       toast.error('Failed to issue BlockWard');
-      console.error(error);
+      console.error(err);
     } finally {
       setIssuing(false);
-      setTimeout(() => setStatus(null), 3000);
     }
   };
 
   return (
     <Card className="border-0 shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-violet-600" />
-          Issue BlockWard
-        </CardTitle>
-        <CardDescription>
-          Award a verified achievement to a student's BlockWard Vault
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-violet-600" />
+              Issue BlockWard
+            </CardTitle>
+            <CardDescription>
+              Award a verified achievement to a student's BlockWard Vault
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+            Testnet: Polygon Amoy
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -138,21 +158,51 @@ export default function BlockWardIssueForm({ students, onIssueSuccess }) {
             </Select>
           </div>
 
-          {status && (
-            <div className={`p-4 rounded-lg ${
-              status === 'pending' ? 'bg-blue-50 text-blue-900' :
-              status === 'minted' ? 'bg-green-50 text-green-900' :
-              'bg-red-50 text-red-900'
-            }`}>
+          {issuing && (
+            <div className="p-4 rounded-lg bg-blue-50 text-blue-900">
               <div className="flex items-center gap-2">
-                {status === 'pending' && <Loader2 className="h-5 w-5 animate-spin" />}
-                {status === 'minted' && <CheckCircle className="h-5 w-5" />}
-                {status === 'failed' && <AlertCircle className="h-5 w-5" />}
-                <span className="font-medium">
-                  {status === 'pending' && 'Issuing BlockWard...'}
-                  {status === 'minted' && 'BlockWard issued successfully!'}
-                  {status === 'failed' && 'Failed to issue BlockWard'}
-                </span>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="font-medium">Issuing on Polygon Amoy (testnet)...</span>
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="p-4 rounded-lg bg-green-50 text-green-900 space-y-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-medium">Verified on Polygon Amoy</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <span className="text-green-700">Token ID:</span>
+                  <span className="ml-2 font-mono">{result.tokenId}</span>
+                </div>
+                <div>
+                  <span className="text-green-700">Transaction Hash:</span>
+                  <span className="ml-2 font-mono text-xs break-all">{result.txHash}</span>
+                </div>
+                <a
+                  href={`https://amoy.polygonscan.com/tx/${result.txHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-green-700 hover:text-green-800 font-medium"
+                >
+                  View Transaction
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-4 rounded-lg bg-red-50 text-red-900">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                <div>
+                  <span className="font-medium">Failed</span>
+                  <p className="text-sm mt-1">{error}</p>
+                </div>
               </div>
             </div>
           )}
