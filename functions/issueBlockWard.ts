@@ -26,8 +26,16 @@ export default async function issueBlockWard(request, context) {
 
   // Get secrets (backend-only, never exposed to frontend)
   const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
-  const RPC_URL = context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology';
-  const CONTRACT_ADDRESS = context.secrets.CONTRACT_ADDRESS;
+  const NETWORK = context.secrets.NETWORK || 'testnet'; // 'testnet' or 'mainnet'
+  
+  // Network configuration
+  const RPC_URL = NETWORK === 'mainnet'
+    ? (context.secrets.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com')
+    : (context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology');
+  
+  const CONTRACT_ADDRESS = NETWORK === 'mainnet'
+    ? context.secrets.CONTRACT_ADDRESS_MAINNET
+    : context.secrets.CONTRACT_ADDRESS;
 
   if (!ISSUER_PRIVATE_KEY) {
     return {
@@ -124,7 +132,10 @@ export default async function issueBlockWard(request, context) {
         success: true,
         txHash: receipt.hash,
         tokenId: tokenId.toString(),
-        network: 'polygon-amoy',
+        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
+        explorerUrl: NETWORK === 'mainnet' 
+          ? `https://polygonscan.com/tx/${receipt.hash}`
+          : `https://amoy.polygonscan.com/tx/${receipt.hash}`,
         blockNumber: receipt.blockNumber
       }
     };

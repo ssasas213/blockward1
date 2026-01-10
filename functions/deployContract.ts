@@ -16,13 +16,32 @@ const BLOCKWARD_ABI = [
 
 export default async function deployContract(request, context) {
   const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
-  const RPC_URL = context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology';
+  const NETWORK = request.body?.network || context.secrets.NETWORK || 'testnet'; // 'testnet' or 'mainnet'
+  
+  // Network configuration
+  const RPC_URL = NETWORK === 'mainnet'
+    ? (context.secrets.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com')
+    : (context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology');
 
   if (!ISSUER_PRIVATE_KEY) {
     return {
       status: 500,
       body: { error: 'ISSUER_PRIVATE_KEY not configured' }
     };
+  }
+
+  // Mainnet safety check
+  if (NETWORK === 'mainnet') {
+    console.warn('⚠️  DEPLOYING TO POLYGON MAINNET - THIS WILL USE REAL MATIC!');
+    if (!request.body?.confirmMainnet) {
+      return {
+        status: 400,
+        body: { 
+          error: 'Mainnet deployment requires explicit confirmation',
+          message: 'Set confirmMainnet: true in request body to deploy to mainnet'
+        }
+      };
+    }
   }
 
   try {
@@ -40,7 +59,9 @@ export default async function deployContract(request, context) {
       return {
         status: 400,
         body: { 
-          error: 'Deployer wallet has no MATIC. Get testnet MATIC from: https://faucet.polygon.technology/' 
+          error: NETWORK === 'mainnet'
+            ? 'Deployer wallet has no MATIC. Fund wallet with real MATIC from an exchange.'
+            : 'Deployer wallet has no MATIC. Get testnet MATIC from: https://faucet.polygon.technology/'
         }
       };
     }
@@ -60,8 +81,13 @@ export default async function deployContract(request, context) {
       body: {
         success: true,
         contractAddress: contractAddress,
-        message: 'Now set CONTRACT_ADDRESS secret to: ' + contractAddress,
-        network: 'polygon-amoy'
+        message: NETWORK === 'mainnet' 
+          ? 'Now set CONTRACT_ADDRESS_MAINNET secret to: ' + contractAddress
+          : 'Now set CONTRACT_ADDRESS secret to: ' + contractAddress,
+        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
+        explorerUrl: NETWORK === 'mainnet'
+          ? `https://polygonscan.com/address/${contractAddress}`
+          : `https://amoy.polygonscan.com/address/${contractAddress}`
       }
     };
 
