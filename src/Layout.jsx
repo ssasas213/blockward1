@@ -19,12 +19,18 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
-  const { user, profile, loading, logout } = useAuth();
+  const authContext = useAuth();
+  const { user, profile, loading, logout } = authContext || {};
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Public pages that don't need sidebar
   const publicPages = ['Home', 'Login'];
   const isPublicPage = publicPages.includes(currentPageName);
+
+  // Handle case where AuthProvider might not be available
+  if (!authContext && !isPublicPage) {
+    return <div>{children}</div>;
+  }
 
   if (loading) {
     return (
