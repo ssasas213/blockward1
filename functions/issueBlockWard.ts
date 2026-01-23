@@ -66,65 +66,55 @@ const BLOCKWARD_ABI = [
   }
 ];
 
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+
 /**
  * Issue a BlockWard NFT on Polygon Amoy testnet
  * All blockchain operations happen server-side
  * Frontend never touches private keys
  */
-export default async function issueBlockWard(request, context) {
-  const { studentId, title, category, description } = request.body;
 
-  // Validate required fields
-  if (!studentId || !title || !category) {
-    return {
-      status: 400,
-      body: { error: 'Missing required fields: studentId, title, category' }
-    };
-  }
-
-  // Get secrets (backend-only, never exposed to frontend)
-  const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
-  const NETWORK = context.secrets.NETWORK || 'testnet'; // 'testnet' or 'mainnet'
-  
-  // Network configuration
-  const RPC_URL = NETWORK === 'mainnet'
-    ? (context.secrets.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com')
-    : (context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology');
-  
-  const CONTRACT_ADDRESS = NETWORK === 'mainnet'
-    ? context.secrets.CONTRACT_ADDRESS_MAINNET
-    : context.secrets.CONTRACT_ADDRESS;
-
-  if (!ISSUER_PRIVATE_KEY) {
-    return {
-      status: 500,
-      body: { error: 'ISSUER_PRIVATE_KEY not configured' }
-    };
-  }
-
-  if (!CONTRACT_ADDRESS) {
-    return {
-      status: 500,
-      body: { error: 'CONTRACT_ADDRESS not configured. Deploy contract first.' }
-    };
-  }
-
+Deno.serve(async (req) => {
   try {
+    const base44 = createClientFromRequest(req);
+    const body = await req.json();
+    const { studentId, title, category, description } = body;
+
+    // Validate required fields
+    if (!studentId || !title || !category) {
+      return Response.json({ error: 'Missing required fields: studentId, title, category' }, { status: 400 });
+    }
+
+    // Get secrets (backend-only, never exposed to frontend)
+    const ISSUER_PRIVATE_KEY = Deno.env.get('ISSUER_PRIVATE_KEY');
+    const NETWORK = Deno.env.get('NETWORK') || 'testnet';
+    
+    // Network configuration
+    const RPC_URL = NETWORK === 'mainnet'
+      ? (Deno.env.get('POLYGON_MAINNET_RPC_URL') || 'https://polygon-rpc.com')
+      : (Deno.env.get('POLYGON_AMOY_RPC_URL') || 'https://rpc-amoy.polygon.technology');
+    
+    const CONTRACT_ADDRESS = NETWORK === 'mainnet'
+      ? Deno.env.get('CONTRACT_ADDRESS_MAINNET')
+      : Deno.env.get('CONTRACT_ADDRESS');
+
+    if (!ISSUER_PRIVATE_KEY) {
+      return Response.json({ error: 'ISSUER_PRIVATE_KEY not configured' }, { status: 500 });
+    }
+
+    if (!CONTRACT_ADDRESS) {
+      return Response.json({ error: 'CONTRACT_ADDRESS not configured. Deploy contract first.' }, { status: 500 });
+    }
+
     // Get student profile to retrieve wallet address
-    const students = await context.entities.UserProfile.filter({ id: studentId });
+    const students = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
     if (students.length === 0) {
-      return {
-        status: 404,
-        body: { error: 'Student not found' }
-      };
+      return Response.json({ error: 'Student not found' }, { status: 404 });
     }
     const student = students[0];
 
     if (!student.wallet_address) {
-      return {
-        status: 400,
-        body: { error: 'Student does not have a wallet address' }
-      };
+      return Response.json({ error: 'Student does not have a wallet address' }, { status: 400 });
     }
 
     // Connect to Polygon (server-side only)
@@ -160,12 +150,12 @@ export default async function issueBlockWard(request, context) {
     const tokenId = await contract.tokenCounter();
 
     // Get current user (issuer)
-    const issuer = await context.auth.me();
-    const issuerProfiles = await context.entities.UserProfile.filter({ user_email: issuer.email });
+    const issuer = await base44.auth.me();
+    const issuerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: issuer.email });
     const issuerProfile = issuerProfiles[0];
 
     // Save BlockWard record to database
-    await context.entities.BlockWard.create({
+    await base44.asServiceRole.entities.BlockWard.create({
       student_email: student.user_email,
       student_name: `${student.first_name} ${student.last_name}`,
       student_wallet: student.wallet_address,
@@ -184,30 +174,24 @@ export default async function issueBlockWard(request, context) {
       status: 'active'
     });
 
-    return {
-      status: 200,
-      body: {
-        success: true,
-        txHash: receipt.hash,
-        tokenId: tokenId.toString(),
-        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
-        explorerUrl: NETWORK === 'mainnet' 
-          ? `https://polygonscan.com/tx/${receipt.hash}`
-          : `https://amoy.polygonscan.com/tx/${receipt.hash}`,
-        blockNumber: receipt.blockNumber
-      }
-    };
+    return Response.json({
+      success: true,
+      txHash: receipt.hash,
+      tokenId: tokenId.toString(),
+      network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
+      explorerUrl: NETWORK === 'mainnet' 
+        ? `https://polygonscan.com/tx/${receipt.hash}`
+        : `https://amoy.polygonscan.com/tx/${receipt.hash}`,
+      blockNumber: receipt.blockNumber
+    });
 
   } catch (error) {
-    console.error('Error issuing BlockWard:', error);
+    console.error('❌ Error issuing BlockWard:', error);
     
     // Return user-friendly error
-    return {
-      status: 500,
-      body: { 
-        error: 'Failed to issue BlockWard on blockchain',
-        details: error.message 
-      }
-    };
+    return Response.json({ 
+      error: 'Failed to issue BlockWard on blockchain',
+      details: error.message 
+    }, { status: 500 });
   }
-}
+});
