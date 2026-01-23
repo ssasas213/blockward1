@@ -236,55 +236,60 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // Build deployment transaction
-    const factory = new ethers.ContractFactory(BLOCKWARD_ABI, BLOCKWARD_BYTECODE, signer);
-    const deployTx = await factory.getDeployTransaction("BlockWard", "BLKWRD");
-
-    // Estimate gas with fallback
-    let gasLimit = 8_000_000n; // Safe fallback
-    try {
-      console.log('⛽ Estimating gas...');
-      const estimated = await provider.estimateGas({
-        ...deployTx,
-        from: signer.address
-      });
-      gasLimit = (estimated * 120n) / 100n; // Add 20% buffer
-      console.log(`✅ Gas estimated: ${estimated.toString()} (using ${gasLimit.toString()} with buffer)`);
-    } catch (error) {
-      console.warn(`⚠️  Gas estimation failed (${error.message}), using fallback: ${gasLimit.toString()}`);
+    // Validate bytecode
+    if (!BLOCKWARD_BYTECODE || BLOCKWARD_BYTECODE.length < 10) {
+      return Response.json({ 
+        error: 'Contract bytecode is missing or invalid',
+        details: 'BLOCKWARD_BYTECODE must contain valid compiled contract bytecode'
+      }, { status: 500 });
     }
 
-    // Send deployment transaction manually
-    console.log('🚀 Sending deployment transaction...');
-    const sentTx = await signer.sendTransaction({
-      ...deployTx,
-      gasLimit
+    // Deploy contract with explicit high gas limit
+    console.log('🚀 Deploying contract...');
+    const factory = new ethers.ContractFactory(BLOCKWARD_ABI, BLOCKWARD_BYTECODE, signer);
+    const contract = await factory.deploy("BlockWard", "BLKWRD", { 
+      gasLimit: 15_000_000 
     });
-    console.log(`📤 Transaction sent: ${sentTx.hash}`);
+    
+    console.log(`📤 Transaction sent: ${contract.deploymentTransaction().hash}`);
 
     // Wait for confirmation
     console.log('⏳ Waiting for confirmation...');
-    const receipt = await sentTx.wait();
+    const receipt = await contract.waitForDeployment();
+    const deployReceipt = await provider.getTransactionReceipt(contract.deploymentTransaction().hash);
     
-    if (!receipt || !receipt.contractAddress) {
-      throw new Error('Deployment failed: no contract address in receipt');
+    // Check if deployment actually succeeded
+    if (deployReceipt.status === 0) {
+      const outOfGas = deployReceipt.gasUsed >= (deployReceipt.gasLimit || 0n);
+      return Response.json({
+        error: outOfGas ? 'Out of gas: transaction failed, increase gasLimit' : 'Transaction reverted',
+        txHash: contract.deploymentTransaction().hash,
+        gasUsed: deployReceipt.gasUsed.toString(),
+        gasLimit: (deployReceipt.gasLimit || 0n).toString(),
+        explorerUrl: NETWORK === 'mainnet'
+          ? `https://polygonscan.com/tx/${contract.deploymentTransaction().hash}`
+          : `https://amoy.polygonscan.com/tx/${contract.deploymentTransaction().hash}`
+      }, { status: 500 });
     }
 
-    console.log(`✅ Contract deployed at: ${receipt.contractAddress}`);
+    const contractAddress = await contract.getAddress();
+    console.log(`✅ Contract deployed at: ${contractAddress}`);
 
     return Response.json({
       success: true,
-      contractAddress: receipt.contractAddress,
-      txHash: sentTx.hash,
+      contractAddress,
+      txHash: contract.deploymentTransaction().hash,
       chainId,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed.toString(),
+      blockNumber: deployReceipt.blockNumber,
+      gasUsed: deployReceipt.gasUsed.toString(),
+      gasLimit: (deployReceipt.gasLimit || 15_000_000n).toString(),
+      gasPrice: deployReceipt.gasPrice?.toString() || '0',
       explorerUrl: NETWORK === 'mainnet'
-        ? `https://polygonscan.com/address/${receipt.contractAddress}`
-        : `https://amoy.polygonscan.com/address/${receipt.contractAddress}`,
+        ? `https://polygonscan.com/address/${contractAddress}`
+        : `https://amoy.polygonscan.com/address/${contractAddress}`,
       message: NETWORK === 'mainnet' 
-        ? `✅ Deployed to Polygon Mainnet (chainId ${chainId})! Set CONTRACT_ADDRESS_MAINNET secret to: ${receipt.contractAddress}`
-        : `✅ Deployed to Polygon Amoy (chainId ${chainId})! Set CONTRACT_ADDRESS secret to: ${receipt.contractAddress}`,
+        ? `✅ Deployed to Polygon Mainnet (chainId ${chainId})! Set CONTRACT_ADDRESS_MAINNET secret to: ${contractAddress}`
+        : `✅ Deployed to Polygon Amoy (chainId ${chainId})! Set CONTRACT_ADDRESS secret to: ${contractAddress}`,
       network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy'
     });
 
