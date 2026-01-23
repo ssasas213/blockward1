@@ -1,4 +1,4 @@
-import { ethers } from 'https://esm.sh/ethers@6.13.0';
+import { ethers } from 'npm:ethers@6.13.0';
 
 // Compiled BlockWard Contract ABI
 const BLOCKWARD_ABI = [
