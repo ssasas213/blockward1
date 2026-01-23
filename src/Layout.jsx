@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import { useAuth } from '@/components/auth/AuthProvider';
-import Web3Provider from '@/components/web3/Web3Provider';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
@@ -136,8 +135,12 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <Web3Provider>
       <div className="min-h-screen bg-slate-50">
+      {/* Testnet Badge */}
+      <div className="fixed top-4 right-4 z-50 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg border border-amber-200">
+        Testnet Mode: Polygon Amoy
+      </div>
+
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 px-4 flex items-center justify-between">
         <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200 active:scale-95">
@@ -194,9 +197,8 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
-    </div>
-    </Web3Provider>
-  );
+      </div>
+      );
 }
 
 function SidebarContent({ navItems, currentPageName, profile, user, userType, roleColors, roleLabels, onClose, onLogout }) {
