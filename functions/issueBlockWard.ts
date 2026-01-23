@@ -1,6 +1,70 @@
-import { ethers } from 'ethers';
-// Import compiled contract artifact
-import BlockWardArtifact from './BlockWard.json' assert { type: 'json' };
+import { ethers } from 'https://esm.sh/ethers@6.13.0';
+
+// Compiled BlockWard Contract ABI
+const BLOCKWARD_ABI = [
+  {
+    "inputs": [
+      { "internalType": "string", "name": "_name", "type": "string" },
+      { "internalType": "string", "name": "_symbol", "type": "string" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+      { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" },
+      { "indexed": false, "internalType": "string", "name": "uri", "type": "string" }
+    ],
+    "name": "Minted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
+      { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
+      { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" }
+    ],
+    "name": "Transfer",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "string", "name": "uri", "type": "string" }
+    ],
+    "name": "mint",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tokenCounter",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" },
+      { "internalType": "uint256", "name": "index", "type": "uint256" }
+    ],
+    "name": "tokenOfOwnerByIndex",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
 
 /**
  * Issue a BlockWard NFT on Polygon Amoy testnet
@@ -66,7 +130,7 @@ export default async function issueBlockWard(request, context) {
     // Connect to Polygon (server-side only)
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, BlockWardArtifact.abi, signer);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
 
     // Create metadata JSON (in production, upload to IPFS)
     const metadata = {
