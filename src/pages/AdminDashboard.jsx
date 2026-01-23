@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { motion } from 'framer-motion';
 
 function AdminDashboardContent() {
-  const { profile: userProfile } = useAuth();
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState(null);
   const [stats, setStats] = useState({
@@ -34,6 +33,14 @@ function AdminDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
+      const user = await base44.auth.me();
+      if (user) {
+        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+        if (profiles.length > 0) {
+          setUserProfile(profiles[0]);
+        }
+      }
+
       if (userProfile?.school_id) {
         const schools = await base44.entities.School.filter({ id: userProfile.school_id });
         if (schools.length > 0) setSchool(schools[0]);

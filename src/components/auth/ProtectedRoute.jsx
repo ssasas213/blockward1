@@ -1,11 +1,37 @@
-import React, { useEffect } from 'react';
-import { useAuth } from './AuthProvider';
+import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Loader2, Shield } from 'lucide-react';
 
 export default function ProtectedRoute({ children, requireProfile = true }) {
-  const { user, profile, loading, initialized } = useAuth();
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    loadAuth();
+  }, []);
+
+  const loadAuth = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (currentUser) {
+        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+        if (profiles.length > 0) {
+          setProfile(profiles[0]);
+        }
+      }
+    } catch (error) {
+      setUser(null);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+      setInitialized(true);
+    }
+  };
 
   useEffect(() => {
     if (!initialized || loading) return;
