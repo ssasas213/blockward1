@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 // Import compiled contract artifact
-import BlockWardArtifact from '../contracts/BlockWard.json' assert { type: 'json' };
+import BlockWardArtifact from './BlockWard.json' assert { type: 'json' };
 
 /**
  * Deploy the BlockWard soulbound ERC-721 smart contract
