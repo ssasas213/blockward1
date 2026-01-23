@@ -1,12 +1,6 @@
 import { ethers } from 'ethers';
-
-// Soulbound ERC-721 Smart Contract ABI
-const BLOCKWARD_ABI = [
-  "function mint(address to, string memory uri) public returns (uint256)",
-  "function tokenCounter() public view returns (uint256)",
-  "function balanceOf(address owner) public view returns (uint256)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)"
-];
+// Import compiled contract artifact
+import BlockWardArtifact from '../contracts/BlockWard.json' assert { type: 'json' };
 
 /**
  * Issue a BlockWard NFT on Polygon Amoy testnet
@@ -69,10 +63,10 @@ export default async function issueBlockWard(request, context) {
       };
     }
 
-    // Connect to Polygon Amoy (server-side only)
+    // Connect to Polygon (server-side only)
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, BlockWardArtifact.abi, signer);
 
     // Create metadata JSON (in production, upload to IPFS)
     const metadata = {

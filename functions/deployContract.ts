@@ -1,18 +1,17 @@
 import { ethers } from 'ethers';
+// Import compiled contract artifact
+import BlockWardArtifact from '../contracts/BlockWard.json' assert { type: 'json' };
 
 /**
- * Helper function to deploy the BlockWard smart contract
- * Run this once to deploy contract to Polygon Amoy
+ * Deploy the BlockWard soulbound ERC-721 smart contract
+ * Run this once to deploy contract to Polygon Amoy/Mainnet
  * Then set CONTRACT_ADDRESS secret with the deployed address
+ * 
+ * Contract features:
+ * - Soulbound: transfers blocked after mint
+ * - ERC-721 compatible for wallet display
+ * - Only issuer can mint new achievements
  */
-
-const BLOCKWARD_CONTRACT_BYTECODE = "YOUR_CONTRACT_BYTECODE_HERE";
-
-const BLOCKWARD_ABI = [
-  "constructor(string memory name, string memory symbol)",
-  "function mint(address to, string memory uri) public returns (uint256)",
-  "function tokenCounter() public view returns (uint256)"
-];
 
 export default async function deployContract(request, context) {
   const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
@@ -66,8 +65,12 @@ export default async function deployContract(request, context) {
       };
     }
 
-    // Deploy contract
-    const factory = new ethers.ContractFactory(BLOCKWARD_ABI, BLOCKWARD_CONTRACT_BYTECODE, signer);
+    // Deploy contract using imported artifact
+    const factory = new ethers.ContractFactory(
+      BlockWardArtifact.abi, 
+      BlockWardArtifact.bytecode, 
+      signer
+    );
     const contract = await factory.deploy("BlockWard", "BLKWRD");
     
     console.log('Contract deployment transaction:', contract.deploymentTransaction().hash);
@@ -81,13 +84,14 @@ export default async function deployContract(request, context) {
       body: {
         success: true,
         contractAddress: contractAddress,
-        message: NETWORK === 'mainnet' 
-          ? 'Now set CONTRACT_ADDRESS_MAINNET secret to: ' + contractAddress
-          : 'Now set CONTRACT_ADDRESS secret to: ' + contractAddress,
-        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
         explorerUrl: NETWORK === 'mainnet'
           ? `https://polygonscan.com/address/${contractAddress}`
-          : `https://amoy.polygonscan.com/address/${contractAddress}`
+          : `https://amoy.polygonscan.com/address/${contractAddress}`,
+        message: NETWORK === 'mainnet' 
+          ? `✅ Deployed to Polygon Mainnet! Set CONTRACT_ADDRESS_MAINNET secret to: ${contractAddress}`
+          : `✅ Deployed to Polygon Amoy! Set CONTRACT_ADDRESS secret to: ${contractAddress}`,
+        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
+        txHash: contract.deploymentTransaction().hash
       }
     };
 
