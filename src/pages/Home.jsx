@@ -1,8 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from "@/components/ui/button";
 import { 
   Shield, Award, Users, BookOpen, Calendar, 
@@ -13,28 +12,41 @@ import { motion } from 'framer-motion';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user, profile, loading, initialized } = useAuth();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!initialized || loading) return;
+    checkAuthAndRedirect();
+  }, []);
 
-    // If user is logged in with profile, redirect to appropriate dashboard immediately
-    if (user && profile) {
-      const dashboardUrl = profile.user_type === 'admin'
-        ? createPageUrl('AdminDashboard')
-        : profile.user_type === 'teacher'
-        ? createPageUrl('TeacherDashboard')
-        : createPageUrl('StudentDashboard');
+  const checkAuthAndRedirect = async () => {
+    try {
+      const isAuth = await base44.auth.isAuthenticated();
       
-      window.location.href = dashboardUrl;
-      return;
+      if (isAuth) {
+        const user = await base44.auth.me();
+        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+        
+        if (profiles.length > 0) {
+          const profile = profiles[0];
+          const dashboardUrl = profile.user_type === 'admin'
+            ? createPageUrl('AdminDashboard')
+            : profile.user_type === 'teacher'
+            ? createPageUrl('TeacherDashboard')
+            : createPageUrl('StudentDashboard');
+          
+          window.location.href = dashboardUrl;
+          return;
+        } else {
+          window.location.href = createPageUrl('Onboarding');
+          return;
+        }
+      }
+    } catch (error) {
+      // Not authenticated, continue showing home page
+    } finally {
+      setLoading(false);
     }
-
-    // If user is logged in but no profile, send to onboarding
-    if (user && !profile) {
-      window.location.href = createPageUrl('Onboarding');
-    }
-  }, [user, profile, loading, initialized]);
+  };
 
   const handleGetStarted = () => {
     base44.auth.redirectToLogin(createPageUrl('Onboarding'));
