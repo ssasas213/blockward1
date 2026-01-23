@@ -212,48 +212,79 @@ Deno.serve(async (req) => {
         }, { status: 400 });
       }
     }
-    // Connect to Polygon Amoy
+    // Connect to Polygon
+    console.log(`🔗 Connecting to ${NETWORK} via ${RPC_URL.substring(0, 40)}...`);
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
 
-    console.log('Deploying contract from:', signer.address);
+    // Get network info
+    const network = await provider.getNetwork();
+    const chainId = Number(network.chainId);
+    console.log(`✅ Connected to chainId ${chainId}`);
+    console.log(`📍 Deploying from: ${signer.address}`);
 
     // Check balance
     const balance = await provider.getBalance(signer.address);
-    console.log('Deployer balance:', ethers.formatEther(balance), 'MATIC');
+    console.log(`💰 Deployer balance: ${ethers.formatEther(balance)} MATIC`);
 
     if (balance === 0n) {
       return Response.json({ 
         error: NETWORK === 'mainnet'
           ? 'Deployer wallet has no MATIC. Fund wallet with real MATIC from an exchange.'
-          : 'Deployer wallet has no MATIC. Get testnet MATIC from: https://faucet.polygon.technology/'
+          : 'Deployer wallet has no MATIC. Get testnet MATIC from: https://faucet.polygon.technology/',
+        chainId
       }, { status: 400 });
     }
 
-    // Deploy contract
-    const factory = new ethers.ContractFactory(
-      BLOCKWARD_ABI, 
-      BLOCKWARD_BYTECODE, 
-      signer
-    );
-    const contract = await factory.deploy("BlockWard", "BLKWRD");
-    
-    console.log('Contract deployment transaction:', contract.deploymentTransaction().hash);
-    await contract.waitForDeployment();
+    // Build deployment transaction
+    const factory = new ethers.ContractFactory(BLOCKWARD_ABI, BLOCKWARD_BYTECODE, signer);
+    const deployTx = await factory.getDeployTransaction("BlockWard", "BLKWRD");
 
-    const contractAddress = await contract.getAddress();
-    console.log('✅ Contract deployed at:', contractAddress);
+    // Estimate gas with fallback
+    let gasLimit = 8_000_000n; // Safe fallback
+    try {
+      console.log('⛽ Estimating gas...');
+      const estimated = await provider.estimateGas({
+        ...deployTx,
+        from: signer.address
+      });
+      gasLimit = (estimated * 120n) / 100n; // Add 20% buffer
+      console.log(`✅ Gas estimated: ${estimated.toString()} (using ${gasLimit.toString()} with buffer)`);
+    } catch (error) {
+      console.warn(`⚠️  Gas estimation failed (${error.message}), using fallback: ${gasLimit.toString()}`);
+    }
+
+    // Send deployment transaction manually
+    console.log('🚀 Sending deployment transaction...');
+    const sentTx = await signer.sendTransaction({
+      ...deployTx,
+      gasLimit
+    });
+    console.log(`📤 Transaction sent: ${sentTx.hash}`);
+
+    // Wait for confirmation
+    console.log('⏳ Waiting for confirmation...');
+    const receipt = await sentTx.wait();
+    
+    if (!receipt || !receipt.contractAddress) {
+      throw new Error('Deployment failed: no contract address in receipt');
+    }
+
+    console.log(`✅ Contract deployed at: ${receipt.contractAddress}`);
 
     return Response.json({
       success: true,
-      contractAddress: contractAddress,
-      txHash: contract.deploymentTransaction().hash,
+      contractAddress: receipt.contractAddress,
+      txHash: sentTx.hash,
+      chainId,
+      blockNumber: receipt.blockNumber,
+      gasUsed: receipt.gasUsed.toString(),
       explorerUrl: NETWORK === 'mainnet'
-        ? `https://polygonscan.com/address/${contractAddress}`
-        : `https://amoy.polygonscan.com/address/${contractAddress}`,
+        ? `https://polygonscan.com/address/${receipt.contractAddress}`
+        : `https://amoy.polygonscan.com/address/${receipt.contractAddress}`,
       message: NETWORK === 'mainnet' 
-        ? `✅ Deployed to Polygon Mainnet! Set CONTRACT_ADDRESS_MAINNET secret to: ${contractAddress}`
-        : `✅ Deployed to Polygon Amoy! Set CONTRACT_ADDRESS secret to: ${contractAddress}`,
+        ? `✅ Deployed to Polygon Mainnet (chainId ${chainId})! Set CONTRACT_ADDRESS_MAINNET secret to: ${receipt.contractAddress}`
+        : `✅ Deployed to Polygon Amoy (chainId ${chainId})! Set CONTRACT_ADDRESS secret to: ${receipt.contractAddress}`,
       network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy'
     });
 
