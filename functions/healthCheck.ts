@@ -1,21 +1,24 @@
-import { ethers } from 'npm:ethers@6.13.0';
+import { ethers } from 'https://esm.sh/ethers@6.13.0';
 
 /**
  * Health check for blockchain connectivity
  * Verifies RPC connection and issuer wallet setup
  */
 
-Deno.serve(async (req) => {
+export default async function healthCheck(request, context) {
   try {
-    const RPC_URL = Deno.env.get('POLYGON_AMOY_RPC_URL');
-    const ISSUER_PRIVATE_KEY = Deno.env.get('ISSUER_PRIVATE_KEY');
+    const RPC_URL = context.secrets.POLYGON_AMOY_RPC_URL;
+    const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
 
     if (!RPC_URL || !ISSUER_PRIVATE_KEY) {
-      return Response.json({ 
-        error: 'Missing configuration', 
-        has_rpc: !!RPC_URL, 
-        has_key: !!ISSUER_PRIVATE_KEY 
-      }, { status: 500 });
+      return {
+        status: 500,
+        body: { 
+          error: 'Missing configuration', 
+          has_rpc: !!RPC_URL, 
+          has_key: !!ISSUER_PRIVATE_KEY 
+        }
+      };
     }
 
     // Connect to Polygon Amoy
@@ -34,20 +37,26 @@ Deno.serve(async (req) => {
 
     console.log(`✅ Connected to chain ${chainId}, address ${address}, balance ${balanceEth} MATIC`);
 
-    return Response.json({
-      success: true,
-      address,
-      balance: balanceEth,
-      chainId,
-      network: chainId === 80002 ? 'polygon-amoy' : 'unknown',
-      rpcUrl: RPC_URL.substring(0, 30) + '...'
-    });
+    return {
+      status: 200,
+      body: {
+        success: true,
+        address,
+        balance: balanceEth,
+        chainId,
+        network: chainId === 80002 ? 'polygon-amoy' : 'unknown',
+        rpcUrl: RPC_URL.substring(0, 30) + '...'
+      }
+    };
 
   } catch (error) {
     console.error('Health check failed:', error);
-    return Response.json({ 
-      error: 'Health check failed', 
-      details: error.message 
-    }, { status: 500 });
+    return {
+      status: 500,
+      body: { 
+        error: 'Health check failed', 
+        details: error.message 
+      }
+    };
   }
-});
+}
