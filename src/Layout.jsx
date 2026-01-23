@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
-import { useAuth } from '@/components/auth/AuthProvider';
+import { base44 } from '@/api/base44Client';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
@@ -19,28 +19,41 @@ import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   // Public pages that don't need sidebar
   const publicPages = ['Home', 'Login'];
   const isPublicPage = publicPages.includes(currentPageName);
 
-  let user = null;
-  let profile = null;
-  let loading = false;
-  let logout = () => {};
-  
-  try {
-    const authContext = useAuth();
-    user = authContext?.user;
-    profile = authContext?.profile;
-    loading = authContext?.loading || false;
-    logout = authContext?.logout || (() => {});
-  } catch (error) {
-    // AuthProvider not available, render as public page
-    if (!isPublicPage) {
-      return <div>{children}</div>;
+  useEffect(() => {
+    loadAuth();
+  }, []);
+
+  const loadAuth = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (currentUser) {
+        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+        if (profiles.length > 0) {
+          setProfile(profiles[0]);
+        }
+      }
+    } catch (error) {
+      // User not authenticated
+      setUser(null);
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const logout = () => {
+    base44.auth.logout(createPageUrl('Home'));
+  };
 
   if (loading) {
     return (
