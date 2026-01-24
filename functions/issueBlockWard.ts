@@ -85,16 +85,13 @@ export default async function issueBlockWard(request, context) {
 
   // Get secrets (backend-only, never exposed to frontend)
   const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
-  const NETWORK = context.secrets.NETWORK || 'testnet';
+  const NETWORK = context.secrets.NETWORK || 'sepolia';
+  const CONTRACT_ADDRESS = context.secrets.CONTRACT_ADDRESS;
   
-  // Network configuration
+  // Network configuration - Sepolia testnet
   const RPC_URL = NETWORK === 'mainnet'
-    ? (context.secrets.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com')
-    : (context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology');
-  
-  const CONTRACT_ADDRESS = NETWORK === 'mainnet'
-    ? context.secrets.CONTRACT_ADDRESS_MAINNET
-    : context.secrets.CONTRACT_ADDRESS;
+    ? 'https://eth-mainnet.g.alchemy.com/v2/demo'
+    : 'https://ethereum-sepolia-rpc.publicnode.com';
 
   if (!ISSUER_PRIVATE_KEY) {
     return {
@@ -149,8 +146,8 @@ export default async function issueBlockWard(request, context) {
     // For now, store metadata as data URI (in production: use IPFS)
     const metadataURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
 
-    // Mint NFT on Polygon Amoy (backend signs transaction)
-    console.log(`Minting BlockWard to ${student.wallet_address}...`);
+    // Mint NFT on Sepolia (backend signs transaction)
+    console.log(`Minting BlockWard to ${student.wallet_address} on ${NETWORK}...`);
     const tx = await contract.mint(student.wallet_address, metadataURI);
     
     console.log(`Transaction submitted: ${tx.hash}`);
@@ -191,10 +188,10 @@ export default async function issueBlockWard(request, context) {
         success: true,
         txHash: receipt.hash,
         tokenId: tokenId.toString(),
-        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy',
+        network: NETWORK === 'mainnet' ? 'ethereum-mainnet' : 'sepolia',
         explorerUrl: NETWORK === 'mainnet' 
-          ? `https://polygonscan.com/tx/${receipt.hash}`
-          : `https://amoy.polygonscan.com/tx/${receipt.hash}`,
+          ? `https://etherscan.io/tx/${receipt.hash}`
+          : `https://sepolia.etherscan.io/tx/${receipt.hash}`,
         blockNumber: receipt.blockNumber
       }
     };
