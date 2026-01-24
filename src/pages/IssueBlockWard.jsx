@@ -27,6 +27,9 @@ import { motion } from 'framer-motion';
 
 function IssueBlockWardContent() {
   const navigate = useNavigate();
+  const urlParams = new URLSearchParams(window.location.search);
+  const preSelectedStudentId = urlParams.get('studentId');
+  
   const [currentStep, setCurrentStep] = useState(1);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,6 +85,15 @@ function IssueBlockWardContent() {
         }));
         
         setStudents(formattedStudents);
+        
+        // Auto-select student if pre-selected via URL
+        if (preSelectedStudentId && formattedStudents.length > 0) {
+          const preSelected = formattedStudents.find(s => s.id === preSelectedStudentId);
+          if (preSelected) {
+            setFormData(prev => ({ ...prev, selectedStudent: preSelected }));
+            setCurrentStep(2); // Skip to award creation step
+          }
+        }
       }
     } catch (error) {
       console.error('Error loading students:', error);

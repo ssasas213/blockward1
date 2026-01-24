@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Users, BookOpen, FileText, Award, ArrowLeft,
-  Copy, Check, UserPlus, Trash2, Shield, Plus, Megaphone, Send
+  Copy, Check, UserPlus, Trash2, Shield, Plus, Megaphone, Send, Sparkles
 } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -281,8 +281,9 @@ export default function ClassDetail() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Student ID</TableHead>
+                      <TableHead>Wallet</TableHead>
                       <TableHead>Points</TableHead>
-                      {isTeacher && <TableHead className="w-20"></TableHead>}
+                      {isTeacher && <TableHead className="w-32">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -294,6 +295,15 @@ export default function ClassDetail() {
                         <TableCell className="text-slate-500">{student.user_email}</TableCell>
                         <TableCell>{student.student_id || '-'}</TableCell>
                         <TableCell>
+                          {student.wallet_address ? (
+                            <code className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                              {student.wallet_address.slice(0, 6)}...{student.wallet_address.slice(-4)}
+                            </code>
+                          ) : (
+                            <span className="text-xs text-slate-400">No wallet</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex items-center gap-2">
                             <Badge className="bg-green-100 text-green-700">+{student.total_achievement_points || 0}</Badge>
                             <Badge variant="outline" className="text-red-600">-{student.total_behaviour_points || 0}</Badge>
@@ -301,14 +311,26 @@ export default function ClassDetail() {
                         </TableCell>
                         {isTeacher && (
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleRemoveStudent(student.user_email)}
-                              className="text-red-500 hover:text-red-700"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.location.href = createPageUrl(`IssueBlockWard?studentId=${student.id}`)}
+                                className="text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                                title="Mint BlockWard NFT"
+                              >
+                                <Sparkles className="h-4 w-4 mr-1" />
+                                Mint
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveStudent(student.user_email)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
