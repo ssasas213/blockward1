@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +14,8 @@ import {
 import { motion } from 'framer-motion';
 
 function StudentDashboardContent() {
-  const { user, profile: userProfile } = useAuth();
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     myClasses: [],
@@ -32,12 +32,19 @@ function StudentDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      if (!user) return;
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (!currentUser) return;
+
+      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+      const profile = profiles.length > 0 ? profiles[0] : null;
+      setUserProfile(profile);
 
         // Get classes where student is enrolled
         const allClasses = await base44.entities.Class.list();
         const myClasses = allClasses.filter(c => 
-          c.student_emails?.includes(user.email)
+          c.student_emails?.includes(currentUser.email)
         );
 
         // Get today's schedule based on enrolled classes
@@ -49,8 +56,8 @@ function StudentDashboardContent() {
 
         // Get points and BlockWards
         const [points, blockWards] = await Promise.all([
-          base44.entities.PointEntry.filter({ student_email: user.email }, '-created_date', 10),
-          base44.entities.BlockWard.filter({ student_email: user.email, status: 'active' })
+          base44.entities.PointEntry.filter({ student_email: currentUser.email }, '-created_date', 10),
+          base44.entities.BlockWard.filter({ student_email: currentUser.email, status: 'active' })
         ]);
 
         // Calculate totals
@@ -66,8 +73,8 @@ function StudentDashboardContent() {
         todaySchedule: todaySchedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
         recentPoints: points.slice(0, 5),
         blockWards,
-        achievementPoints: userProfile?.total_achievement_points || achievementPoints,
-        behaviourPoints: userProfile?.total_behaviour_points || behaviourPoints
+        achievementPoints: profile?.total_achievement_points || achievementPoints,
+        behaviourPoints: profile?.total_behaviour_points || behaviourPoints
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
