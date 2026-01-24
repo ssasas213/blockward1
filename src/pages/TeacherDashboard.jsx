@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +13,8 @@ import {
 import { motion } from 'framer-motion';
 
 function TeacherDashboardContent() {
-  const { user, profile: userProfile } = useAuth();
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     myClasses: [],
@@ -29,21 +29,29 @@ function TeacherDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      if (!user) return;
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (!currentUser) return;
+
+      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+      if (profiles.length > 0) {
+        setUserProfile(profiles[0]);
+      }
 
       // Load teacher's classes
-      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
+      const classes = await base44.entities.Class.filter({ teacher_email: currentUser.email });
         
         // Get today's schedule
         const today = new Date().getDay();
         const dayIndex = today === 0 ? 6 : today - 1; // Convert Sunday=0 to Monday=0
         const schedule = await base44.entities.TimetableEntry.filter({ 
-          teacher_email: user.email,
+          teacher_email: currentUser.email,
           day_of_week: dayIndex
         });
 
         // Get recent points issued by this teacher
-        const points = await base44.entities.PointEntry.filter({ teacher_email: user.email }, '-created_date', 5);
+        const points = await base44.entities.PointEntry.filter({ teacher_email: currentUser.email }, '-created_date', 5);
 
         // Count total students
         let totalStudents = 0;
