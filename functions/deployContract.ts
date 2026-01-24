@@ -2,7 +2,7 @@ import { ethers } from 'https://esm.sh/ethers@6.13.0';
 
 /**
  * Deploy the BlockWard soulbound ERC-721 smart contract
- * Run this once to deploy contract to Polygon Amoy/Mainnet
+ * Run this once to deploy contract to Sepolia testnet
  * Then set CONTRACT_ADDRESS secret with the deployed address
  * 
  * Contract features:
@@ -189,12 +189,11 @@ const BLOCKWARD_BYTECODE = "0x608060405234801561000f575f80fd5b5060405161105c3803
 export default async function deployContract(request, context) {
   try {
     const ISSUER_PRIVATE_KEY = context.secrets.ISSUER_PRIVATE_KEY;
-    const NETWORK = request.body?.network || context.secrets.NETWORK || 'testnet';
+    const SEPOLIA_RPC_URL = context.secrets.SEPOLIA_RPC_URL;
+    const NETWORK = request.body?.network || context.secrets.NETWORK || 'sepolia';
     
-    // Network configuration
-    const RPC_URL = NETWORK === 'mainnet'
-      ? (context.secrets.POLYGON_MAINNET_RPC_URL || 'https://polygon-rpc.com')
-      : (context.secrets.POLYGON_AMOY_RPC_URL || 'https://rpc-amoy.polygon.technology');
+    // Network configuration - Sepolia testnet
+    const RPC_URL = SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
 
     if (!ISSUER_PRIVATE_KEY) {
       return {
@@ -203,20 +202,7 @@ export default async function deployContract(request, context) {
       };
     }
 
-    // Mainnet safety check
-    if (NETWORK === 'mainnet') {
-      console.warn('⚠️  DEPLOYING TO POLYGON MAINNET - THIS WILL USE REAL MATIC!');
-      if (!request.body?.confirmMainnet) {
-        return {
-          status: 400,
-          body: { 
-            error: 'Mainnet deployment requires explicit confirmation',
-            message: 'Set confirmMainnet: true in request body to deploy to mainnet'
-          }
-        };
-      }
-    }
-    // Connect to Polygon
+    // Connect to Sepolia
     console.log(`🔗 Connecting to ${NETWORK} via ${RPC_URL.substring(0, 40)}...`);
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
@@ -229,15 +215,13 @@ export default async function deployContract(request, context) {
 
     // Check balance
     const balance = await provider.getBalance(signer.address);
-    console.log(`💰 Deployer balance: ${ethers.formatEther(balance)} MATIC`);
+    console.log(`💰 Deployer balance: ${ethers.formatEther(balance)} ETH`);
 
     if (balance === 0n) {
       return {
         status: 400,
         body: { 
-          error: NETWORK === 'mainnet'
-            ? 'Deployer wallet has no MATIC. Fund wallet with real MATIC from an exchange.'
-            : 'Deployer wallet has no MATIC. Get testnet MATIC from: https://faucet.polygon.technology/',
+          error: 'Deployer wallet has no ETH. Get Sepolia testnet ETH from: https://sepoliafaucet.com/',
           chainId
         }
       };
@@ -278,9 +262,7 @@ export default async function deployContract(request, context) {
           txHash: contract.deploymentTransaction().hash,
           gasUsed: deployReceipt.gasUsed.toString(),
           gasLimit: (deployReceipt.gasLimit || 0n).toString(),
-          explorerUrl: NETWORK === 'mainnet'
-            ? `https://polygonscan.com/tx/${contract.deploymentTransaction().hash}`
-            : `https://amoy.polygonscan.com/tx/${contract.deploymentTransaction().hash}`
+          explorerUrl: `https://sepolia.etherscan.io/tx/${contract.deploymentTransaction().hash}`
         }
       };
     }
@@ -299,13 +281,9 @@ export default async function deployContract(request, context) {
         gasUsed: deployReceipt.gasUsed.toString(),
         gasLimit: (deployReceipt.gasLimit || 15_000_000n).toString(),
         gasPrice: deployReceipt.gasPrice?.toString() || '0',
-        explorerUrl: NETWORK === 'mainnet'
-          ? `https://polygonscan.com/address/${contractAddress}`
-          : `https://amoy.polygonscan.com/address/${contractAddress}`,
-        message: NETWORK === 'mainnet' 
-          ? `✅ Deployed to Polygon Mainnet (chainId ${chainId})! Set CONTRACT_ADDRESS_MAINNET secret to: ${contractAddress}`
-          : `✅ Deployed to Polygon Amoy (chainId ${chainId})! Set CONTRACT_ADDRESS secret to: ${contractAddress}`,
-        network: NETWORK === 'mainnet' ? 'polygon-mainnet' : 'polygon-amoy'
+        explorerUrl: `https://sepolia.etherscan.io/address/${contractAddress}`,
+        message: `✅ Deployed to Sepolia testnet (chainId ${chainId})! Set CONTRACT_ADDRESS secret to: ${contractAddress}`,
+        network: 'sepolia'
       }
     };
 
