@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/components/auth/AuthProvider';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +12,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, profile, refreshProfile, loading: authLoading, initialized } = useAuth();
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
   const [step, setStep] = useState(1);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +33,30 @@ export default function Onboarding() {
     department: '',
     join_code: ''
   });
+
+  useEffect(() => {
+    loadAuth();
+  }, []);
+
+  const loadAuth = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (currentUser) {
+        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+        if (profiles.length > 0) {
+          setProfile(profiles[0]);
+        }
+      }
+    } catch (error) {
+      setUser(null);
+      setProfile(null);
+    } finally {
+      setAuthLoading(false);
+      setInitialized(true);
+    }
+  };
 
   useEffect(() => {
     // Pre-fill name if available
@@ -142,9 +168,6 @@ export default function Onboarding() {
       }
 
       await base44.entities.UserProfile.create(profileData);
-
-      // Refresh auth context and redirect
-      await refreshProfile();
 
       // Generate initial school codes for admin
       if (formData.user_type === 'admin' && school) {
