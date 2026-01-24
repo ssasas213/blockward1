@@ -162,7 +162,7 @@ export default function Layout({ children, currentPageName }) {
       <div className="min-h-screen bg-slate-50">
       {/* Testnet Badge */}
       <div className="fixed top-4 right-4 z-50 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg border border-amber-200">
-        Testnet Mode: Polygon Amoy
+        Testnet Mode: Sepolia
       </div>
 
       {/* Mobile Header */}

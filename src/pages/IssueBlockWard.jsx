@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,8 +53,36 @@ function IssueBlockWardContent() {
 
   const loadStudents = async () => {
     try {
-      const data = await api.getStudents();
-      setStudents(data);
+      const user = await base44.auth.me();
+      if (!user) return;
+
+      // Get teacher's classes
+      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
+      
+      // Get all student emails from classes
+      const studentEmails = new Set();
+      classes.forEach(cls => {
+        cls.student_emails?.forEach(email => studentEmails.add(email));
+      });
+
+      // Get student profiles
+      if (studentEmails.size > 0) {
+        const allProfiles = await base44.entities.UserProfile.list();
+        const studentProfiles = allProfiles.filter(p => 
+          studentEmails.has(p.user_email) && p.user_type === 'student'
+        );
+        
+        // Format for UI
+        const formattedStudents = studentProfiles.map(p => ({
+          id: p.id,
+          name: `${p.first_name} ${p.last_name}`,
+          email: p.user_email,
+          class: classes.find(c => c.student_emails?.includes(p.user_email))?.name || 'N/A',
+          gradeLevel: p.grade_level || 'N/A'
+        }));
+        
+        setStudents(formattedStudents);
+      }
     } catch (error) {
       console.error('Error loading students:', error);
       toast.error('Failed to load students');
@@ -96,25 +125,19 @@ function IssueBlockWardContent() {
     }
 
     setIssuing(true);
-    setIssuingStage('Issuing on Polygon Amoy (testnet)...');
+    setIssuingStage('Minting on Sepolia testnet...');
 
     try {
-      const response = await fetch('/api/blockwards/issue', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          studentId: formData.selectedStudent.id,
-          title: formData.title,
-          category: formData.category,
-          description: formData.description
-        })
+      const response = await base44.functions.invoke('issueBlockWard', {
+        studentId: formData.selectedStudent.id,
+        title: formData.title,
+        category: formData.category,
+        description: formData.description
       });
 
-      const data = await response.json();
+      const data = response.data;
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(data.error || 'Failed to issue BlockWard');
       }
 
@@ -157,7 +180,7 @@ function IssueBlockWardContent() {
                   <CheckCircle2 className="h-10 w-10 text-green-600" />
                 </div>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-medium mb-4">
-                  ✓ Verified on Polygon Amoy
+                  ✓ Verified on Sepolia
                 </div>
                 <h2 className="text-3xl font-bold text-slate-900 mb-3">
                   BlockWard Issued Successfully!
@@ -188,7 +211,7 @@ function IssueBlockWardContent() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium"
                     >
-                      View on Polygonscan →
+                      View on Etherscan →
                     </a>
                   )}
                 </div>
