@@ -141,7 +141,8 @@ Deno.serve(async (req) => {
     };
 
     // For now, store metadata as data URI (in production: use IPFS)
-    const metadataURI = `data:application/json;base64,${Buffer.from(JSON.stringify(metadata)).toString('base64')}`;
+    const metadataJSON = JSON.stringify(metadata);
+    const metadataURI = `data:application/json;base64,${btoa(metadataJSON)}`;
 
     // Mint NFT on Sepolia (backend signs transaction)
     console.log(`Minting BlockWard to ${student.wallet_address} on ${NETWORK}...`);
