@@ -83,13 +83,12 @@ Deno.serve(async (req) => {
 
     // Get secrets (backend-only, never exposed to frontend)
     const ISSUER_PRIVATE_KEY = Deno.env.get('ISSUER_PRIVATE_KEY');
+    const SEPOLIA_RPC_URL = Deno.env.get('SEPOLIA_RPC_URL');
     const NETWORK = Deno.env.get('NETWORK') || 'sepolia';
     const CONTRACT_ADDRESS = Deno.env.get('CONTRACT_ADDRESS');
     
     // Network configuration - Sepolia testnet
-    const RPC_URL = NETWORK === 'mainnet'
-      ? 'https://eth-mainnet.g.alchemy.com/v2/demo'
-      : 'https://ethereum-sepolia-rpc.publicnode.com';
+    const RPC_URL = SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
 
     if (!ISSUER_PRIVATE_KEY) {
       return Response.json(
@@ -129,7 +128,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Connect to Polygon (server-side only)
+    // Connect to Sepolia (server-side only)
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
@@ -232,10 +231,8 @@ Deno.serve(async (req) => {
       success: true,
       txHash: receipt.hash,
       tokenId: tokenId.toString(),
-      network: NETWORK === 'mainnet' ? 'ethereum-mainnet' : 'sepolia',
-      explorerUrl: NETWORK === 'mainnet' 
-        ? `https://etherscan.io/tx/${receipt.hash}`
-        : `https://sepolia.etherscan.io/tx/${receipt.hash}`,
+      network: 'sepolia',
+      explorerUrl: `https://sepolia.etherscan.io/tx/${receipt.hash}`,
       blockNumber: receipt.blockNumber
     });
 
