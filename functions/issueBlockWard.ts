@@ -105,6 +105,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Log configuration for debugging
+    console.log('🔧 Configuration:');
+    console.log(`- Network: ${NETWORK}`);
+    console.log(`- RPC URL: ${RPC_URL}`);
+    console.log(`- Contract Address: ${CONTRACT_ADDRESS}`);
+    console.log(`- Issuer Address: ${new ethers.Wallet(ISSUER_PRIVATE_KEY).address}`);
+
     // Get student profile to retrieve wallet address
     const students = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
     if (students.length === 0) {
@@ -145,14 +152,29 @@ Deno.serve(async (req) => {
     const metadataURI = `data:application/json;base64,${btoa(metadataJSON)}`;
 
     // Mint NFT on Sepolia (backend signs transaction)
-    console.log(`Minting BlockWard to ${student.wallet_address} on ${NETWORK}...`);
+    console.log(`🎨 Minting BlockWard to ${student.wallet_address} on ${NETWORK}...`);
     const tx = await contract.mint(student.wallet_address, metadataURI);
     
-    console.log(`Transaction submitted: ${tx.hash}`);
+    console.log(`📤 Transaction submitted: ${tx.hash}`);
+    console.log(`📍 Transaction to: ${tx.to}`);
+    console.log(`📝 Transaction data: ${tx.data}`);
+    
     const receipt = await tx.wait();
-    console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
+    console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
+    console.log(`📋 Receipt status: ${receipt.status}`);
+    console.log(`📊 Number of logs: ${receipt.logs.length}`);
+    
+    // Log all events for debugging
+    receipt.logs.forEach((log, index) => {
+      try {
+        const parsed = contract.interface.parseLog(log);
+        console.log(`📄 Event ${index}: ${parsed?.name}`, parsed?.args);
+      } catch {
+        console.log(`📄 Log ${index}: Unable to parse (may be from different contract)`);
+      }
+    });
 
-    // Parse token ID from transaction logs
+    // Parse token ID from Minted event
     const mintedEvent = receipt.logs.find(log => {
       try {
         const parsed = contract.interface.parseLog(log);
@@ -161,6 +183,23 @@ Deno.serve(async (req) => {
         return false;
       }
     });
+    
+    // Also check for Transfer event
+    const transferEvent = receipt.logs.find(log => {
+      try {
+        const parsed = contract.interface.parseLog(log);
+        return parsed?.name === 'Transfer';
+      } catch {
+        return false;
+      }
+    });
+    
+    console.log(`🎯 Minted event found: ${!!mintedEvent}`);
+    console.log(`🎯 Transfer event found: ${!!transferEvent}`);
+    
+    if (!mintedEvent && !transferEvent) {
+      throw new Error('No Transfer or Minted event found in transaction receipt. NFT may not have been minted.');
+    }
     
     const tokenId = mintedEvent ? contract.interface.parseLog(mintedEvent).args.tokenId.toString() : '0';
 
