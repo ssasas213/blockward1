@@ -152,8 +152,17 @@ Deno.serve(async (req) => {
     const receipt = await tx.wait();
     console.log(`Transaction confirmed in block ${receipt.blockNumber}`);
 
-    // Get token ID from contract
-    const tokenId = await contract.tokenCounter();
+    // Parse token ID from transaction logs
+    const mintedEvent = receipt.logs.find(log => {
+      try {
+        const parsed = contract.interface.parseLog(log);
+        return parsed?.name === 'Minted';
+      } catch {
+        return false;
+      }
+    });
+    
+    const tokenId = mintedEvent ? contract.interface.parseLog(mintedEvent).args.tokenId.toString() : '0';
 
     // Get current user (issuer)
     const issuer = await base44.auth.me();
