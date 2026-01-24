@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { useAuth } from '@/components/auth/AuthProvider';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,7 +33,8 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 function ClassesContent() {
-  const { user, profile } = useAuth();
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,15 +57,24 @@ function ClassesContent() {
   }, []);
 
   const loadData = async () => {
-    if (!user || !profile) return;
-    
     try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (!currentUser) return;
+
+      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+      const userProfile = profiles.length > 0 ? profiles[0] : null;
+      setProfile(userProfile);
+
+      if (!userProfile) return;
+
       let classData = [];
-      if (profile.user_type === 'teacher') {
-        classData = await base44.entities.Class.filter({ teacher_email: user.email });
-      } else if (profile.user_type === 'student') {
+      if (userProfile.user_type === 'teacher') {
+        classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+      } else if (userProfile.user_type === 'student') {
         const allClasses = await base44.entities.Class.list();
-        classData = allClasses.filter(c => c.student_emails?.includes(user.email));
+        classData = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
       } else {
         classData = await base44.entities.Class.list();
       }
