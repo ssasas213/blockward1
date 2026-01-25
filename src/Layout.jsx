@@ -28,8 +28,13 @@ export default function Layout({ children, currentPageName }) {
   const isPublicPage = publicPages.includes(currentPageName);
 
   useEffect(() => {
+    // Skip auth check for public pages
+    if (isPublicPage) {
+      setLoading(false);
+      return;
+    }
     loadAuth();
-  }, []);
+  }, [currentPageName, isPublicPage]);
 
   const loadAuth = async () => {
     try {
