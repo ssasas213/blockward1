@@ -10,25 +10,27 @@ import { motion } from 'framer-motion';
 export default function Home() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Optional: Check auth silently without blocking render
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
-      const isAuth = await base44.auth.isAuthenticated();
-      if (isAuth) {
-        const currentUser = await base44.auth.me();
-        setUser(currentUser);
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (currentUser) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
           setProfile(profiles[0]);
         }
       }
     } catch (error) {
-      // Silently fail - user not authenticated
+      // Not authenticated
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -47,6 +49,17 @@ export default function Home() {
       window.location.href = createPageUrl(dashboard);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Shield className="h-12 w-12 text-violet-600 animate-pulse" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        </div>
+      </div>
+    );
+  }
 
   const features = [
     {
