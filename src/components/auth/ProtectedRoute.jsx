@@ -36,9 +36,9 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
   useEffect(() => {
     if (!initialized || loading) return;
 
-    // Not authenticated - redirect to login
+    // Not authenticated - redirect to home
     if (!user) {
-      base44.auth.redirectToLogin(createPageUrl('Onboarding'));
+      window.location.href = createPageUrl('Home');
       return;
     }
 
