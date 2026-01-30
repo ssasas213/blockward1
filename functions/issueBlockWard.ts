@@ -1,6 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { ethers } from 'npm:ethers@6.13.0';
 
+// CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "content-type, authorization",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 // Compiled BlockWard Contract ABI
 const BLOCKWARD_ABI = [
   {
@@ -67,19 +74,65 @@ const BLOCKWARD_ABI = [
   }
 ];
 
-Deno.serve(async (req) => {
-  try {
-    const base44 = createClientFromRequest(req);
-    const payload = await req.json();
-    const { studentId, title, category, description } = payload;
+function generateDebugId() {
+  return `BW-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
 
-    // Validate required fields
-    if (!studentId || !title || !category) {
+Deno.serve(async (req) => {
+  const debugId = generateDebugId();
+  
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  // Only allow POST
+  if (req.method !== "POST") {
+    return Response.json(
+      { error: 'Method not allowed', debugId },
+      { status: 405, headers: corsHeaders }
+    );
+  }
+
+  try {
+    // 1. Defensive request body parsing
+    const rawBody = await req.text();
+    
+    if (!rawBody || rawBody.trim() === '') {
+      console.error(`[${debugId}] Empty request body`);
       return Response.json(
-        { error: 'Missing required fields: studentId, title, category' },
-        { status: 400 }
+        { error: 'Empty request body', debugId },
+        { status: 400, headers: corsHeaders }
       );
     }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error(`[${debugId}] Non-JSON request body:`, rawBody.substring(0, 200));
+      return Response.json(
+        { error: 'Non-JSON request body', debugId },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // 2. Validate required fields
+    const { studentId, title, category, description } = payload;
+    const missing = [];
+    if (!studentId) missing.push('studentId');
+    if (!title) missing.push('title');
+    if (!category) missing.push('category');
+
+    if (missing.length > 0) {
+      console.error(`[${debugId}] Missing required fields:`, missing);
+      return Response.json(
+        { error: 'Missing required fields', missing, debugId },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    const base44 = createClientFromRequest(req);
 
     // Get secrets (backend-only, never exposed to frontend)
     const ISSUER_PRIVATE_KEY = Deno.env.get('ISSUER_PRIVATE_KEY');
@@ -91,47 +144,85 @@ Deno.serve(async (req) => {
     const RPC_URL = SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
 
     if (!ISSUER_PRIVATE_KEY) {
+      console.error(`[${debugId}] ISSUER_PRIVATE_KEY not configured`);
       return Response.json(
-        { error: 'ISSUER_PRIVATE_KEY not configured' },
-        { status: 500 }
+        { error: 'ISSUER_PRIVATE_KEY not configured', debugId },
+        { status: 500, headers: corsHeaders }
       );
     }
 
     if (!CONTRACT_ADDRESS) {
+      console.error(`[${debugId}] CONTRACT_ADDRESS not configured`);
       return Response.json(
-        { error: 'CONTRACT_ADDRESS not configured. Deploy contract first.' },
-        { status: 500 }
+        { error: 'CONTRACT_ADDRESS not configured. Deploy contract first.', debugId },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // Get current user (issuer)
+    const issuer = await base44.auth.me();
+    if (!issuer) {
+      console.error(`[${debugId}] Unauthorized - no authenticated user`);
+      return Response.json(
+        { error: 'Unauthorized', debugId },
+        { status: 401, headers: corsHeaders }
       );
     }
 
     // Log configuration for debugging
-    console.log('🔧 Configuration:');
-    console.log(`- Network: ${NETWORK}`);
-    console.log(`- RPC URL: ${RPC_URL}`);
-    console.log(`- Contract Address: ${CONTRACT_ADDRESS}`);
-    console.log(`- Issuer Address: ${new ethers.Wallet(ISSUER_PRIVATE_KEY).address}`);
+    const rpcHost = new URL(RPC_URL).hostname;
+    console.log(`[${debugId}] 🔧 Configuration:`);
+    console.log(`[${debugId}] - Network: ${NETWORK}`);
+    console.log(`[${debugId}] - RPC Host: ${rpcHost}`);
+    console.log(`[${debugId}] - Contract Address: ${CONTRACT_ADDRESS}`);
+    console.log(`[${debugId}] - Issuer: ${issuer.email}`);
 
     // Get student profile to retrieve wallet address
     const students = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
     if (students.length === 0) {
+      console.error(`[${debugId}] Student not found: ${studentId}`);
       return Response.json(
-        { error: 'Student not found' },
-        { status: 404 }
+        { error: 'Student not found', debugId },
+        { status: 404, headers: corsHeaders }
       );
     }
     const student = students[0];
 
     if (!student.wallet_address) {
+      console.error(`[${debugId}] Student does not have a wallet address: ${studentId}`);
       return Response.json(
-        { error: 'Student does not have a wallet address' },
-        { status: 400 }
+        { error: 'Student does not have a wallet address', debugId },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Connect to Sepolia (server-side only)
+    // Validate wallet address
+    if (!ethers.isAddress(student.wallet_address)) {
+      console.error(`[${debugId}] Invalid student wallet address: ${student.wallet_address}`);
+      return Response.json(
+        { error: 'Invalid student wallet address', debugId },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Get issuer profile
+    const issuerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: issuer.email });
+    if (issuerProfiles.length === 0) {
+      console.error(`[${debugId}] Issuer profile not found: ${issuer.email}`);
+      return Response.json(
+        { error: 'Issuer profile not found', debugId },
+        { status: 404, headers: corsHeaders }
+      );
+    }
+    const issuerProfile = issuerProfiles[0];
+
+    // SERVER-SIDE SIGNING: Connect to Sepolia via JsonRpcProvider (NO METAMASK)
+    console.log(`[${debugId}] 🔐 Connecting to Sepolia via server-side wallet...`);
     const provider = new ethers.JsonRpcProvider(RPC_URL);
     const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
+
+    console.log(`[${debugId}] 📝 Signer address: ${signer.address}`);
 
     // Create metadata JSON (in production, upload to IPFS)
     const metadata = {
@@ -146,30 +237,73 @@ Deno.serve(async (req) => {
       ]
     };
 
-    // For now, store metadata as data URI (in production: use IPFS)
+    // Fix base64 encoding for Unicode characters
     const metadataJSON = JSON.stringify(metadata);
-    const metadataURI = `data:application/json;base64,${btoa(metadataJSON)}`;
+    const metadataB64 = btoa(unescape(encodeURIComponent(metadataJSON)));
+    const metadataURI = `data:application/json;base64,${metadataB64}`;
 
-    // Mint NFT on Sepolia (backend signs transaction)
-    console.log(`🎨 Minting BlockWard to ${student.wallet_address} on ${NETWORK}...`);
-    const tx = await contract.mint(student.wallet_address, metadataURI);
+    // Log blockchain call parameters
+    console.log(`[${debugId}] 🎨 Minting BlockWard:`);
+    console.log(`[${debugId}] - Recipient: ${student.wallet_address}`);
+    console.log(`[${debugId}] - Title: ${title}`);
+    console.log(`[${debugId}] - Category: ${category}`);
+    console.log(`[${debugId}] - Network: ${NETWORK}`);
+
+    // SERVER-SIDE MINT: Backend signs and sends transaction directly to Sepolia
+    let tx;
+    try {
+      console.log(`[${debugId}] 📤 Submitting mint transaction to Sepolia...`);
+      tx = await contract.mint(student.wallet_address, metadataURI);
+      console.log(`[${debugId}] ✅ Transaction submitted: ${tx.hash}`);
+    } catch (mintError) {
+      console.error(`[${debugId}] ❌ Mint transaction failed:`, mintError);
+      console.error(`[${debugId}] Error stack:`, mintError.stack);
+      console.error(`[${debugId}] Error details:`, {
+        message: mintError.message,
+        code: mintError.code,
+        reason: mintError.reason,
+        data: mintError.data
+      });
+      return Response.json(
+        { 
+          error: 'Failed to submit mint transaction', 
+          details: mintError.reason || mintError.message,
+          debugId 
+        },
+        { status: 500, headers: corsHeaders }
+      );
+    }
     
-    console.log(`📤 Transaction submitted: ${tx.hash}`);
-    console.log(`📍 Transaction to: ${tx.to}`);
-    console.log(`📝 Transaction data: ${tx.data}`);
+    console.log(`[${debugId}] ⏳ Waiting for transaction confirmation...`);
     
-    const receipt = await tx.wait();
-    console.log(`✅ Transaction confirmed in block ${receipt.blockNumber}`);
-    console.log(`📋 Receipt status: ${receipt.status}`);
-    console.log(`📊 Number of logs: ${receipt.logs.length}`);
+    let receipt;
+    try {
+      receipt = await tx.wait();
+    } catch (waitError) {
+      console.error(`[${debugId}] ❌ Transaction wait failed:`, waitError);
+      console.error(`[${debugId}] Error stack:`, waitError.stack);
+      return Response.json(
+        { 
+          error: 'Transaction failed or reverted', 
+          txHash: tx.hash,
+          details: waitError.message,
+          debugId 
+        },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    console.log(`[${debugId}] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
+    console.log(`[${debugId}] 📋 Receipt status: ${receipt.status}`);
+    console.log(`[${debugId}] 📊 Number of logs: ${receipt.logs.length}`);
     
     // Log all events for debugging
     receipt.logs.forEach((log, index) => {
       try {
         const parsed = contract.interface.parseLog(log);
-        console.log(`📄 Event ${index}: ${parsed?.name}`, parsed?.args);
+        console.log(`[${debugId}] 📄 Event ${index}: ${parsed?.name}`, parsed?.args);
       } catch {
-        console.log(`📄 Log ${index}: Unable to parse (may be from different contract)`);
+        console.log(`[${debugId}] 📄 Log ${index}: Unable to parse (may be from different contract)`);
       }
     });
 
@@ -193,19 +327,24 @@ Deno.serve(async (req) => {
       }
     });
     
-    console.log(`🎯 Minted event found: ${!!mintedEvent}`);
-    console.log(`🎯 Transfer event found: ${!!transferEvent}`);
+    console.log(`[${debugId}] 🎯 Minted event found: ${!!mintedEvent}`);
+    console.log(`[${debugId}] 🎯 Transfer event found: ${!!transferEvent}`);
     
     if (!mintedEvent && !transferEvent) {
-      throw new Error('No Transfer or Minted event found in transaction receipt. NFT may not have been minted.');
+      console.error(`[${debugId}] ❌ No Transfer or Minted event found in transaction receipt`);
+      return Response.json(
+        { 
+          error: 'No Transfer or Minted event found in transaction receipt. NFT may not have been minted.',
+          txHash: receipt.hash,
+          debugId 
+        },
+        { status: 500, headers: corsHeaders }
+      );
     }
     
-    const tokenId = mintedEvent ? contract.interface.parseLog(mintedEvent).args.tokenId.toString() : '0';
-
-    // Get current user (issuer)
-    const issuer = await base44.auth.me();
-    const issuerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: issuer.email });
-    const issuerProfile = issuerProfiles[0];
+    const tokenId = mintedEvent 
+      ? contract.interface.parseLog(mintedEvent).args.tokenId.toString() 
+      : (transferEvent ? contract.interface.parseLog(transferEvent).args.tokenId.toString() : '0');
 
     // Save BlockWard record to database
     await base44.asServiceRole.entities.BlockWard.create({
@@ -227,24 +366,29 @@ Deno.serve(async (req) => {
       status: 'active'
     });
 
+    console.log(`[${debugId}] ✅ BlockWard issued successfully - Token ID: ${tokenId}`);
+
     return Response.json({
       success: true,
       txHash: receipt.hash,
       tokenId: tokenId.toString(),
       network: 'sepolia',
       explorerUrl: `https://sepolia.etherscan.io/tx/${receipt.hash}`,
-      blockNumber: receipt.blockNumber
-    });
+      blockNumber: receipt.blockNumber,
+      debugId
+    }, { headers: corsHeaders });
 
   } catch (error) {
-    console.error('❌ Error issuing BlockWard:', error);
+    console.error(`[${debugId}] ❌ Unexpected error issuing BlockWard:`, error);
+    console.error(`[${debugId}] Stack trace:`, error.stack);
     
     return Response.json(
       { 
         error: 'Failed to issue BlockWard on blockchain',
-        details: error.message 
+        details: error.message,
+        debugId 
       },
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 });
