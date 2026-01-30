@@ -218,11 +218,58 @@ Deno.serve(async (req) => {
 
     // SERVER-SIDE SIGNING: Connect to Sepolia via JsonRpcProvider (NO METAMASK)
     console.log(`[${debugId}] 🔐 Connecting to Sepolia via server-side wallet...`);
-    const provider = new ethers.JsonRpcProvider(RPC_URL);
-    const signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
+    
+    let provider, signer, contract;
+    try {
+      provider = new ethers.JsonRpcProvider(RPC_URL);
+      console.log(`[${debugId}] ✅ Provider created: ${rpcHost}`);
+    } catch (providerError) {
+      console.error(`[${debugId}] ❌ Failed to create provider:`, providerError);
+      return Response.json({
+        ok: false,
+        debugId,
+        message: 'Failed to connect to Sepolia RPC',
+        details: providerError.message,
+        code: providerError.code,
+        reason: providerError.reason,
+        shortMessage: providerError.shortMessage,
+        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
+      }, { status: 500, headers: corsHeaders });
+    }
 
-    console.log(`[${debugId}] 📝 Signer address: ${signer.address}`);
+    try {
+      signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
+      console.log(`[${debugId}] 📝 Signer address: ${signer.address}`);
+    } catch (walletError) {
+      console.error(`[${debugId}] ❌ Failed to create wallet:`, walletError);
+      return Response.json({
+        ok: false,
+        debugId,
+        message: 'Failed to create wallet from private key',
+        details: walletError.message,
+        code: walletError.code,
+        reason: walletError.reason,
+        shortMessage: walletError.shortMessage,
+        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
+      }, { status: 500, headers: corsHeaders });
+    }
+
+    try {
+      contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
+      console.log(`[${debugId}] 📄 Contract connected: ${CONTRACT_ADDRESS}`);
+    } catch (contractError) {
+      console.error(`[${debugId}] ❌ Failed to create contract instance:`, contractError);
+      return Response.json({
+        ok: false,
+        debugId,
+        message: 'Failed to connect to smart contract',
+        details: contractError.message,
+        code: contractError.code,
+        reason: contractError.reason,
+        shortMessage: contractError.shortMessage,
+        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
+      }, { status: 500, headers: corsHeaders });
+    }
 
     // Create metadata JSON (in production, upload to IPFS)
     const metadata = {
@@ -258,20 +305,25 @@ Deno.serve(async (req) => {
     } catch (mintError) {
       console.error(`[${debugId}] ❌ Mint transaction failed:`, mintError);
       console.error(`[${debugId}] Error stack:`, mintError.stack);
-      console.error(`[${debugId}] Error details:`, {
-        message: mintError.message,
+      console.error(`[${debugId}] Full error object:`, JSON.stringify(mintError, null, 2));
+      return Response.json({
+        ok: false,
+        debugId,
+        message: mintError.reason || mintError.message || 'Failed to submit mint transaction',
+        details: mintError.message,
         code: mintError.code,
         reason: mintError.reason,
-        data: mintError.data
-      });
-      return Response.json(
-        { 
-          error: 'Failed to submit mint transaction', 
-          details: mintError.reason || mintError.message,
-          debugId 
-        },
-        { status: 500, headers: corsHeaders }
-      );
+        shortMessage: mintError.shortMessage,
+        stack: mintError.stack,
+        data: mintError.data,
+        config: { 
+          network: NETWORK, 
+          rpcHost, 
+          contractAddress: CONTRACT_ADDRESS,
+          recipient: student.wallet_address,
+          signerAddress: signer.address
+        }
+      }, { status: 500, headers: corsHeaders });
     }
     
     console.log(`[${debugId}] ⏳ Waiting for transaction confirmation...`);
@@ -282,15 +334,18 @@ Deno.serve(async (req) => {
     } catch (waitError) {
       console.error(`[${debugId}] ❌ Transaction wait failed:`, waitError);
       console.error(`[${debugId}] Error stack:`, waitError.stack);
-      return Response.json(
-        { 
-          error: 'Transaction failed or reverted', 
-          txHash: tx.hash,
-          details: waitError.message,
-          debugId 
-        },
-        { status: 500, headers: corsHeaders }
-      );
+      return Response.json({
+        ok: false,
+        debugId,
+        message: waitError.reason || waitError.message || 'Transaction failed or reverted',
+        details: waitError.message,
+        code: waitError.code,
+        reason: waitError.reason,
+        shortMessage: waitError.shortMessage,
+        stack: waitError.stack,
+        txHash: tx.hash,
+        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
+      }, { status: 500, headers: corsHeaders });
     }
 
     console.log(`[${debugId}] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
@@ -381,14 +436,22 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error(`[${debugId}] ❌ Unexpected error issuing BlockWard:`, error);
     console.error(`[${debugId}] Stack trace:`, error.stack);
+    console.error(`[${debugId}] Full error:`, JSON.stringify(error, null, 2));
     
-    return Response.json(
-      { 
-        error: 'Failed to issue BlockWard on blockchain',
-        details: error.message,
-        debugId 
-      },
-      { status: 500, headers: corsHeaders }
-    );
+    return Response.json({
+      ok: false,
+      debugId,
+      message: error.reason || error.message || 'Failed to issue BlockWard on blockchain',
+      details: error.message,
+      code: error.code,
+      reason: error.reason,
+      shortMessage: error.shortMessage,
+      stack: error.stack,
+      config: { 
+        network: Deno.env.get('NETWORK') || 'sepolia',
+        rpcHost: Deno.env.get('SEPOLIA_RPC_URL') ? new URL(Deno.env.get('SEPOLIA_RPC_URL')).hostname : 'unknown',
+        contractAddress: Deno.env.get('CONTRACT_ADDRESS') || 'not set'
+      }
+    }, { status: 500, headers: corsHeaders });
   }
 });
