@@ -131,6 +131,12 @@ function IssueBlockWardContent() {
   };
 
   const handleIssue = async () => {
+    // IMPORTANT: BlockWard uses PLATFORM-MANAGED WALLETS ONLY
+    // - NO MetaMask or browser wallet required
+    // - Backend mints NFT using server-side issuer wallet
+    // - Student's vault address is managed by BlockWard
+    // - All blockchain signing happens server-side via Sepolia RPC
+    
     if (!formData.confirmed) {
       toast.error('Please confirm the award details');
       return;
@@ -140,7 +146,7 @@ function IssueBlockWardContent() {
     setIssuingStage('Calling backend issueBlockWard...');
 
     try {
-      console.log('🚀 Calling backend issueBlockWard function...');
+      console.log('🚀 Calling backend issueBlockWard function (NO METAMASK)...');
       console.log('📦 Payload:', {
         studentId: formData.selectedStudent.id,
         title: formData.title,
