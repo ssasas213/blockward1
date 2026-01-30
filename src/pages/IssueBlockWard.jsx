@@ -137,9 +137,17 @@ function IssueBlockWardContent() {
     }
 
     setIssuing(true);
-    setIssuingStage('Minting on Sepolia testnet...');
+    setIssuingStage('Calling backend issueBlockWard...');
 
     try {
+      console.log('🚀 Calling backend issueBlockWard function...');
+      console.log('📦 Payload:', {
+        studentId: formData.selectedStudent.id,
+        title: formData.title,
+        category: formData.category,
+        description: formData.description
+      });
+
       const response = await base44.functions.invoke('issueBlockWard', {
         studentId: formData.selectedStudent.id,
         title: formData.title,
@@ -147,18 +155,34 @@ function IssueBlockWardContent() {
         description: formData.description
       });
 
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response data:', response.data);
+
       const data = response.data;
 
       if (response.status !== 200) {
-        throw new Error(data.error || 'Failed to issue BlockWard');
+        const errorMsg = data.error || 'Failed to issue BlockWard';
+        const errorDetails = data.details || '';
+        const debugId = data.debugId || '';
+        console.error('❌ Backend error:', errorMsg, errorDetails, debugId);
+        throw new Error(`${errorMsg}${errorDetails ? ': ' + errorDetails : ''}${debugId ? ' [' + debugId + ']' : ''}`);
       }
 
+      console.log('✅ BlockWard issued successfully!');
+      console.log('🔗 Transaction hash:', data.txHash);
+      console.log('🎫 Token ID:', data.tokenId);
+      
+      setIssuingStage('Minting on Sepolia testnet...');
       setBlockchainData(data);
       setIssueSuccess(true);
       toast.success('BlockWard issued successfully!');
     } catch (error) {
-      console.error('Error issuing BlockWard:', error);
-      setIssueError(error.message || 'Failed to issue BlockWard. Please try again.');
+      console.error('❌ Error issuing BlockWard:', error);
+      console.error('📋 Error message:', error.message);
+      console.error('📋 Error details:', error);
+      
+      const errorMessage = error.message || 'Failed to issue BlockWard. Please try again.';
+      setIssueError(errorMessage);
       toast.error('Failed to issue BlockWard');
     } finally {
       setIssuing(false);
