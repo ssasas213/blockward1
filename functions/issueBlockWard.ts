@@ -140,8 +140,8 @@ Deno.serve(async (req) => {
     const NETWORK = Deno.env.get('NETWORK') || 'sepolia';
     const CONTRACT_ADDRESS = Deno.env.get('CONTRACT_ADDRESS');
     
-    // Network configuration - Sepolia testnet
-    const RPC_URL = SEPOLIA_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com';
+    // Network configuration - Sepolia testnet (use reliable public RPC)
+    const RPC_URL = 'https://rpc.sepolia.org';
 
     if (!ISSUER_PRIVATE_KEY) {
       console.error(`[${debugId}] ISSUER_PRIVATE_KEY not configured`);
