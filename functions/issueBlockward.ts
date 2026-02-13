@@ -10,7 +10,7 @@ const corsHeaders = {
   'content-type': 'application/json'
 };
 
-const APPROVED_SIGNER = "0xc07af63f5eaa6d67f4a618d00a8a502a61d5ff0e";
+const APPROVED_SIGNER = "0xC07aF63F5eaa6D67F4a618D00A8a502a61D5fF0e";
 
 const CONTRACT_ABI = parseAbi([
   "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
