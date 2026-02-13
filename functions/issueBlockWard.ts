@@ -1,493 +1,529 @@
+import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
+import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
+import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-import { ethers } from 'npm:ethers@6.13.0';
 
-// CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "content-type, authorization",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'content-type': 'application/json'
 };
 
-// Compiled BlockWard Contract ABI
-const BLOCKWARD_ABI = [
-  {
-    "inputs": [
-      { "internalType": "string", "name": "_name", "type": "string" },
-      { "internalType": "string", "name": "_symbol", "type": "string" }
-    ],
-    "stateMutability": "nonpayable",
-    "type": "constructor"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" },
-      { "indexed": false, "internalType": "string", "name": "uri", "type": "string" }
-    ],
-    "name": "Minted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      { "indexed": true, "internalType": "address", "name": "from", "type": "address" },
-      { "indexed": true, "internalType": "address", "name": "to", "type": "address" },
-      { "indexed": true, "internalType": "uint256", "name": "tokenId", "type": "uint256" }
-    ],
-    "name": "Transfer",
-    "type": "event"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "to", "type": "address" },
-      { "internalType": "string", "name": "uri", "type": "string" }
-    ],
-    "name": "mint",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "tokenCounter",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [{ "internalType": "address", "name": "owner", "type": "address" }],
-    "name": "balanceOf",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      { "internalType": "address", "name": "owner", "type": "address" },
-      { "internalType": "uint256", "name": "index", "type": "uint256" }
-    ],
-    "name": "tokenOfOwnerByIndex",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  }
-];
+const APPROVED_SIGNER = "0xC07aF63F5eaa6D67F4a618D00A8a502a61D5fF0e";
 
-function generateDebugId() {
-  return `BW-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-}
+const CONTRACT_ABI = parseAbi([
+  "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
+]);
 
 Deno.serve(async (req) => {
-  const debugId = generateDebugId();
-  
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
+  const debugId = "bw_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
 
-  // Only allow POST
-  if (req.method !== "POST") {
-    return Response.json(
-      { error: 'Method not allowed', debugId },
-      { status: 405, headers: corsHeaders }
-    );
-  }
+  const log = (msg: string, obj = {}) => {
+    console.log(JSON.stringify({ msg, debugId, ...obj }));
+  };
 
   try {
-    // 1. Defensive request body parsing
-    const rawBody = await req.text();
+    log("=== ISSUE BLOCKWARD START ===", { method: req.method });
+
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    if (req.method !== 'POST') {
+      log("Invalid method", { method: req.method });
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Method not allowed', debugId }),
+        { status: 405, headers: corsHeaders }
+      );
+    }
+
+    // Authenticate user
+    log("Authenticating user...");
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
     
-    if (!rawBody || rawBody.trim() === '') {
-      console.error(`[${debugId}] Empty request body`);
-      return Response.json(
-        { error: 'Empty request body', debugId },
-        { status: 400, headers: corsHeaders }
+    if (!user) {
+      log("Unauthorized - no user");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
+        { status: 401, headers: corsHeaders }
       );
     }
+    
+    log("User authenticated", { email: user.email });
 
-    let payload;
-    try {
-      payload = JSON.parse(rawBody);
-    } catch (parseError) {
-      console.error(`[${debugId}] Non-JSON request body:`, rawBody.substring(0, 200));
-      return Response.json(
-        { error: 'Non-JSON request body', debugId },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+    // Parse request body
+    const body = await req.json();
+    
+    // Sanitize payload for logging (remove sensitive data if any)
+    const sanitizedPayload = {
+      studentId: body.studentId,
+      teacherAddress: body.teacherAddress,
+      studentAddress: body.studentAddress,
+      title: body.title,
+      category: body.category,
+      hasDescription: !!body.description,
+      hasTokenURI: !!body.tokenURI
+    };
+    log("Request body received", { payload: sanitizedPayload });
+    
+    const { studentId, teacherAddress, studentAddress, title, category, description, tokenURI } = body;
 
-    // 2. Validate required fields
-    const { studentId, title, category, description } = payload;
+    // Validate required fields
     const missing = [];
     if (!studentId) missing.push('studentId');
     if (!title) missing.push('title');
     if (!category) missing.push('category');
 
     if (missing.length > 0) {
-      console.error(`[${debugId}] Missing required fields:`, missing);
-      return Response.json(
-        { error: 'Missing required fields', missing, debugId },
-        { status: 400, headers: corsHeaders }
+      log("Missing required fields", { missing });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'MISSING_FIELDS',
+          message: 'Missing required fields',
+          missing,
+          debugId,
+          received: sanitizedPayload
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    const base44 = createClientFromRequest(req);
-
-    // Get secrets (backend-only, never exposed to frontend)
-    const ISSUER_PRIVATE_KEY = Deno.env.get('ISSUER_PRIVATE_KEY');
-    const SEPOLIA_RPC_URL = Deno.env.get('SEPOLIA_RPC_URL');
-    const NETWORK = Deno.env.get('NETWORK') || 'sepolia';
-    const CONTRACT_ADDRESS = Deno.env.get('CONTRACT_ADDRESS');
+    // Resolve student address
+    let resolvedStudentAddress = studentAddress;
     
-    // CRITICAL: Only use RPC URL from secrets - NEVER fallback to public RPC
-    const RPC_URL = SEPOLIA_RPC_URL;
-    
-    if (!RPC_URL) {
-      console.error(`[${debugId}] SEPOLIA_RPC_URL not configured in secrets`);
-      return Response.json(
-        { error: 'SEPOLIA_RPC_URL secret not set. Please configure it in dashboard settings.', debugId },
-        { status: 500, headers: corsHeaders }
-      );
+    if (!resolvedStudentAddress) {
+      log("studentAddress not in payload, loading from student record", { studentId });
+      const studentProfiles = await base44.entities.UserProfile.filter({ id: studentId });
+      
+      if (!studentProfiles || studentProfiles.length === 0) {
+        log("Student not found", { studentId });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'STUDENT_NOT_FOUND',
+            message: 'Student not found',
+            studentId,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      resolvedStudentAddress = studentProfiles[0].wallet_address;
+      
+      if (!resolvedStudentAddress) {
+        log("Student has no wallet address", { studentId });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'STUDENT_NO_WALLET',
+            message: 'Student does not have a wallet address',
+            studentId,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+      
+      log("Student wallet loaded from DB", { studentAddress: resolvedStudentAddress });
+    } else {
+      log("Student address from payload", { studentAddress: resolvedStudentAddress });
     }
 
-    if (!ISSUER_PRIVATE_KEY) {
-      console.error(`[${debugId}] ISSUER_PRIVATE_KEY not configured`);
-      return Response.json(
-        { error: 'ISSUER_PRIVATE_KEY not configured', debugId },
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    if (!CONTRACT_ADDRESS) {
-      console.error(`[${debugId}] CONTRACT_ADDRESS not configured`);
-      return Response.json(
-        { error: 'CONTRACT_ADDRESS not configured. Deploy contract first.', debugId },
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    // Get current user (issuer)
-    const issuer = await base44.auth.me();
-    if (!issuer) {
-      console.error(`[${debugId}] Unauthorized - no authenticated user`);
-      return Response.json(
-        { error: 'Unauthorized', debugId },
-        { status: 401, headers: corsHeaders }
-      );
-    }
-
-    // Log configuration for debugging (log hostname only, not full URL/key)
-    let rpcHost;
+    // Validate student address format
     try {
-      rpcHost = new URL(RPC_URL).hostname;
+      resolvedStudentAddress = getAddress(resolvedStudentAddress);
     } catch {
-      rpcHost = 'invalid-url';
+      log("Invalid student address format", { studentAddress: resolvedStudentAddress });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'INVALID_STUDENT_ADDRESS',
+          message: 'Invalid student address format',
+          studentAddress: resolvedStudentAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
     }
-    console.log(`[${debugId}] 🔧 Configuration:`);
-    console.log(`[${debugId}] - Network: ${NETWORK}`);
-    console.log(`[${debugId}] - RPC Host: ${rpcHost}`);
-    console.log(`[${debugId}] - Contract Address: ${CONTRACT_ADDRESS}`);
-    console.log(`[${debugId}] - Issuer: ${issuer.email}`);
+
+    // Resolve teacher address (for validation)
+    let resolvedTeacherAddress = teacherAddress;
     
-    // Validate RPC URL hostname
+    if (!resolvedTeacherAddress) {
+      log("teacherAddress not in payload, loading from teacher record", { email: user.email });
+      const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      
+      if (!teacherProfiles || teacherProfiles.length === 0) {
+        log("Teacher profile not found", { email: user.email });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'TEACHER_NOT_FOUND',
+            message: 'Teacher profile not found',
+            teacherId: user.email,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      resolvedTeacherAddress = teacherProfiles[0].wallet_address;
+      
+      if (!resolvedTeacherAddress) {
+        log("Teacher has no wallet address", { email: user.email });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'TEACHER_NO_WALLET',
+            message: 'Teacher does not have a wallet address',
+            email: user.email,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+      
+      log("Teacher wallet loaded from DB", { teacherAddress: resolvedTeacherAddress });
+    } else {
+      log("Teacher address from payload", { teacherAddress: resolvedTeacherAddress });
+    }
+
+    // Validate teacher address format
+    try {
+      resolvedTeacherAddress = getAddress(resolvedTeacherAddress);
+    } catch {
+      log("Invalid teacher address format", { teacherAddress: resolvedTeacherAddress });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'INVALID_TEACHER_ADDRESS',
+          message: 'Invalid teacher address format',
+          teacherAddress: resolvedTeacherAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Get environment variables - ONLY use secrets, NEVER fallback to public RPC
+    log("Loading environment variables...");
+    const network = Deno.env.get("NETWORK");
+    const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
+    const issuerPrivateKey = Deno.env.get("ISSUER_PRIVATE_KEY");
+    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
+
+    // CRITICAL: Validate RPC URL is set BEFORE proceeding
+    if (!rpcUrl) {
+      log("CRITICAL: SEPOLIA_RPC_URL not configured");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'SEPOLIA_RPC_URL secret not set. Configure your Alchemy URL in dashboard settings.',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Extract and log RPC hostname (not full URL with key)
+    let rpcHost: string;
+    try {
+      rpcHost = new URL(rpcUrl).hostname;
+    } catch {
+      log("Invalid RPC URL format");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'Invalid SEPOLIA_RPC_URL format',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("Environment loaded", {
+      network,
+      rpcHost,
+      contractSet: !!contractAddress,
+      pkSet: !!issuerPrivateKey,
+      rpcSet: !!rpcUrl
+    });
+
+    // CRITICAL: Reject public RPC fallback
     if (rpcHost === 'rpc.sepolia.org') {
-      console.error(`[${debugId}] ❌ CRITICAL: Using public RPC fallback detected!`);
-      return Response.json({
-        error: 'Invalid RPC configuration - using unreliable public RPC. Please set SEPOLIA_RPC_URL to your Alchemy URL.',
-        debugId,
-        rpcHost
-      }, { status: 500, headers: corsHeaders });
-    }
-
-    // Get student profile to retrieve wallet address
-    const students = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
-    if (students.length === 0) {
-      console.error(`[${debugId}] Student not found: ${studentId}`);
-      return Response.json(
-        { error: 'Student not found', debugId },
-        { status: 404, headers: corsHeaders }
-      );
-    }
-    const student = students[0];
-
-    if (!student.wallet_address) {
-      console.error(`[${debugId}] Student does not have a wallet address: ${studentId}`);
-      return Response.json(
-        { error: 'Student does not have a wallet address', debugId },
-        { status: 400, headers: corsHeaders }
+      log("CRITICAL: Public RPC detected - rejecting");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'Using unreliable public RPC. Set SEPOLIA_RPC_URL to your Alchemy endpoint.',
+          rpcHost,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    // Validate wallet address
-    if (!ethers.isAddress(student.wallet_address)) {
-      console.error(`[${debugId}] Invalid student wallet address: ${student.wallet_address}`);
-      return Response.json(
-        { error: 'Invalid student wallet address', debugId },
-        { status: 400, headers: corsHeaders }
+    // Validate configuration
+    if (network !== "sepolia") {
+      log("Unsupported network", { network });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'UNSUPPORTED_NETWORK',
+          message: `Network "${network}" is not supported`,
+          network,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    // Get issuer profile
-    const issuerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: issuer.email });
-    if (issuerProfiles.length === 0) {
-      console.error(`[${debugId}] Issuer profile not found: ${issuer.email}`);
-      return Response.json(
-        { error: 'Issuer profile not found', debugId },
-        { status: 404, headers: corsHeaders }
+    if (!contractAddress || !issuerPrivateKey) {
+      log("Missing contract or private key");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'MISSING_CONFIG',
+          message: 'Contract address or private key not configured',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
-    const issuerProfile = issuerProfiles[0];
 
-    // SERVER-SIDE SIGNING: Connect to Sepolia via JsonRpcProvider (NO METAMASK)
-    console.log(`[${debugId}] 🔐 Connecting to Sepolia via server-side wallet...`);
+    // Setup viem clients
+    log("Setting up viem clients...", { rpcHost });
+    const account = privateKeyToAccount(issuerPrivateKey as `0x${string}`);
     
-    let provider, signer, contract;
-    try {
-      provider = new ethers.JsonRpcProvider(RPC_URL);
-      console.log(`[${debugId}] ✅ Provider created: ${rpcHost}`);
-    } catch (providerError) {
-      console.error(`[${debugId}] ❌ Failed to create provider:`, providerError);
-      return Response.json({
-        ok: false,
-        debugId,
-        message: 'Failed to connect to Sepolia RPC',
-        details: providerError.message,
-        code: providerError.code,
-        reason: providerError.reason,
-        shortMessage: providerError.shortMessage,
-        data: providerError.data,
-        stack: providerError.stack,
-        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
-      }, { status: 500, headers: corsHeaders });
-    }
-
-    try {
-      signer = new ethers.Wallet(ISSUER_PRIVATE_KEY, provider);
-      console.log(`[${debugId}] 📝 Signer address: ${signer.address}`);
-    } catch (walletError) {
-      console.error(`[${debugId}] ❌ Failed to create wallet:`, walletError);
-      return Response.json({
-        ok: false,
-        debugId,
-        message: 'Failed to create wallet from private key',
-        details: walletError.message,
-        code: walletError.code,
-        reason: walletError.reason,
-        shortMessage: walletError.shortMessage,
-        data: walletError.data,
-        stack: walletError.stack,
-        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
-      }, { status: 500, headers: corsHeaders });
-    }
-
-    try {
-      contract = new ethers.Contract(CONTRACT_ADDRESS, BLOCKWARD_ABI, signer);
-      console.log(`[${debugId}] 📄 Contract connected: ${CONTRACT_ADDRESS}`);
-    } catch (contractError) {
-      console.error(`[${debugId}] ❌ Failed to create contract instance:`, contractError);
-      return Response.json({
-        ok: false,
-        debugId,
-        message: 'Failed to connect to smart contract',
-        details: contractError.message,
-        code: contractError.code,
-        reason: contractError.reason,
-        shortMessage: contractError.shortMessage,
-        data: contractError.data,
-        stack: contractError.stack,
-        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
-      }, { status: 500, headers: corsHeaders });
-    }
-
-    // Create metadata JSON (in production, upload to IPFS)
-    const metadata = {
-      name: title,
-      description: description || '',
-      category: category,
-      image: `https://api.dicebear.com/7.x/shapes/svg?seed=${title}`,
-      attributes: [
-        { trait_type: 'Category', value: category },
-        { trait_type: 'Student', value: `${student.first_name} ${student.last_name}` },
-        { trait_type: 'Issued Date', value: new Date().toISOString() }
-      ]
-    };
-
-    // Fix base64 encoding for Unicode characters
-    const metadataJSON = JSON.stringify(metadata);
-    const metadataB64 = btoa(unescape(encodeURIComponent(metadataJSON)));
-    const metadataURI = `data:application/json;base64,${metadataB64}`;
-
-    // Log blockchain call parameters
-    console.log(`[${debugId}] 🎨 Minting BlockWard:`);
-    console.log(`[${debugId}] - Recipient: ${student.wallet_address}`);
-    console.log(`[${debugId}] - Title: ${title}`);
-    console.log(`[${debugId}] - Category: ${category}`);
-    console.log(`[${debugId}] - Network: ${NETWORK}`);
-
-    // SERVER-SIDE MINT: Backend signs and sends transaction directly to Sepolia
-    let tx;
-    try {
-      console.log(`[${debugId}] 📤 Submitting mint transaction to Sepolia...`);
-      tx = await contract.mint(student.wallet_address, metadataURI);
-      console.log(`[${debugId}] ✅ Transaction submitted: ${tx.hash}`);
-    } catch (mintError) {
-      console.error(`[${debugId}] ❌ Mint transaction failed:`, mintError);
-      console.error(`[${debugId}] Error stack:`, mintError.stack);
-      console.error(`[${debugId}] Full error object:`, JSON.stringify(mintError, null, 2));
-      return Response.json({
-        ok: false,
-        debugId,
-        message: mintError.reason || mintError.message || 'Failed to submit mint transaction',
-        details: mintError.message,
-        code: mintError.code,
-        reason: mintError.reason,
-        shortMessage: mintError.shortMessage,
-        stack: mintError.stack,
-        data: mintError.data,
-        config: { 
-          network: NETWORK, 
-          rpcHost, 
-          contractAddress: CONTRACT_ADDRESS,
-          recipient: student.wallet_address,
-          signerAddress: signer.address
-        }
-      }, { status: 500, headers: corsHeaders });
-    }
-    
-    console.log(`[${debugId}] ⏳ Waiting for transaction confirmation...`);
-    
-    let receipt;
-    try {
-      receipt = await tx.wait();
-    } catch (waitError) {
-      console.error(`[${debugId}] ❌ Transaction wait failed:`, waitError);
-      console.error(`[${debugId}] Error stack:`, waitError.stack);
-      return Response.json({
-        ok: false,
-        debugId,
-        message: waitError.reason || waitError.message || 'Transaction failed or reverted',
-        details: waitError.message,
-        code: waitError.code,
-        reason: waitError.reason,
-        shortMessage: waitError.shortMessage,
-        stack: waitError.stack,
-        txHash: tx.hash,
-        config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
-      }, { status: 500, headers: corsHeaders });
-    }
-
-    console.log(`[${debugId}] ✅ Transaction confirmed in block ${receipt.blockNumber}`);
-    console.log(`[${debugId}] 📋 Receipt status: ${receipt.status}`);
-    console.log(`[${debugId}] 📊 Number of logs: ${receipt.logs.length}`);
-    
-    // Log all events for debugging
-    receipt.logs.forEach((log, index) => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        console.log(`[${debugId}] 📄 Event ${index}: ${parsed?.name}`, parsed?.args);
-      } catch {
-        console.log(`[${debugId}] 📄 Log ${index}: Unable to parse (may be from different contract)`);
-      }
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(rpcUrl),
     });
 
-    // Parse token ID from Minted event
-    const mintedEvent = receipt.logs.find(log => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        return parsed?.name === 'Minted';
-      } catch {
-        return false;
-      }
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(rpcUrl),
     });
-    
-    // Also check for Transfer event
-    const transferEvent = receipt.logs.find(log => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        return parsed?.name === 'Transfer';
-      } catch {
-        return false;
-      }
-    });
-    
-    console.log(`[${debugId}] 🎯 Minted event found: ${!!mintedEvent}`);
-    console.log(`[${debugId}] 🎯 Transfer event found: ${!!transferEvent}`);
-    
-    if (!mintedEvent && !transferEvent) {
-      console.error(`[${debugId}] ❌ No Transfer or Minted event found in transaction receipt`);
-      return Response.json(
-        { 
-          error: 'No Transfer or Minted event found in transaction receipt. NFT may not have been minted.',
-          txHash: receipt.hash,
-          debugId 
-        },
-        { status: 500, headers: corsHeaders }
+
+    const signerAddress = account.address;
+    log("MINT_SIGNER", { signerAddress });
+
+    // HARD FAIL: Check signer address matches approved teacher wallet
+    if (signerAddress.toLowerCase() !== APPROVED_SIGNER) {
+      log("CRITICAL: Signer mismatch - not approved teacher wallet", {
+        expected: APPROVED_SIGNER,
+        got: signerAddress
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'WRONG_SIGNER',
+          message: 'ISSUER_PRIVATE_KEY does not match approved teacher wallet',
+          expected: APPROVED_SIGNER,
+          got: signerAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
       );
     }
-    
-    const tokenId = mintedEvent 
-      ? contract.interface.parseLog(mintedEvent).args.tokenId.toString() 
-      : (transferEvent ? contract.interface.parseLog(transferEvent).args.tokenId.toString() : '0');
 
-    // Save BlockWard record to database
-    await base44.asServiceRole.entities.BlockWard.create({
-      student_email: student.user_email,
-      student_name: `${student.first_name} ${student.last_name}`,
-      student_wallet: student.wallet_address,
-      issuer_email: issuer.email,
-      issuer_name: `${issuerProfile.first_name} ${issuerProfile.last_name}`,
-      issuer_wallet: 'system',
-      school_id: issuerProfile.school_id,
-      title: title,
-      description: description || '',
-      category: category,
-      token_id: tokenId.toString(),
-      metadata_uri: metadataURI,
-      transaction_hash: receipt.hash,
-      block_number: receipt.blockNumber,
-      minted_at: new Date().toISOString(),
-      status: 'active'
+    log("✓ Signer approved", { signerAddress });
+
+    // HARD FAIL: If teacherAddress provided, must match signer
+    if (teacherAddress && resolvedTeacherAddress.toLowerCase() !== signerAddress.toLowerCase()) {
+      log("CRITICAL: Teacher address does not match signer", {
+        teacherAddress: resolvedTeacherAddress,
+        signerAddress
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TEACHER_SIGNER_MISMATCH',
+          message: 'teacherAddress does not match ISSUER_PRIVATE_KEY signer',
+          teacherAddress: resolvedTeacherAddress,
+          signerAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("✓ Teacher address validated", { teacherAddress: resolvedTeacherAddress });
+
+    // Get issuer balance
+    const balance = await publicClient.getBalance({ address: account.address });
+    log("Issuer balance", { balanceWei: balance.toString(), balanceEth: (Number(balance) / 1e18).toFixed(6) });
+
+    // Log final mint recipient - minting to signer (teacher)
+    log("MINT_TO", { recipientAddress: account.address, studentId });
+
+    // Build or use provided tokenURI
+    let finalTokenURI: string;
+    
+    if (tokenURI) {
+      finalTokenURI = tokenURI;
+      log("Using provided tokenURI", { tokenURI: finalTokenURI });
+    } else {
+      // Build base64 JSON metadata
+      const metadata = {
+        name: title,
+        description: description || '',
+        category: category,
+        image: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`,
+        attributes: [
+          { trait_type: 'Category', value: category },
+          { trait_type: 'Student ID', value: studentId },
+          { trait_type: 'Issued Date', value: new Date().toISOString() }
+        ]
+      };
+      
+      const metadataJSON = JSON.stringify(metadata);
+      const metadataB64 = btoa(unescape(encodeURIComponent(metadataJSON)));
+      finalTokenURI = `data:application/json;base64,${metadataB64}`;
+      
+      log("Built base64 tokenURI", { hasMetadata: true });
+    }
+    
+    // Convert category to bytes32
+    const awardTypeBytes32 = encodeBytes32String(category);
+
+    log("Metadata prepared", { tokenURI: finalTokenURI.substring(0, 100) + '...', awardTypeBytes32, category });
+
+    // Prepare mint arguments - NFT goes to signer (teacher)
+    const mintArgs = [
+      account.address as `0x${string}`,
+      resolvedTeacherAddress as `0x${string}`,
+      awardTypeBytes32,
+      finalTokenURI
+    ] as const;
+
+    log("Prepared mint arguments", {
+      recipientAddress: mintArgs[0],
+      teacherAddress: mintArgs[1],
+      awardType: mintArgs[2],
+      tokenURILength: finalTokenURI.length
     });
 
-    console.log(`[${debugId}] ✅ BlockWard issued successfully - Token ID: ${tokenId}`);
+    // SIMULATE transaction before executing
+    log("Simulating transaction...", {
+      functionName: 'issueAward',
+      args: mintArgs
+    });
 
-    return Response.json({
-      success: true,
-      txHash: receipt.hash,
-      tokenId: tokenId.toString(),
-      network: 'sepolia',
-      explorerUrl: `https://sepolia.etherscan.io/tx/${receipt.hash}`,
-      blockNumber: receipt.blockNumber,
-      debugId
-    }, { headers: corsHeaders });
-
-  } catch (error) {
-    console.error(`[${debugId}] ❌ Unexpected error issuing BlockWard:`, error);
-    console.error(`[${debugId}] Stack trace:`, error.stack);
-    console.error(`[${debugId}] Full error:`, JSON.stringify(error, null, 2));
-    
-    let errorRpcHost = 'unknown';
+    let simulationResult;
     try {
-      const errorRpcUrl = Deno.env.get('SEPOLIA_RPC_URL');
-      if (errorRpcUrl) errorRpcHost = new URL(errorRpcUrl).hostname;
-    } catch {}
+      simulationResult = await publicClient.simulateContract({
+        account,
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'issueAward',
+        args: mintArgs,
+      });
+      log("✓ Simulation successful", { simulationResult: 'OK' });
+    } catch (simError: any) {
+      log("✗ Simulation failed", {
+        errorMessage: simError?.message,
+        shortMessage: simError?.shortMessage,
+        cause: simError?.cause,
+        details: simError?.details
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'SIMULATION_FAILED',
+          message: simError?.shortMessage || simError?.message || 'Transaction would revert',
+          debugId,
+          signerAddress,
+          teacherAddress: resolvedTeacherAddress,
+          studentAddress: resolvedStudentAddress,
+          functionName: 'issueAward',
+          args: mintArgs,
+          error: {
+            message: simError?.message,
+            shortMessage: simError?.shortMessage,
+            cause: simError?.cause?.toString(),
+            details: simError?.details
+          }
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Execute transaction
+    log("Sending transaction...");
+    const txHash = await walletClient.writeContract(simulationResult.request);
+    log("Transaction sent", { txHash });
+
+    // Wait for confirmation
+    log("Waiting for confirmation...");
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     
-    return Response.json({
-      ok: false,
+    log("Transaction confirmed", {
+      txHash: receipt.transactionHash,
+      blockNumber: receipt.blockNumber.toString(),
+      status: receipt.status,
+      gasUsed: receipt.gasUsed.toString()
+    });
+
+    log("=== ✓ ISSUE BLOCKWARD SUCCESS ===");
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        debugId,
+        txHash: receipt.transactionHash,
+        recipientAddress: account.address,
+        teacherAddress: resolvedTeacherAddress,
+        studentAddress: resolvedStudentAddress,
+        studentId,
+        title,
+        category,
+        blockNumber: receipt.blockNumber.toString(),
+        status: receipt.status
+      }),
+      { status: 200, headers: corsHeaders }
+    );
+
+  } catch (err: any) {
+    // Log full error with multiple formats
+    console.error("ISSUE_BLOCKWARD_FATAL", JSON.stringify({
       debugId,
-      message: error.reason || error.message || 'Failed to issue BlockWard on blockchain',
-      details: error.message,
-      code: error.code,
-      reason: error.reason,
-      shortMessage: error.shortMessage,
-      data: error.data,
-      stack: error.stack,
-      config: { 
-        network: Deno.env.get('NETWORK') || 'sepolia',
-        rpcHost: errorRpcHost,
-        contractAddress: Deno.env.get('CONTRACT_ADDRESS') || 'not set'
-      }
-    }, { status: 500, headers: corsHeaders });
+      errorName: err?.name,
+      errorMessage: err?.message,
+      errorCode: err?.code,
+      errorShortMessage: err?.shortMessage,
+      errorReason: err?.reason,
+      errorData: err?.data,
+      errorStack: err?.stack,
+      errorCause: err?.cause,
+      errorDetails: err?.details
+    }, null, 2));
+
+    // Return structured error to frontend
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        debugId,
+        message: err?.message ?? "Unknown error",
+        code: err?.code,
+        shortMessage: err?.shortMessage,
+        reason: err?.reason,
+        cause: err?.cause?.toString(),
+        details: err?.details,
+        data: err?.data,
+        stack: err?.stack,
+        errorType: err?.constructor?.name || 'Unknown'
+      }),
+      { status: 200, headers: corsHeaders }
+    );
   }
 });
