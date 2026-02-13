@@ -24,29 +24,31 @@ export default function Analytics() {
 
   const loadAnalytics = async () => {
     try {
-      const [students, points, blockwards] = await Promise.all([
+      const [students, teachers, points, classes] = await Promise.all([
         base44.entities.UserProfile.filter({ user_type: 'student' }),
-        base44.entities.PointEntry.list('-created_date', 100),
-        base44.entities.BlockWard.list()
+        base44.entities.UserProfile.filter({ user_type: 'teacher' }),
+        base44.entities.PointEntry.list('-created_date', 200),
+        base44.entities.Class.list()
       ]);
 
-      // Mock data for visualization
-      const userGrowth = [
-        { month: 'Jan', students: 45, teachers: 5 },
-        { month: 'Feb', students: 67, teachers: 7 },
-        { month: 'Mar', students: 89, teachers: 9 },
-        { month: 'Apr', students: 112, teachers: 11 },
-        { month: 'May', students: 134, teachers: 12 },
-        { month: 'Jun', students: students.length, teachers: 15 }
-      ];
+      // Calculate points over time (last 4 weeks)
+      const now = new Date();
+      const pointsOverTime = [];
+      for (let i = 3; i >= 0; i--) {
+        const weekStart = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
+        const weekEnd = new Date(now.getTime() - ((i - 1) * 7 * 24 * 60 * 60 * 1000));
+        const weekPoints = points.filter(p => {
+          const date = new Date(p.created_date);
+          return date >= weekStart && date < weekEnd;
+        });
+        pointsOverTime.push({
+          week: `Week ${4 - i}`,
+          achievement: weekPoints.filter(p => p.type === 'achievement').reduce((sum, p) => sum + p.points, 0),
+          behaviour: weekPoints.filter(p => p.type === 'behaviour').reduce((sum, p) => sum + Math.abs(p.points), 0)
+        });
+      }
 
-      const pointsOverTime = [
-        { week: 'Week 1', achievement: 120, behaviour: 30 },
-        { week: 'Week 2', achievement: 180, behaviour: 45 },
-        { week: 'Week 3', achievement: 230, behaviour: 20 },
-        { week: 'Week 4', achievement: 290, behaviour: 35 }
-      ];
-
+      // Top students
       const topStudents = students
         .sort((a, b) => (b.total_achievement_points || 0) - (a.total_achievement_points || 0))
         .slice(0, 10)
@@ -55,20 +57,25 @@ export default function Analytics() {
           points: s.total_achievement_points || 0
         }));
 
-      const classPerformance = [
-        { name: 'Mathematics', avg: 85, students: 25 },
-        { name: 'Physics', avg: 78, students: 22 },
-        { name: 'English', avg: 82, students: 28 },
-        { name: 'Chemistry', avg: 75, students: 20 },
-        { name: 'History', avg: 88, students: 24 }
-      ];
+      // Class performance (based on enrolled students' average points)
+      const classPerformance = classes.map(cls => {
+        const classStudents = students.filter(s => cls.student_emails?.includes(s.user_email));
+        const avgPoints = classStudents.length > 0
+          ? classStudents.reduce((sum, s) => sum + (s.total_achievement_points || 0), 0) / classStudents.length
+          : 0;
+        return {
+          name: cls.name,
+          avg: Math.round(avgPoints),
+          students: classStudents.length
+        };
+      }).sort((a, b) => b.avg - a.avg).slice(0, 5);
 
       setStats({
-        userGrowth,
+        userGrowth: [],
         pointsOverTime,
         topStudents,
         classPerformance,
-        attendanceRate: 92
+        attendanceRate: 0
       });
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -94,94 +101,14 @@ export default function Analytics() {
         <p className="text-slate-500 mt-1">Comprehensive insights and performance metrics</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Avg Attendance</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">92%</p>
-              </div>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-500 flex items-center justify-center">
-                <Users className="h-7 w-7 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Total Points</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">8,245</p>
-              </div>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-                <Award className="h-7 w-7 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Avg Grade</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">B+</p>
-              </div>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
-                <TrendingUp className="h-7 w-7 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-500">Active Students</p>
-                <p className="text-3xl font-bold text-slate-900 mt-1">156</p>
-              </div>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                <Activity className="h-7 w-7 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="growth" className="space-y-6">
+      <Tabs defaultValue="points" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="growth">User Growth</TabsTrigger>
           <TabsTrigger value="points">Points Tracking</TabsTrigger>
           <TabsTrigger value="performance">Class Performance</TabsTrigger>
           <TabsTrigger value="top">Top Performers</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="growth">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>User Growth Over Time</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.userGrowth}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="students" stroke="#8B5CF6" strokeWidth={2} />
-                    <Line type="monotone" dataKey="teachers" stroke="#3B82F6" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="points">
           <Card className="border-0 shadow-lg">
