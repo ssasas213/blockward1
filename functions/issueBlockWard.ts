@@ -140,8 +140,16 @@ Deno.serve(async (req) => {
     const NETWORK = Deno.env.get('NETWORK') || 'sepolia';
     const CONTRACT_ADDRESS = Deno.env.get('CONTRACT_ADDRESS');
     
-    // Network configuration - Sepolia testnet (use reliable public RPC)
-    const RPC_URL = 'https://rpc.sepolia.org';
+    // CRITICAL: Only use RPC URL from secrets - NEVER fallback to public RPC
+    const RPC_URL = SEPOLIA_RPC_URL;
+    
+    if (!RPC_URL) {
+      console.error(`[${debugId}] SEPOLIA_RPC_URL not configured in secrets`);
+      return Response.json(
+        { error: 'SEPOLIA_RPC_URL secret not set. Please configure it in dashboard settings.', debugId },
+        { status: 500, headers: corsHeaders }
+      );
+    }
 
     if (!ISSUER_PRIVATE_KEY) {
       console.error(`[${debugId}] ISSUER_PRIVATE_KEY not configured`);
@@ -169,13 +177,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Log configuration for debugging
-    const rpcHost = new URL(RPC_URL).hostname;
+    // Log configuration for debugging (log hostname only, not full URL/key)
+    let rpcHost;
+    try {
+      rpcHost = new URL(RPC_URL).hostname;
+    } catch {
+      rpcHost = 'invalid-url';
+    }
     console.log(`[${debugId}] 🔧 Configuration:`);
     console.log(`[${debugId}] - Network: ${NETWORK}`);
     console.log(`[${debugId}] - RPC Host: ${rpcHost}`);
     console.log(`[${debugId}] - Contract Address: ${CONTRACT_ADDRESS}`);
     console.log(`[${debugId}] - Issuer: ${issuer.email}`);
+    
+    // Validate RPC URL hostname
+    if (rpcHost === 'rpc.sepolia.org') {
+      console.error(`[${debugId}] ❌ CRITICAL: Using public RPC fallback detected!`);
+      return Response.json({
+        error: 'Invalid RPC configuration - using unreliable public RPC. Please set SEPOLIA_RPC_URL to your Alchemy URL.',
+        debugId,
+        rpcHost
+      }, { status: 500, headers: corsHeaders });
+    }
 
     // Get student profile to retrieve wallet address
     const students = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
@@ -233,6 +256,8 @@ Deno.serve(async (req) => {
         code: providerError.code,
         reason: providerError.reason,
         shortMessage: providerError.shortMessage,
+        data: providerError.data,
+        stack: providerError.stack,
         config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
       }, { status: 500, headers: corsHeaders });
     }
@@ -250,6 +275,8 @@ Deno.serve(async (req) => {
         code: walletError.code,
         reason: walletError.reason,
         shortMessage: walletError.shortMessage,
+        data: walletError.data,
+        stack: walletError.stack,
         config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
       }, { status: 500, headers: corsHeaders });
     }
@@ -267,6 +294,8 @@ Deno.serve(async (req) => {
         code: contractError.code,
         reason: contractError.reason,
         shortMessage: contractError.shortMessage,
+        data: contractError.data,
+        stack: contractError.stack,
         config: { network: NETWORK, rpcHost, contractAddress: CONTRACT_ADDRESS }
       }, { status: 500, headers: corsHeaders });
     }
@@ -438,6 +467,12 @@ Deno.serve(async (req) => {
     console.error(`[${debugId}] Stack trace:`, error.stack);
     console.error(`[${debugId}] Full error:`, JSON.stringify(error, null, 2));
     
+    let errorRpcHost = 'unknown';
+    try {
+      const errorRpcUrl = Deno.env.get('SEPOLIA_RPC_URL');
+      if (errorRpcUrl) errorRpcHost = new URL(errorRpcUrl).hostname;
+    } catch {}
+    
     return Response.json({
       ok: false,
       debugId,
@@ -446,10 +481,11 @@ Deno.serve(async (req) => {
       code: error.code,
       reason: error.reason,
       shortMessage: error.shortMessage,
+      data: error.data,
       stack: error.stack,
       config: { 
         network: Deno.env.get('NETWORK') || 'sepolia',
-        rpcHost: Deno.env.get('SEPOLIA_RPC_URL') ? new URL(Deno.env.get('SEPOLIA_RPC_URL')).hostname : 'unknown',
+        rpcHost: errorRpcHost,
         contractAddress: Deno.env.get('CONTRACT_ADDRESS') || 'not set'
       }
     }, { status: 500, headers: corsHeaders });
