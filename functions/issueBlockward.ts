@@ -29,34 +29,40 @@ function ensureBytes32(input) {
 Deno.serve(async (req) => {
   const debugId = generateDebugId();
 
-  // CORS handling
-  if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      },
-    });
-  }
-
-  if (req.method !== 'POST') {
-    return Response.json(
-      { ok: false, error: 'Method not allowed', debugId },
-      { status: 405 }
-    );
-  }
-
   try {
+    // CORS handling
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        },
+      });
+    }
+
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Method not allowed', debugId }),
+        {
+          status: 405,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
+    }
+
     // Authenticate user
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     
     if (!user) {
-      return Response.json(
-        { ok: false, error: 'Unauthorized', debugId },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
+        {
+          status: 401,
+          headers: { 'content-type': 'application/json' }
+        }
       );
     }
 
@@ -72,29 +78,47 @@ Deno.serve(async (req) => {
     if (!tokenURI) missing.push('tokenURI');
 
     if (missing.length > 0) {
-      return Response.json({
-        ok: false,
-        error: 'Missing required fields',
-        missing,
-        debugId,
-      }, { status: 400 });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Missing required fields',
+          missing,
+          debugId,
+        }),
+        {
+          status: 400,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     }
 
     // Validate addresses
     if (!isValidAddress(studentVault)) {
-      return Response.json({
-        ok: false,
-        error: 'Invalid studentVault address',
-        debugId,
-      }, { status: 400 });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Invalid studentVault address',
+          debugId,
+        }),
+        {
+          status: 400,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     }
 
     if (!isValidAddress(teacherVault)) {
-      return Response.json({
-        ok: false,
-        error: 'Invalid teacherVault address',
-        debugId,
-      }, { status: 400 });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Invalid teacherVault address',
+          debugId,
+        }),
+        {
+          status: 400,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     }
 
     // Get environment variables
@@ -103,11 +127,17 @@ Deno.serve(async (req) => {
     const pk = Deno.env.get("ISSUER_PRIVATE_KEY");
 
     if (!rpcUrl || !contract || !pk) {
-      return Response.json({
-        ok: false,
-        error: 'Server configuration error',
-        debugId,
-      }, { status: 500 });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Server configuration error',
+          debugId,
+        }),
+        {
+          status: 500,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
     }
 
     // Convert awardType to bytes32
@@ -151,31 +181,52 @@ Deno.serve(async (req) => {
       confirmations: confirmsToWait,
     });
 
-    return Response.json({
-      ok: true,
-      txHash,
-      blockNumber: Number(receipt.blockNumber),
-      confirmations: confirmsToWait,
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        txHash,
+        blockNumber: Number(receipt.blockNumber),
+        confirmations: confirmsToWait,
+        debugId,
+      }),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' }
+      }
+    );
+
+  } catch (err) {
+    // Extract detailed error information from viem
+    const message = err?.message || String(err);
+    const details = {
+      shortMessage: err?.shortMessage || null,
+      name: err?.name || null,
+      code: err?.code || null,
+      cause: err?.cause ? {
+        shortMessage: err.cause?.shortMessage || null,
+        message: err.cause?.message || null,
+      } : null,
+      metaMessages: err?.metaMessages || null,
+    };
+
+    // Log full error details for debugging
+    console.error('issueBlockward failed', {
       debugId,
+      message,
+      details,
     });
 
-  } catch (e) {
-    // Check for common revert reasons
-    let errorMessage = String(e?.message || e);
-    
-    // Extract revert reason if available
-    if (errorMessage.includes('execution reverted')) {
-      const match = errorMessage.match(/execution reverted[:\s]+"?([^"]+)"?/i);
-      if (match) {
-        errorMessage = `Contract reverted: ${match[1]}`;
+    return new Response(
+      JSON.stringify({
+        ok: false,
+        error: message,
+        debugId,
+        details,
+      }),
+      {
+        status: 500,
+        headers: { 'content-type': 'application/json' }
       }
-    }
-
-    return Response.json({
-      ok: false,
-      error: errorMessage,
-      debugId,
-      details: e?.shortMessage || null,
-    }, { status: 500 });
+    );
   }
 });
