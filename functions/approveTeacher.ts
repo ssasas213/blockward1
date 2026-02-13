@@ -5,7 +5,7 @@ import { sepolia } from "npm:viem@2.7.0/chains";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
   'content-type': 'application/json'
 };
 
@@ -34,6 +34,29 @@ Deno.serve(async (req) => {
       );
     }
 
+    // ADMIN AUTH: Check X-Admin-Key header
+    const adminKeyHeader = req.headers.get('X-Admin-Key');
+    const expectedAdminKey = Deno.env.get('ADMIN_KEY');
+    
+    if (!expectedAdminKey) {
+      log("ADMIN_KEY not configured");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'ADMIN_KEY not configured in secrets', debugId }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (adminKeyHeader !== expectedAdminKey) {
+      log("Unauthorized - invalid or missing admin key");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    log("Admin authenticated");
+
+    // Parse body
     const body = await req.json();
     log("Request received", { teacherAddress: body.teacherAddress });
 
@@ -42,7 +65,12 @@ Deno.serve(async (req) => {
     if (!teacherAddress || !/^0x[a-fA-F0-9]{40}$/.test(teacherAddress)) {
       log("Invalid teacherAddress");
       return new Response(
-        JSON.stringify({ ok: false, error: 'Invalid teacherAddress', debugId }),
+        JSON.stringify({ 
+          ok: false, 
+          code: 'INVALID_ADDRESS',
+          error: 'Invalid teacherAddress format', 
+          debugId 
+        }),
         { status: 400, headers: corsHeaders }
       );
     }
@@ -52,10 +80,40 @@ Deno.serve(async (req) => {
     const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
     const adminPrivateKey = Deno.env.get("ADMIN_PRIVATE_KEY");
 
-    if (!rpcUrl || !contractAddress || !adminPrivateKey) {
-      log("Missing environment variables");
+    if (!rpcUrl) {
+      log("SEPOLIA_RPC_URL not configured");
       return new Response(
-        JSON.stringify({ ok: false, error: 'Missing env configuration', debugId }),
+        JSON.stringify({ ok: false, error: 'SEPOLIA_RPC_URL not configured', debugId }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!contractAddress) {
+      log("CONTRACT_ADDRESS not configured");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'CONTRACT_ADDRESS not configured', debugId }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    if (!adminPrivateKey) {
+      log("ADMIN_PRIVATE_KEY not configured");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'ADMIN_PRIVATE_KEY not configured', debugId }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // Validate ADMIN_PRIVATE_KEY format (0x + 64 hex chars)
+    if (!/^0x[a-fA-F0-9]{64}$/.test(adminPrivateKey)) {
+      log("ADMIN_PRIVATE_KEY invalid format", { length: adminPrivateKey?.length });
+      return new Response(
+        JSON.stringify({ 
+          ok: false, 
+          code: 'INVALID_ADMIN_PRIVATE_KEY',
+          message: 'ADMIN_PRIVATE_KEY must be 0x + 64 hex chars', 
+          debugId 
+        }),
         { status: 500, headers: corsHeaders }
       );
     }
@@ -63,7 +121,17 @@ Deno.serve(async (req) => {
     const rpcHost = new URL(rpcUrl).hostname;
     log("Environment loaded", { rpcHost, contractAddress });
 
+    // Reject public RPC
+    if (rpcHost === 'rpc.sepolia.org') {
+      log("Public RPC detected");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'SEPOLIA_RPC_URL must be Alchemy, not public RPC', debugId }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
     // Setup viem clients
+    log("Creating admin account...");
     const account = privateKeyToAccount(adminPrivateKey as `0x${string}`);
     
     const publicClient = createPublicClient({
@@ -78,7 +146,8 @@ Deno.serve(async (req) => {
     });
 
     const adminSigner = account.address;
-    log("Admin signer", { adminSigner });
+    log("adminSigner", { adminSigner });
+    log("teacherAddress", { teacherAddress });
 
     // Simulate transaction
     log("Simulating addTeacher...");
@@ -92,18 +161,22 @@ Deno.serve(async (req) => {
         functionName: 'addTeacher',
         args: [teacherAddress as `0x${string}`],
       });
-      log("Simulation successful");
+      log("✓ Simulation successful");
     } catch (simError: any) {
-      log("Simulation failed", {
+      log("✗ Simulation failed", {
         message: simError?.message,
-        shortMessage: simError?.shortMessage
+        shortMessage: simError?.shortMessage,
+        cause: simError?.cause
       });
       
       return new Response(
         JSON.stringify({
           ok: false,
+          code: 'SIMULATION_FAILED',
           error: 'Simulation failed',
           message: simError?.shortMessage || simError?.message,
+          adminSigner,
+          teacherAddress,
           debugId
         }),
         { status: 200, headers: corsHeaders }
@@ -122,20 +195,36 @@ Deno.serve(async (req) => {
     log("Transaction confirmed", {
       txHash: receipt.transactionHash,
       status: receipt.status,
-      blockNumber: receipt.blockNumber.toString()
+      blockNumber: receipt.blockNumber.toString(),
+      gasUsed: receipt.gasUsed.toString()
     });
 
-    log("=== APPROVE TEACHER SUCCESS ===");
+    if (receipt.status !== 'success') {
+      log("✗ Transaction reverted", { status: receipt.status });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TX_REVERTED',
+          error: 'Transaction reverted',
+          txHash: receipt.transactionHash,
+          receiptStatus: receipt.status,
+          debugId
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("=== ✓ APPROVE TEACHER SUCCESS ===");
 
     return new Response(
       JSON.stringify({
         ok: true,
+        debugId,
         txHash: receipt.transactionHash,
         adminSigner,
         teacherAddress,
         receiptStatus: receipt.status,
-        blockNumber: receipt.blockNumber.toString(),
-        debugId
+        blockNumber: receipt.blockNumber.toString()
       }),
       { status: 200, headers: corsHeaders }
     );
@@ -144,6 +233,7 @@ Deno.serve(async (req) => {
     console.error("APPROVE_TEACHER_ERROR", JSON.stringify({
       debugId,
       error: err?.message,
+      code: err?.code,
       stack: err?.stack
     }, null, 2));
 
