@@ -18,14 +18,16 @@ const TEACHER_ROLE = keccak256(toHex("TEACHER_ROLE"));
 
 const CONTRACT_ABI = parseAbi([
   "function grantRole(bytes32 role, address account)",
-  "function hasRole(bytes32 role, address account) view returns (bool)"
+  "function hasRole(bytes32 role, address account) view returns (bool)",
+  "function isApprovedTeacher(address teacher) view returns (bool)",
+  "function approvedTeachers(address teacher) view returns (bool)"
 ]);
 
 Deno.serve(async (req) => {
   const debugId = generateDebugId();
 
-  const log = (message: string, obj = {}) => {
-    console.log(JSON.stringify({ debugId, message, ...obj }));
+  const log = (msg: string, obj = {}) => {
+    console.log(JSON.stringify({ msg, debugId, ...obj }));
   };
 
   try {
@@ -67,32 +69,32 @@ Deno.serve(async (req) => {
 
     // Parse body
     const body = await req.json();
-    log("Request body received", { body });
+    log("Request body received", { action: body.action, teacherAddress: body.teacherAddress });
     
-    const { teacherVault } = body;
+    const { action, teacherAddress } = body;
 
-    if (!teacherVault) {
-      log("Missing teacherVault");
+    if (!teacherAddress) {
+      log("Missing teacherAddress");
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'MISSING_FIELD',
-          message: 'Missing required field: teacherVault',
+          message: 'Missing required field: teacherAddress',
           debugId,
         }),
         { status: 200, headers: corsHeaders }
       );
     }
 
-    // Validate address format (viem will validate, but check early)
-    if (!/^0x[a-fA-F0-9]{40}$/.test(teacherVault)) {
-      log("Invalid address format", { teacherVault });
+    // Validate address format
+    if (!/^0x[a-fA-F0-9]{40}$/.test(teacherAddress)) {
+      log("Invalid address format", { teacherAddress });
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'INVALID_ADDRESS',
-          message: 'Invalid teacher vault address format',
-          teacherVault,
+          message: 'Invalid teacher address format',
+          teacherAddress,
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -103,7 +105,7 @@ Deno.serve(async (req) => {
     log("Loading environment variables...");
     const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
     const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
-    const issuerPrivateKey = Deno.env.get("ISSUER_PRIVATE_KEY");
+    const adminPrivateKey = Deno.env.get("ADMIN_PRIVATE_KEY");
 
     if (!rpcUrl) {
       log("SEPOLIA_RPC_URL not configured");
@@ -134,7 +136,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    log("Environment loaded", { rpcHost, contractSet: !!contractAddress, pkSet: !!issuerPrivateKey });
+    log("RPC_HOST", { rpcHost });
 
     if (rpcHost === 'rpc.sepolia.org') {
       log("Public RPC detected - rejecting");
@@ -150,13 +152,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!contractAddress || !issuerPrivateKey) {
-      log("Missing contract or private key");
+    if (!contractAddress) {
+      log("CONTRACT_ADDRESS not configured");
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'MISSING_CONFIG',
-          message: 'CONTRACT_ADDRESS or ISSUER_PRIVATE_KEY not configured',
+          message: 'CONTRACT_ADDRESS not configured',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("CONTRACT_ADDRESS", { contractAddress });
+
+    if (!adminPrivateKey) {
+      log("ADMIN_PRIVATE_KEY not configured");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'MISSING_CONFIG',
+          message: 'ADMIN_PRIVATE_KEY not configured',
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -164,8 +181,8 @@ Deno.serve(async (req) => {
     }
 
     // Setup viem clients
-    log("Setting up viem clients...", { rpcHost });
-    const account = privateKeyToAccount(issuerPrivateKey as `0x${string}`);
+    log("Setting up viem clients...");
+    const account = privateKeyToAccount(adminPrivateKey as `0x${string}`);
     
     const publicClient = createPublicClient({
       chain: sepolia,
@@ -178,25 +195,79 @@ Deno.serve(async (req) => {
       transport: http(rpcUrl),
     });
 
-    log("Clients initialized", { signerAddress: account.address });
+    log("ADMIN_SIGNER", { adminSigner: account.address });
+    log("TEACHER_TARGET", { teacherAddress });
 
-    // Check if teacher already has role
-    log("Checking if teacher already has role...");
-    const hasRole = await publicClient.readContract({
-      address: contractAddress as `0x${string}`,
-      abi: CONTRACT_ABI,
-      functionName: 'hasRole',
-      args: [TEACHER_ROLE, teacherVault as `0x${string}`],
-    });
+    // Check approval status before (try multiple methods)
+    log("Checking approval status...");
+    let approvedBefore: boolean | null = null;
+    
+    try {
+      // Try hasRole first (AccessControl pattern)
+      approvedBefore = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'hasRole',
+        args: [TEACHER_ROLE, teacherAddress as `0x${string}`],
+      });
+      log("Approval check via hasRole", { approvedBefore });
+    } catch (e1) {
+      log("hasRole failed, trying isApprovedTeacher", { error: e1?.message });
+      try {
+        approvedBefore = await publicClient.readContract({
+          address: contractAddress as `0x${string}`,
+          abi: CONTRACT_ABI,
+          functionName: 'isApprovedTeacher',
+          args: [teacherAddress as `0x${string}`],
+        });
+        log("Approval check via isApprovedTeacher", { approvedBefore });
+      } catch (e2) {
+        log("isApprovedTeacher failed, trying approvedTeachers", { error: e2?.message });
+        try {
+          approvedBefore = await publicClient.readContract({
+            address: contractAddress as `0x${string}`,
+            abi: CONTRACT_ABI,
+            functionName: 'approvedTeachers',
+            args: [teacherAddress as `0x${string}`],
+          });
+          log("Approval check via approvedTeachers", { approvedBefore });
+        } catch (e3) {
+          log("All approval check methods failed", { error: e3?.message });
+          approvedBefore = null;
+        }
+      }
+    }
 
-    if (hasRole) {
-      log("Teacher already approved", { teacherVault });
+    // If action is "check", return status without writing
+    if (action === 'check') {
+      log("Check mode - returning approval status only");
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          debugId,
+          action: 'check',
+          teacherAddress,
+          adminSigner: account.address,
+          approvalStatus: approvedBefore,
+          contractAddress,
+          rpcHost
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // If already approved, return early
+    if (approvedBefore === true) {
+      log("Teacher already approved", { teacherAddress });
       return new Response(
         JSON.stringify({
           ok: true,
           debugId,
           message: "Teacher already has approval",
-          teacherVault,
+          teacherAddress,
+          adminSigner: account.address,
+          approvedBefore: true,
+          approvedAfter: true,
           alreadyApproved: true
         }),
         { status: 200, headers: corsHeaders }
@@ -205,18 +276,47 @@ Deno.serve(async (req) => {
 
     // Simulate transaction
     log("Simulating grantRole transaction...");
-    const { request } = await publicClient.simulateContract({
-      account,
-      address: contractAddress as `0x${string}`,
-      abi: CONTRACT_ABI,
-      functionName: 'grantRole',
-      args: [TEACHER_ROLE, teacherVault as `0x${string}`],
-    });
-
-    log("Simulation successful, executing transaction...");
+    let simulationResult;
+    
+    try {
+      simulationResult = await publicClient.simulateContract({
+        account,
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'grantRole',
+        args: [TEACHER_ROLE, teacherAddress as `0x${string}`],
+      });
+      log("✓ Simulation successful");
+    } catch (simError: any) {
+      log("✗ Simulation failed", {
+        message: simError?.message,
+        shortMessage: simError?.shortMessage,
+        cause: simError?.cause,
+        details: simError?.details
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'SIMULATION_FAILED',
+          message: simError?.shortMessage || simError?.message || 'Transaction would revert',
+          debugId,
+          teacherAddress,
+          adminSigner: account.address,
+          error: {
+            message: simError?.message,
+            shortMessage: simError?.shortMessage,
+            cause: simError?.cause?.toString(),
+            details: simError?.details
+          }
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
 
     // Execute transaction
-    const txHash = await walletClient.writeContract(request);
+    log("Executing grantRole...");
+    const txHash = await walletClient.writeContract(simulationResult.request);
     log("Transaction sent", { txHash });
 
     // Wait for confirmation
@@ -226,8 +326,43 @@ Deno.serve(async (req) => {
     log("Transaction confirmed", {
       txHash: receipt.transactionHash,
       blockNumber: receipt.blockNumber.toString(),
-      status: receipt.status
+      status: receipt.status,
+      gasUsed: receipt.gasUsed.toString()
     });
+
+    // Check if receipt status is success
+    if (receipt.status !== 'success') {
+      log("✗ Transaction reverted", { status: receipt.status });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TX_REVERTED',
+          message: 'Transaction was included but reverted',
+          debugId,
+          txHash: receipt.transactionHash,
+          receiptStatus: receipt.status,
+          teacherAddress,
+          adminSigner: account.address
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Check approval status after
+    let approvedAfter: boolean | null = null;
+    
+    try {
+      approvedAfter = await publicClient.readContract({
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'hasRole',
+        args: [TEACHER_ROLE, teacherAddress as `0x${string}`],
+      });
+      log("Approval check after tx", { approvedAfter });
+    } catch (e) {
+      log("Post-tx approval check failed", { error: e?.message });
+      approvedAfter = null;
+    }
 
     log("=== ✓ APPROVE TEACHER SUCCESS ===");
 
@@ -235,17 +370,19 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         debugId,
+        teacherAddress,
+        adminSigner: account.address,
         txHash: receipt.transactionHash,
-        message: "Teacher approved successfully",
-        teacherVault,
+        approvedBefore: approvedBefore ?? null,
+        approvedAfter: approvedAfter ?? null,
+        receiptStatus: receipt.status,
         blockNumber: receipt.blockNumber.toString()
       }),
       { status: 200, headers: corsHeaders }
     );
 
   } catch (err: any) {
-    console.error("APPROVE_TEACHER_FATAL", { debugId, err });
-    console.error("APPROVE_TEACHER_FATAL_JSON", JSON.stringify({
+    console.error("APPROVE_TEACHER_FATAL", JSON.stringify({
       debugId,
       errorName: err?.name,
       errorMessage: err?.message,
@@ -270,6 +407,8 @@ Deno.serve(async (req) => {
         code: err?.code,
         shortMessage: err?.shortMessage,
         reason: err?.reason,
+        cause: err?.cause?.toString(),
+        details: err?.details,
         data: err?.data,
         stack: err?.stack,
         config: {
