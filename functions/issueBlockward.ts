@@ -362,8 +362,8 @@ Deno.serve(async (req) => {
     const balance = await publicClient.getBalance({ address: account.address });
     log("Issuer balance", { balanceWei: balance.toString(), balanceEth: (Number(balance) / 1e18).toFixed(6) });
 
-    // Log final mint recipient
-    log("MINT_TO", { studentAddress: resolvedStudentAddress, studentId });
+    // Log final mint recipient - minting to signer (teacher)
+    log("MINT_TO", { recipientAddress: account.address, studentId });
 
     // Build or use provided tokenURI
     let finalTokenURI: string;
@@ -397,16 +397,16 @@ Deno.serve(async (req) => {
 
     log("Metadata prepared", { tokenURI: finalTokenURI.substring(0, 100) + '...', awardTypeBytes32, category });
 
-    // Prepare mint arguments
+    // Prepare mint arguments - NFT goes to signer (teacher)
     const mintArgs = [
-      resolvedStudentAddress as `0x${string}`,
+      account.address as `0x${string}`,
       resolvedTeacherAddress as `0x${string}`,
       awardTypeBytes32,
       finalTokenURI
     ] as const;
 
     log("Prepared mint arguments", {
-      studentAddress: mintArgs[0],
+      recipientAddress: mintArgs[0],
       teacherAddress: mintArgs[1],
       awardType: mintArgs[2],
       tokenURILength: finalTokenURI.length
@@ -481,6 +481,7 @@ Deno.serve(async (req) => {
         ok: true,
         debugId,
         txHash: receipt.transactionHash,
+        recipientAddress: account.address,
         teacherAddress: resolvedTeacherAddress,
         studentAddress: resolvedStudentAddress,
         studentId,
