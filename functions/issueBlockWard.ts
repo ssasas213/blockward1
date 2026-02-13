@@ -13,7 +13,9 @@ const corsHeaders = {
 const APPROVED_SIGNER = "0xC07aF63F5eaa6D67F4a618D00A8a502a61D5fF0e";
 
 const CONTRACT_ABI = parseAbi([
-  "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
+  "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)",
+  "function safeTransferFrom(address from, address to, uint256 tokenId)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ]);
 
 Deno.serve(async (req) => {
@@ -459,19 +461,97 @@ Deno.serve(async (req) => {
     }
 
     // Execute transaction
-    log("Sending transaction...");
+    log("Sending mint transaction...");
     const txHash = await walletClient.writeContract(simulationResult.request);
-    log("Transaction sent", { txHash });
+    log("Mint transaction sent", { txHash });
 
     // Wait for confirmation
-    log("Waiting for confirmation...");
+    log("Waiting for mint confirmation...");
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     
-    log("Transaction confirmed", {
+    log("Mint confirmed", {
       txHash: receipt.transactionHash,
       blockNumber: receipt.blockNumber.toString(),
       status: receipt.status,
       gasUsed: receipt.gasUsed.toString()
+    });
+
+    // Extract tokenId from Transfer event
+    let tokenId: bigint | null = null;
+    for (const rlog of receipt.logs) {
+      try {
+        const decoded = publicClient.decodeEventLog({
+          abi: CONTRACT_ABI,
+          data: rlog.data,
+          topics: rlog.topics
+        });
+        if (decoded.eventName === 'Transfer') {
+          tokenId = decoded.args.tokenId as bigint;
+          log("TokenId extracted from Transfer event", { tokenId: tokenId.toString() });
+          break;
+        }
+      } catch {}
+    }
+
+    if (!tokenId) {
+      log("✗ Failed to extract tokenId from receipt");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TOKEN_ID_NOT_FOUND',
+          message: 'NFT minted but failed to extract token ID',
+          debugId,
+          mintTxHash: receipt.transactionHash
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Step 2: Transfer from teacher to student
+    log("Transferring NFT to student...", { 
+      from: account.address, 
+      to: resolvedStudentAddress,
+      tokenId: tokenId.toString()
+    });
+
+    let transferSimulation;
+    try {
+      transferSimulation = await publicClient.simulateContract({
+        account,
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'safeTransferFrom',
+        args: [account.address as `0x${string}`, resolvedStudentAddress as `0x${string}`, tokenId],
+      });
+      log("✓ Transfer simulation successful");
+    } catch (simError: any) {
+      log("✗ Transfer simulation failed", {
+        errorMessage: simError?.message,
+        shortMessage: simError?.shortMessage
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TRANSFER_SIMULATION_FAILED',
+          message: 'NFT minted to teacher but transfer to student failed',
+          debugId,
+          mintTxHash: receipt.transactionHash,
+          tokenId: tokenId.toString(),
+          error: simError?.shortMessage || simError?.message
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    const transferTxHash = await walletClient.writeContract(transferSimulation.request);
+    log("Transfer transaction sent", { transferTxHash });
+
+    const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferTxHash });
+    log("Transfer confirmed", {
+      transferTxHash: transferReceipt.transactionHash,
+      blockNumber: transferReceipt.blockNumber.toString(),
+      status: transferReceipt.status
     });
 
     log("=== ✓ ISSUE BLOCKWARD SUCCESS ===");
@@ -480,15 +560,17 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         debugId,
-        txHash: receipt.transactionHash,
-        recipientAddress: account.address,
+        mintTxHash: receipt.transactionHash,
+        transferTxHash: transferReceipt.transactionHash,
+        tokenId: tokenId.toString(),
+        recipientAddress: resolvedStudentAddress,
         teacherAddress: resolvedTeacherAddress,
         studentAddress: resolvedStudentAddress,
         studentId,
         title,
         category,
-        blockNumber: receipt.blockNumber.toString(),
-        status: receipt.status
+        blockNumber: transferReceipt.blockNumber.toString(),
+        status: transferReceipt.status
       }),
       { status: 200, headers: corsHeaders }
     );
