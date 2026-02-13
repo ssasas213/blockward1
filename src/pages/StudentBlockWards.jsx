@@ -13,7 +13,7 @@ import {
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
-import { api, blockWardCategories } from '@/components/blockwards/mockData';
+import { base44 } from '@/api/base44Client';
 import { Shield, Award, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -31,12 +31,21 @@ function StudentBlockWardsContent() {
 
   const loadData = async () => {
     try {
-      const [bwData, vaultData] = await Promise.all([
-        api.getStudentBlockWards(),
-        api.getStudentVault()
-      ]);
+      const user = await base44.auth.me();
+      if (!user) return;
+
+      const bwData = await base44.entities.BlockWard.filter({ student_email: user.email, status: 'active' });
       setBlockWards(bwData);
-      setVault(vaultData);
+      
+      const userProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      if (userProfiles.length > 0) {
+        setVault({
+          studentId: userProfiles[0].id,
+          status: 'active',
+          publicAddress: userProfiles[0].wallet_address,
+          createdAt: userProfiles[0].created_date
+        });
+      }
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -139,9 +148,12 @@ function StudentBlockWardsContent() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Categories</SelectItem>
-                {blockWardCategories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                ))}
+                <SelectItem value="academic">Academic</SelectItem>
+                <SelectItem value="sports">Sports</SelectItem>
+                <SelectItem value="arts">Arts</SelectItem>
+                <SelectItem value="leadership">Leadership</SelectItem>
+                <SelectItem value="community">Community</SelectItem>
+                <SelectItem value="special">Special</SelectItem>
               </SelectContent>
             </Select>
           </div>
