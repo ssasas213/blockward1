@@ -131,62 +131,37 @@ function IssueBlockWardContent() {
   };
 
   const handleIssue = async () => {
-    // IMPORTANT: BlockWard uses PLATFORM-MANAGED WALLETS ONLY
-    // - NO MetaMask or browser wallet required
-    // - Backend mints NFT using server-side issuer wallet
-    // - Student's vault address is managed by BlockWard
-    // - All blockchain signing happens server-side via Sepolia RPC
-    
     if (!formData.confirmed) {
       toast.error('Please confirm the award details');
       return;
     }
 
     setIssuing(true);
-    setIssuingStage('Calling backend issueBlockWard...');
+    setIssuingStage('Submitting to blockchain...');
 
     try {
-      console.log('🚀 Calling backend issueBlockWard function (NO METAMASK)...');
-      console.log('📦 Payload:', {
+      const response = await base44.functions.invoke('issueBlockward', {
         studentId: formData.selectedStudent.id,
         title: formData.title,
         category: formData.category,
         description: formData.description
       });
-
-      const response = await base44.functions.invoke('issueBlockWard', {
-        studentId: formData.selectedStudent.id,
-        title: formData.title,
-        category: formData.category,
-        description: formData.description
-      });
-
-      console.log('📥 Response status:', response.status);
-      console.log('📥 Response data:', response.data);
 
       const data = response.data;
 
-      if (response.status !== 200) {
+      if (!data.ok || !data.success) {
         const errorMsg = data.error || 'Failed to issue BlockWard';
-        const errorDetails = data.details || '';
         const debugId = data.debugId || '';
-        console.error('❌ Backend error:', errorMsg, errorDetails, debugId);
-        throw new Error(`${errorMsg}${errorDetails ? ': ' + errorDetails : ''}${debugId ? ' [' + debugId + ']' : ''}`);
+        throw new Error(`${errorMsg}${debugId ? ' [Debug: ' + debugId + ']' : ''}`);
       }
 
-      console.log('✅ BlockWard issued successfully!');
-      console.log('🔗 Transaction hash:', data.txHash);
-      console.log('🎫 Token ID:', data.tokenId);
-      
-      setIssuingStage('Minting on Sepolia testnet...');
-      setBlockchainData(data);
+      setBlockchainData({
+        txHash: data.txHash,
+        network: 'Sepolia Testnet'
+      });
       setIssueSuccess(true);
       toast.success('BlockWard issued successfully!');
     } catch (error) {
-      console.error('❌ Error issuing BlockWard:', error);
-      console.error('📋 Error message:', error.message);
-      console.error('📋 Error details:', error);
-      
       const errorMessage = error.message || 'Failed to issue BlockWard. Please try again.';
       setIssueError(errorMessage);
       toast.error('Failed to issue BlockWard');
@@ -239,23 +214,17 @@ function IssueBlockWardContent() {
                     <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.txHash}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Token ID</p>
-                    <p className="text-sm font-semibold text-slate-900">{blockchainData.tokenId}</p>
-                  </div>
-                  <div>
                     <p className="text-xs text-slate-500 mb-1">Network</p>
                     <p className="text-sm font-medium text-slate-900">{blockchainData.network}</p>
                   </div>
-                  {blockchainData.explorerUrl && (
-                    <a
-                      href={blockchainData.explorerUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium"
-                    >
-                      View on Etherscan →
-                    </a>
-                  )}
+                  <a
+                    href={`https://sepolia.etherscan.io/tx/${blockchainData.txHash}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium"
+                  >
+                    View on Etherscan →
+                  </a>
                 </div>
               )}
 
@@ -312,8 +281,7 @@ function IssueBlockWardContent() {
             <h2 className="text-2xl font-bold text-slate-900 mb-3">
               Couldn't Issue BlockWard
             </h2>
-            <p className="text-slate-600 mb-2">{issueError}</p>
-            <p className="text-sm text-slate-500 mb-8">Error code: BW-500</p>
+            <p className="text-slate-600 mb-8">{issueError}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button 
                 variant="outline"
