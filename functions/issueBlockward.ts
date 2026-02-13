@@ -155,19 +155,66 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get environment variables
+    // Get environment variables - ONLY use secrets, NEVER fallback to public RPC
     log("Loading environment variables...");
     const network = Deno.env.get("NETWORK");
     const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
     const issuerPrivateKey = Deno.env.get("ISSUER_PRIVATE_KEY");
     const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
 
+    // CRITICAL: Validate RPC URL is set BEFORE proceeding
+    if (!rpcUrl) {
+      log("CRITICAL: SEPOLIA_RPC_URL not configured");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'SEPOLIA_RPC_URL secret not set. Configure your Alchemy URL in dashboard settings.',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Extract and log RPC hostname (not full URL with key)
+    let rpcHost;
+    try {
+      rpcHost = new URL(rpcUrl).hostname;
+    } catch {
+      log("Invalid RPC URL format");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'Invalid SEPOLIA_RPC_URL format',
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
     log("Environment loaded", {
       network,
+      rpcHost,
       contractSet: !!contractAddress,
       pkSet: !!issuerPrivateKey,
       rpcSet: !!rpcUrl
     });
+
+    // CRITICAL: Reject public RPC fallback
+    if (rpcHost === 'rpc.sepolia.org') {
+      log("CRITICAL: Public RPC detected - rejecting");
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'Using unreliable public RPC. Set SEPOLIA_RPC_URL to your Alchemy endpoint.',
+          rpcHost,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
 
     // Validate configuration
     if (network !== "sepolia") {
@@ -178,33 +225,6 @@ Deno.serve(async (req) => {
           code: 'UNSUPPORTED_NETWORK',
           message: `Network "${network}" is not supported`,
           network,
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    if (!rpcUrl) {
-      log("RPC URL not configured");
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'BAD_RPC_URL',
-          message: 'SEPOLIA_RPC_URL not configured',
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    if (!rpcUrl.startsWith('https://')) {
-      log("Invalid RPC URL protocol", { rpcUrl });
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'BAD_RPC_URL',
-          message: 'RPC URL must start with https://',
-          rpcUrl,
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -225,7 +245,7 @@ Deno.serve(async (req) => {
     }
 
     // Setup ethers provider and signer
-    log("Setting up ethers provider and signer...", { rpcUrl });
+    log("Setting up ethers provider and signer...", { rpcHost });
     const provider = new ethers.JsonRpcProvider(rpcUrl);
     const wallet = new ethers.Wallet(issuerPrivateKey, provider);
     
