@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseAbi, keccak256, toBytes } from "npm:viem@2.7.0";
+import { createPublicClient, createWalletClient, http, parseAbi, keccak256, toBytes, stringToHex, pad } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
@@ -68,14 +68,14 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { studentVault, teacherVault, awardType, tokenURI, confirmations } = body;
+    const { studentId, title, category, description, confirmations } = body;
 
     // Validate required fields
     const missing = [];
-    if (!studentVault) missing.push('studentVault');
-    if (!teacherVault) missing.push('teacherVault');
-    if (!awardType) missing.push('awardType');
-    if (!tokenURI) missing.push('tokenURI');
+    if (!studentId) missing.push('studentId');
+    if (!title) missing.push('title');
+    if (!category) missing.push('category');
+    if (!description) missing.push('description');
 
     if (missing.length > 0) {
       return new Response(
@@ -92,12 +92,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate addresses
-    if (!isValidAddress(studentVault)) {
+    // Query student vault
+    const studentProfiles = await base44.entities.UserProfile.filter({ id: studentId });
+    if (!studentProfiles || studentProfiles.length === 0) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Invalid studentVault address',
+          error: 'Student not found',
+          debugId,
+        }),
+        {
+          status: 404,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
+    }
+
+    const studentVault = studentProfiles[0].wallet_address;
+    if (!studentVault || !isValidAddress(studentVault)) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Student vault address not found or invalid',
           debugId,
         }),
         {
@@ -107,11 +123,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!isValidAddress(teacherVault)) {
+    // Query teacher vault
+    const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+    if (!teacherProfiles || teacherProfiles.length === 0) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Invalid teacherVault address',
+          error: 'Teacher profile not found',
+          debugId,
+        }),
+        {
+          status: 404,
+          headers: { 'content-type': 'application/json' }
+        }
+      );
+    }
+
+    const teacherVault = teacherProfiles[0].wallet_address;
+    if (!teacherVault || !isValidAddress(teacherVault)) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: 'Teacher vault address not found or invalid',
           debugId,
         }),
         {
@@ -120,6 +153,21 @@ Deno.serve(async (req) => {
         }
       );
     }
+
+    // Build metadata JSON
+    const metadata = {
+      name: title,
+      description,
+      attributes: [
+        { trait_type: "Category", value: category }
+      ]
+    };
+
+    // Convert category to bytes32
+    const awardType = pad(stringToHex(category), { size: 32 });
+
+    // Generate temporary metadata URL
+    const tokenURI = `https://blockward.me/metadata/${studentId}-${Date.now()}.json`;
 
     // Get environment variables
     const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
@@ -140,8 +188,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Convert awardType to bytes32
-    const awardTypeBytes32 = ensureBytes32(awardType);
+
 
     // Setup clients
     const account = privateKeyToAccount(pk);
@@ -167,7 +214,7 @@ Deno.serve(async (req) => {
       address: contract,
       abi,
       functionName: 'issueAward',
-      args: [studentVault, teacherVault, awardTypeBytes32, tokenURI],
+      args: [studentVault, teacherVault, awardType, tokenURI],
       account,
     });
 
