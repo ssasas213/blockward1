@@ -55,16 +55,26 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    log("Request body received", { body });
     
-    const { studentId, title, category, description } = body;
+    // Sanitize payload for logging (remove sensitive data if any)
+    const sanitizedPayload = {
+      studentId: body.studentId,
+      teacherAddress: body.teacherAddress,
+      studentAddress: body.studentAddress,
+      title: body.title,
+      category: body.category,
+      hasDescription: !!body.description,
+      hasTokenURI: !!body.tokenURI
+    };
+    log("Request body received", { payload: sanitizedPayload });
+    
+    const { studentId, teacherAddress, studentAddress, title, category, description, tokenURI } = body;
 
     // Validate required fields
     const missing = [];
     if (!studentId) missing.push('studentId');
     if (!title) missing.push('title');
     if (!category) missing.push('category');
-    if (!description) missing.push('description');
 
     if (missing.length > 0) {
       log("Missing required fields", { missing });
@@ -75,86 +85,124 @@ Deno.serve(async (req) => {
           message: 'Missing required fields',
           missing,
           debugId,
-          received: body
+          received: sanitizedPayload
         }),
         { status: 200, headers: corsHeaders }
       );
     }
 
-    // Query student vault
-    log("Querying student profile", { studentId });
-    const studentProfiles = await base44.entities.UserProfile.filter({ id: studentId });
+    // Resolve student address
+    let resolvedStudentAddress = studentAddress;
     
-    if (!studentProfiles || studentProfiles.length === 0) {
-      log("Student not found", { studentId });
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'STUDENT_NOT_FOUND',
-          message: 'Student not found',
-          studentId,
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
+    if (!resolvedStudentAddress) {
+      log("studentAddress not in payload, loading from student record", { studentId });
+      const studentProfiles = await base44.entities.UserProfile.filter({ id: studentId });
+      
+      if (!studentProfiles || studentProfiles.length === 0) {
+        log("Student not found", { studentId });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'STUDENT_NOT_FOUND',
+            message: 'Student not found',
+            studentId,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      resolvedStudentAddress = studentProfiles[0].wallet_address;
+      
+      if (!resolvedStudentAddress) {
+        log("Student has no wallet address", { studentId });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'STUDENT_NO_WALLET',
+            message: 'Student does not have a wallet address',
+            studentId,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+      
+      log("Student wallet loaded from DB", { studentAddress: resolvedStudentAddress });
+    } else {
+      log("Student address from payload", { studentAddress: resolvedStudentAddress });
     }
 
-    const studentWallet = studentProfiles[0].wallet_address;
-    log("Student wallet found", { studentWallet });
-    
-    // Query teacher vault
-    log("Querying teacher profile", { email: user.email });
-    const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    
-    if (!teacherProfiles || teacherProfiles.length === 0) {
-      log("Teacher profile not found", { email: user.email });
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'TEACHER_NOT_FOUND',
-          message: 'Teacher profile not found',
-          teacherId: user.email,
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    const teacherWallet = teacherProfiles[0].wallet_address;
-    const teacherId = teacherProfiles[0].id;
-    log("Teacher wallet found", { teacherWallet });
-
-    // Validate both wallets exist
-    if (!studentWallet || !teacherWallet) {
-      log("Missing wallet address", { studentWallet, teacherWallet });
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'MISSING_VAULT',
-          message: 'Wallet address not found for student or teacher',
-          studentId,
-          teacherId,
-          studentWallet: studentWallet || null,
-          teacherWallet: teacherWallet || null,
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    // Validate address format
+    // Validate student address format
     try {
-      getAddress(studentWallet);
-      getAddress(teacherWallet);
+      resolvedStudentAddress = getAddress(resolvedStudentAddress);
     } catch {
-      log("Invalid wallet address format", { studentWallet, teacherWallet });
+      log("Invalid student address format", { studentAddress: resolvedStudentAddress });
       return new Response(
         JSON.stringify({
           ok: false,
-          code: 'INVALID_VAULT',
-          message: 'Invalid wallet address format',
-          studentWallet,
-          teacherWallet,
+          code: 'INVALID_STUDENT_ADDRESS',
+          message: 'Invalid student address format',
+          studentAddress: resolvedStudentAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Resolve teacher address (for validation)
+    let resolvedTeacherAddress = teacherAddress;
+    
+    if (!resolvedTeacherAddress) {
+      log("teacherAddress not in payload, loading from teacher record", { email: user.email });
+      const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      
+      if (!teacherProfiles || teacherProfiles.length === 0) {
+        log("Teacher profile not found", { email: user.email });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'TEACHER_NOT_FOUND',
+            message: 'Teacher profile not found',
+            teacherId: user.email,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      resolvedTeacherAddress = teacherProfiles[0].wallet_address;
+      
+      if (!resolvedTeacherAddress) {
+        log("Teacher has no wallet address", { email: user.email });
+        return new Response(
+          JSON.stringify({
+            ok: false,
+            code: 'TEACHER_NO_WALLET',
+            message: 'Teacher does not have a wallet address',
+            email: user.email,
+            debugId,
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+      
+      log("Teacher wallet loaded from DB", { teacherAddress: resolvedTeacherAddress });
+    } else {
+      log("Teacher address from payload", { teacherAddress: resolvedTeacherAddress });
+    }
+
+    // Validate teacher address format
+    try {
+      resolvedTeacherAddress = getAddress(resolvedTeacherAddress);
+    } catch {
+      log("Invalid teacher address format", { teacherAddress: resolvedTeacherAddress });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'INVALID_TEACHER_ADDRESS',
+          message: 'Invalid teacher address format',
+          teacherAddress: resolvedTeacherAddress,
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -266,7 +314,7 @@ Deno.serve(async (req) => {
     });
 
     const signerAddress = account.address;
-    log("Signer initialized", { signerAddress });
+    log("MINT_SIGNER", { signerAddress });
 
     // HARD FAIL: Check signer address matches approved teacher wallet
     if (signerAddress.toLowerCase() !== APPROVED_SIGNER) {
@@ -289,38 +337,79 @@ Deno.serve(async (req) => {
 
     log("✓ Signer approved", { signerAddress });
 
+    // HARD FAIL: If teacherAddress provided, must match signer
+    if (teacherAddress && resolvedTeacherAddress.toLowerCase() !== signerAddress.toLowerCase()) {
+      log("CRITICAL: Teacher address does not match signer", {
+        teacherAddress: resolvedTeacherAddress,
+        signerAddress
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'TEACHER_SIGNER_MISMATCH',
+          message: 'teacherAddress does not match ISSUER_PRIVATE_KEY signer',
+          teacherAddress: resolvedTeacherAddress,
+          signerAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("✓ Teacher address validated", { teacherAddress: resolvedTeacherAddress });
+
     // Get issuer balance
     const balance = await publicClient.getBalance({ address: account.address });
     log("Issuer balance", { balanceWei: balance.toString(), balanceEth: (Number(balance) / 1e18).toFixed(6) });
 
-    // Confirm student address matches
-    log("Confirmed student wallet address", { 
-      studentWallet,
-      studentId,
-      matchesRecord: true 
-    });
+    // Log final mint recipient
+    log("MINT_TO", { studentAddress: resolvedStudentAddress, studentId });
 
-    // Build metadata
-    const tokenURI = `https://blockward.me/metadata/${studentId}-${Date.now()}.json`;
+    // Build or use provided tokenURI
+    let finalTokenURI: string;
     
-    // Convert category to bytes32 (viem uses encodeBytes32String from ethers compatibility)
+    if (tokenURI) {
+      finalTokenURI = tokenURI;
+      log("Using provided tokenURI", { tokenURI: finalTokenURI });
+    } else {
+      // Build base64 JSON metadata
+      const metadata = {
+        name: title,
+        description: description || '',
+        category: category,
+        image: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`,
+        attributes: [
+          { trait_type: 'Category', value: category },
+          { trait_type: 'Student ID', value: studentId },
+          { trait_type: 'Issued Date', value: new Date().toISOString() }
+        ]
+      };
+      
+      const metadataJSON = JSON.stringify(metadata);
+      const metadataB64 = btoa(unescape(encodeURIComponent(metadataJSON)));
+      finalTokenURI = `data:application/json;base64,${metadataB64}`;
+      
+      log("Built base64 tokenURI", { hasMetadata: true });
+    }
+    
+    // Convert category to bytes32
     const awardTypeBytes32 = encodeBytes32String(category);
 
-    log("Metadata prepared", { tokenURI, awardTypeBytes32, category });
+    log("Metadata prepared", { tokenURI: finalTokenURI.substring(0, 100) + '...', awardTypeBytes32, category });
 
     // Prepare mint arguments
     const mintArgs = [
-      studentWallet as `0x${string}`,
-      teacherWallet as `0x${string}`,
+      resolvedStudentAddress as `0x${string}`,
+      resolvedTeacherAddress as `0x${string}`,
       awardTypeBytes32,
-      tokenURI
+      finalTokenURI
     ] as const;
 
     log("Prepared mint arguments", {
-      studentWallet: mintArgs[0],
-      teacherWallet: mintArgs[1],
+      studentAddress: mintArgs[0],
+      teacherAddress: mintArgs[1],
       awardType: mintArgs[2],
-      tokenURI: mintArgs[3]
+      tokenURILength: finalTokenURI.length
     });
 
     // SIMULATE transaction before executing
@@ -351,10 +440,11 @@ Deno.serve(async (req) => {
         JSON.stringify({
           ok: false,
           code: 'SIMULATION_FAILED',
-          message: 'Transaction would revert',
+          message: simError?.shortMessage || simError?.message || 'Transaction would revert',
           debugId,
           signerAddress,
-          studentAddress: studentWallet,
+          teacherAddress: resolvedTeacherAddress,
+          studentAddress: resolvedStudentAddress,
           functionName: 'issueAward',
           args: mintArgs,
           error: {
@@ -391,12 +481,11 @@ Deno.serve(async (req) => {
         ok: true,
         debugId,
         txHash: receipt.transactionHash,
-        message: "BlockWard issued successfully",
-        tokenURI,
-        network,
-        contractAddress,
-        studentWallet,
-        teacherWallet,
+        teacherAddress: resolvedTeacherAddress,
+        studentAddress: resolvedStudentAddress,
+        studentId,
+        title,
+        category,
         blockNumber: receipt.blockNumber.toString(),
         status: receipt.status
       }),
