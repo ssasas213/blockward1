@@ -37,6 +37,10 @@ Deno.serve(async (req) => {
   const debugId = generateDebugId();
 
   try {
+    console.log("=== ISSUE BLOCKWARD START ===");
+    console.log("DEBUG ID:", debugId);
+    console.log("METHOD:", req.method);
+
     // CORS handling
     if (req.method === 'OPTIONS') {
       return new Response(null, {
@@ -46,6 +50,7 @@ Deno.serve(async (req) => {
     }
 
     if (req.method !== 'POST') {
+      console.error("❌ Invalid method:", req.method);
       return new Response(
         JSON.stringify({ ok: false, error: 'Method not allowed', debugId }),
         {
@@ -56,10 +61,12 @@ Deno.serve(async (req) => {
     }
 
     // Authenticate user
+    console.log("→ Authenticating user...");
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     
     if (!user) {
+      console.error("❌ Unauthorized - no user");
       return new Response(
         JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
         {
@@ -68,13 +75,15 @@ Deno.serve(async (req) => {
         }
       );
     }
+    
+    console.log("✓ User authenticated:", user.email);
 
     // Parse request body
     const body = await req.json();
+    console.log("REQUEST BODY:", body);
+    
     const { studentId, title, category, description } = body;
-
-    // Log input parameters
-    console.log("DEBUG INPUT:", { studentId, title, category, description });
+    console.log("PARSED FIELDS:", { studentId, title, category, description });
 
     // Validate required fields - strict schema
     const missing = [];
@@ -84,6 +93,7 @@ Deno.serve(async (req) => {
     if (!description) missing.push('description');
 
     if (missing.length > 0) {
+      console.error("❌ Missing fields:", missing);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -91,6 +101,7 @@ Deno.serve(async (req) => {
           message: 'Missing required fields',
           missing,
           debugId,
+          received: body
         }),
         {
           status: 200,
@@ -100,8 +111,10 @@ Deno.serve(async (req) => {
     }
 
     // Query student vault
+    console.log("→ Querying student profile:", studentId);
     const studentProfiles = await base44.entities.UserProfile.filter({ id: studentId });
     if (!studentProfiles || studentProfiles.length === 0) {
+      console.error("❌ Student not found:", studentId);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -118,10 +131,13 @@ Deno.serve(async (req) => {
     }
 
     const studentVault = studentProfiles[0].wallet_address;
+    console.log("✓ Student vault:", studentVault);
     
     // Query teacher vault
+    console.log("→ Querying teacher profile:", user.email);
     const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
     if (!teacherProfiles || teacherProfiles.length === 0) {
+      console.error("❌ Teacher profile not found:", user.email);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -139,9 +155,11 @@ Deno.serve(async (req) => {
 
     const teacherVault = teacherProfiles[0].wallet_address;
     const teacherId = teacherProfiles[0].id;
+    console.log("✓ Teacher vault:", teacherVault);
 
     // Validate both vaults exist
     if (!studentVault || !teacherVault) {
+      console.error("❌ Missing vault:", { studentVault, teacherVault });
       return new Response(
         JSON.stringify({
           ok: false,
@@ -161,6 +179,7 @@ Deno.serve(async (req) => {
     }
 
     if (!isValidAddress(studentVault) || !isValidAddress(teacherVault)) {
+      console.error("❌ Invalid vault format:", { studentVault, teacherVault });
       return new Response(
         JSON.stringify({
           ok: false,
@@ -178,15 +197,20 @@ Deno.serve(async (req) => {
     }
 
     // Get environment variables
+    console.log("→ Loading environment variables...");
     const network = Deno.env.get("NETWORK");
     const contract = Deno.env.get("CONTRACT_ADDRESS");
     const pk = Deno.env.get("ISSUER_PRIVATE_KEY");
+    console.log("ENV:", { network, contractSet: !!contract, pkSet: !!pk });
 
     // RPC selection based on NETWORK
     let rpcUrl;
     if (network === "sepolia") {
       rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
+      console.log("✓ Using Sepolia network");
+      console.log("RPC URL:", rpcUrl);
     } else {
+      console.error("❌ Unsupported network:", network);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -204,6 +228,7 @@ Deno.serve(async (req) => {
 
     // Validate RPC URL
     if (!rpcUrl) {
+      console.error("❌ RPC URL not configured");
       return new Response(
         JSON.stringify({
           ok: false,
@@ -221,6 +246,7 @@ Deno.serve(async (req) => {
     }
 
     if (!rpcUrl.startsWith('https://')) {
+      console.error("❌ Invalid RPC URL protocol:", rpcUrl);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -239,6 +265,7 @@ Deno.serve(async (req) => {
 
     // Check for accidental URL concatenation
     if (rpcUrl.indexOf('https://') !== rpcUrl.lastIndexOf('https://')) {
+      console.error("❌ Duplicate protocol in RPC URL:", rpcUrl);
       return new Response(
         JSON.stringify({
           ok: false,
@@ -256,6 +283,7 @@ Deno.serve(async (req) => {
     }
 
     if (!contract || !pk) {
+      console.error("❌ Missing contract or private key");
       return new Response(
         JSON.stringify({
           ok: false,
@@ -293,14 +321,9 @@ Deno.serve(async (req) => {
 
 
     // Setup clients
+    console.log("→ Setting up blockchain clients...");
     const account = privateKeyToAccount(pk);
-    
-    // Log configuration details
-    console.log("DEBUG CONFIG:", {
-      rpc: rpcUrl,
-      contract: contract,
-      signer: account.address
-    });
+    console.log("✓ Signer address:", account.address);
 
     const publicClient = createPublicClient({
       chain: sepolia,
@@ -312,11 +335,16 @@ Deno.serve(async (req) => {
       chain: sepolia,
       transport: http(rpcUrl),
     });
+    console.log("✓ Clients initialized");
 
     // Parse minimal ABI
     const abi = parseAbi([
       "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
     ]);
+
+    console.log("→ Simulating transaction...");
+    console.log("Contract:", contract);
+    console.log("Args:", { studentVault, teacherVault, awardType, tokenURI });
 
     // Simulate transaction first (gas estimation and revert detection)
     const { request } = await publicClient.simulateContract({
@@ -326,16 +354,23 @@ Deno.serve(async (req) => {
       args: [studentVault, teacherVault, awardType, tokenURI],
       account,
     });
+    console.log("✓ Simulation successful");
 
     // Execute transaction
+    console.log("→ Sending transaction...");
     const txHash = await walletClient.writeContract(request);
+    console.log("TX SENT:", txHash);
 
     // Wait for confirmation
+    console.log("→ Waiting for confirmation...");
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
       confirmations: 1,
     });
+    console.log("✓ Transaction confirmed:", receipt.transactionHash);
 
+    console.log("=== ✓ ISSUE BLOCKWARD SUCCESS ===");
+    
     return new Response(
       JSON.stringify({
         ok: true,
@@ -356,30 +391,35 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     // Extract detailed error information
-    const message = err?.shortMessage || err?.message || "Unknown blockchain error";
-    const code = err?.code || 'ISSUE_FAILED_UNCAUGHT';
+    console.error("=== ❌ ISSUE BLOCKWARD FAILED ===");
+    console.error("DEBUG ID:", debugId);
+    console.error("ERROR TYPE:", err?.constructor?.name);
+    console.error("ERROR MESSAGE:", err?.message);
+    console.error("ERROR CODE:", err?.code);
+    console.error("SHORT MESSAGE:", err?.shortMessage);
+    console.error("FULL ERROR:", err);
+    console.error("STACK:", err?.stack);
     
     // Get config values safely
     const network = Deno.env.get("NETWORK") || "unknown";
     const rpcUrl = network === "sepolia" ? Deno.env.get("SEPOLIA_RPC_URL") : null;
     const contract = Deno.env.get("CONTRACT_ADDRESS") || "unknown";
+    
+    console.error("CONFIG AT ERROR:", {
+      network,
+      rpcUrl,
+      contract,
+      hasPrivateKey: !!Deno.env.get("ISSUER_PRIVATE_KEY")
+    });
 
     const errorResponse = {
       ok: false,
       debugId,
-      message,
-      code,
-      details: err,
+      message: err?.shortMessage || err?.message || "Unknown blockchain error",
+      code: err?.code || 'ISSUE_FAILED_UNCAUGHT',
+      errorType: err?.constructor?.name || 'Unknown',
+      details: String(err)
     };
-
-    // Log full error details for debugging with complete context
-    console.error('BLOCKCHAIN ERROR:', {
-      ...errorResponse,
-      rpcUrl,
-      network,
-      contractAddress: contract,
-      stack: err?.stack || String(err),
-    });
 
     return new Response(
       JSON.stringify(errorResponse),
