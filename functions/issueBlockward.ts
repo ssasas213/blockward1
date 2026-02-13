@@ -26,6 +26,13 @@ function ensureBytes32(input) {
   return input;
 }
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'content-type': 'application/json'
+};
+
 Deno.serve(async (req) => {
   const debugId = generateDebugId();
 
@@ -34,11 +41,7 @@ Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        },
+        headers: corsHeaders,
       });
     }
 
@@ -231,14 +234,12 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
+        success: true,
         txHash,
-        blockNumber: Number(receipt.blockNumber),
-        confirmations: confirmsToWait,
-        debugId,
       }),
       {
         status: 200,
-        headers: { 'content-type': 'application/json' }
+        headers: corsHeaders
       }
     );
 
