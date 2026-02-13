@@ -20,7 +20,6 @@ import {
 import IssueStepper from '@/components/blockwards/IssueStepper';
 import StudentPicker from '@/components/blockwards/StudentPicker';
 import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
-import { api, mockTemplates, blockWardCategories, blockWardRarities } from '@/components/blockwards/mockData';
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -171,6 +170,8 @@ function IssueBlockWardContent() {
     }
   };
 
+  const blockWardCategories = ['Academic', 'Sports', 'Arts', 'Leadership', 'Community', 'Innovation'];
+  const blockWardRarities = ['Common', 'Rare', 'Epic', 'Legendary'];
   const emojiOptions = ['🏆', '⭐', '🎓', '📚', '🎨', '🏅', '💡', '🔥', '✨', '🌟', '👑', '🎯'];
 
   if (loading) {
@@ -362,23 +363,9 @@ function IssueBlockWardContent() {
                     </TabsList>
 
                     <TabsContent value="templates" className="space-y-4 mt-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {mockTemplates.map((template) => (
-                          <button
-                            key={template.id}
-                            onClick={() => handleSelectTemplate(template)}
-                            className="text-left p-4 rounded-xl border-2 hover:border-violet-600 transition-all"
-                          >
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="text-3xl">{template.icon}</span>
-                              <div>
-                                <p className="font-semibold text-slate-900">{template.title}</p>
-                                <p className="text-xs text-slate-500">{template.category}</p>
-                              </div>
-                            </div>
-                            <p className="text-sm text-slate-600">{template.description}</p>
-                          </button>
-                        ))}
+                      <div className="text-center py-8 text-slate-400">
+                        <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p>No templates available - create a custom award</p>
                       </div>
                     </TabsContent>
 
