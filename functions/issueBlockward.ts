@@ -71,9 +71,9 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
-    const { studentId, title, category, description, confirmations } = body;
+    const { studentId, title, category, description } = body;
 
-    // Validate required fields
+    // Validate required fields - strict schema
     const missing = [];
     if (!studentId) missing.push('studentId');
     if (!title) missing.push('title');
@@ -84,13 +84,14 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Missing required fields',
+          code: 'MISSING_FIELDS',
+          message: 'Missing required fields',
           missing,
           debugId,
         }),
         {
-          status: 400,
-          headers: { 'content-type': 'application/json' }
+          status: 200,
+          headers: corsHeaders
         }
       );
     }
@@ -101,66 +102,180 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Student not found',
+          code: 'STUDENT_NOT_FOUND',
+          message: 'Student not found',
+          studentId,
           debugId,
         }),
         {
-          status: 404,
-          headers: { 'content-type': 'application/json' }
+          status: 200,
+          headers: corsHeaders
         }
       );
     }
 
     const studentVault = studentProfiles[0].wallet_address;
-    if (!studentVault || !isValidAddress(studentVault)) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          error: 'Student vault address not found or invalid',
-          debugId,
-        }),
-        {
-          status: 400,
-          headers: { 'content-type': 'application/json' }
-        }
-      );
-    }
-
+    
     // Query teacher vault
     const teacherProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
     if (!teacherProfiles || teacherProfiles.length === 0) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Teacher profile not found',
+          code: 'TEACHER_NOT_FOUND',
+          message: 'Teacher profile not found',
+          teacherId: user.email,
           debugId,
         }),
         {
-          status: 404,
-          headers: { 'content-type': 'application/json' }
+          status: 200,
+          headers: corsHeaders
         }
       );
     }
 
     const teacherVault = teacherProfiles[0].wallet_address;
-    if (!teacherVault || !isValidAddress(teacherVault)) {
+    const teacherId = teacherProfiles[0].id;
+
+    // Validate both vaults exist
+    if (!studentVault || !teacherVault) {
       return new Response(
         JSON.stringify({
           ok: false,
-          error: 'Teacher vault address not found or invalid',
+          code: 'MISSING_VAULT',
+          message: 'Vault address not found for student or teacher',
+          studentId,
+          teacherId,
+          studentVault: studentVault || null,
+          teacherVault: teacherVault || null,
           debugId,
         }),
         {
-          status: 400,
-          headers: { 'content-type': 'application/json' }
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    if (!isValidAddress(studentVault) || !isValidAddress(teacherVault)) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'INVALID_VAULT',
+          message: 'Invalid vault address format',
+          studentVault,
+          teacherVault,
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Get environment variables
+    const network = Deno.env.get("NETWORK");
+    const contract = Deno.env.get("CONTRACT_ADDRESS");
+    const pk = Deno.env.get("ISSUER_PRIVATE_KEY");
+
+    // RPC selection based on NETWORK
+    let rpcUrl;
+    if (network === "sepolia") {
+      rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
+    } else {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'UNSUPPORTED_NETWORK',
+          message: `Network "${network}" is not supported`,
+          network,
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Validate RPC URL
+    if (!rpcUrl) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'RPC URL not configured',
+          rpcUrl: null,
+          network,
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    if (!rpcUrl.startsWith('https://')) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'RPC URL must start with https://',
+          rpcUrl,
+          network,
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Check for accidental URL concatenation
+    if (rpcUrl.indexOf('https://') !== rpcUrl.lastIndexOf('https://')) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'BAD_RPC_URL',
+          message: 'RPC URL contains duplicate protocol',
+          rpcUrl,
+          network,
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    if (!contract || !pk) {
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'MISSING_CONFIG',
+          message: 'Contract address or private key not configured',
+          debugId,
+        }),
+        {
+          status: 200,
+          headers: corsHeaders
         }
       );
     }
 
     // Build metadata JSON
+    const timestamp = new Date().toISOString();
     const metadata = {
       name: title,
       description,
+      category,
+      studentId,
+      teacherId,
+      timestamp,
       attributes: [
         { trait_type: "Category", value: category }
       ]
@@ -169,27 +284,8 @@ Deno.serve(async (req) => {
     // Convert category to bytes32
     const awardType = pad(stringToHex(category), { size: 32 });
 
-    // Generate temporary metadata URL
+    // Generate tokenURI
     const tokenURI = `https://blockward.me/metadata/${studentId}-${Date.now()}.json`;
-
-    // Get environment variables
-    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
-    const contract = Deno.env.get("CONTRACT_ADDRESS");
-    const pk = Deno.env.get("ISSUER_PRIVATE_KEY");
-
-    if (!rpcUrl || !contract || !pk) {
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          error: 'Server configuration error',
-          debugId,
-        }),
-        {
-          status: 500,
-          headers: { 'content-type': 'application/json' }
-        }
-      );
-    }
 
 
 
@@ -224,11 +320,10 @@ Deno.serve(async (req) => {
     // Execute transaction
     const txHash = await walletClient.writeContract(request);
 
-    // Wait for confirmation (clamp between 1-5)
-    const confirmsToWait = Math.max(1, Math.min(5, confirmations || 1));
+    // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({
       hash: txHash,
-      confirmations: confirmsToWait,
+      confirmations: 1,
     });
 
     return new Response(
@@ -236,6 +331,12 @@ Deno.serve(async (req) => {
         ok: true,
         success: true,
         txHash,
+        tokenURI,
+        network,
+        contractAddress: contract,
+        studentVault,
+        teacherVault,
+        debugId,
       }),
       {
         status: 200,
@@ -244,36 +345,34 @@ Deno.serve(async (req) => {
     );
 
   } catch (err) {
-    // Extract detailed error information from viem
+    // Extract detailed error information
     const message = err?.message || String(err);
-    const details = {
-      shortMessage: err?.shortMessage || null,
-      name: err?.name || null,
-      code: err?.code || null,
-      cause: err?.cause ? {
-        shortMessage: err.cause?.shortMessage || null,
-        message: err.cause?.message || null,
-      } : null,
-      metaMessages: err?.metaMessages || null,
+    const stack = String(err?.stack || err);
+    
+    // Get config values safely
+    const network = Deno.env.get("NETWORK") || "unknown";
+    const rpcUrl = network === "sepolia" ? Deno.env.get("SEPOLIA_RPC_URL") : null;
+    const contract = Deno.env.get("CONTRACT_ADDRESS") || "unknown";
+
+    const errorResponse = {
+      ok: false,
+      code: 'ISSUE_FAILED',
+      message,
+      details: stack,
+      rpcUrl,
+      network,
+      contractAddress: contract,
+      debugId,
     };
 
     // Log full error details for debugging
-    console.error('issueBlockward failed', {
-      debugId,
-      message,
-      details,
-    });
+    console.error('issueBlockward failed', errorResponse);
 
     return new Response(
-      JSON.stringify({
-        ok: false,
-        error: message,
-        debugId,
-        details,
-      }),
+      JSON.stringify(errorResponse),
       {
-        status: 500,
-        headers: { 'content-type': 'application/json' }
+        status: 200,
+        headers: corsHeaders
       }
     );
   }
