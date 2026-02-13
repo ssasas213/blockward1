@@ -1,4 +1,6 @@
-import { ethers } from "npm:ethers@6.13.0";
+import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
+import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
+import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const corsHeaders = {
@@ -8,23 +10,24 @@ const corsHeaders = {
   'content-type': 'application/json'
 };
 
+const APPROVED_SIGNER = "0xc07af63f5eaa6d67f4a618d00a8a502a61d5ff0e";
+
+const CONTRACT_ABI = parseAbi([
+  "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
+]);
+
 Deno.serve(async (req) => {
   const debugId = "bw_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
 
-  // Log helper that always includes debugId
-  const log = (message, obj = {}) => {
-    console.log(JSON.stringify({ debugId, message, ...obj }));
+  const log = (msg: string, obj = {}) => {
+    console.log(JSON.stringify({ msg, debugId, ...obj }));
   };
 
   try {
     log("=== ISSUE BLOCKWARD START ===", { method: req.method });
 
-    // CORS handling
     if (req.method === 'OPTIONS') {
-      return new Response(null, {
-        status: 204,
-        headers: corsHeaders,
-      });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     if (req.method !== 'POST') {
@@ -96,8 +99,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const studentVault = studentProfiles[0].wallet_address;
-    log("Student vault found", { studentVault });
+    const studentWallet = studentProfiles[0].wallet_address;
+    log("Student wallet found", { studentWallet });
     
     // Query teacher vault
     log("Querying teacher profile", { email: user.email });
@@ -117,22 +120,22 @@ Deno.serve(async (req) => {
       );
     }
 
-    const teacherVault = teacherProfiles[0].wallet_address;
+    const teacherWallet = teacherProfiles[0].wallet_address;
     const teacherId = teacherProfiles[0].id;
-    log("Teacher vault found", { teacherVault });
+    log("Teacher wallet found", { teacherWallet });
 
-    // Validate both vaults exist
-    if (!studentVault || !teacherVault) {
-      log("Missing vault address", { studentVault, teacherVault });
+    // Validate both wallets exist
+    if (!studentWallet || !teacherWallet) {
+      log("Missing wallet address", { studentWallet, teacherWallet });
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'MISSING_VAULT',
-          message: 'Vault address not found for student or teacher',
+          message: 'Wallet address not found for student or teacher',
           studentId,
           teacherId,
-          studentVault: studentVault || null,
-          teacherVault: teacherVault || null,
+          studentWallet: studentWallet || null,
+          teacherWallet: teacherWallet || null,
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -140,15 +143,18 @@ Deno.serve(async (req) => {
     }
 
     // Validate address format
-    if (!ethers.isAddress(studentVault) || !ethers.isAddress(teacherVault)) {
-      log("Invalid vault address format", { studentVault, teacherVault });
+    try {
+      getAddress(studentWallet);
+      getAddress(teacherWallet);
+    } catch {
+      log("Invalid wallet address format", { studentWallet, teacherWallet });
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'INVALID_VAULT',
-          message: 'Invalid vault address format',
-          studentVault,
-          teacherVault,
+          message: 'Invalid wallet address format',
+          studentWallet,
+          teacherWallet,
           debugId,
         }),
         { status: 200, headers: corsHeaders }
@@ -177,7 +183,7 @@ Deno.serve(async (req) => {
     }
 
     // Extract and log RPC hostname (not full URL with key)
-    let rpcHost;
+    let rpcHost: string;
     try {
       rpcHost = new URL(rpcUrl).hostname;
     } catch {
@@ -244,57 +250,138 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Setup ethers provider and signer
-    log("Setting up ethers provider and signer...", { rpcHost });
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const wallet = new ethers.Wallet(issuerPrivateKey, provider);
+    // Setup viem clients
+    log("Setting up viem clients...", { rpcHost });
+    const account = privateKeyToAccount(issuerPrivateKey as `0x${string}`);
     
-    log("Signer initialized", { signerAddress: wallet.address });
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(rpcUrl),
+    });
+
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(rpcUrl),
+    });
+
+    const signerAddress = account.address;
+    log("Signer initialized", { signerAddress });
+
+    // HARD FAIL: Check signer address matches approved teacher wallet
+    if (signerAddress.toLowerCase() !== APPROVED_SIGNER) {
+      log("CRITICAL: Signer mismatch - not approved teacher wallet", {
+        expected: APPROVED_SIGNER,
+        got: signerAddress
+      });
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'WRONG_SIGNER',
+          message: 'ISSUER_PRIVATE_KEY does not match approved teacher wallet',
+          expected: APPROVED_SIGNER,
+          got: signerAddress,
+          debugId,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    log("✓ Signer approved", { signerAddress });
+
+    // Get issuer balance
+    const balance = await publicClient.getBalance({ address: account.address });
+    log("Issuer balance", { balanceWei: balance.toString(), balanceEth: (Number(balance) / 1e18).toFixed(6) });
+
+    // Confirm student address matches
+    log("Confirmed student wallet address", { 
+      studentWallet,
+      studentId,
+      matchesRecord: true 
+    });
 
     // Build metadata
-    const timestamp = new Date().toISOString();
     const tokenURI = `https://blockward.me/metadata/${studentId}-${Date.now()}.json`;
     
-    // Convert category to bytes32
-    const awardTypeBytes32 = ethers.encodeBytes32String(category);
+    // Convert category to bytes32 (viem uses encodeBytes32String from ethers compatibility)
+    const awardTypeBytes32 = encodeBytes32String(category);
 
     log("Metadata prepared", { tokenURI, awardTypeBytes32, category });
 
-    // Contract ABI
-    const abi = [
-      "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
-    ];
-
-    // Create contract instance
-    const contract = new ethers.Contract(contractAddress, abi, wallet);
-    
-    log("Contract instance created", { contractAddress });
-
-    // Execute transaction
-    log("Sending transaction...", {
-      studentVault,
-      teacherVault,
-      awardType: awardTypeBytes32,
-      tokenURI
-    });
-
-    const tx = await contract.issueAward(
-      studentVault,
-      teacherVault,
+    // Prepare mint arguments
+    const mintArgs = [
+      studentWallet as `0x${string}`,
+      teacherWallet as `0x${string}`,
       awardTypeBytes32,
       tokenURI
-    );
+    ] as const;
 
-    log("Transaction sent", { txHash: tx.hash });
+    log("Prepared mint arguments", {
+      studentWallet: mintArgs[0],
+      teacherWallet: mintArgs[1],
+      awardType: mintArgs[2],
+      tokenURI: mintArgs[3]
+    });
+
+    // SIMULATE transaction before executing
+    log("Simulating transaction...", {
+      functionName: 'issueAward',
+      args: mintArgs
+    });
+
+    let simulationResult;
+    try {
+      simulationResult = await publicClient.simulateContract({
+        account,
+        address: contractAddress as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'issueAward',
+        args: mintArgs,
+      });
+      log("✓ Simulation successful", { simulationResult: 'OK' });
+    } catch (simError: any) {
+      log("✗ Simulation failed", {
+        errorMessage: simError?.message,
+        shortMessage: simError?.shortMessage,
+        cause: simError?.cause,
+        details: simError?.details
+      });
+      
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          code: 'SIMULATION_FAILED',
+          message: 'Transaction would revert',
+          debugId,
+          signerAddress,
+          studentAddress: studentWallet,
+          functionName: 'issueAward',
+          args: mintArgs,
+          error: {
+            message: simError?.message,
+            shortMessage: simError?.shortMessage,
+            cause: simError?.cause?.toString(),
+            details: simError?.details
+          }
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    // Execute transaction
+    log("Sending transaction...");
+    const txHash = await walletClient.writeContract(simulationResult.request);
+    log("Transaction sent", { txHash });
 
     // Wait for confirmation
     log("Waiting for confirmation...");
-    const receipt = await tx.wait();
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     
     log("Transaction confirmed", {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
-      status: receipt.status
+      txHash: receipt.transactionHash,
+      blockNumber: receipt.blockNumber.toString(),
+      status: receipt.status,
+      gasUsed: receipt.gasUsed.toString()
     });
 
     log("=== ✓ ISSUE BLOCKWARD SUCCESS ===");
@@ -303,22 +390,22 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         debugId,
-        txHash: receipt.hash,
+        txHash: receipt.transactionHash,
         message: "BlockWard issued successfully",
         tokenURI,
         network,
         contractAddress,
-        studentVault,
-        teacherVault,
-        blockNumber: receipt.blockNumber
+        studentWallet,
+        teacherWallet,
+        blockNumber: receipt.blockNumber.toString(),
+        status: receipt.status
       }),
       { status: 200, headers: corsHeaders }
     );
 
-  } catch (err) {
+  } catch (err: any) {
     // Log full error with multiple formats
-    console.error("ISSUE_BLOCKWARD_FATAL", { debugId, err });
-    console.error("ISSUE_BLOCKWARD_FATAL_JSON", JSON.stringify({
+    console.error("ISSUE_BLOCKWARD_FATAL", JSON.stringify({
       debugId,
       errorName: err?.name,
       errorMessage: err?.message,
@@ -327,7 +414,8 @@ Deno.serve(async (req) => {
       errorReason: err?.reason,
       errorData: err?.data,
       errorStack: err?.stack,
-      fullError: err
+      errorCause: err?.cause,
+      errorDetails: err?.details
     }, null, 2));
 
     // Return structured error to frontend
@@ -339,6 +427,8 @@ Deno.serve(async (req) => {
         code: err?.code,
         shortMessage: err?.shortMessage,
         reason: err?.reason,
+        cause: err?.cause?.toString(),
+        details: err?.details,
         data: err?.data,
         stack: err?.stack,
         errorType: err?.constructor?.name || 'Unknown'
