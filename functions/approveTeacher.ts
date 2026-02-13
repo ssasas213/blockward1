@@ -1,35 +1,36 @@
-import { ethers } from "npm:ethers@6.13.0";
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createPublicClient, createWalletClient, http, parseAbi, keccak256, toHex } from "npm:viem@2.7.0";
+import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
+import { sepolia } from "npm:viem@2.7.0/chains";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
   'content-type': 'application/json'
 };
-
-// BlockWard AccessControl ABI
-const BLOCKWARD_ABI = [
-  "function TEACHER_ROLE() view returns (bytes32)",
-  "function grantRole(bytes32 role, address account)",
-  "function hasRole(bytes32 role, address account) view returns (bool)"
-];
 
 function generateDebugId() {
   return `AT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+// Compute TEACHER_ROLE = keccak256("TEACHER_ROLE")
+const TEACHER_ROLE = keccak256(toHex("TEACHER_ROLE"));
+
+const CONTRACT_ABI = parseAbi([
+  "function grantRole(bytes32 role, address account)",
+  "function hasRole(bytes32 role, address account) view returns (bool)"
+]);
+
 Deno.serve(async (req) => {
   const debugId = generateDebugId();
 
-  const log = (message, obj = {}) => {
+  const log = (message: string, obj = {}) => {
     console.log(JSON.stringify({ debugId, message, ...obj }));
   };
 
   try {
     log("=== APPROVE TEACHER START ===", { method: req.method });
 
-    // CORS handling
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
@@ -42,28 +43,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Authenticate user
-    log("Authenticating user...");
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    // ADMIN-ONLY: Check X-Admin-Key header
+    const adminKey = req.headers.get('X-Admin-Key');
+    const expectedAdminKey = Deno.env.get('ADMIN_KEY');
     
-    if (!user) {
-      log("Unauthorized - no user");
+    if (!expectedAdminKey) {
+      log("ADMIN_KEY not configured in secrets");
       return new Response(
-        JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
-        { status: 401, headers: corsHeaders }
+        JSON.stringify({ ok: false, error: 'ADMIN_KEY not configured', debugId }),
+        { status: 500, headers: corsHeaders }
       );
     }
-    
-    log("User authenticated", { email: user.email });
 
-    // Parse request body
+    if (adminKey !== expectedAdminKey) {
+      log("Unauthorized - invalid admin key");
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Unauthorized - admin access required', debugId }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    log("Admin authenticated");
+
+    // Parse body
     const body = await req.json();
     log("Request body received", { body });
     
     const { teacherVault } = body;
 
-    // Validate required field
     if (!teacherVault) {
       log("Missing teacherVault");
       return new Response(
@@ -77,9 +84,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate address format
-    if (!ethers.isAddress(teacherVault)) {
-      log("Invalid teacher vault address format", { teacherVault });
+    // Validate address format (viem will validate, but check early)
+    if (!/^0x[a-fA-F0-9]{40}$/.test(teacherVault)) {
+      log("Invalid address format", { teacherVault });
       return new Response(
         JSON.stringify({
           ok: false,
@@ -92,29 +99,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get environment variables - ONLY use secrets
+    // Load environment
     log("Loading environment variables...");
+    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
     const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
     const issuerPrivateKey = Deno.env.get("ISSUER_PRIVATE_KEY");
-    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
-    const network = Deno.env.get("NETWORK") || "sepolia";
 
-    // CRITICAL: Validate RPC URL is set
     if (!rpcUrl) {
-      log("CRITICAL: SEPOLIA_RPC_URL not configured");
+      log("SEPOLIA_RPC_URL not configured");
       return new Response(
         JSON.stringify({
           ok: false,
           code: 'BAD_RPC_URL',
-          message: 'SEPOLIA_RPC_URL secret not set',
+          message: 'SEPOLIA_RPC_URL not set',
           debugId,
         }),
         { status: 200, headers: corsHeaders }
       );
     }
 
-    // Extract and log RPC hostname
-    let rpcHost;
+    let rpcHost: string;
     try {
       rpcHost = new URL(rpcUrl).hostname;
     } catch {
@@ -130,16 +134,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    log("Environment loaded", {
-      network,
-      rpcHost,
-      contractSet: !!contractAddress,
-      pkSet: !!issuerPrivateKey
-    });
+    log("Environment loaded", { rpcHost, contractSet: !!contractAddress, pkSet: !!issuerPrivateKey });
 
-    // CRITICAL: Reject public RPC
     if (rpcHost === 'rpc.sepolia.org') {
-      log("CRITICAL: Public RPC detected - rejecting");
+      log("Public RPC detected - rejecting");
       return new Response(
         JSON.stringify({
           ok: false,
@@ -158,33 +156,39 @@ Deno.serve(async (req) => {
         JSON.stringify({
           ok: false,
           code: 'MISSING_CONFIG',
-          message: 'Contract address or private key not configured',
+          message: 'CONTRACT_ADDRESS or ISSUER_PRIVATE_KEY not configured',
           debugId,
         }),
         { status: 200, headers: corsHeaders }
       );
     }
 
-    // Setup ethers provider and signer
-    log("Setting up ethers provider and signer...", { rpcHost });
-    const provider = new ethers.JsonRpcProvider(rpcUrl);
-    const wallet = new ethers.Wallet(issuerPrivateKey, provider);
+    // Setup viem clients
+    log("Setting up viem clients...", { rpcHost });
+    const account = privateKeyToAccount(issuerPrivateKey as `0x${string}`);
     
-    log("Signer initialized", { signerAddress: wallet.address });
+    const publicClient = createPublicClient({
+      chain: sepolia,
+      transport: http(rpcUrl),
+    });
 
-    // Create contract instance
-    const contract = new ethers.Contract(contractAddress, BLOCKWARD_ABI, wallet);
-    log("Contract instance created", { contractAddress });
+    const walletClient = createWalletClient({
+      account,
+      chain: sepolia,
+      transport: http(rpcUrl),
+    });
 
-    // Get TEACHER_ROLE from contract
-    log("Fetching TEACHER_ROLE constant...");
-    const TEACHER_ROLE = await contract.TEACHER_ROLE();
-    log("TEACHER_ROLE fetched", { teacherRole: TEACHER_ROLE });
+    log("Clients initialized", { signerAddress: account.address });
 
     // Check if teacher already has role
     log("Checking if teacher already has role...");
-    const hasRole = await contract.hasRole(TEACHER_ROLE, teacherVault);
-    
+    const hasRole = await publicClient.readContract({
+      address: contractAddress as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'hasRole',
+      args: [TEACHER_ROLE, teacherVault as `0x${string}`],
+    });
+
     if (hasRole) {
       log("Teacher already approved", { teacherVault });
       return new Response(
@@ -199,18 +203,29 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Grant teacher role
-    log("Granting TEACHER_ROLE...", { teacherVault, teacherRole: TEACHER_ROLE });
-    const tx = await contract.grantRole(TEACHER_ROLE, teacherVault);
-    log("Transaction sent", { txHash: tx.hash });
+    // Simulate transaction
+    log("Simulating grantRole transaction...");
+    const { request } = await publicClient.simulateContract({
+      account,
+      address: contractAddress as `0x${string}`,
+      abi: CONTRACT_ABI,
+      functionName: 'grantRole',
+      args: [TEACHER_ROLE, teacherVault as `0x${string}`],
+    });
+
+    log("Simulation successful, executing transaction...");
+
+    // Execute transaction
+    const txHash = await walletClient.writeContract(request);
+    log("Transaction sent", { txHash });
 
     // Wait for confirmation
     log("Waiting for confirmation...");
-    const receipt = await tx.wait();
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
     
     log("Transaction confirmed", {
-      txHash: receipt.hash,
-      blockNumber: receipt.blockNumber,
+      txHash: receipt.transactionHash,
+      blockNumber: receipt.blockNumber.toString(),
       status: receipt.status
     });
 
@@ -220,17 +235,15 @@ Deno.serve(async (req) => {
       JSON.stringify({
         ok: true,
         debugId,
-        txHash: receipt.hash,
+        txHash: receipt.transactionHash,
         message: "Teacher approved successfully",
         teacherVault,
-        network,
-        blockNumber: receipt.blockNumber
+        blockNumber: receipt.blockNumber.toString()
       }),
       { status: 200, headers: corsHeaders }
     );
 
-  } catch (err) {
-    // Log full error
+  } catch (err: any) {
     console.error("APPROVE_TEACHER_FATAL", { debugId, err });
     console.error("APPROVE_TEACHER_FATAL_JSON", JSON.stringify({
       debugId,
@@ -243,14 +256,12 @@ Deno.serve(async (req) => {
       errorStack: err?.stack
     }, null, 2));
 
-    // Extract RPC host for error response
     let errorRpcHost = 'unknown';
     try {
       const errorRpcUrl = Deno.env.get('SEPOLIA_RPC_URL');
       if (errorRpcUrl) errorRpcHost = new URL(errorRpcUrl).hostname;
     } catch {}
 
-    // Return structured error
     return new Response(
       JSON.stringify({
         ok: false,
@@ -262,7 +273,6 @@ Deno.serve(async (req) => {
         data: err?.data,
         stack: err?.stack,
         config: {
-          network: Deno.env.get('NETWORK') || 'sepolia',
           rpcHost: errorRpcHost,
           contractAddress: Deno.env.get('CONTRACT_ADDRESS') || 'not set'
         }
