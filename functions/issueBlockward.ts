@@ -73,6 +73,9 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { studentId, title, category, description } = body;
 
+    // Log input parameters
+    console.log("DEBUG INPUT:", { studentId, title, category, description });
+
     // Validate required fields - strict schema
     const missing = [];
     if (!studentId) missing.push('studentId');
@@ -291,6 +294,13 @@ Deno.serve(async (req) => {
 
     // Setup clients
     const account = privateKeyToAccount(pk);
+    
+    // Log configuration details
+    console.log("DEBUG CONFIG:", {
+      rpc: rpcUrl,
+      contract: contract,
+      signer: account.address
+    });
 
     const publicClient = createPublicClient({
       chain: sepolia,
@@ -329,14 +339,14 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         ok: true,
-        success: true,
+        debugId,
         txHash,
+        message: "BlockWard issued successfully",
         tokenURI,
         network,
         contractAddress: contract,
         studentVault,
         teacherVault,
-        debugId,
       }),
       {
         status: 200,
@@ -346,8 +356,8 @@ Deno.serve(async (req) => {
 
   } catch (err) {
     // Extract detailed error information
-    const message = err?.message || String(err);
-    const stack = String(err?.stack || err);
+    const message = err?.shortMessage || err?.message || "Unknown blockchain error";
+    const code = err?.code || 'ISSUE_FAILED_UNCAUGHT';
     
     // Get config values safely
     const network = Deno.env.get("NETWORK") || "unknown";
@@ -356,17 +366,20 @@ Deno.serve(async (req) => {
 
     const errorResponse = {
       ok: false,
-      code: 'ISSUE_FAILED',
+      debugId,
       message,
-      details: stack,
+      code,
+      details: err,
+    };
+
+    // Log full error details for debugging with complete context
+    console.error('BLOCKCHAIN ERROR:', {
+      ...errorResponse,
       rpcUrl,
       network,
       contractAddress: contract,
-      debugId,
-    };
-
-    // Log full error details for debugging
-    console.error('issueBlockward failed', errorResponse);
+      stack: err?.stack || String(err),
+    });
 
     return new Response(
       JSON.stringify(errorResponse),
