@@ -148,14 +148,16 @@ function IssueBlockWardContent() {
 
       const data = response.data;
 
-      if (!data.ok || !data.success) {
-        const errorMsg = data.error || 'Failed to issue BlockWard';
+      if (!data.ok) {
+        const errorMsg = data.message || data.error || 'Failed to issue BlockWard';
         const debugId = data.debugId || '';
         throw new Error(`${errorMsg}${debugId ? ' [Debug: ' + debugId + ']' : ''}`);
       }
 
       setBlockchainData({
-        txHash: data.txHash,
+        mintTxHash: data.mintTxHash,
+        transferTxHash: data.transferTxHash,
+        tokenId: data.tokenId,
         network: 'Sepolia Testnet'
       });
       setIssueSuccess(true);
