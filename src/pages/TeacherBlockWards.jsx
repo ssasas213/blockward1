@@ -33,12 +33,20 @@ function TeacherBlockWardsContent() {
 
   const loadData = async () => {
     try {
-      const [issued, timeline] = await Promise.all([
-        api.getTeacherIssuedBlockWards(),
-        api.getActivityTimeline()
-      ]);
-      setIssuedBlockWards(issued);
-      setActivityTimeline(timeline);
+      const user = await base44.auth.me();
+      if (!user) return;
+
+      const issued = await base44.entities.BlockWard.filter({ issuer_email: user.email });
+      // Map DB fields to expected shape
+      const mapped = issued.map(bw => ({
+        ...bw,
+        studentName: bw.student_name || bw.student_email,
+        issuedAt: bw.minted_at || bw.created_date,
+        icon: '🏆',
+        status: bw.status || 'active'
+      }));
+      setIssuedBlockWards(mapped);
+      setActivityTimeline([]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
