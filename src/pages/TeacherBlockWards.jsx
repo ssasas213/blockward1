@@ -16,7 +16,7 @@ import {
 import { Award, Plus, Search, Info, Loader2 } from 'lucide-react';
 import StatusBadge from '@/components/blockwards/StatusBadge';
 import ActivityTimeline from '@/components/blockwards/ActivityTimeline';
-import { api } from '@/components/blockwards/mockData';
+import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
