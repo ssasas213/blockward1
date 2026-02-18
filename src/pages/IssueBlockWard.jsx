@@ -213,20 +213,28 @@ function IssueBlockWardContent() {
               {blockchainData && (
                 <div className="bg-slate-50 rounded-xl p-6 mb-8 space-y-3">
                   <div>
-                    <p className="text-xs text-slate-500 mb-1">Transaction Hash</p>
-                    <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.txHash}</p>
+                    <p className="text-xs text-slate-500 mb-1">Token ID</p>
+                    <p className="text-sm font-mono text-slate-900">#{blockchainData.tokenId}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Mint Transaction</p>
+                    <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.mintTxHash}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Transfer to Student</p>
+                    <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.transferTxHash}</p>
                   </div>
                   <div>
                     <p className="text-xs text-slate-500 mb-1">Network</p>
                     <p className="text-sm font-medium text-slate-900">{blockchainData.network}</p>
                   </div>
                   <a
-                    href={`https://sepolia.etherscan.io/tx/${blockchainData.txHash}`}
+                    href={`https://sepolia.etherscan.io/tx/${blockchainData.transferTxHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium"
                   >
-                    View on Etherscan →
+                    View Transfer on Etherscan →
                   </a>
                 </div>
               )}
