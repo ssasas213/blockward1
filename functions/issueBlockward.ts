@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 // The signer address derived from ISSUER_PRIVATE_KEY - must be approved via addTeacher()
-// v2 - force redeploy
+// v3 - force redeploy
 const APPROVED_SIGNER = "0xc07af63f5eaa6d67f4a618d00a8a502a61d5ff0e";
 
 const CONTRACT_ABI = parseAbi([
