@@ -1,11 +1,10 @@
-// issueBlockward FINAL - viem only, teacherVault = signer address always
-// BUILD_TAG: v7_final_2026
-import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
+// issueBlockward - canonical version, delegates to issueBlockwardV2 logic
+// Soulbound NFT: minted directly to student via issueAward, no transfer needed
+import { createPublicClient, createWalletClient, http, parseAbi, getAddress } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
+import { encodeBytes32String } from "npm:ethers@6.13.0";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
-
-const _VERSION = "v7_final_2026";
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -16,29 +15,25 @@ const CORS = {
 
 const ABI = parseAbi([
   "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)",
-  "function safeTransferFrom(address from, address to, uint256 tokenId)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ]);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-  // --- 1. Auth ---
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: CORS });
 
-  // --- 2. Parse body ---
   const body = await req.json();
   const { studentId, title, category, description, tokenURI } = body;
 
-  console.log(JSON.stringify({ _VERSION, step: "START", studentId, title, category }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "START", studentId, title, category }));
 
   if (!studentId || !title || !category) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing studentId/title/category' }), { headers: CORS });
   }
 
-  // --- 3. Env ---
   const RPC = Deno.env.get("SEPOLIA_RPC_URL");
   const CONTRACT = Deno.env.get("CONTRACT_ADDRESS");
   const PK = Deno.env.get("ISSUER_PRIVATE_KEY");
@@ -51,14 +46,12 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: 'Wrong network: ' + NETWORK }), { headers: CORS });
   }
 
-  // --- 4. Signer (ISSUER_PRIVATE_KEY) — this is the approved teacher on-chain ---
   const account = privateKeyToAccount(PK);
-  // teacherVault arg MUST == account.address == msg.sender
-  const teacherVault = account.address;
+  const teacherVault = account.address; // MUST equal msg.sender, which is the approved teacher
 
-  console.log(JSON.stringify({ _VERSION, step: "SIGNER", signerAddress: teacherVault }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "SIGNER", teacherVault }));
 
-  // --- 5. Student address ---
+  // Resolve student address
   let studentAddr = body.studentAddress;
   if (!studentAddr) {
     const rows = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
@@ -68,9 +61,9 @@ Deno.serve(async (req) => {
   }
   studentAddr = getAddress(studentAddr);
 
-  console.log(JSON.stringify({ _VERSION, step: "STUDENT", studentAddr }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "STUDENT", studentAddr }));
 
-  // --- 6. Build URI ---
+  // Build metadata URI
   let uri = tokenURI;
   if (!uri) {
     const meta = {
@@ -84,98 +77,69 @@ Deno.serve(async (req) => {
 
   const awardBytes = encodeBytes32String(category);
 
-  console.log(JSON.stringify({
-    _VERSION, step: "ARGS",
-    studentVault: studentAddr,
-    teacherVault,
-    awardType: awardBytes
-  }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "ARGS", studentVault: studentAddr, teacherVault, awardType: awardBytes }));
 
-  // --- 7. Clients ---
   const pub = createPublicClient({ chain: sepolia, transport: http(RPC) });
   const wal = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
 
-  // --- 8. Simulate issueAward ---
+  // Simulate issueAward
   let sim;
   try {
     sim = await pub.simulateContract({
-      account,
-      address: CONTRACT,
-      abi: ABI,
+      account, address: CONTRACT, abi: ABI,
       functionName: 'issueAward',
       args: [studentAddr, teacherVault, awardBytes, uri]
     });
-    console.log(JSON.stringify({ _VERSION, step: "SIM_OK" }));
+    console.log(JSON.stringify({ fn: "issueBlockward", step: "SIM_OK" }));
   } catch (e) {
-    console.log(JSON.stringify({ _VERSION, step: "SIM_FAIL", err: e?.shortMessage || e?.message }));
+    console.log(JSON.stringify({ fn: "issueBlockward", step: "SIM_FAIL", err: e?.shortMessage || e?.message }));
     return new Response(JSON.stringify({
       ok: false,
       error: e?.shortMessage || e?.message,
-      _VERSION,
       signerAddress: teacherVault,
       studentAddress: studentAddr,
       contract: CONTRACT
     }), { headers: CORS });
   }
 
-  // --- 9. Mint ---
+  // Send tx
   const mintHash = await wal.writeContract(sim.request);
-  console.log(JSON.stringify({ _VERSION, step: "MINT_SENT", mintHash }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "MINT_SENT", mintHash }));
   const mintReceipt = await pub.waitForTransactionReceipt({ hash: mintHash });
-  console.log(JSON.stringify({ _VERSION, step: "MINT_DONE", status: mintReceipt.status }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "MINT_DONE", status: mintReceipt.status }));
 
   if (mintReceipt.status !== 'success') {
     return new Response(JSON.stringify({ ok: false, error: 'Mint reverted', mintHash }), { headers: CORS });
   }
 
-  // --- 10. Extract tokenId ---
+  // Extract tokenId from Transfer event (topic[3] for indexed tokenId)
   let tokenId = null;
+  const transferSig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
   for (const log of mintReceipt.logs) {
-    try {
-      const decoded = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
-      if (decoded.eventName === 'Transfer') { tokenId = decoded.args.tokenId; break; }
-    } catch {}
+    if (log.topics[0]?.toLowerCase() === transferSig && log.topics.length === 4) {
+      tokenId = BigInt(log.topics[3]);
+      break;
+    }
   }
   if (tokenId === null) {
-    return new Response(JSON.stringify({ ok: false, error: 'No tokenId in receipt', mintHash }), { headers: CORS });
-  }
-  console.log(JSON.stringify({ _VERSION, step: "TOKEN_ID", tokenId: tokenId.toString() }));
-
-  // --- 11. Transfer to student ---
-  let tSim;
-  try {
-    tSim = await pub.simulateContract({
-      account,
-      address: CONTRACT,
-      abi: ABI,
-      functionName: 'safeTransferFrom',
-      args: [teacherVault, studentAddr, tokenId]
-    });
-    console.log(JSON.stringify({ _VERSION, step: "TRANSFER_SIM_OK" }));
-  } catch (e) {
-    console.log(JSON.stringify({ _VERSION, step: "TRANSFER_SIM_FAIL", err: e?.shortMessage || e?.message }));
-    return new Response(JSON.stringify({
-      ok: false,
-      error: 'Transfer sim failed: ' + (e?.shortMessage || e?.message),
-      mintHash,
-      tokenId: tokenId.toString()
-    }), { headers: CORS });
+    // Fallback: viem decodeEventLog
+    for (const log of mintReceipt.logs) {
+      try {
+        const decoded = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
+        if (decoded.eventName === 'Transfer') { tokenId = decoded.args.tokenId; break; }
+      } catch {}
+    }
   }
 
-  const transferHash = await wal.writeContract(tSim.request);
-  const transferReceipt = await pub.waitForTransactionReceipt({ hash: transferHash });
-  console.log(JSON.stringify({ _VERSION, step: "DONE", transferStatus: transferReceipt.status }));
+  console.log(JSON.stringify({ fn: "issueBlockward", step: "DONE", tokenId: tokenId?.toString() ?? null, studentAddr }));
 
   return new Response(JSON.stringify({
     ok: true,
-    _VERSION,
     mintTxHash: mintReceipt.transactionHash,
-    transferTxHash: transferReceipt.transactionHash,
-    tokenId: tokenId.toString(),
+    tokenId: tokenId !== null ? tokenId.toString() : null,
     studentAddress: studentAddr,
     signerAddress: teacherVault,
-    title,
-    category,
-    blockNumber: transferReceipt.blockNumber.toString()
+    title, category,
+    blockNumber: mintReceipt.blockNumber.toString()
   }), { headers: CORS });
 });
