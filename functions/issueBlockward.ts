@@ -320,7 +320,7 @@ Deno.serve(async (req) => {
     log("MINT_SIGNER", { signerAddress });
 
     // HARD FAIL: Check signer address matches approved teacher wallet
-    if (signerAddress.toLowerCase() !== APPROVED_SIGNER) {
+    if (signerAddress.toLowerCase() !== APPROVED_SIGNER.toLowerCase()) {
       log("CRITICAL: Signer mismatch - not approved teacher wallet", {
         expected: APPROVED_SIGNER,
         got: signerAddress
