@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       address: CONTRACT,
       abi: ABI,
       functionName: 'issueAward',
-      args: [signerAddress, signerAddress, bytes32, "data:text/plain,test"]
+      args: [signerAddress, signerAddress, correctedBytes32, "data:text/plain,test"]
     });
     results.simulateIssueAward = "PASSED";
   } catch (e) {
