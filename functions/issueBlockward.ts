@@ -1,249 +1,140 @@
+// issueBlockward v5 - clean rewrite
 import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const corsHeaders = {
+const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'content-type': 'application/json'
 };
 
-// The signer address derived from ISSUER_PRIVATE_KEY - must be approved via addTeacher()
-// v4 - force redeploy
-const APPROVED_SIGNER = "0xc07af63f5eaa6d67f4a618d00a8a502a61d5ff0e";
-
-const CONTRACT_ABI = parseAbi([
+const ABI = parseAbi([
   "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)",
   "function safeTransferFrom(address from, address to, uint256 tokenId)",
   "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ]);
 
 Deno.serve(async (req) => {
-  const debugId = "bw_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-  const log = (msg, obj = {}) => {
-    console.log(JSON.stringify({ debugId, message: msg, ...obj }));
-  };
+  const id = "bw_" + Date.now();
+  const L = (m, o = {}) => console.log(JSON.stringify({ id, m, ...o }));
 
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  L("START");
+
+  const base44 = createClientFromRequest(req);
+  const user = await base44.auth.me();
+  if (!user) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: CORS });
+
+  const body = await req.json();
+  L("BODY", { studentId: body.studentId, title: body.title, category: body.category, hasStudentAddr: !!body.studentAddress });
+
+  const { studentId, title, category, description, tokenURI } = body;
+  if (!studentId || !title || !category) {
+    return new Response(JSON.stringify({ ok: false, error: 'Missing studentId/title/category' }), { headers: CORS });
   }
 
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ ok: false, error: 'Method not allowed', debugId }), { status: 405, headers: corsHeaders });
+  // Resolve student address
+  let studentAddr = body.studentAddress;
+  if (!studentAddr) {
+    const rows = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
+    if (!rows?.length) return new Response(JSON.stringify({ ok: false, error: 'Student not found' }), { headers: CORS });
+    studentAddr = rows[0].wallet_address;
+    if (!studentAddr) return new Response(JSON.stringify({ ok: false, error: 'Student has no wallet' }), { headers: CORS });
+  }
+  try { studentAddr = getAddress(studentAddr); } catch {
+    return new Response(JSON.stringify({ ok: false, error: 'Invalid student address' }), { headers: CORS });
   }
 
+  L("STUDENT", { studentAddr });
+
+  // Load config
+  const RPC = Deno.env.get("SEPOLIA_RPC_URL");
+  const CONTRACT = Deno.env.get("CONTRACT_ADDRESS");
+  const PK = Deno.env.get("ISSUER_PRIVATE_KEY");
+  const NETWORK = Deno.env.get("NETWORK");
+
+  if (!RPC || !CONTRACT || !PK) return new Response(JSON.stringify({ ok: false, error: 'Missing env vars' }), { headers: CORS });
+  if (NETWORK !== "sepolia") return new Response(JSON.stringify({ ok: false, error: 'Not sepolia' }), { headers: CORS });
+
+  const account = privateKeyToAccount(PK);
+  L("SIGNER", { addr: account.address });
+
+  const pub = createPublicClient({ chain: sepolia, transport: http(RPC) });
+  const wal = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
+
+  // Build metadata
+  let uri = tokenURI;
+  if (!uri) {
+    const meta = { name: title, description: description || '', category, image: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}` };
+    uri = `data:application/json;base64,${btoa(unescape(encodeURIComponent(JSON.stringify(meta))))}`;
+  }
+
+  const awardBytes = encodeBytes32String(category);
+
+  // CRITICAL: teacherVault MUST equal msg.sender (account.address)
+  const args = [studentAddr, account.address, awardBytes, uri];
+  L("ARGS", { studentVault: args[0], teacherVault: args[1], awardType: args[2] });
+
+  // Simulate
+  let sim;
   try {
-    log("=== ISSUE BLOCKWARD START ===", { method: req.method });
-
-    // Auth
-    const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) {
-      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized', debugId }), { status: 401, headers: corsHeaders });
-    }
-    log("User authenticated", { email: user.email });
-
-    // Parse body
-    const body = await req.json();
-    log("Request body received", { body });
-
-    const { studentId, studentAddress: rawStudentAddress, title, category, description, tokenURI } = body;
-
-    if (!studentId || !title || !category) {
-      return new Response(JSON.stringify({ ok: false, code: 'MISSING_FIELDS', message: 'studentId, title, category are required', debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    // Resolve student wallet address
-    let studentAddress = rawStudentAddress;
-    if (!studentAddress) {
-      log("Loading student wallet from DB", { studentId });
-      const profiles = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
-      if (!profiles || profiles.length === 0) {
-        return new Response(JSON.stringify({ ok: false, code: 'STUDENT_NOT_FOUND', message: 'Student not found', studentId, debugId }), { status: 200, headers: corsHeaders });
-      }
-      studentAddress = profiles[0].wallet_address;
-      if (!studentAddress) {
-        return new Response(JSON.stringify({ ok: false, code: 'STUDENT_NO_WALLET', message: 'Student has no wallet address', studentId, debugId }), { status: 200, headers: corsHeaders });
-      }
-    }
-
-    // Validate student address
-    try {
-      studentAddress = getAddress(studentAddress);
-    } catch {
-      return new Response(JSON.stringify({ ok: false, code: 'INVALID_STUDENT_ADDRESS', message: 'Invalid student address format', studentAddress, debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    log("Student address resolved", { studentAddress });
-
-    // Load env
-    const rpcUrl = Deno.env.get("SEPOLIA_RPC_URL");
-    const contractAddress = Deno.env.get("CONTRACT_ADDRESS");
-    const issuerPrivateKey = Deno.env.get("ISSUER_PRIVATE_KEY");
-    const network = Deno.env.get("NETWORK");
-
-    if (!rpcUrl || !contractAddress || !issuerPrivateKey) {
-      return new Response(JSON.stringify({ ok: false, code: 'MISSING_CONFIG', message: 'SEPOLIA_RPC_URL, CONTRACT_ADDRESS, or ISSUER_PRIVATE_KEY not set', debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    if (network !== "sepolia") {
-      return new Response(JSON.stringify({ ok: false, code: 'UNSUPPORTED_NETWORK', message: `Network "${network}" not supported`, debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    const rpcHost = new URL(rpcUrl).hostname;
-    log("Environment loaded", { rpcHost, contractAddress, network });
-
-    // Setup viem clients
-    const account = privateKeyToAccount(issuerPrivateKey);
-
-    if (account.address.toLowerCase() !== APPROVED_SIGNER) {
-      log("CRITICAL: Signer mismatch", { expected: APPROVED_SIGNER, got: account.address });
-      return new Response(JSON.stringify({ ok: false, code: 'WRONG_SIGNER', message: 'ISSUER_PRIVATE_KEY does not match the approved teacher signer', expected: APPROVED_SIGNER, got: account.address, debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    const publicClient = createPublicClient({ chain: sepolia, transport: http(rpcUrl) });
-    const walletClient = createWalletClient({ account, chain: sepolia, transport: http(rpcUrl) });
-
-    const signerAddress = account.address;
-    log("Signer confirmed", { signerAddress });
-
-    // Build tokenURI
-    let finalTokenURI = tokenURI;
-    if (!finalTokenURI) {
-      const metadata = {
-        name: title,
-        description: description || '',
-        category,
-        image: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`,
-        attributes: [
-          { trait_type: 'Category', value: category },
-          { trait_type: 'Issued Date', value: new Date().toISOString() }
-        ]
-      };
-      const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(metadata))));
-      finalTokenURI = `data:application/json;base64,${b64}`;
-    }
-
-    const awardTypeBytes32 = encodeBytes32String(category);
-
-    // issueAward: studentVault=student, teacherVault=signerAddress (MUST equal msg.sender)
-    const mintArgs = [
-      studentAddress,
-      signerAddress,  // teacherVault MUST == msg.sender
-      awardTypeBytes32,
-      finalTokenURI
-    ];
-
-    log("Simulating issueAward...", { studentVault: mintArgs[0], teacherVault: mintArgs[1] });
-
-    let simResult;
-    try {
-      simResult = await publicClient.simulateContract({
-        account,
-        address: contractAddress,
-        abi: CONTRACT_ABI,
-        functionName: 'issueAward',
-        args: mintArgs,
-      });
-      log("✓ issueAward simulation passed");
-    } catch (e) {
-      log("✗ issueAward simulation failed", { error: e?.shortMessage || e?.message });
-      return new Response(JSON.stringify({
-        ok: false,
-        code: 'SIMULATION_FAILED',
-        message: e?.shortMessage || e?.message || 'Simulation failed',
-        debugId,
-        hint: 'Make sure the signer has been approved via addTeacher() on the contract'
-      }), { status: 200, headers: corsHeaders });
-    }
-
-    // Execute mint
-    log("Sending issueAward transaction...");
-    const mintTxHash = await walletClient.writeContract(simResult.request);
-    log("Mint tx sent", { mintTxHash });
-
-    const mintReceipt = await publicClient.waitForTransactionReceipt({ hash: mintTxHash });
-    log("Mint confirmed", { txHash: mintReceipt.transactionHash, status: mintReceipt.status, block: mintReceipt.blockNumber.toString() });
-
-    if (mintReceipt.status !== 'success') {
-      return new Response(JSON.stringify({ ok: false, code: 'MINT_REVERTED', message: 'Mint transaction reverted', mintTxHash: mintReceipt.transactionHash, debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    // Extract tokenId
-    let tokenId = null;
-    for (const entry of mintReceipt.logs) {
-      try {
-        const decoded = publicClient.decodeEventLog({ abi: CONTRACT_ABI, data: entry.data, topics: entry.topics });
-        if (decoded.eventName === 'Transfer') {
-          tokenId = decoded.args.tokenId;
-          log("TokenId extracted", { tokenId: tokenId.toString() });
-          break;
-        }
-      } catch {}
-    }
-
-    if (tokenId === null) {
-      return new Response(JSON.stringify({ ok: false, code: 'TOKEN_ID_NOT_FOUND', message: 'Minted but could not extract tokenId', mintTxHash: mintReceipt.transactionHash, debugId }), { status: 200, headers: corsHeaders });
-    }
-
-    // Transfer to student
-    log("Simulating safeTransferFrom...", { from: signerAddress, to: studentAddress, tokenId: tokenId.toString() });
-
-    let transferSim;
-    try {
-      transferSim = await publicClient.simulateContract({
-        account,
-        address: contractAddress,
-        abi: CONTRACT_ABI,
-        functionName: 'safeTransferFrom',
-        args: [signerAddress, studentAddress, tokenId],
-      });
-      log("✓ Transfer simulation passed");
-    } catch (e) {
-      log("✗ Transfer simulation failed", { error: e?.shortMessage || e?.message });
-      return new Response(JSON.stringify({
-        ok: false,
-        code: 'TRANSFER_SIMULATION_FAILED',
-        message: 'NFT minted but transfer to student failed: ' + (e?.shortMessage || e?.message),
-        mintTxHash: mintReceipt.transactionHash,
-        tokenId: tokenId.toString(),
-        debugId
-      }), { status: 200, headers: corsHeaders });
-    }
-
-    const transferTxHash = await walletClient.writeContract(transferSim.request);
-    log("Transfer tx sent", { transferTxHash });
-
-    const transferReceipt = await publicClient.waitForTransactionReceipt({ hash: transferTxHash });
-    log("Transfer confirmed", { txHash: transferReceipt.transactionHash, status: transferReceipt.status });
-
-    log("=== ✓ ISSUE BLOCKWARD SUCCESS ===");
-
-    return new Response(JSON.stringify({
-      ok: true,
-      debugId,
-      mintTxHash: mintReceipt.transactionHash,
-      transferTxHash: transferReceipt.transactionHash,
-      tokenId: tokenId.toString(),
-      studentAddress,
-      signerAddress,
-      title,
-      category,
-      blockNumber: transferReceipt.blockNumber.toString(),
-      status: transferReceipt.status
-    }), { status: 200, headers: corsHeaders });
-
-  } catch (err) {
-    console.error("ISSUE_BLOCKWARD_FATAL", { debugId, message: err?.message, code: err?.code, shortMessage: err?.shortMessage });
-    return new Response(JSON.stringify({
-      ok: false,
-      debugId,
-      message: err?.message ?? "Unknown error",
-      shortMessage: err?.shortMessage,
-      code: err?.code
-    }), { status: 200, headers: corsHeaders });
+    sim = await pub.simulateContract({ account, address: CONTRACT, abi: ABI, functionName: 'issueAward', args });
+    L("SIM_OK");
+  } catch (e) {
+    L("SIM_FAIL", { err: e?.shortMessage || e?.message });
+    return new Response(JSON.stringify({ ok: false, error: 'Simulation failed: ' + (e?.shortMessage || e?.message), id }), { headers: CORS });
   }
+
+  // Mint
+  const mintHash = await wal.writeContract(sim.request);
+  L("MINT_TX", { mintHash });
+  const mintReceipt = await pub.waitForTransactionReceipt({ hash: mintHash });
+  L("MINT_DONE", { status: mintReceipt.status, block: mintReceipt.blockNumber.toString() });
+
+  if (mintReceipt.status !== 'success') {
+    return new Response(JSON.stringify({ ok: false, error: 'Mint reverted', mintHash, id }), { headers: CORS });
+  }
+
+  // Extract tokenId
+  let tokenId = null;
+  for (const log of mintReceipt.logs) {
+    try {
+      const d = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
+      if (d.eventName === 'Transfer') { tokenId = d.args.tokenId; break; }
+    } catch {}
+  }
+  if (tokenId === null) return new Response(JSON.stringify({ ok: false, error: 'Cannot extract tokenId', mintHash, id }), { headers: CORS });
+  L("TOKEN_ID", { tokenId: tokenId.toString() });
+
+  // Transfer to student
+  let tSim;
+  try {
+    tSim = await pub.simulateContract({ account, address: CONTRACT, abi: ABI, functionName: 'safeTransferFrom', args: [account.address, studentAddr, tokenId] });
+    L("TRANSFER_SIM_OK");
+  } catch (e) {
+    L("TRANSFER_SIM_FAIL", { err: e?.shortMessage || e?.message });
+    return new Response(JSON.stringify({ ok: false, error: 'Transfer sim failed: ' + (e?.shortMessage || e?.message), mintHash, tokenId: tokenId.toString(), id }), { headers: CORS });
+  }
+
+  const transferHash = await wal.writeContract(tSim.request);
+  L("TRANSFER_TX", { transferHash });
+  const transferReceipt = await pub.waitForTransactionReceipt({ hash: transferHash });
+  L("TRANSFER_DONE", { status: transferReceipt.status });
+
+  L("SUCCESS");
+  return new Response(JSON.stringify({
+    ok: true,
+    id,
+    mintTxHash: mintReceipt.transactionHash,
+    transferTxHash: transferReceipt.transactionHash,
+    tokenId: tokenId.toString(),
+    studentAddress: studentAddr,
+    signerAddress: account.address,
+    title, category,
+    blockNumber: transferReceipt.blockNumber.toString()
+  }), { headers: CORS });
 });
