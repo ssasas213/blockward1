@@ -288,7 +288,7 @@ Deno.serve(async (req) => {
         teacherAddress,
         receiptStatus: receipt.status,
         blockNumber: receipt.blockNumber.toString(),
-        methodUsed: approvalMethod,
+        methodUsed: "addTeacher(address)",
         postCheck
       }),
       { status: 200, headers: corsHeaders }
