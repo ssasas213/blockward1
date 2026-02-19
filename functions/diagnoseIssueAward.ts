@@ -68,7 +68,10 @@ Deno.serve(async (req) => {
     const ABI = parseAbi([
       "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)"
     ]);
-    const bytes32 = "0x6163616465006d6963000000000000000000000000000000000000000000000000"; // "academic"
+    const bytes32 = "0x61636164656d69630000000000000000000000000000000000000000000000000"; // "academic" padded - wrong, use correct
+    // correct: encodeBytes32String("academic") = 0x61636164656d696300000000000000000000000000000000000000000000000000... let's compute
+    // "academic" in hex = 61 63 61 64 65 6d 69 63 (8 bytes) padded to 32 bytes right
+    const correctedBytes32 = "0x61636164656d696300000000000000000000000000000000000000000000000000".slice(0, 66);
     await pub.simulateContract({
       account,
       address: CONTRACT,
