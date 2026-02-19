@@ -180,7 +180,7 @@ Deno.serve(async (req) => {
     }
 
     // Execute transaction
-    log("Executing transaction...", { method: approvalMethod });
+    log("Executing addTeacher transaction...");
     txHash = await walletClient.writeContract(simulationResult.request);
     log("Transaction sent", { txHash });
 
