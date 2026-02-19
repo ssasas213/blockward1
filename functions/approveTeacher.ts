@@ -1,18 +1,19 @@
 import { createPublicClient, createWalletClient, http, parseAbi } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'content-type': 'application/json'
 };
 
 Deno.serve(async (req) => {
   const debugId = `AT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  const log = (msg: string, obj = {}) => {
+  const log = (msg, obj = {}) => {
     console.log(JSON.stringify({ msg, debugId, ...obj }));
   };
 
@@ -30,19 +31,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ADMIN AUTH: Check X-Admin-Key header
-    const adminKeyHeader = req.headers.get('X-Admin-Key');
-    const expectedAdminKey = Deno.env.get('ADMIN_KEY');
-    
-    if (!expectedAdminKey || !adminKeyHeader || adminKeyHeader !== expectedAdminKey) {
-      log("Unauthorized - invalid or missing admin key");
+    // AUTH: Require admin user via Base44 SDK
+    const base44 = createClientFromRequest(req);
+    const user = await base44.auth.me();
+
+    if (!user) {
+      log("Unauthorized - not logged in");
       return new Response(
-        JSON.stringify({ ok: false, error: 'Unauthorized - invalid admin key', debugId }),
+        JSON.stringify({ ok: false, error: 'Unauthorized', debugId }),
         { status: 401, headers: corsHeaders }
       );
     }
 
-    log("Admin authenticated");
+    if (user.role !== 'admin') {
+      log("Forbidden - not admin", { email: user.email, role: user.role });
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Forbidden: admin role required', debugId }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    log("Admin authenticated", { email: user.email });
 
     // Parse body
     const body = await req.json();
