@@ -117,16 +117,29 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: 'Mint reverted', mintHash }), { headers: CORS });
   }
 
-  // Extract tokenId
+  // Extract tokenId from Transfer event logs
+  // Transfer(address indexed from, address indexed to, uint256 indexed tokenId)
+  // topic[0] = event sig, topic[1] = from, topic[2] = to, topic[3] = tokenId
   let tokenId = null;
+  const transferSig = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
   for (const log of mintReceipt.logs) {
-    try {
-      const decoded = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
-      if (decoded.eventName === 'Transfer') { tokenId = decoded.args.tokenId; break; }
-    } catch {}
+    if (log.topics[0]?.toLowerCase() === transferSig && log.topics.length === 4) {
+      tokenId = BigInt(log.topics[3]);
+      break;
+    }
   }
+  // Fallback: try viem decodeEventLog
   if (tokenId === null) {
-    return new Response(JSON.stringify({ ok: false, error: 'No tokenId in receipt', mintHash }), { headers: CORS });
+    for (const log of mintReceipt.logs) {
+      try {
+        const decoded = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
+        if (decoded.eventName === 'Transfer') { tokenId = decoded.args.tokenId; break; }
+      } catch {}
+    }
+  }
+  console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "TOKEN_ID_SEARCH", logCount: mintReceipt.logs.length, tokenId: tokenId?.toString() ?? null }));
+  if (tokenId === null) {
+    return new Response(JSON.stringify({ ok: false, error: 'No tokenId in receipt', mintHash, logCount: mintReceipt.logs.length }), { headers: CORS });
   }
   console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "TOKEN_ID", tokenId: tokenId.toString() }));
 
