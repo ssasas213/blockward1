@@ -1,8 +1,11 @@
-// issueBlockward v6 - force redeploy, viem only, no ethers
+// issueBlockward FINAL - viem only, teacherVault = signer address always
+// BUILD_TAG: v7_final_2026
 import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+
+const _VERSION = "v7_final_2026";
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -20,40 +23,42 @@ const ABI = parseAbi([
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-  const id = "bw_v6_" + Date.now();
-  const L = (m, o = {}) => console.log(JSON.stringify({ id, m, ...o }));
-
-  L("V6_START");
-
+  // --- 1. Auth ---
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: CORS });
 
+  // --- 2. Parse body ---
   const body = await req.json();
   const { studentId, title, category, description, tokenURI } = body;
 
-  L("BODY", { studentId, title, category, hasStudentAddr: !!body.studentAddress });
+  console.log(JSON.stringify({ _VERSION, step: "START", studentId, title, category }));
 
   if (!studentId || !title || !category) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing studentId/title/category' }), { headers: CORS });
   }
 
-  // Load env
+  // --- 3. Env ---
   const RPC = Deno.env.get("SEPOLIA_RPC_URL");
   const CONTRACT = Deno.env.get("CONTRACT_ADDRESS");
   const PK = Deno.env.get("ISSUER_PRIVATE_KEY");
   const NETWORK = Deno.env.get("NETWORK");
 
-  L("ENV", { rpcSet: !!RPC, contractSet: !!CONTRACT, pkSet: !!PK, network: NETWORK });
+  if (!RPC || !CONTRACT || !PK) {
+    return new Response(JSON.stringify({ ok: false, error: 'Missing env vars' }), { headers: CORS });
+  }
+  if (NETWORK !== "sepolia") {
+    return new Response(JSON.stringify({ ok: false, error: 'Wrong network: ' + NETWORK }), { headers: CORS });
+  }
 
-  if (!RPC || !CONTRACT || !PK) return new Response(JSON.stringify({ ok: false, error: 'Missing env vars' }), { headers: CORS });
-  if (NETWORK !== "sepolia") return new Response(JSON.stringify({ ok: false, error: 'Not sepolia, got: ' + NETWORK }), { headers: CORS });
-
-  // Signer = ISSUER_PRIVATE_KEY — this MUST be the approved teacher on-chain
+  // --- 4. Signer (ISSUER_PRIVATE_KEY) — this is the approved teacher on-chain ---
   const account = privateKeyToAccount(PK);
-  L("SIGNER", { signerAddress: account.address });
+  // teacherVault arg MUST == account.address == msg.sender
+  const teacherVault = account.address;
 
-  // Resolve student address
+  console.log(JSON.stringify({ _VERSION, step: "SIGNER", signerAddress: teacherVault }));
+
+  // --- 5. Student address ---
   let studentAddr = body.studentAddress;
   if (!studentAddr) {
     const rows = await base44.asServiceRole.entities.UserProfile.filter({ id: studentId });
@@ -61,16 +66,11 @@ Deno.serve(async (req) => {
     studentAddr = rows[0].wallet_address;
     if (!studentAddr) return new Response(JSON.stringify({ ok: false, error: 'Student has no wallet' }), { headers: CORS });
   }
-  try { studentAddr = getAddress(studentAddr); } catch {
-    return new Response(JSON.stringify({ ok: false, error: 'Invalid student address' }), { headers: CORS });
-  }
+  studentAddr = getAddress(studentAddr);
 
-  L("STUDENT", { studentAddr });
+  console.log(JSON.stringify({ _VERSION, step: "STUDENT", studentAddr }));
 
-  const pub = createPublicClient({ chain: sepolia, transport: http(RPC) });
-  const wal = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
-
-  // Build metadata URI
+  // --- 6. Build URI ---
   let uri = tokenURI;
   if (!uri) {
     const meta = {
@@ -84,17 +84,18 @@ Deno.serve(async (req) => {
 
   const awardBytes = encodeBytes32String(category);
 
-  // CRITICAL: teacherVault arg MUST equal account.address (msg.sender)
-  // The contract checks: require(approvedTeachers[teacherVault] && msg.sender == teacherVault)
-  const issueArgs = [studentAddr, account.address, awardBytes, uri];
-  L("ISSUE_ARGS", {
-    studentVault: issueArgs[0],
-    teacherVault: issueArgs[1],
-    awardType: issueArgs[2],
-    uriPreview: uri.slice(0, 80)
-  });
+  console.log(JSON.stringify({
+    _VERSION, step: "ARGS",
+    studentVault: studentAddr,
+    teacherVault,
+    awardType: awardBytes
+  }));
 
-  // Simulate issueAward
+  // --- 7. Clients ---
+  const pub = createPublicClient({ chain: sepolia, transport: http(RPC) });
+  const wal = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
+
+  // --- 8. Simulate issueAward ---
   let sim;
   try {
     sim = await pub.simulateContract({
@@ -102,49 +103,45 @@ Deno.serve(async (req) => {
       address: CONTRACT,
       abi: ABI,
       functionName: 'issueAward',
-      args: issueArgs
+      args: [studentAddr, teacherVault, awardBytes, uri]
     });
-    L("SIM_OK");
+    console.log(JSON.stringify({ _VERSION, step: "SIM_OK" }));
   } catch (e) {
-    L("SIM_FAIL", { err: e?.shortMessage || e?.message });
+    console.log(JSON.stringify({ _VERSION, step: "SIM_FAIL", err: e?.shortMessage || e?.message }));
     return new Response(JSON.stringify({
       ok: false,
-      error: 'Simulation failed: ' + (e?.shortMessage || e?.message),
-      signerAddress: account.address,
-      teacherVaultArg: account.address,
-      studentVaultArg: studentAddr,
-      id
+      error: e?.shortMessage || e?.message,
+      _VERSION,
+      signerAddress: teacherVault,
+      studentAddress: studentAddr,
+      contract: CONTRACT
     }), { headers: CORS });
   }
 
-  // Send mint tx
+  // --- 9. Mint ---
   const mintHash = await wal.writeContract(sim.request);
-  L("MINT_TX", { mintHash });
+  console.log(JSON.stringify({ _VERSION, step: "MINT_SENT", mintHash }));
   const mintReceipt = await pub.waitForTransactionReceipt({ hash: mintHash });
-  L("MINT_RECEIPT", { status: mintReceipt.status, block: mintReceipt.blockNumber.toString() });
+  console.log(JSON.stringify({ _VERSION, step: "MINT_DONE", status: mintReceipt.status }));
 
   if (mintReceipt.status !== 'success') {
-    return new Response(JSON.stringify({ ok: false, error: 'Mint tx reverted', mintHash, id }), { headers: CORS });
+    return new Response(JSON.stringify({ ok: false, error: 'Mint reverted', mintHash }), { headers: CORS });
   }
 
-  // Extract tokenId from Transfer event
+  // --- 10. Extract tokenId ---
   let tokenId = null;
   for (const log of mintReceipt.logs) {
     try {
       const decoded = pub.decodeEventLog({ abi: ABI, data: log.data, topics: log.topics });
-      if (decoded.eventName === 'Transfer') {
-        tokenId = decoded.args.tokenId;
-        break;
-      }
+      if (decoded.eventName === 'Transfer') { tokenId = decoded.args.tokenId; break; }
     } catch {}
   }
-
   if (tokenId === null) {
-    return new Response(JSON.stringify({ ok: false, error: 'Cannot extract tokenId from mint receipt', mintHash, id }), { headers: CORS });
+    return new Response(JSON.stringify({ ok: false, error: 'No tokenId in receipt', mintHash }), { headers: CORS });
   }
-  L("TOKEN_ID", { tokenId: tokenId.toString() });
+  console.log(JSON.stringify({ _VERSION, step: "TOKEN_ID", tokenId: tokenId.toString() }));
 
-  // Transfer NFT to student wallet
+  // --- 11. Transfer to student ---
   let tSim;
   try {
     tSim = await pub.simulateContract({
@@ -152,35 +149,31 @@ Deno.serve(async (req) => {
       address: CONTRACT,
       abi: ABI,
       functionName: 'safeTransferFrom',
-      args: [account.address, studentAddr, tokenId]
+      args: [teacherVault, studentAddr, tokenId]
     });
-    L("TRANSFER_SIM_OK");
+    console.log(JSON.stringify({ _VERSION, step: "TRANSFER_SIM_OK" }));
   } catch (e) {
-    L("TRANSFER_SIM_FAIL", { err: e?.shortMessage || e?.message });
+    console.log(JSON.stringify({ _VERSION, step: "TRANSFER_SIM_FAIL", err: e?.shortMessage || e?.message }));
     return new Response(JSON.stringify({
       ok: false,
-      error: 'Transfer simulation failed: ' + (e?.shortMessage || e?.message),
+      error: 'Transfer sim failed: ' + (e?.shortMessage || e?.message),
       mintHash,
-      tokenId: tokenId.toString(),
-      id
+      tokenId: tokenId.toString()
     }), { headers: CORS });
   }
 
   const transferHash = await wal.writeContract(tSim.request);
-  L("TRANSFER_TX", { transferHash });
   const transferReceipt = await pub.waitForTransactionReceipt({ hash: transferHash });
-  L("TRANSFER_RECEIPT", { status: transferReceipt.status });
+  console.log(JSON.stringify({ _VERSION, step: "DONE", transferStatus: transferReceipt.status }));
 
-  L("V6_SUCCESS");
   return new Response(JSON.stringify({
     ok: true,
-    id,
-    version: 'v6',
+    _VERSION,
     mintTxHash: mintReceipt.transactionHash,
     transferTxHash: transferReceipt.transactionHash,
     tokenId: tokenId.toString(),
     studentAddress: studentAddr,
-    signerAddress: account.address,
+    signerAddress: teacherVault,
     title,
     category,
     blockNumber: transferReceipt.blockNumber.toString()
