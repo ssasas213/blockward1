@@ -143,36 +143,18 @@ Deno.serve(async (req) => {
   }
   console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "TOKEN_ID", tokenId: tokenId.toString() }));
 
-  // Transfer to student
-  let tSim;
-  try {
-    tSim = await pub.simulateContract({
-      account, address: CONTRACT, abi: ABI,
-      functionName: 'safeTransferFrom',
-      args: [teacherVault, studentAddr, tokenId]
-    });
-    console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "TRANSFER_SIM_OK" }));
-  } catch (e) {
-    console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "TRANSFER_SIM_FAIL", err: e?.shortMessage || e?.message }));
-    return new Response(JSON.stringify({
-      ok: false, error: 'Transfer sim failed: ' + (e?.shortMessage || e?.message),
-      mintHash, tokenId: tokenId.toString()
-    }), { headers: CORS });
-  }
-
-  const transferHash = await wal.writeContract(tSim.request);
-  const transferReceipt = await pub.waitForTransactionReceipt({ hash: transferHash });
-  console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "DONE", transferStatus: transferReceipt.status }));
+  // NOTE: This is a Soulbound Token (SBT) — minted directly to studentVault in issueAward.
+  // No transfer needed. NFT is already in student's wallet.
+  console.log(JSON.stringify({ fn: "issueBlockwardV2", step: "DONE", tokenId: tokenId.toString(), studentAddr }));
 
   return new Response(JSON.stringify({
     ok: true,
     fn: "issueBlockwardV2",
     mintTxHash: mintReceipt.transactionHash,
-    transferTxHash: transferReceipt.transactionHash,
     tokenId: tokenId.toString(),
     studentAddress: studentAddr,
     signerAddress: teacherVault,
     title, category,
-    blockNumber: transferReceipt.blockNumber.toString()
+    blockNumber: mintReceipt.blockNumber.toString()
   }), { headers: CORS });
 });
