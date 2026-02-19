@@ -15,7 +15,8 @@ const APPROVED_SIGNER = "0xC07aF63F5eaa6D67F4a618D00A8a502a61D5fF0e";
 const CONTRACT_ABI = parseAbi([
   "function issueAward(address studentVault, address teacherVault, bytes32 awardType_, string tokenURI_)",
   "function safeTransferFrom(address from, address to, uint256 tokenId)",
-  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
+  "event AwardIssued(address indexed student, address indexed teacher, uint256 indexed tokenId, bytes32 awardType)"
 ]);
 
 Deno.serve(async (req) => {
