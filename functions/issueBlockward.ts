@@ -340,26 +340,9 @@ Deno.serve(async (req) => {
 
     log("✓ Signer approved", { signerAddress });
 
-    // HARD FAIL: If teacherAddress provided, must match signer
-    if (teacherAddress && resolvedTeacherAddress.toLowerCase() !== signerAddress.toLowerCase()) {
-      log("CRITICAL: Teacher address does not match signer", {
-        teacherAddress: resolvedTeacherAddress,
-        signerAddress
-      });
-      return new Response(
-        JSON.stringify({
-          ok: false,
-          code: 'TEACHER_SIGNER_MISMATCH',
-          message: 'teacherAddress does not match ISSUER_PRIVATE_KEY signer',
-          teacherAddress: resolvedTeacherAddress,
-          signerAddress,
-          debugId,
-        }),
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    log("✓ Teacher address validated", { teacherAddress: resolvedTeacherAddress });
+    // The teacherVault arg in issueAward must == msg.sender (the signer).
+    // So we always use account.address as teacherVault regardless of what resolvedTeacherAddress says.
+    log("✓ Signer is teacherVault for contract call", { signerAddress });
 
     // Get issuer balance
     const balance = await publicClient.getBalance({ address: account.address });
