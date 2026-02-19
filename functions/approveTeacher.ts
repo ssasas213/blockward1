@@ -146,102 +146,30 @@ Deno.serve(async (req) => {
     log("adminSigner", { adminSigner });
     log("teacherAddress", { teacherAddress });
 
-    // AUTO-DETECT APPROVAL METHOD
-    log("Detecting approval method...");
+    // Use addTeacher(address) - the correct internal approval method for this contract.
+    // (grantRole grants AccessControl roles but issueAward checks a separate internal mapping)
+    log("Using addTeacher(address) to approve teacher...");
     
-    let approvalMethod = null;
     let simulationResult;
     let txHash;
     let receipt;
 
-    // Strategy 1: Try grantRole(TEACHER_ROLE, address)
     try {
-      log("Trying AccessControl: grantRole(TEACHER_ROLE, address)...");
-      const teacherRole = await publicClient.readContract({
-        address: contractAddress as `0x${string}`,
-        abi: parseAbi(["function TEACHER_ROLE() view returns (bytes32)"]),
-        functionName: 'TEACHER_ROLE',
-      });
-      log("TEACHER_ROLE found", { role: teacherRole });
-
       simulationResult = await publicClient.simulateContract({
         account,
         address: contractAddress as `0x${string}`,
-        abi: parseAbi(["function grantRole(bytes32 role, address account)"]),
-        functionName: 'grantRole',
-        args: [teacherRole, teacherAddress as `0x${string}`],
+        abi: parseAbi(["function addTeacher(address teacher)"]),
+        functionName: 'addTeacher',
+        args: [teacherAddress as `0x${string}`],
       });
-      
-      approvalMethod = "grantRole(TEACHER_ROLE)";
-      log("✓ Will use grantRole(TEACHER_ROLE)");
-    } catch (e1) {
-      log("grantRole(TEACHER_ROLE) not available", { error: e1?.message });
-    }
-
-    // Strategy 2: Try addTeacher(address)
-    if (!approvalMethod) {
-      try {
-        log("Trying addTeacher(address)...");
-        simulationResult = await publicClient.simulateContract({
-          account,
-          address: contractAddress as `0x${string}`,
-          abi: parseAbi(["function addTeacher(address teacher)"]),
-          functionName: 'addTeacher',
-          args: [teacherAddress as `0x${string}`],
-        });
-        
-        approvalMethod = "addTeacher(address)";
-        log("✓ Will use addTeacher(address)");
-      } catch (e2) {
-        log("addTeacher(address) not available", { error: e2?.message });
-      }
-    }
-
-    // Strategy 3: Try approveTeacher(address, bool)
-    if (!approvalMethod) {
-      try {
-        log("Trying approveTeacher(address, bool)...");
-        simulationResult = await publicClient.simulateContract({
-          account,
-          address: contractAddress as `0x${string}`,
-          abi: parseAbi(["function approveTeacher(address teacher, bool approved)"]),
-          functionName: 'approveTeacher',
-          args: [teacherAddress as `0x${string}`, true],
-        });
-        
-        approvalMethod = "approveTeacher(address, bool)";
-        log("✓ Will use approveTeacher(address, bool)");
-      } catch (e3) {
-        log("approveTeacher(address, bool) not available", { error: e3?.message });
-      }
-    }
-
-    // Strategy 4: Try setTeacherApproval(address, bool)
-    if (!approvalMethod) {
-      try {
-        log("Trying setTeacherApproval(address, bool)...");
-        simulationResult = await publicClient.simulateContract({
-          account,
-          address: contractAddress as `0x${string}`,
-          abi: parseAbi(["function setTeacherApproval(address teacher, bool approved)"]),
-          functionName: 'setTeacherApproval',
-          args: [teacherAddress as `0x${string}`, true],
-        });
-        
-        approvalMethod = "setTeacherApproval(address, bool)";
-        log("✓ Will use setTeacherApproval(address, bool)");
-      } catch (e4) {
-        log("setTeacherApproval(address, bool) not available", { error: e4?.message });
-      }
-    }
-
-    if (!approvalMethod || !simulationResult) {
-      log("✗ No approval method found");
+      log("✓ addTeacher simulation passed");
+    } catch (e) {
+      log("✗ addTeacher simulation failed", { error: e?.message });
       return new Response(
         JSON.stringify({
           ok: false,
-          code: 'NO_APPROVAL_METHOD_FOUND',
-          message: 'No teacher approval method found on this contract',
+          code: 'SIMULATION_FAILED',
+          message: `addTeacher simulation failed: ${e?.message}`,
           debugId,
           contractAddress,
           adminSigner,
