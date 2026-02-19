@@ -400,20 +400,19 @@ Deno.serve(async (req) => {
 
     log("Metadata prepared", { tokenURI: finalTokenURI.substring(0, 100) + '...', awardTypeBytes32, category });
 
-    // Prepare mint arguments:
     // issueAward(studentVault, teacherVault, awardType, tokenURI)
-    // teacherVault MUST be the approved signer (account.address).
-    // The NFT is minted to studentVault directly.
+    // teacherVault MUST equal msg.sender (account.address = ISSUER_PRIVATE_KEY signer).
+    // The contract verifies: msg.sender must be approved AND teacherVault == msg.sender
     const mintArgs = [
       resolvedStudentAddress as `0x${string}`,
-      account.address as `0x${string}`,
+      account.address as `0x${string}`, // MUST match msg.sender
       awardTypeBytes32,
       finalTokenURI
     ] as const;
 
     log("Prepared mint arguments", {
-      recipientAddress: mintArgs[0],
-      teacherAddress: mintArgs[1],
+      studentVault: mintArgs[0],
+      teacherVault: mintArgs[1],  // same as signerAddress
       awardType: mintArgs[2],
       tokenURILength: finalTokenURI.length
     });
