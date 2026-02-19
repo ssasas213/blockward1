@@ -1,6 +1,7 @@
 // issueBlockwardV2 - clean slate, viem only
 // teacherVault ALWAYS = signer address (ISSUER_PRIVATE_KEY derived address)
-import { createPublicClient, createWalletClient, http, parseAbi, getAddress, encodeBytes32String } from "npm:viem@2.7.0";
+import { createPublicClient, createWalletClient, http, parseAbi, getAddress } from "npm:viem@2.7.0";
+import { encodeBytes32String } from "npm:ethers@6.13.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
