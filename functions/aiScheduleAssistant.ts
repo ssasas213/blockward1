@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     }
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
-    const AI_MODEL = Deno.env.get("AI_MODEL") || "gpt-4o-mini";
+    const AI_MODEL = Deno.env.get("AI_MODEL") ?? "gpt-4o-mini";
 
     if (!OPENAI_API_KEY) {
       return safeJson({ ok: false, debugId: id, code: "MISSING_SECRET", message: "OPENAI_API_KEY not set" });
