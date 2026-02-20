@@ -135,10 +135,10 @@ export default function ScheduleTab() {
                   </div>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <Clock className="h-3.5 w-3.5" />
-                      {format(new Date(ev.startTime), 'EEE d MMM yyyy, HH:mm')}
-                      {ev.endTime && ` – ${format(new Date(ev.endTime), 'HH:mm')}`}
-                    </div>
+                       <Clock className="h-3.5 w-3.5" />
+                       {format(new Date(ev.start_time || ev.startTime), 'EEE d MMM yyyy, HH:mm')}
+                       {(ev.end_time || ev.endTime) && ` – ${format(new Date(ev.end_time || ev.endTime), 'HH:mm')}`}
+                     </div>
                     {ev.location && (
                       <div className="flex items-center gap-1.5 text-xs text-slate-500">
                         <MapPin className="h-3.5 w-3.5" />
