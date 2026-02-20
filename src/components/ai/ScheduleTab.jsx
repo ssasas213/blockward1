@@ -8,7 +8,7 @@ import { Calendar, MapPin, Clock, Search, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 const audienceOptions = [
-  { value: '', label: 'Any audience' },
+  { value: 'any', label: 'Any audience' },
   { value: 'whole_school', label: 'Whole School' },
   { value: 'year_7', label: 'Year 7' },
   { value: 'year_8', label: 'Year 8' },
@@ -27,7 +27,7 @@ const quickQuestions = [
 
 export default function ScheduleTab() {
   const [question, setQuestion] = useState('');
-  const [audience, setAudience] = useState('');
+  const [audience, setAudience] = useState('any');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -41,7 +41,7 @@ export default function ScheduleTab() {
     try {
       const res = await base44.functions.invoke('aiScheduleAssistant', {
         question: finalQ,
-        audience: audience || undefined,
+        audience: audience === 'any' ? undefined : audience,
         dateHint: ''
       });
       setResult(res.data);
