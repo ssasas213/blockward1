@@ -23,17 +23,7 @@ function BlockWardAIContent() {
     })();
   }, []);
 
-  // Only teachers and admins can use this
-  const userType = profile?.user_type;
-  if (profile && userType === 'student') {
-    return (
-      <div className="max-w-lg mx-auto mt-20 text-center p-8">
-        <Sparkles className="h-12 w-12 text-violet-400 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-slate-800">Teacher Feature</h2>
-        <p className="text-slate-500 mt-2">BlockWard AI is only available for teachers and administrators.</p>
-      </div>
-    );
-  }
+  // Available to all roles
 
   const tabs = [
     { id: 'schedule', label: 'Ask Schedule', icon: Calendar, description: 'Query school events & assemblies' },
