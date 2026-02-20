@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3
+  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
