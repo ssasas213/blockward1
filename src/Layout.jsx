@@ -121,6 +121,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
       { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
+      { name: 'BlockWard AI', icon: Award, page: 'BlockWardAI' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
   };
