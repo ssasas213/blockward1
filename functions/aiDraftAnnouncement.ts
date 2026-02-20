@@ -1,100 +1,114 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'content-type': 'application/json'
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "content-type": "application/json",
 };
 
-const audienceLabels = {
-  whole_school: 'all students and staff',
-  year_7: 'Year 7 students',
-  year_8: 'Year 8 students',
-  year_9: 'Year 9 students',
-  year_10: 'Year 10 students',
-  year_11: 'Year 11 students',
-  staff_only: 'all staff members',
-  custom: 'selected students'
-};
+function makeDebugId() {
+  return `bw_ai_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function safeJson(obj, status = 200) {
+  return new Response(JSON.stringify(obj), { status, headers: corsHeaders });
+}
+
+function tryParseJson(text) {
+  try {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(text.slice(start, end + 1));
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+  const id = makeDebugId();
 
-  const debugId = 'bw_ai_ann_' + Date.now();
-  console.log(JSON.stringify({ debugId, fn: 'aiDraftAnnouncement', step: 'START' }));
+  try {
+    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+    if (req.method !== "POST") return safeJson({ ok: false, debugId: id, message: "Method not allowed" }, 405);
 
-  const base44 = createClientFromRequest(req);
-  const user = await base44.auth.me();
-  if (!user) return new Response(JSON.stringify({ ok: false, message: 'Unauthorized', debugId }), { status: 401, headers: CORS });
+    const body = await req.json().catch(() => ({}));
+    const audience = String(body?.audience || "").trim();
+    const intent = String(body?.intent || "").trim();
+    const tone = String(body?.tone || "friendly").trim();
 
-  const body = await req.json();
-  const { intent, audience, tone, keyDetails } = body;
+    console.log(JSON.stringify({ debugId: id, step: "request", audience, tone }));
 
-  if (!intent || !audience) {
-    return new Response(JSON.stringify({ ok: false, message: 'intent and audience are required', debugId }), { headers: CORS });
-  }
+    if (!audience || !intent) {
+      return safeJson({
+        ok: false, debugId: id, code: "MISSING_FIELDS",
+        message: "audience and intent are required",
+        missing: [!audience ? "audience" : null, !intent ? "intent" : null].filter(Boolean),
+      });
+    }
 
-  const validTone = tone || 'friendly';
-  console.log(JSON.stringify({ debugId, fn: 'aiDraftAnnouncement', step: 'PARAMS', intent, audience, tone: validTone }));
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") || "";
+    const AI_MODEL = Deno.env.get("AI_MODEL") || "gpt-4o-mini";
 
-  const audienceLabel = audienceLabels[audience] || audience;
+    if (!OPENAI_API_KEY) {
+      return safeJson({ ok: false, debugId: id, code: "MISSING_SECRET", message: "OPENAI_API_KEY not set" });
+    }
 
-  const toneGuidance = {
-    friendly: 'warm, positive, and approachable. Use "we" and "our students". Keep it encouraging.',
-    formal: 'professional and formal. Use full sentences and proper grammar. Avoid contractions.',
-    short: 'brief and to the point. Maximum 2-3 sentences. Clear and direct.'
-  }[validTone] || 'clear and professional';
+    const audienceLabels = {
+      whole_school: "the whole school",
+      year_7: "Year 7 students",
+      year_8: "Year 8 students",
+      year_9: "Year 9 students",
+      year_10: "Year 10 students",
+      year_11: "Year 11 students",
+      staff_only: "staff only",
+    };
+    const audienceLabel = audienceLabels[audience] || audience;
 
-  const prompt = `You are a school communication assistant for BlockWard, a school management platform.
+    const system = "You draft school announcements for teachers. Keep language safe, professional and age-appropriate. NEVER include personal student data. Output JSON only.";
+    const userMsg = `
+Audience: ${audienceLabel}
+Tone: ${tone}
+Intent: ${intent}
 
-A teacher wants to send an announcement to ${audienceLabel}.
-
-Their intent: "${intent}"
-${keyDetails ? `Key details to include: "${keyDetails}"` : ''}
-Tone: ${toneGuidance}
-
-Generate TWO versions of an announcement:
-1. A SHORT version (1-3 sentences, suitable for a notification/SMS)
-2. A FULL version (a proper announcement with greeting, body, and closing)
-
-IMPORTANT RULES:
-- Do NOT include any specific student names or personal data
-- Do NOT invent facts or dates not mentioned in the intent/key details
-- Keep language appropriate for a school setting
-- For the full version, include a subject line/title
-
-Respond ONLY with valid JSON in this exact format:
+Return EXACT JSON:
 {
-  "title": "brief subject line",
-  "messageShort": "short version here",
-  "messageLong": "full announcement here"
+  "title": "...",
+  "messageShort": "1-2 sentence version",
+  "messageLong": "4-8 line full version"
 }`;
 
-  const res = await base44.asServiceRole.integrations.Core.InvokeLLM({
-    prompt,
-    response_json_schema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        messageShort: { type: 'string' },
-        messageLong: { type: 'string' }
-      },
-      required: ['title', 'messageShort', 'messageLong']
+    const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: AI_MODEL, temperature: 0.4,
+        messages: [{ role: "system", content: system }, { role: "user", content: userMsg }],
+      }),
+    });
+
+    const oaiData = await oaiRes.json().catch(() => null);
+    if (!oaiRes.ok) {
+      console.log(JSON.stringify({ debugId: id, step: "openai_error", status: oaiRes.status }));
+      return safeJson({ ok: false, debugId: id, code: "OPENAI_ERROR", message: `OpenAI error (${oaiRes.status})` });
     }
-  });
 
-  console.log(JSON.stringify({ debugId, fn: 'aiDraftAnnouncement', step: 'LLM_DONE', hasTitle: !!res?.title }));
+    const raw = oaiData?.choices?.[0]?.message?.content;
+    if (!raw) return safeJson({ ok: false, debugId: id, code: "EMPTY_RESPONSE", message: "OpenAI returned empty content" });
 
-  if (!res?.title) {
-    return new Response(JSON.stringify({ ok: false, message: 'AI generation failed', debugId }), { headers: CORS });
+    const parsed = tryParseJson(raw);
+
+    if (!parsed?.title || !parsed?.messageShort || !parsed?.messageLong) {
+      return safeJson({ ok: true, debugId: id, title: "Announcement", messageShort: raw.slice(0, 180), messageLong: raw });
+    }
+
+    return safeJson({ ok: true, debugId: id, title: String(parsed.title), messageShort: String(parsed.messageShort), messageLong: String(parsed.messageLong) });
+
+  } catch (err) {
+    console.log(JSON.stringify({ debugId: id, step: "fatal", error: String(err?.message || err) }));
+    return safeJson({ ok: false, debugId: id, code: "AI_ANNOUNCEMENT_FAILED", message: err?.message || "Unknown error" });
   }
-
-  return new Response(JSON.stringify({
-    ok: true,
-    title: res.title,
-    messageShort: res.messageShort,
-    messageLong: res.messageLong,
-    debugId
-  }), { headers: CORS });
 });

@@ -163,11 +163,6 @@ export default function Layout({ children, currentPageName }) {
 
   return (
       <div className="min-h-screen bg-slate-50">
-      {/* Testnet Badge */}
-      <div className="fixed top-4 right-4 z-50 bg-amber-100 text-amber-900 px-3 py-1.5 rounded-full text-xs font-medium shadow-lg border border-amber-200">
-        Testnet: Sepolia
-      </div>
-
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white/80 backdrop-blur-lg border-b border-slate-200 z-50 px-4 flex items-center justify-between">
         <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors duration-200 active:scale-95">
