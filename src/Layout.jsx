@@ -99,7 +99,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
       { name: 'Reports', icon: FileText, page: 'Reports' },
       { name: 'School Codes', icon: Shield, page: 'SchoolCodes' },
-      { name: 'BlockWard AI', icon: Award, page: 'BlockWardAI' },
+      { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
       { name: 'Parent Comms', icon: Bell, page: 'ParentComms' },
       { name: 'Admin Permissions', icon: Shield, page: 'AdminPermissions', superAdminOnly: true },
       { name: 'System Settings', icon: Settings, page: 'SystemSettings', superAdminOnly: true },
