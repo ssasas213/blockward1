@@ -218,6 +218,15 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
+      {/* Floating AI Button */}
+      <Link
+        to={createPageUrl('BlockWardAI')}
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-4 py-3 rounded-full shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 hover:scale-105 transition-all duration-200 font-medium text-sm"
+      >
+        <Sparkles className="h-4 w-4" />
+        <span className="hidden sm:inline">BlockWard AI</span>
+      </Link>
+
       {/* Main Content */}
       <main className="lg:pl-72 pt-16 lg:pt-0 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
