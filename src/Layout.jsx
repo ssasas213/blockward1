@@ -111,6 +111,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
       { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
       { name: 'BlockWards', icon: Shield, page: 'TeacherBlockWards' },
+      { name: 'BlockWard AI', icon: Award, page: 'BlockWardAI' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
     student: [
