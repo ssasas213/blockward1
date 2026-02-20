@@ -89,7 +89,7 @@ function BlockWardAIContent() {
 export default function BlockWardAI() {
   return (
     <AIErrorBoundary>
-      <ProtectedRoute>
+      <ProtectedRoute requireProfile={false}>
         <BlockWardAIContent />
       </ProtectedRoute>
     </AIErrorBoundary>

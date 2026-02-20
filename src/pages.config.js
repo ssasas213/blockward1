@@ -52,6 +52,7 @@ import AdminPermissions from './pages/AdminPermissions';
 import Analytics from './pages/Analytics';
 import App from './pages/App';
 import Attendance from './pages/Attendance';
+import BlockWardAI from './pages/BlockWardAI';
 import BlockWardContract from './pages/BlockWardContract';
 import BlockWards from './pages/BlockWards';
 import BlockchainDocs from './pages/BlockchainDocs';
@@ -78,7 +79,6 @@ import TeacherBlockWards from './pages/TeacherBlockWards';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
-import BlockWardAI from './pages/BlockWardAI';
 import __Layout from './Layout.jsx';
 
 
@@ -88,6 +88,7 @@ export const PAGES = {
     "Analytics": Analytics,
     "App": App,
     "Attendance": Attendance,
+    "BlockWardAI": BlockWardAI,
     "BlockWardContract": BlockWardContract,
     "BlockWards": BlockWards,
     "BlockchainDocs": BlockchainDocs,
@@ -114,7 +115,6 @@ export const PAGES = {
     "TeacherDashboard": TeacherDashboard,
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
-    "BlockWardAI": BlockWardAI,
 }
 
 export const pagesConfig = {
