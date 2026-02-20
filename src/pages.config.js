@@ -78,6 +78,7 @@ import TeacherBlockWards from './pages/TeacherBlockWards';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
+import BlockWardAI from './pages/BlockWardAI';
 import __Layout from './Layout.jsx';
 
 
@@ -113,6 +114,7 @@ export const PAGES = {
     "TeacherDashboard": TeacherDashboard,
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
+    "BlockWardAI": BlockWardAI,
 }
 
 export const pagesConfig = {
