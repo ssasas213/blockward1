@@ -218,13 +218,14 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {/* Floating AI Button - hide on BlockWardAI page */}
+      {/* Floating AI Button - always visible except on BlockWardAI page */}
       {currentPageName !== 'BlockWardAI' && (
         <Link
           to={createPageUrl('BlockWardAI')}
-          className="fixed bottom-6 right-6 z-[60] flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-4 py-3 rounded-full shadow-xl shadow-violet-500/40 hover:shadow-2xl hover:shadow-violet-500/50 hover:scale-105 transition-all duration-200 font-medium text-sm"
+          style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}
+          className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white px-5 py-3 rounded-full shadow-2xl hover:scale-105 transition-all duration-200 font-semibold text-sm"
         >
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className="h-5 w-5" />
           <span>BlockWard AI</span>
         </Link>
       )}
