@@ -3,32 +3,34 @@ import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import ScheduleTab from '@/components/ai/ScheduleTab';
 import AnnouncementTab from '@/components/ai/AnnouncementTab';
+import AIErrorBoundary from '@/components/ai/AIErrorBoundary';
 import { Calendar, Megaphone, Sparkles } from 'lucide-react';
 
 function BlockWardAIContent() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
+    console.log('AI page mounted');
     (async () => {
       try {
         const u = await base44.auth.me();
-        setUser(u);
-        if (u) {
-          const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
-          if (profiles.length > 0) setProfile(profiles[0]);
-        }
-      } catch {}
+        setUser(u ?? null);
+      } catch (e) {
+        console.warn('[BlockWard AI] Could not load user:', e?.message);
+      }
     })();
   }, []);
-
-  // Available to all roles
 
   const tabs = [
     { id: 'schedule', label: 'Ask Schedule', icon: Calendar, description: 'Query school events & assemblies' },
     { id: 'announcement', label: 'Draft Announcement', icon: Megaphone, description: 'AI-powered class communication' },
   ];
+
+  const handleTabChange = (id) => {
+    console.log('AI tab changed:', id);
+    setActiveTab(id);
+  };
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -50,7 +52,7 @@ function BlockWardAIContent() {
         {tabs.map(tab => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
               activeTab === tab.id
                 ? 'border-violet-500 bg-violet-50 shadow-sm'
@@ -70,8 +72,10 @@ function BlockWardAIContent() {
 
       {/* Content card */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        {activeTab === 'schedule' && <ScheduleTab />}
-        {activeTab === 'announcement' && <AnnouncementTab userEmail={user?.email} />}
+        <AIErrorBoundary key={activeTab}>
+          {activeTab === 'schedule' && <ScheduleTab />}
+          {activeTab === 'announcement' && <AnnouncementTab userEmail={user?.email ?? null} />}
+        </AIErrorBoundary>
       </div>
 
       {/* Footer note */}
@@ -84,8 +88,10 @@ function BlockWardAIContent() {
 
 export default function BlockWardAI() {
   return (
-    <ProtectedRoute>
-      <BlockWardAIContent />
-    </ProtectedRoute>
+    <AIErrorBoundary>
+      <ProtectedRoute>
+        <BlockWardAIContent />
+      </ProtectedRoute>
+    </AIErrorBoundary>
   );
 }
