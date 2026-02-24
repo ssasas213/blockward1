@@ -83,15 +83,19 @@ export default function IssuePoints() {
 
   const loadClassStudents = async (classId) => {
     try {
-      const classData = await base44.entities.Class.filter({ id: classId });
-      if (classData.length > 0 && classData[0].student_emails?.length > 0) {
-        const allProfiles = await base44.entities.UserProfile.list();
-        const classStudents = allProfiles.filter(p => 
-          classData[0].student_emails.includes(p.user_email) && p.user_type === 'student'
-        );
-        setStudents(classStudents);
+      // Try Enrollment first, then legacy student_emails
+      const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
+      const allProfiles = await base44.entities.UserProfile.list();
+      if (enrollments.length > 0) {
+        const emails = new Set(enrollments.map(e => e.student_email));
+        setStudents(allProfiles.filter(p => emails.has(p.user_email) && p.user_type === 'student'));
       } else {
-        setStudents([]);
+        const classData = await base44.entities.Class.filter({ id: classId });
+        if (classData.length > 0 && classData[0].student_emails?.length > 0) {
+          setStudents(allProfiles.filter(p => classData[0].student_emails.includes(p.user_email) && p.user_type === 'student'));
+        } else {
+          setStudents([]);
+        }
       }
     } catch (error) {
       console.error('Error loading students:', error);
