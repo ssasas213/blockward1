@@ -132,12 +132,26 @@ function ClassesContent() {
         teacher_email: user.email,
         join_code: generateJoinCode(),
         student_emails: [],
-        status: 'active'
+        status: 'active',
+        school_id: profile?.school_id || null
       };
-      if (profile?.school_id) {
-        classData.school_id = profile.school_id;
+      const created = await base44.entities.Class.create(classData);
+
+      // Auto-add this class to the teacher's StaffMembership
+      const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+      if (memberships.length > 0) {
+        const membership = memberships[0];
+        const updatedClassIds = [...(membership.class_ids || []), created.id];
+        await base44.entities.StaffMembership.update(membership.id, { class_ids: updatedClassIds });
+      } else {
+        // Create a StaffMembership if none exists
+        await base44.entities.StaffMembership.create({
+          school_id: profile?.school_id || null,
+          user_email: user.email,
+          role: 'TEACHER',
+          class_ids: [created.id]
+        });
       }
-      await base44.entities.Class.create(classData);
       setShowCreateDialog(false);
       setNewClass({ name: '', subject: '', description: '', room: '', grade_level: '' });
       await loadData();
