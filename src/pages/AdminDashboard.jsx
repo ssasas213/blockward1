@@ -41,19 +41,18 @@ function AdminDashboardContent() {
         }
       }
 
-      const sid = profiles[0]?.school_id;
-      if (sid) {
-        const schools = await base44.entities.School.filter({ id: sid });
+      const schoolId = userProfile?.school_id;
+      if (schoolId) {
+        const schools = await base44.entities.School.filter({ id: schoolId });
         if (schools.length > 0) setSchool(schools[0]);
       }
 
-        // Load stats scoped to this admin's school (if set)
-        const schoolFilter = profiles[0]?.school_id ? { school_id: profiles[0].school_id } : {};
+        // Load stats scoped to school if available
         const [students, teachers, classes, blockWards, points] = await Promise.all([
-          base44.entities.UserProfile.filter({ user_type: 'student', ...schoolFilter }),
-          base44.entities.UserProfile.filter({ user_type: 'teacher', ...schoolFilter }),
-          profiles[0]?.school_id ? base44.entities.Class.filter({ school_id: profiles[0].school_id }) : base44.entities.Class.list(),
-          profiles[0]?.school_id ? base44.entities.BlockWard.filter({ school_id: profiles[0].school_id }, '-created_date') : base44.entities.BlockWard.list('-created_date', 10),
+          schoolId ? base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'student' }),
+          schoolId ? base44.entities.UserProfile.filter({ user_type: 'teacher', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'teacher' }),
+          schoolId ? base44.entities.Class.filter({ school_id: schoolId }) : base44.entities.Class.list(),
+          schoolId ? base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date') : base44.entities.BlockWard.list('-created_date', 10),
           base44.entities.PointEntry.list('-created_date', 20)
         ]);
 
