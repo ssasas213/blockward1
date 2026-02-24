@@ -52,8 +52,16 @@ export default function IssuePoints() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
 
-        // Load classes
-        const teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
+        // Load classes via StaffMembership first, then fallback to teacher_email
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        const membership = memberships[0];
+        let teacherClasses = [];
+        if (membership?.class_ids?.length > 0) {
+          const all = await base44.entities.Class.list();
+          teacherClasses = all.filter(c => membership.class_ids.includes(c.id));
+        } else {
+          teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
+        }
         setClasses(teacherClasses);
 
         // Preselect class if provided
