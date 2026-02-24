@@ -20,7 +20,7 @@ import {
 import IssueStepper from '@/components/blockwards/IssueStepper';
 import StudentPicker from '@/components/blockwards/StudentPicker';
 import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -30,16 +30,21 @@ function IssueBlockWardContent() {
   const preSelectedStudentId = urlParams.get('studentId');
   
   const [currentStep, setCurrentStep] = useState(1);
+  const [myClasses, setMyClasses] = useState([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
   const [students, setStudents] = useState([]);
+  const [loadingStudents, setLoadingStudents] = useState(false);
   const [loading, setLoading] = useState(true);
   const [issuing, setIssuing] = useState(false);
   const [issuingStage, setIssuingStage] = useState('');
   const [issueSuccess, setIssueSuccess] = useState(false);
   const [issueError, setIssueError] = useState(null);
   const [blockchainData, setBlockchainData] = useState(null);
+  const [userCtx, setUserCtx] = useState(null);
 
   const [formData, setFormData] = useState({
     selectedStudent: null,
+    selectedClass: null,
     title: '',
     description: '',
     category: '',
@@ -50,55 +55,99 @@ function IssueBlockWardContent() {
   });
 
   useEffect(() => {
-    loadStudents();
+    loadContext();
   }, []);
 
-  const loadStudents = async () => {
+  const loadContext = async () => {
     try {
       const user = await base44.auth.me();
       if (!user) return;
 
-      // Get teacher's classes
-      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
-      
-      // Get all student emails from classes
-      const studentEmails = new Set();
-      classes.forEach(cls => {
-        cls.student_emails?.forEach(email => studentEmails.add(email));
-      });
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const profile = profiles[0];
+      const role = profile?.user_type;
 
-      // Get student profiles
-      if (studentEmails.size > 0) {
-        const allProfiles = await base44.entities.UserProfile.list();
-        const studentProfiles = allProfiles.filter(p => 
-          studentEmails.has(p.user_email) && p.user_type === 'student'
-        );
-        
-        // Format for UI
-        const formattedStudents = studentProfiles.map(p => ({
-          id: p.id,
-          name: `${p.first_name} ${p.last_name}`,
-          email: p.user_email,
-          class: classes.find(c => c.student_emails?.includes(p.user_email))?.name || 'N/A',
-          gradeLevel: p.grade_level || 'N/A'
-        }));
-        
-        setStudents(formattedStudents);
-        
-        // Auto-select student if pre-selected via URL
-        if (preSelectedStudentId && formattedStudents.length > 0) {
-          const preSelected = formattedStudents.find(s => s.id === preSelectedStudentId);
-          if (preSelected) {
-            setFormData(prev => ({ ...prev, selectedStudent: preSelected }));
-            setCurrentStep(2); // Skip to award creation step
-          }
+      setUserCtx({ user, profile, role });
+
+      let classes = [];
+      if (role === 'admin') {
+        // Admin can see all classes scoped to their school
+        if (profile?.school_id) {
+          classes = await base44.entities.Class.filter({ school_id: profile.school_id });
+        } else {
+          classes = await base44.entities.Class.list();
+        }
+      } else {
+        // Teacher: get classes from StaffMembership first, fall back to teacher_email
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        const membership = memberships[0];
+        if (membership?.class_ids?.length > 0) {
+          const allClasses = await base44.entities.Class.list();
+          classes = allClasses.filter(c => membership.class_ids.includes(c.id));
+        } else {
+          // Legacy: fall back to teacher_email on class
+          classes = await base44.entities.Class.filter({ teacher_email: user.email });
         }
       }
+
+      setMyClasses(classes);
+
+      // If pre-selected student via URL, still need to resolve class
+      if (preSelectedStudentId) {
+        // Load students for that class if we know it
+      }
     } catch (error) {
-      console.error('Error loading students:', error);
-      toast.error('Failed to load students');
+      console.error('Error loading context:', error);
+      toast.error('Failed to load class data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClassSelect = async (classId) => {
+    setSelectedClassId(classId);
+    setFormData(prev => ({ ...prev, selectedStudent: null, selectedClass: myClasses.find(c => c.id === classId) || null }));
+    setStudents([]);
+    setLoadingStudents(true);
+    try {
+      // Load students via Enrollment entity (scoped) or class.student_emails (legacy)
+      const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
+      let studentList = [];
+
+      if (enrollments.length > 0) {
+        const emails = enrollments.map(e => e.student_email);
+        const allProfiles = await base44.entities.UserProfile.list();
+        studentList = allProfiles
+          .filter(p => emails.includes(p.user_email) && p.user_type === 'student')
+          .map(p => ({
+            id: p.id,
+            name: `${p.first_name} ${p.last_name}`,
+            email: p.user_email,
+            class: myClasses.find(c => c.id === classId)?.name || 'N/A',
+            gradeLevel: p.grade_level || 'N/A'
+          }));
+      } else {
+        // Legacy: use class.student_emails
+        const cls = myClasses.find(c => c.id === classId);
+        if (cls?.student_emails?.length > 0) {
+          const allProfiles = await base44.entities.UserProfile.list();
+          studentList = allProfiles
+            .filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student')
+            .map(p => ({
+              id: p.id,
+              name: `${p.first_name} ${p.last_name}`,
+              email: p.user_email,
+              class: cls.name,
+              gradeLevel: p.grade_level || 'N/A'
+            }));
+        }
+      }
+
+      setStudents(studentList);
+    } catch (error) {
+      toast.error('Failed to load students');
+    } finally {
+      setLoadingStudents(false);
     }
   };
 
