@@ -52,13 +52,13 @@ export default function IssuePoints() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
 
-        // Load classes via StaffMembership first, then fallback to teacher_email
+        // Load classes: use StaffMembership first, fall back to teacher_email
         const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
         const membership = memberships[0];
         let teacherClasses = [];
         if (membership?.class_ids?.length > 0) {
-          const all = await base44.entities.Class.list();
-          teacherClasses = all.filter(c => membership.class_ids.includes(c.id));
+          const allClasses = await base44.entities.Class.list();
+          teacherClasses = allClasses.filter(c => membership.class_ids.includes(c.id));
         } else {
           teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
         }
@@ -83,19 +83,15 @@ export default function IssuePoints() {
 
   const loadClassStudents = async (classId) => {
     try {
-      // Try Enrollment first, then legacy student_emails
-      const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
-      const allProfiles = await base44.entities.UserProfile.list();
-      if (enrollments.length > 0) {
-        const emails = new Set(enrollments.map(e => e.student_email));
-        setStudents(allProfiles.filter(p => emails.has(p.user_email) && p.user_type === 'student'));
+      const classData = await base44.entities.Class.filter({ id: classId });
+      if (classData.length > 0 && classData[0].student_emails?.length > 0) {
+        const allProfiles = await base44.entities.UserProfile.list();
+        const classStudents = allProfiles.filter(p => 
+          classData[0].student_emails.includes(p.user_email) && p.user_type === 'student'
+        );
+        setStudents(classStudents);
       } else {
-        const classData = await base44.entities.Class.filter({ id: classId });
-        if (classData.length > 0 && classData[0].student_emails?.length > 0) {
-          setStudents(allProfiles.filter(p => classData[0].student_emails.includes(p.user_email) && p.user_type === 'student'));
-        } else {
-          setStudents([]);
-        }
+        setStudents([]);
       }
     } catch (error) {
       console.error('Error loading students:', error);
