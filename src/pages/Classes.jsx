@@ -185,6 +185,19 @@ function ClassesContent() {
 
       const updatedStudents = [...(classToJoin.student_emails || []), user.email];
       await base44.entities.Class.update(classToJoin.id, { student_emails: updatedStudents });
+
+      // Also create an Enrollment record
+      const existingEnrollments = await base44.entities.Enrollment.filter({ class_id: classToJoin.id, student_email: user.email });
+      if (existingEnrollments.length === 0) {
+        await base44.entities.Enrollment.create({
+          school_id: classToJoin.school_id || profile?.school_id || null,
+          class_id: classToJoin.id,
+          class_name: classToJoin.name,
+          student_email: user.email,
+          student_name: profile ? `${profile.first_name} ${profile.last_name}` : user.email,
+          status: 'active'
+        });
+      }
       
       setShowJoinDialog(false);
       setJoinCode('');
