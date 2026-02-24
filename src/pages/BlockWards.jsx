@@ -68,18 +68,46 @@ export default function BlockWards() {
         const userProfile = profiles[0];
         setProfile(userProfile);
 
-        // Load BlockWards based on user type
+        // Load BlockWards based on user type, scoped by school
+        const schoolId = userProfile.school_id;
         let bwData = [];
         if (userProfile.user_type === 'student') {
           bwData = await base44.entities.BlockWard.filter({ student_email: user.email }, '-created_date');
         } else if (userProfile.user_type === 'teacher') {
           bwData = await base44.entities.BlockWard.filter({ issuer_email: user.email }, '-created_date');
-          // Load students for minting
-          const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
-          setStudents(allProfiles);
+          // Load only students in teacher's classes (via enrollments or class.student_emails)
+          const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+          const membership = memberships[0];
+          let classIds = membership?.class_ids || [];
+          if (classIds.length === 0) {
+            const teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
+            classIds = teacherClasses.map(c => c.id);
+          }
+          if (classIds.length > 0) {
+            const enrollments = await base44.entities.Enrollment.filter({ class_id: classIds[0], status: 'active' });
+            const allEmails = new Set(enrollments.map(e => e.student_email));
+            // Also collect from all assigned classes
+            for (const cid of classIds.slice(1)) {
+              const enr = await base44.entities.Enrollment.filter({ class_id: cid, status: 'active' });
+              enr.forEach(e => allEmails.add(e.student_email));
+            }
+            if (allEmails.size > 0) {
+              const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
+              setStudents(allProfiles.filter(p => allEmails.has(p.user_email)));
+            }
+          } else {
+            setStudents([]);
+          }
         } else {
-          bwData = await base44.entities.BlockWard.list('-created_date');
-          const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
+          // Admin: scope to school
+          if (schoolId) {
+            bwData = await base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date');
+          } else {
+            bwData = await base44.entities.BlockWard.list('-created_date');
+          }
+          const allProfiles = schoolId
+            ? await base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId })
+            : await base44.entities.UserProfile.filter({ user_type: 'student' });
           setStudents(allProfiles);
         }
         setBlockWards(bwData || []);
