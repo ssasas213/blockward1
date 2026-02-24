@@ -41,17 +41,19 @@ function AdminDashboardContent() {
         }
       }
 
-      if (userProfile?.school_id) {
-        const schools = await base44.entities.School.filter({ id: userProfile.school_id });
+      const sid = profiles[0]?.school_id;
+      if (sid) {
+        const schools = await base44.entities.School.filter({ id: sid });
         if (schools.length > 0) setSchool(schools[0]);
       }
 
-        // Load all stats
+        // Load stats scoped to this admin's school (if set)
+        const schoolFilter = profiles[0]?.school_id ? { school_id: profiles[0].school_id } : {};
         const [students, teachers, classes, blockWards, points] = await Promise.all([
-          base44.entities.UserProfile.filter({ user_type: 'student' }),
-          base44.entities.UserProfile.filter({ user_type: 'teacher' }),
-          base44.entities.Class.list(),
-          base44.entities.BlockWard.list('-created_date', 10),
+          base44.entities.UserProfile.filter({ user_type: 'student', ...schoolFilter }),
+          base44.entities.UserProfile.filter({ user_type: 'teacher', ...schoolFilter }),
+          profiles[0]?.school_id ? base44.entities.Class.filter({ school_id: profiles[0].school_id }) : base44.entities.Class.list(),
+          profiles[0]?.school_id ? base44.entities.BlockWard.filter({ school_id: profiles[0].school_id }, '-created_date') : base44.entities.BlockWard.list('-created_date', 10),
           base44.entities.PointEntry.list('-created_date', 20)
         ]);
 
