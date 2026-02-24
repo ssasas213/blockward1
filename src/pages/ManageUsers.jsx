@@ -69,7 +69,15 @@ export default function ManageUsers() {
 
   const loadUsers = async () => {
     try {
-      const profiles = await base44.entities.UserProfile.list('-created_date');
+      const currentUser = await base44.auth.me();
+      const currentProfiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+      const currentProfile = currentProfiles[0];
+      const schoolId = currentProfile?.school_id;
+      
+      // Scope to same school if available
+      const profiles = schoolId
+        ? await base44.entities.UserProfile.filter({ school_id: schoolId }, '-created_date')
+        : await base44.entities.UserProfile.list('-created_date');
       setUsers(profiles);
     } catch (error) {
       console.error('Error loading users:', error);
