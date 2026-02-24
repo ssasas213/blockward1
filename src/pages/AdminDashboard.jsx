@@ -34,27 +34,30 @@ function AdminDashboardContent() {
   const loadDashboardData = async () => {
     try {
       const user = await base44.auth.me();
+      let schoolId = null;
+
       if (user) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
         if (profiles.length > 0) {
-          setUserProfile(profiles[0]);
+          const p = profiles[0];
+          setUserProfile(p);
+          schoolId = p.school_id || null;
         }
       }
 
-      const schoolId = userProfile?.school_id;
       if (schoolId) {
         const schools = await base44.entities.School.filter({ id: schoolId });
         if (schools.length > 0) setSchool(schools[0]);
       }
 
-        // Load stats scoped to school if available
-        const [students, teachers, classes, blockWards, points] = await Promise.all([
-          schoolId ? base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'student' }),
-          schoolId ? base44.entities.UserProfile.filter({ user_type: 'teacher', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'teacher' }),
-          schoolId ? base44.entities.Class.filter({ school_id: schoolId }) : base44.entities.Class.list(),
-          schoolId ? base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date') : base44.entities.BlockWard.list('-created_date', 10),
-          base44.entities.PointEntry.list('-created_date', 20)
-        ]);
+      // Load stats scoped to school
+      const [students, teachers, classes, blockWards, points] = await Promise.all([
+        schoolId ? base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'student' }),
+        schoolId ? base44.entities.UserProfile.filter({ user_type: 'teacher', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'teacher' }),
+        schoolId ? base44.entities.Class.filter({ school_id: schoolId }) : base44.entities.Class.list(),
+        schoolId ? base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date') : base44.entities.BlockWard.list('-created_date', 10),
+        schoolId ? base44.entities.PointEntry.filter({ school_id: schoolId }, '-created_date') : base44.entities.PointEntry.list('-created_date', 20)
+      ]);
 
         // Calculate points by category
         const categoryTotals = {};
