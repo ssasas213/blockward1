@@ -152,6 +152,10 @@ function IssueBlockWardContent() {
   };
 
   const handleNext = () => {
+    if (currentStep === 1 && !selectedClassId) {
+      toast.error('Please select a class');
+      return;
+    }
     if (currentStep === 1 && !formData.selectedStudent) {
       toast.error('Please select a student');
       return;
