@@ -93,7 +93,6 @@ Deno.serve(async (req) => {
     // Query Event entity (our entity is named "Event")
     let events = [];
     try {
-      const user = await base44.auth.me();
       events = await base44.asServiceRole.entities.Event.list();
       // Filter by date range client-side
       events = events.filter(ev => {
