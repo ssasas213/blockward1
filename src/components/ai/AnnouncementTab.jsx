@@ -36,6 +36,7 @@ export default function AnnouncementTab({ userEmail }) {
   const [sending, setSending] = useState(false);
   const [saved, setSaved] = useState(null); // 'draft' | 'sent'
   const [copied, setCopied] = useState(false);
+  const [draftView, setDraftView] = useState('full');
 
   const generate = async () => {
     if (!intent.trim()) return;
