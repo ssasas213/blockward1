@@ -181,22 +181,21 @@ export default function AnnouncementTab({ userEmail }) {
             </button>
           </div>
 
-          <Tabs defaultValue="full">
-            <TabsList className="h-8">
-              <TabsTrigger value="full" className="text-xs">Full version</TabsTrigger>
-              <TabsTrigger value="short" className="text-xs">Short version</TabsTrigger>
-            </TabsList>
-            <TabsContent value="short" className="mt-3">
-              <div className="p-3 bg-white rounded-lg border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                {draft.messageShort}
+          <div className="space-y-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDraftView('full')}
+                  className={`text-xs px-3 py-1 rounded-md border transition-colors ${draftView === 'full' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                >Full version</button>
+                <button
+                  onClick={() => setDraftView('short')}
+                  className={`text-xs px-3 py-1 rounded-md border transition-colors ${draftView === 'short' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
+                >Short version</button>
               </div>
-            </TabsContent>
-            <TabsContent value="full" className="mt-3">
               <div className="p-3 bg-white rounded-lg border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                {draft.messageLong}
+                {draftView === 'full' ? draft.messageLong : draft.messageShort}
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
 
           {saved ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
