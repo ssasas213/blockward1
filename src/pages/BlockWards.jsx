@@ -88,9 +88,11 @@ export default function BlockWards() {
             classIds = teacherClasses.map(c => c.id);
           }
           if (classIds.length > 0) {
+            // Store assigned classes for the dialog class selector
+            const allClasses = await base44.entities.Class.list();
+            setMyClasses(allClasses.filter(c => classIds.includes(c.id)));
             const enrollments = await base44.entities.Enrollment.filter({ class_id: classIds[0], status: 'active' });
             const allEmails = new Set(enrollments.map(e => e.student_email));
-            // Also collect from all assigned classes
             for (const cid of classIds.slice(1)) {
               const enr = await base44.entities.Enrollment.filter({ class_id: cid, status: 'active' });
               enr.forEach(e => allEmails.add(e.student_email));
@@ -100,7 +102,17 @@ export default function BlockWards() {
               setStudents(allProfiles.filter(p => allEmails.has(p.user_email)));
             }
           } else {
-            setStudents([]);
+            // Legacy fallback: use class.student_emails
+            const teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
+            setMyClasses(teacherClasses);
+            const emailSet = new Set();
+            teacherClasses.forEach(c => c.student_emails?.forEach(e => emailSet.add(e)));
+            if (emailSet.size > 0) {
+              const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
+              setStudents(allProfiles.filter(p => emailSet.has(p.user_email)));
+            } else {
+              setStudents([]);
+            }
           }
         } else {
           // Admin: scope to school
