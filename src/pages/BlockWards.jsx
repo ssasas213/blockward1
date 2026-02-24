@@ -256,17 +256,59 @@ export default function BlockWards() {
                 </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                {/* Class selector — only shown for teachers who have assigned classes */}
+                {(profile?.user_type === 'teacher') && myClasses.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Class *</Label>
+                    <Select
+                      value={selectedClassId}
+                      onValueChange={async (classId) => {
+                        setSelectedClassId(classId);
+                        setNewBlockWard(prev => ({ ...prev, student_email: '' }));
+                        setLoadingClassStudents(true);
+                        try {
+                          const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
+                          let studentList = [];
+                          if (enrollments.length > 0) {
+                            const emails = enrollments.map(e => e.student_email);
+                            const allProfiles = await base44.entities.UserProfile.list();
+                            studentList = allProfiles.filter(p => emails.includes(p.user_email) && p.user_type === 'student');
+                          } else {
+                            const cls = myClasses.find(c => c.id === classId);
+                            if (cls?.student_emails?.length > 0) {
+                              const allProfiles = await base44.entities.UserProfile.list();
+                              studentList = allProfiles.filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student');
+                            }
+                          }
+                          setClassStudents(studentList);
+                        } finally {
+                          setLoadingClassStudents(false);
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a class first" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {myClasses.map(cls => (
+                          <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Student *</Label>
                   <Select
                     value={newBlockWard.student_email}
                     onValueChange={(value) => setNewBlockWard({ ...newBlockWard, student_email: value })}
+                    disabled={profile?.user_type === 'teacher' && !selectedClassId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a student" />
+                      <SelectValue placeholder={profile?.user_type === 'teacher' && !selectedClassId ? 'Select a class first' : 'Select a student'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {students.map((s) => (
+                      {(profile?.user_type === 'teacher' ? classStudents : students).map((s) => (
                         <SelectItem key={s.id} value={s.user_email}>
                           {s.first_name} {s.last_name}
                         </SelectItem>
