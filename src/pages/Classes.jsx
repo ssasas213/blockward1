@@ -70,13 +70,32 @@ function ClassesContent() {
       if (!userProfile) return;
 
       let classData = [];
+      const schoolId = userProfile.school_id;
+
       if (userProfile.user_type === 'teacher') {
-        classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+        // Check StaffMembership for assigned class_ids first
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+        const membership = memberships[0];
+        if (membership?.class_ids?.length > 0) {
+          const all = schoolId ? await base44.entities.Class.filter({ school_id: schoolId }) : await base44.entities.Class.list();
+          classData = all.filter(c => membership.class_ids.includes(c.id));
+        } else {
+          classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+        }
       } else if (userProfile.user_type === 'student') {
-        const allClasses = await base44.entities.Class.list();
-        classData = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
+        // Use Enrollment entity (new) or legacy student_emails
+        const enrollments = await base44.entities.Enrollment.filter({ student_email: currentUser.email, status: 'active' });
+        if (enrollments.length > 0) {
+          const classIds = enrollments.map(e => e.class_id);
+          const all = schoolId ? await base44.entities.Class.filter({ school_id: schoolId }) : await base44.entities.Class.list();
+          classData = all.filter(c => classIds.includes(c.id));
+        } else {
+          const all = schoolId ? await base44.entities.Class.filter({ school_id: schoolId }) : await base44.entities.Class.list();
+          classData = all.filter(c => c.student_emails?.includes(currentUser.email));
+        }
       } else {
-        classData = await base44.entities.Class.list();
+        // Admin: scope to their school
+        classData = schoolId ? await base44.entities.Class.filter({ school_id: schoolId }) : await base44.entities.Class.list();
       }
       setClasses(classData);
     } catch (error) {
