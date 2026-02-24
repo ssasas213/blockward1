@@ -384,22 +384,56 @@ function IssueBlockWardContent() {
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg">
             <CardContent className="p-8">
-              {/* Step 1: Select Student */}
+              {/* Step 1: Select Class then Student */}
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-2">
-                      Select Student
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      Choose the student who will receive this achievement
-                    </p>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-2">Select Class & Student</h2>
+                    <p className="text-sm text-slate-600">First choose a class, then pick the student</p>
                   </div>
-                  <StudentPicker
-                    students={students}
-                    selectedStudent={formData.selectedStudent}
-                    onSelect={(student) => setFormData({ ...formData, selectedStudent: student })}
-                  />
+
+                  {/* Class selector */}
+                  {myClasses.length === 0 ? (
+                    <div className="text-center py-8 text-slate-400">
+                      <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                      <p className="font-medium">No classes assigned</p>
+                      <p className="text-sm mt-1">Ask your admin to assign you to a class</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Class *</Label>
+                        <Select value={selectedClassId} onValueChange={handleClassSelect}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a class" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {myClasses.map(cls => (
+                              <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedClassId && (
+                        loadingStudents ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
+                          </div>
+                        ) : students.length === 0 ? (
+                          <div className="text-center py-8 text-slate-400">
+                            <p>No students enrolled in this class</p>
+                          </div>
+                        ) : (
+                          <StudentPicker
+                            students={students}
+                            selectedStudent={formData.selectedStudent}
+                            onSelect={(student) => setFormData({ ...formData, selectedStudent: student })}
+                          />
+                        )
+                      )}
+                    </>
+                  )}
                 </div>
               )}
 
