@@ -183,8 +183,8 @@ export default function AnnouncementTab({ userEmail }) {
 
           <Tabs defaultValue="full">
             <TabsList className="h-8">
-              <TabsTrigger value="short" className="text-xs">Short version</TabsTrigger>
               <TabsTrigger value="full" className="text-xs">Full version</TabsTrigger>
+              <TabsTrigger value="short" className="text-xs">Short version</TabsTrigger>
             </TabsList>
             <TabsContent value="short" className="mt-3">
               <div className="p-3 bg-white rounded-lg border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
