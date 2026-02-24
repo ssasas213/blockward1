@@ -3,45 +3,43 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import IssueStepper from '@/components/blockwards/IssueStepper';
-import StudentPicker from '@/components/blockwards/StudentPicker';
 import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award, BookOpen } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award, BookOpen, User, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
+const CATEGORIES = ['Academic', 'Sports', 'Arts', 'Leadership', 'Community', 'Innovation'];
+const RARITIES = ['Common', 'Rare', 'Epic', 'Legendary'];
+const EMOJIS = ['🏆', '⭐', '🎓', '📚', '🎨', '🏅', '💡', '🔥', '✨', '🌟', '👑', '🎯'];
+
 function IssueBlockWardContent() {
   const navigate = useNavigate();
-  const urlParams = new URLSearchParams(window.location.search);
-  const preSelectedStudentId = urlParams.get('studentId');
-  
+
+  const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Context
+  const [profile, setProfile] = useState(null);
+  const [schoolId, setSchoolId] = useState(null);
+
+  // Step 1 data
   const [myClasses, setMyClasses] = useState([]);
   const [selectedClassId, setSelectedClassId] = useState('');
-  const [students, setStudents] = useState([]);
+  const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [issuing, setIssuing] = useState(false);
-  const [issuingStage, setIssuingStage] = useState('');
-  const [issueSuccess, setIssueSuccess] = useState(false);
-  const [issueError, setIssueError] = useState(null);
-  const [blockchainData, setBlockchainData] = useState(null);
-  const [userCtx, setUserCtx] = useState(null);
 
+  // Form
   const [formData, setFormData] = useState({
     selectedStudent: null,
     selectedClass: null,
@@ -50,13 +48,16 @@ function IssueBlockWardContent() {
     category: '',
     rarity: 'Common',
     icon: '🏆',
-    dateAchieved: new Date().toISOString().split('T')[0],
-    confirmed: false
+    confirmed: false,
   });
 
-  useEffect(() => {
-    loadContext();
-  }, []);
+  // Submit states
+  const [issuing, setIssuing] = useState(false);
+  const [issueSuccess, setIssueSuccess] = useState(false);
+  const [issueError, setIssueError] = useState(null);
+  const [blockchainData, setBlockchainData] = useState(null);
+
+  useEffect(() => { loadContext(); }, []);
 
   const loadContext = async () => {
     try {
@@ -64,40 +65,32 @@ function IssueBlockWardContent() {
       if (!user) return;
 
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      const profile = profiles[0];
-      const role = profile?.user_type;
+      const p = profiles[0] || null;
+      setProfile(p);
+      const sid = p?.school_id || null;
+      setSchoolId(sid);
 
-      setUserCtx({ user, profile, role });
-
+      // Determine which classes this user can issue awards for
       let classes = [];
-      if (role === 'admin') {
-        // Admin can see all classes scoped to their school
-        if (profile?.school_id) {
-          classes = await base44.entities.Class.filter({ school_id: profile.school_id });
-        } else {
-          classes = await base44.entities.Class.list();
-        }
+      if (p?.user_type === 'admin') {
+        // Admin: all classes in their school
+        classes = sid
+          ? await base44.entities.Class.filter({ school_id: sid })
+          : await base44.entities.Class.list();
       } else {
-        // Teacher: get classes from StaffMembership first, fall back to teacher_email
+        // Teacher: classes from StaffMembership.class_ids OR legacy teacher_email
         const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
         const membership = memberships[0];
         if (membership?.class_ids?.length > 0) {
-          const allClasses = await base44.entities.Class.list();
-          classes = allClasses.filter(c => membership.class_ids.includes(c.id));
+          const all = await base44.entities.Class.list();
+          classes = all.filter(c => membership.class_ids.includes(c.id));
         } else {
-          // Legacy: fall back to teacher_email on class
+          // Legacy fallback
           classes = await base44.entities.Class.filter({ teacher_email: user.email });
         }
       }
-
       setMyClasses(classes);
-
-      // If pre-selected student via URL, still need to resolve class
-      if (preSelectedStudentId) {
-        // Load students for that class if we know it
-      }
-    } catch (error) {
-      console.error('Error loading context:', error);
+    } catch (e) {
       toast.error('Failed to load class data');
     } finally {
       setLoading(false);
@@ -106,45 +99,42 @@ function IssueBlockWardContent() {
 
   const handleClassSelect = async (classId) => {
     setSelectedClassId(classId);
-    setFormData(prev => ({ ...prev, selectedStudent: null, selectedClass: myClasses.find(c => c.id === classId) || null }));
-    setStudents([]);
+    const cls = myClasses.find(c => c.id === classId) || null;
+    setFormData(prev => ({ ...prev, selectedStudent: null, selectedClass: cls }));
+    setEnrolledStudents([]);
     setLoadingStudents(true);
     try {
-      // Load students via Enrollment entity (scoped) or class.student_emails (legacy)
+      // Try Enrollment entity first (new model)
       const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
-      let studentList = [];
+      let students = [];
 
       if (enrollments.length > 0) {
         const emails = enrollments.map(e => e.student_email);
         const allProfiles = await base44.entities.UserProfile.list();
-        studentList = allProfiles
+        students = allProfiles
           .filter(p => emails.includes(p.user_email) && p.user_type === 'student')
           .map(p => ({
             id: p.id,
             name: `${p.first_name} ${p.last_name}`,
             email: p.user_email,
-            class: myClasses.find(c => c.id === classId)?.name || 'N/A',
-            gradeLevel: p.grade_level || 'N/A'
+            gradeLevel: p.grade_level || '',
           }));
       } else {
-        // Legacy: use class.student_emails
-        const cls = myClasses.find(c => c.id === classId);
+        // Legacy: class.student_emails
         if (cls?.student_emails?.length > 0) {
           const allProfiles = await base44.entities.UserProfile.list();
-          studentList = allProfiles
+          students = allProfiles
             .filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student')
             .map(p => ({
               id: p.id,
               name: `${p.first_name} ${p.last_name}`,
               email: p.user_email,
-              class: cls.name,
-              gradeLevel: p.grade_level || 'N/A'
+              gradeLevel: p.grade_level || '',
             }));
         }
       }
-
-      setStudents(studentList);
-    } catch (error) {
+      setEnrolledStudents(students);
+    } catch (e) {
       toast.error('Failed to load students');
     } finally {
       setLoadingStudents(false);
@@ -152,226 +142,108 @@ function IssueBlockWardContent() {
   };
 
   const handleNext = () => {
-    if (currentStep === 1 && !selectedClassId) {
-      toast.error('Please select a class');
-      return;
-    }
-    if (currentStep === 1 && !formData.selectedStudent) {
-      toast.error('Please select a student');
-      return;
+    if (currentStep === 1) {
+      if (!formData.selectedClass) { toast.error('Please select a class'); return; }
+      if (!formData.selectedStudent) { toast.error('Please select a student'); return; }
     }
     if (currentStep === 2 && (!formData.title || !formData.category)) {
-      toast.error('Please fill in required fields');
+      toast.error('Please fill in Title and Category');
       return;
     }
-    setCurrentStep(prev => Math.min(prev + 1, 3));
-  };
-
-  const handleBack = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-  };
-
-  const handleSelectTemplate = (template) => {
-    setFormData(prev => ({
-      ...prev,
-      title: template.title,
-      description: template.description,
-      category: template.category,
-      rarity: template.rarity,
-      icon: template.icon
-    }));
+    setCurrentStep(s => Math.min(s + 1, 3));
   };
 
   const handleIssue = async () => {
-    if (!formData.confirmed) {
-      toast.error('Please confirm the award details');
-      return;
-    }
-
+    if (!formData.confirmed) { toast.error('Please confirm the award details'); return; }
     setIssuing(true);
-    setIssuingStage('Submitting to blockchain...');
-
     try {
       const response = await base44.functions.invoke('issueBlockward', {
         studentId: formData.selectedStudent.id,
         title: formData.title,
         category: formData.category,
-        description: formData.description
+        description: formData.description,
+        classId: formData.selectedClass?.id,
+        schoolId,
       });
-
       const data = response.data;
-
-      if (!data.ok) {
-        const errorMsg = data.message || data.error || 'Failed to issue BlockWard';
-        const debugId = data.debugId || '';
-        throw new Error(`${errorMsg}${debugId ? ' [Debug: ' + debugId + ']' : ''}`);
-      }
-
-      setBlockchainData({
-        mintTxHash: data.mintTxHash,
-        transferTxHash: data.transferTxHash,
-        tokenId: data.tokenId,
-        network: 'Sepolia Testnet'
-      });
+      if (!data.ok) throw new Error(data.message || data.error || 'Failed to issue BlockWard');
+      setBlockchainData({ mintTxHash: data.mintTxHash, transferTxHash: data.transferTxHash, tokenId: data.tokenId });
       setIssueSuccess(true);
       toast.success('BlockWard issued successfully!');
     } catch (error) {
-      const errorMessage = error.message || 'Failed to issue BlockWard. Please try again.';
-      setIssueError(errorMessage);
+      setIssueError(error.message || 'Failed to issue BlockWard.');
       toast.error('Failed to issue BlockWard');
     } finally {
       setIssuing(false);
-      setIssuingStage('');
     }
   };
 
-  const blockWardCategories = ['Academic', 'Sports', 'Arts', 'Leadership', 'Community', 'Innovation'];
-  const blockWardRarities = ['Common', 'Rare', 'Epic', 'Legendary'];
-  const emojiOptions = ['🏆', '⭐', '🎓', '📚', '🎨', '🏅', '💡', '🔥', '✨', '🌟', '👑', '🎯'];
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+    </div>
+  );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-      </div>
-    );
-  }
-
-  // Success State
-  if (issueSuccess) {
-    return (
-      <div className="max-w-2xl mx-auto py-12">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card className="border-0 shadow-2xl">
-            <CardContent className="p-12">
-              <div className="text-center mb-8">
-                <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                  <CheckCircle2 className="h-10 w-10 text-green-600" />
-                </div>
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-100 text-green-700 text-sm font-medium mb-4">
-                  ✓ Verified on Sepolia
-                </div>
-                <h2 className="text-3xl font-bold text-slate-900 mb-3">
-                  BlockWard Issued Successfully!
-                </h2>
-                <p className="text-slate-600">
-                  {formData.selectedStudent.name} will now see "{formData.title}" in their achievements
-                </p>
-              </div>
-
-              {blockchainData && (
-                <div className="bg-slate-50 rounded-xl p-6 mb-8 space-y-3">
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Token ID</p>
-                    <p className="text-sm font-mono text-slate-900">#{blockchainData.tokenId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Mint Transaction</p>
-                    <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.mintTxHash}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Transfer to Student</p>
-                    <p className="text-sm font-mono text-slate-900 break-all">{blockchainData.transferTxHash}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-500 mb-1">Network</p>
-                    <p className="text-sm font-medium text-slate-900">{blockchainData.network}</p>
-                  </div>
-                  <a
-                    href={`https://sepolia.etherscan.io/tx/${blockchainData.transferTxHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm text-violet-600 hover:text-violet-700 font-medium"
-                  >
-                    View Transfer on Etherscan →
-                  </a>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button 
-                  variant="outline"
-                  onClick={() => navigate(createPageUrl('TeacherBlockWards'))}
-                >
-                  View All BlockWards
-                </Button>
-                <Button 
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600"
-                  onClick={() => window.location.reload()}
-                >
-                  <Award className="h-4 w-4 mr-2" />
-                  Issue Another
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-    );
-  }
-
-  // Issuing State
-  if (issuing) {
-    return (
-      <div className="max-w-2xl mx-auto py-12">
+  if (issueSuccess) return (
+    <div className="max-w-2xl mx-auto py-12">
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
         <Card className="border-0 shadow-2xl">
           <CardContent className="p-12 text-center">
-            <Loader2 className="h-16 w-16 animate-spin text-violet-600 mx-auto mb-6" />
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
-              {issuingStage}
-            </h2>
-            <p className="text-slate-600">
-              Please wait while we process your award
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Error State
-  if (issueError) {
-    return (
-      <div className="max-w-2xl mx-auto py-12">
-        <Card className="border-0 shadow-2xl border-red-200">
-          <CardContent className="p-12 text-center">
-            <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-              <Award className="h-10 w-10 text-red-600" />
+            <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="h-10 w-10 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-3">
-              Couldn't Issue BlockWard
-            </h2>
-            <p className="text-slate-600 mb-8">{issueError}</p>
+            <h2 className="text-3xl font-bold text-slate-900 mb-3">BlockWard Issued!</h2>
+            <p className="text-slate-600 mb-8">{formData.selectedStudent.name} — "{formData.title}"</p>
+            {blockchainData && (
+              <div className="bg-slate-50 rounded-xl p-6 mb-8 space-y-2 text-left">
+                <p className="text-xs text-slate-500">Token ID: <span className="font-mono text-slate-900">#{blockchainData.tokenId}</span></p>
+                <p className="text-xs text-slate-500 break-all">Mint TX: <span className="font-mono text-slate-900">{blockchainData.mintTxHash}</span></p>
+                {blockchainData.transferTxHash && (
+                  <a href={`https://sepolia.etherscan.io/tx/${blockchainData.transferTxHash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline">View on Etherscan →</a>
+                )}
+              </div>
+            )}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button 
-                variant="outline"
-                onClick={() => setIssueError(null)}
-              >
-                Try Again
-              </Button>
-              <Button variant="outline">
-                Contact Support
+              <Button variant="outline" onClick={() => navigate(createPageUrl('TeacherBlockWards'))}>View All BlockWards</Button>
+              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600" onClick={() => window.location.reload()}>
+                <Award className="h-4 w-4 mr-2" />Issue Another
               </Button>
             </div>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
+      </motion.div>
+    </div>
+  );
+
+  if (issuing) return (
+    <div className="max-w-2xl mx-auto py-12">
+      <Card className="border-0 shadow-2xl">
+        <CardContent className="p-12 text-center">
+          <Loader2 className="h-16 w-16 animate-spin text-violet-600 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Submitting to blockchain...</h2>
+          <p className="text-slate-600">Please wait</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  if (issueError) return (
+    <div className="max-w-2xl mx-auto py-12">
+      <Card className="border-0 shadow-2xl border-red-200">
+        <CardContent className="p-12 text-center">
+          <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-6" />
+          <h2 className="text-2xl font-bold text-slate-900 mb-3">Couldn't Issue BlockWard</h2>
+          <p className="text-slate-600 mb-8">{issueError}</p>
+          <Button variant="outline" onClick={() => setIssueError(null)}>Try Again</Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(createPageUrl('TeacherBlockWards'))}
-        >
+        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('TeacherBlockWards'))}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
@@ -380,28 +252,26 @@ function IssueBlockWardContent() {
         </div>
       </div>
 
-      {/* Stepper */}
       <IssueStepper currentStep={currentStep} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg">
             <CardContent className="p-8">
-              {/* Step 1: Select Class then Student */}
+
+              {/* ── Step 1: Class → Student ── */}
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-2">Select Class & Student</h2>
-                    <p className="text-sm text-slate-600">First choose a class, then pick the student</p>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Class & Student</h2>
+                    <p className="text-sm text-slate-500">You can only award students enrolled in your classes.</p>
                   </div>
 
-                  {/* Class selector */}
                   {myClasses.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400">
+                    <div className="text-center py-12 text-slate-400">
                       <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                      <p className="font-medium">No classes assigned</p>
-                      <p className="text-sm mt-1">Ask your admin to assign you to a class</p>
+                      <p className="font-medium">No classes assigned to you yet.</p>
+                      <p className="text-sm mt-1">Ask an admin to assign you to a class first.</p>
                     </div>
                   ) : (
                     <>
@@ -409,189 +279,135 @@ function IssueBlockWardContent() {
                         <Label>Class *</Label>
                         <Select value={selectedClassId} onValueChange={handleClassSelect}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose a class" />
+                            <SelectValue placeholder="Select a class" />
                           </SelectTrigger>
                           <SelectContent>
                             {myClasses.map(cls => (
-                              <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
+                              <SelectItem key={cls.id} value={cls.id}>
+                                {cls.name}{cls.subject ? ` — ${cls.subject}` : ''}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
 
                       {selectedClassId && (
-                        loadingStudents ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
-                          </div>
-                        ) : students.length === 0 ? (
-                          <div className="text-center py-8 text-slate-400">
-                            <p>No students enrolled in this class</p>
-                          </div>
-                        ) : (
-                          <StudentPicker
-                            students={students}
-                            selectedStudent={formData.selectedStudent}
-                            onSelect={(student) => setFormData({ ...formData, selectedStudent: student })}
-                          />
-                        )
+                        <div className="space-y-2">
+                          <Label>Student *</Label>
+                          {loadingStudents ? (
+                            <div className="flex items-center gap-2 text-slate-500 text-sm py-4">
+                              <Loader2 className="h-4 w-4 animate-spin" /> Loading students...
+                            </div>
+                          ) : enrolledStudents.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400 border-2 border-dashed rounded-xl">
+                              <User className="h-10 w-10 mx-auto mb-2 opacity-40" />
+                              <p className="font-medium">No students enrolled in this class.</p>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {enrolledStudents.map(student => (
+                                <button
+                                  key={student.id}
+                                  onClick={() => setFormData(prev => ({ ...prev, selectedStudent: student }))}
+                                  className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
+                                    formData.selectedStudent?.id === student.id
+                                      ? 'border-violet-500 bg-violet-50'
+                                      : 'border-slate-200 hover:border-slate-300'
+                                  }`}
+                                >
+                                  <div className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold text-sm ${
+                                    formData.selectedStudent?.id === student.id ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-600'
+                                  }`}>
+                                    {student.name[0]}
+                                  </div>
+                                  <div>
+                                    <p className="font-medium text-slate-900">{student.name}</p>
+                                    {student.gradeLevel && <p className="text-xs text-slate-500">{student.gradeLevel}</p>}
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </>
                   )}
                 </div>
               )}
 
-              {/* Step 2: Choose/Create BlockWard */}
+              {/* ── Step 2: Award Details ── */}
               {currentStep === 2 && (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-2">
-                      Choose or Create Award
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      Select from templates or create a custom BlockWard
-                    </p>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Award Details</h2>
+                    <p className="text-sm text-slate-500">Awarding to <strong>{formData.selectedStudent?.name}</strong> in {formData.selectedClass?.name}</p>
                   </div>
 
-                  <Tabs defaultValue="create">
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="templates">Templates</TabsTrigger>
-                      <TabsTrigger value="create">Create New</TabsTrigger>
-                    </TabsList>
+                  <div className="space-y-2">
+                    <Label>Title *</Label>
+                    <Input value={formData.title} onChange={e => setFormData(p => ({ ...p, title: e.target.value }))} placeholder="e.g. Perfect Attendance" />
+                  </div>
 
-                    <TabsContent value="templates" className="space-y-4 mt-6">
-                      <div className="text-center py-8 text-slate-400">
-                        <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p>No templates available - create a custom award</p>
-                      </div>
-                    </TabsContent>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Describe the achievement..." rows={3} />
+                  </div>
 
-                    <TabsContent value="create" className="space-y-4 mt-6">
-                      <div className="space-y-2">
-                        <Label>Title *</Label>
-                        <Input
-                          value={formData.title}
-                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          placeholder="e.g. Perfect Attendance"
-                        />
-                      </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Category *</Label>
+                      <Select value={formData.category} onValueChange={v => setFormData(p => ({ ...p, category: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rarity</Label>
+                      <Select value={formData.rarity} onValueChange={v => setFormData(p => ({ ...p, rarity: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
 
-                      <div className="space-y-2">
-                        <Label>Description</Label>
-                        <Textarea
-                          value={formData.description}
-                          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                          placeholder="Describe the achievement..."
-                          rows={3}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Category *</Label>
-                          <Select
-                            value={formData.category}
-                            onValueChange={(value) => setFormData({ ...formData, category: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {blockWardCategories.map((cat) => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label>Rarity</Label>
-                          <Select
-                            value={formData.rarity}
-                            onValueChange={(value) => setFormData({ ...formData, rarity: value })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {blockWardRarities.map((rarity) => (
-                                <SelectItem key={rarity} value={rarity}>{rarity}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Icon</Label>
-                        <div className="grid grid-cols-6 gap-2">
-                          {emojiOptions.map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={() => setFormData({ ...formData, icon: emoji })}
-                              className={`text-3xl p-3 rounded-lg border-2 hover:border-violet-600 transition-all ${
-                                formData.icon === emoji ? 'border-violet-600 bg-violet-50' : 'border-slate-200'
-                              }`}
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Date Achieved</Label>
-                        <Input
-                          type="date"
-                          value={formData.dateAchieved}
-                          onChange={(e) => setFormData({ ...formData, dateAchieved: e.target.value })}
-                        />
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                  <div className="space-y-2">
+                    <Label>Icon</Label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {EMOJIS.map(e => (
+                        <button key={e} onClick={() => setFormData(p => ({ ...p, icon: e }))}
+                          className={`text-2xl p-2 rounded-lg border-2 hover:border-violet-500 transition-all ${formData.icon === e ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
+                          {e}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
-              {/* Step 3: Review & Issue */}
+              {/* ── Step 3: Review ── */}
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-2">
-                      Review & Issue
-                    </h2>
-                    <p className="text-sm text-slate-600">
-                      Confirm the details before issuing
-                    </p>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Review & Issue</h2>
+                    <p className="text-sm text-slate-500">Confirm the details before permanently issuing</p>
                   </div>
 
                   <div className="p-6 bg-slate-50 rounded-xl space-y-4">
                     <div>
-                      <p className="text-sm text-slate-500 mb-1">Awarding To</p>
-                      <p className="text-lg font-semibold text-slate-900">
-                        {formData.selectedStudent.name}
-                      </p>
-                      <p className="text-sm text-slate-600">{formData.selectedStudent.class}</p>
+                      <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Awarding To</p>
+                      <p className="font-semibold text-slate-900">{formData.selectedStudent?.name}</p>
+                      <p className="text-sm text-slate-500">{formData.selectedClass?.name}</p>
                     </div>
-
                     <div className="h-px bg-slate-200" />
-
                     <div>
-                      <p className="text-sm text-slate-500 mb-1">Achievement</p>
-                      <p className="text-lg font-semibold text-slate-900">{formData.title}</p>
-                      {formData.description && (
-                        <p className="text-sm text-slate-600 mt-1">{formData.description}</p>
-                      )}
+                      <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Achievement</p>
+                      <p className="font-semibold text-slate-900">{formData.title}</p>
+                      {formData.description && <p className="text-sm text-slate-600 mt-1">{formData.description}</p>}
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4 pt-2">
-                      <div>
-                        <p className="text-xs text-slate-500">Category</p>
-                        <p className="font-medium text-slate-900">{formData.category}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Rarity</p>
-                        <p className="font-medium text-slate-900">{formData.rarity}</p>
-                      </div>
+                    <div className="flex gap-3 flex-wrap">
+                      <Badge variant="outline">{formData.category}</Badge>
+                      <Badge variant="outline">{formData.rarity}</Badge>
+                      <span className="text-xl">{formData.icon}</span>
                     </div>
                   </div>
 
@@ -599,39 +415,27 @@ function IssueBlockWardContent() {
                     <Checkbox
                       id="confirm"
                       checked={formData.confirmed}
-                      onCheckedChange={(checked) => setFormData({ ...formData, confirmed: checked })}
+                      onCheckedChange={v => setFormData(p => ({ ...p, confirmed: v }))}
                     />
                     <label htmlFor="confirm" className="text-sm text-violet-900 cursor-pointer">
-                      I confirm this award is accurate and should be permanently issued to {formData.selectedStudent.name}
+                      I confirm this award is accurate and should be permanently issued to {formData.selectedStudent?.name}
                     </label>
                   </div>
                 </div>
               )}
 
-              {/* Navigation Buttons */}
+              {/* Navigation */}
               <div className="flex justify-between pt-6 mt-6 border-t">
-                <Button
-                  variant="outline"
-                  onClick={handleBack}
-                  disabled={currentStep === 1}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
+                <Button variant="outline" onClick={() => setCurrentStep(s => Math.max(s - 1, 1))} disabled={currentStep === 1}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />Back
                 </Button>
-
                 {currentStep < 3 ? (
                   <Button onClick={handleNext}>
-                    Next
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                    Next <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleIssue}
-                    disabled={!formData.confirmed}
-                    className="bg-gradient-to-r from-violet-600 to-indigo-600"
-                  >
-                    <Award className="h-4 w-4 mr-2" />
-                    Issue BlockWard
+                  <Button onClick={handleIssue} disabled={!formData.confirmed} className="bg-gradient-to-r from-violet-600 to-indigo-600">
+                    <Award className="h-4 w-4 mr-2" />Issue BlockWard
                   </Button>
                 )}
               </div>
@@ -649,9 +453,7 @@ function IssueBlockWardContent() {
               <Card className="border-2 border-dashed border-slate-200">
                 <CardContent className="p-8 text-center">
                   <Award className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-sm text-slate-500">
-                    Preview will appear as you fill in the details
-                  </p>
+                  <p className="text-sm text-slate-500">Preview appears as you fill in details</p>
                 </CardContent>
               </Card>
             )}
