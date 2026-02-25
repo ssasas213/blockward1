@@ -124,6 +124,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Announcements', icon: Bell, page: 'Announcements' },
       { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
+      { name: 'School Events', icon: Calendar, page: 'SchoolEvents' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
       { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
