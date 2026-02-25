@@ -2,22 +2,22 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Send, BookmarkCheck, AlertCircle, CheckCircle2, Copy, Lightbulb } from 'lucide-react';
+import { Sparkles, Send, BookmarkCheck, AlertCircle, CheckCircle2, Copy, Lightbulb, Loader2 } from 'lucide-react';
+import AudienceSelector from '@/components/announcements/AudienceSelector';
 
 const exampleIntents = [
-  "Remind parents about the upcoming sports day",
-  "Notify Year 9 about a change to tomorrow's timetable",
-  "Congratulate students on excellent behaviour this week",
-  "Remind students about uniform policy",
+  "Remind Year 9 about the change to tomorrow's timetable",
+  "Congratulate Year 7A on excellent behaviour this week",
+  "Notify all staff about the SLT meeting on Friday at 4pm",
+  "Remind students about the uniform policy",
 ];
 
-export default function AnnouncementTab({ userEmail, userType, onInsert }) {
+export default function AnnouncementTab({ userEmail, userType, schoolId, onInsert }) {
   const [message, setMessage] = useState('');
   const [tone, setTone] = useState('Friendly');
-  const [targetType, setTargetType] = useState('CLASS');
+  const [audience, setAudience] = useState(userType === 'admin' ? { scopeType: 'SCHOOL' } : { scopeType: 'CLASS' });
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState(null);
@@ -26,7 +26,17 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
   const [saved, setSaved] = useState(null);
   const [copied, setCopied] = useState(false);
 
-  const isAdmin = userType === 'admin';
+  const audienceDescription = () => {
+    if (audience.scopeType === 'SCHOOL') return 'the whole school';
+    if (audience.scopeType === 'YEAR_GROUP') return audience.yearGroupName || 'the year group';
+    if (audience.scopeType === 'CLASS') return audience.className || 'the class';
+    if (audience.scopeType === 'TEAM') return audience.teamName || 'the team';
+    if (audience.scopeType === 'STUDENTS') {
+      const names = audience.studentNames || [];
+      return names.length > 0 ? names.join(', ') : 'specific students';
+    }
+    return 'the audience';
+  };
 
   const generate = async () => {
     if (!message.trim()) return;
@@ -39,7 +49,7 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
         tool: 'DRAFT_ANNOUNCEMENT',
         message,
         tone,
-        draftTarget: { type: targetType },
+        draftTarget: { type: audience.scopeType, description: audienceDescription() },
       });
       const data = res.data;
       if (!data.ok) {
@@ -67,9 +77,17 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
         title: draft.title,
         body: draft.body,
         body_short: draft.body?.slice(0, 200),
-        audience: targetType === 'SCHOOL' ? 'whole_school' : targetType === 'CLASS' ? 'custom' : 'custom',
+        scope_type: audience.scopeType,
+        year_group_id: audience.yearGroupId || undefined,
+        year_group_name: audience.yearGroupName || undefined,
+        class_id: audience.classId || undefined,
+        class_name: audience.className || undefined,
+        team_name: audience.teamName || undefined,
+        student_emails: audience.studentEmails || undefined,
+        student_names: audience.studentNames || undefined,
         status,
         created_by: userEmail,
+        school_id: schoolId || undefined,
         sent_at: isSend ? new Date().toISOString() : undefined,
       });
       setSaved(status);
@@ -117,39 +135,33 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
           />
         </div>
 
-        <div className="flex gap-3 flex-wrap">
-          <div className="flex-1 min-w-[140px]">
-            <Label className="text-sm font-medium">Target</Label>
-            <Select value={targetType} onValueChange={setTargetType}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="CLASS">Class</SelectItem>
-                <SelectItem value="YEAR_GROUP">Year Group</SelectItem>
-                {isAdmin && <SelectItem value="SCHOOL">Whole School</SelectItem>}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Audience */}
+        <AudienceSelector
+          value={audience}
+          onChange={setAudience}
+          userType={userType}
+          userEmail={userEmail}
+          schoolId={schoolId}
+        />
 
-          <div className="flex-1 min-w-[140px]">
-            <Label className="text-sm font-medium">Tone</Label>
-            <Select value={tone} onValueChange={setTone}>
-              <SelectTrigger className="mt-1.5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Friendly">Friendly</SelectItem>
-                <SelectItem value="Formal">Formal</SelectItem>
-                <SelectItem value="Short">Short & Direct</SelectItem>
-                <SelectItem value="Urgent">Urgent</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Tone */}
+        <div>
+          <Label className="text-sm font-medium">Tone</Label>
+          <Select value={tone} onValueChange={setTone}>
+            <SelectTrigger className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Friendly">Friendly</SelectItem>
+              <SelectItem value="Formal">Formal</SelectItem>
+              <SelectItem value="Short">Short & Direct</SelectItem>
+              <SelectItem value="Urgent">Urgent</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Button onClick={generate} disabled={loading || !message.trim()} className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
-          <Sparkles className="h-4 w-4" />
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
           {loading ? 'Generating draft...' : 'Generate Announcement Draft'}
         </Button>
       </div>
@@ -211,26 +223,17 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
           {saved ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
               <CheckCircle2 className="h-4 w-4" />
-              {saved === 'sent' ? 'Announcement marked as sent and saved!' : 'Draft saved successfully!'}
+              {saved === 'sent' ? 'Announcement sent and saved!' : 'Draft saved successfully!'}
             </div>
           ) : (
             <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => saveAs('draft')}
-                disabled={saving || sending}
-                className="flex-1 gap-2 border-slate-300"
-              >
+              <Button variant="outline" onClick={() => saveAs('draft')} disabled={saving || sending} className="flex-1 gap-2 border-slate-300">
                 <BookmarkCheck className="h-4 w-4" />
                 {saving ? 'Saving...' : 'Save Draft'}
               </Button>
-              <Button
-                onClick={() => saveAs('sent')}
-                disabled={saving || sending}
-                className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
-              >
+              <Button onClick={() => saveAs('sent')} disabled={saving || sending} className="flex-1 gap-2 bg-green-600 hover:bg-green-700">
                 <Send className="h-4 w-4" />
-                {sending ? 'Sending...' : 'Mark as Sent'}
+                {sending ? 'Sending...' : 'Send Now'}
               </Button>
             </div>
           )}

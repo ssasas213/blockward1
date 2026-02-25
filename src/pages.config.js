@@ -50,6 +50,7 @@
 import AdminDashboard from './pages/AdminDashboard';
 import AdminPermissions from './pages/AdminPermissions';
 import Analytics from './pages/Analytics';
+import Announcements from './pages/Announcements';
 import App from './pages/App';
 import Attendance from './pages/Attendance';
 import BlockWardAI from './pages/BlockWardAI';
@@ -72,6 +73,7 @@ import Profile from './pages/Profile';
 import Reports from './pages/Reports';
 import Resources from './pages/Resources';
 import SchoolCodes from './pages/SchoolCodes';
+import SchoolEvents from './pages/SchoolEvents';
 import StudentBlockWards from './pages/StudentBlockWards';
 import StudentDashboard from './pages/StudentDashboard';
 import SystemSettings from './pages/SystemSettings';
@@ -79,8 +81,6 @@ import TeacherBlockWards from './pages/TeacherBlockWards';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
-import Announcements from './pages/Announcements';
-import SchoolEvents from './pages/SchoolEvents';
 import __Layout from './Layout.jsx';
 
 
@@ -88,6 +88,7 @@ export const PAGES = {
     "AdminDashboard": AdminDashboard,
     "AdminPermissions": AdminPermissions,
     "Analytics": Analytics,
+    "Announcements": Announcements,
     "App": App,
     "Attendance": Attendance,
     "BlockWardAI": BlockWardAI,
@@ -110,6 +111,7 @@ export const PAGES = {
     "Reports": Reports,
     "Resources": Resources,
     "SchoolCodes": SchoolCodes,
+    "SchoolEvents": SchoolEvents,
     "StudentBlockWards": StudentBlockWards,
     "StudentDashboard": StudentDashboard,
     "SystemSettings": SystemSettings,
@@ -117,8 +119,6 @@ export const PAGES = {
     "TeacherDashboard": TeacherDashboard,
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
-    "Announcements": Announcements,
-    "SchoolEvents": SchoolEvents,
 }
 
 export const pagesConfig = {
