@@ -91,6 +91,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'Attendance', icon: UserCircle, page: 'Attendance' },
       { name: 'Grade Book', icon: BookOpen, page: 'GradeBook' },
+      { name: 'Announcements', icon: Bell, page: 'Announcements' },
       { name: 'Messages', icon: Bell, page: 'Messages' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
       { name: 'BlockWards', icon: Award, page: 'BlockWards' },
@@ -107,6 +108,7 @@ export default function Layout({ children, currentPageName }) {
     teacher: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
+      { name: 'Announcements', icon: Bell, page: 'Announcements' },
       { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
@@ -118,11 +120,11 @@ export default function Layout({ children, currentPageName }) {
     student: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
+      { name: 'Announcements', icon: Bell, page: 'Announcements' },
       { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
       { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
-      { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
   };
