@@ -43,7 +43,11 @@ export default function AnnouncementTab({ userEmail, userType, onInsert }) {
       });
       const data = res.data;
       if (!data.ok) {
-        setError(data.message || 'Generation failed.');
+        if (data.code === 'OPENAI_ERROR' && data.message?.includes('429')) {
+          setError('AI is busy right now (rate limit). Please wait a moment and try again.');
+        } else {
+          setError(data.message || 'Generation failed.');
+        }
       } else {
         setDraft(data);
       }

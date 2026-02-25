@@ -34,10 +34,12 @@ export default function ScheduleTab() {
         scope: { type: scope },
       });
       const data = res.data;
-      if (!data.ok && data.code !== 'NO_EVENTS_FOUND') {
-        setError(data.message || 'Something went wrong.');
-      } else {
+      if (data.ok || data.events !== undefined) {
         setResult(data);
+      } else if (data.code === 'OPENAI_ERROR' && data.message?.includes('429')) {
+        setError('AI is busy right now (rate limit). Please wait a moment and try again.');
+      } else {
+        setError(data.message || 'Something went wrong.');
       }
     } catch (e) {
       setError(e?.response?.data?.message || 'Something went wrong. Please try again.');
