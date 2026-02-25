@@ -8,11 +8,21 @@ import { Calendar, Megaphone, Sparkles } from 'lucide-react';
 export default function BlockWardAI() {
   const [activeTab, setActiveTab] = useState('schedule');
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
 
   useEffect(() => {
-    console.log('AI page mounted');
-    base44.auth.me().then(u => setUser(u ?? null)).catch(() => {});
+    base44.auth.me()
+      .then(async u => {
+        setUser(u ?? null);
+        if (u) {
+          const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
+          setProfile(profiles[0] || null);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const userType = profile?.user_type || 'teacher';
 
   const tabs = [
     { id: 'schedule', label: 'Ask Schedule', icon: Calendar, description: 'Query school events & assemblies' },
@@ -40,7 +50,7 @@ export default function BlockWardAI() {
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => { console.log('AI tab changed:', tab.id); setActiveTab(tab.id); }}
+              onClick={() => setActiveTab(tab.id)}
               className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                 activeTab === tab.id
                   ? 'border-violet-500 bg-violet-50 shadow-sm'
@@ -61,8 +71,13 @@ export default function BlockWardAI() {
         {/* Content card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
           <AIErrorBoundary key={activeTab}>
-            {activeTab === 'schedule' && <ScheduleTab />}
-            {activeTab === 'announcement' && <AnnouncementTab userEmail={user?.email ?? null} />}
+            {activeTab === 'schedule' && <ScheduleTab userType={userType} />}
+            {activeTab === 'announcement' && (
+              <AnnouncementTab
+                userEmail={user?.email ?? null}
+                userType={userType}
+              />
+            )}
           </AIErrorBoundary>
         </div>
 
