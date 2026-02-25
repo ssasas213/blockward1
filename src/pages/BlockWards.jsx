@@ -152,24 +152,22 @@ export default function BlockWards() {
         return;
       }
 
-      const response = await fetch('/api/blockwards/issue', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          studentId: studentProfile.id,
-          title: newBlockWard.title,
-          category: newBlockWard.category,
-          description: newBlockWard.description
-        })
+      const user = await base44.auth.me();
+
+      await base44.entities.BlockWard.create({
+        school_id: profile?.school_id,
+        student_email: studentProfile.user_email,
+        student_name: `${studentProfile.first_name} ${studentProfile.last_name}`,
+        student_wallet: studentProfile.wallet_address || 'system',
+        issuer_email: user.email,
+        issuer_name: `${profile?.first_name} ${profile?.last_name}`,
+        issuer_wallet: 'system',
+        title: newBlockWard.title,
+        description: newBlockWard.description,
+        category: newBlockWard.category,
+        minted_at: new Date().toISOString(),
+        status: 'active',
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to issue BlockWard');
-      }
 
       setShowMintDialog(false);
       setNewBlockWard({ student_email: '', title: '', description: '', category: '' });
@@ -508,13 +506,12 @@ export default function BlockWards() {
                     <p className="text-sm text-slate-500 mb-1">Block Number</p>
                     <p className="font-mono text-xs text-slate-600">{selectedBlockWard.block_number?.toLocaleString()}</p>
                   </div>
+                  {selectedBlockWard.transaction_hash && (
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Network</p>
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-                      <Shield className="h-3 w-3 mr-1" />
-                      Polygon Amoy Testnet
-                    </Badge>
+                    <Badge variant="outline" className="text-xs">Polygon Amoy Testnet</Badge>
                   </div>
+                  )}
                 </div>
               </div>
               {(profile?.user_type === 'admin' && selectedBlockWard.status === 'active') && (
