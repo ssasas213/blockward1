@@ -185,10 +185,13 @@ Deno.serve(async (req) => {
       };
       const toneDesc = toneMap[tone] || "friendly";
 
-      const targetDesc = targetType === "SCHOOL" ? "the whole school"
+      const targetDesc = draftTarget?.description
+        ? draftTarget.description
+        : targetType === "SCHOOL" ? "the whole school"
         : targetType === "YEAR_GROUP" ? "a year group"
         : targetType === "CLASS" ? "a class"
-        : "students";
+        : targetType === "TEAM" ? "a staff team or department"
+        : "specific students";
 
       const systemPrompt = `You are a school communications assistant. Draft polished, professional school announcements. Never include personal student data. Keep language safe, age-appropriate, and school-appropriate. Tone: ${toneDesc}. Output ONLY valid JSON with keys: title, body, bullets (array of strings, max 4).`;
       const userMsg = `Draft a school announcement for ${targetDesc}.\n\nTeacher's rough notes: ${message}\n\nReturn ONLY JSON: { "title": "...", "body": "...", "bullets": ["..."] }`;

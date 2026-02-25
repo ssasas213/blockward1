@@ -76,6 +76,7 @@ export default function BlockWardAI() {
               <AnnouncementTab
                 userEmail={user?.email ?? null}
                 userType={userType}
+                schoolId={profile?.school_id ?? null}
               />
             )}
           </AIErrorBoundary>
