@@ -8,15 +8,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Verify admin
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-
-    const profile = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const userType = profile[0]?.user_type;
-    if (userType !== "admin") return Response.json({ error: "Forbidden" }, { status: 403 });
-
-    // Find scheduled announcements whose scheduledAt is in the past
+    // Find scheduled announcements whose scheduled_at is in the past
     const allScheduled = await base44.asServiceRole.entities.Announcement.filter({ status: "scheduled" });
     const now = new Date();
     const toSend = allScheduled.filter(a => a.scheduled_at && new Date(a.scheduled_at) <= now);
@@ -30,8 +22,10 @@ Deno.serve(async (req) => {
       processed++;
     }
 
+    console.log(JSON.stringify({ step: "processScheduled", processed, checked: allScheduled.length }));
     return Response.json({ ok: true, processed });
   } catch (err) {
+    console.log(JSON.stringify({ step: "processScheduled_error", error: String(err?.message) }));
     return Response.json({ ok: false, error: err?.message || "Unknown error" }, { status: 500 });
   }
 });
