@@ -80,6 +80,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
 import Announcements from './pages/Announcements';
+import SchoolEvents from './pages/SchoolEvents';
 import __Layout from './Layout.jsx';
 
 
@@ -117,6 +118,7 @@ export const PAGES = {
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
     "Announcements": Announcements,
+    "SchoolEvents": SchoolEvents,
 }
 
 export const pagesConfig = {
