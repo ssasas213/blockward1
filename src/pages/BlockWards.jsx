@@ -223,9 +223,6 @@ export default function BlockWards() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
-            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-              Testnet: Polygon Amoy
-            </Badge>
           </div>
           <p className="text-slate-500 mt-1">
             {profile?.user_type === 'student' 
@@ -243,16 +240,11 @@ export default function BlockWards() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <DialogTitle>Issue BlockWard</DialogTitle>
-                    <DialogDescription>
-                      Award a blockchain-verified achievement to a student
-                    </DialogDescription>
-                  </div>
-                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                    Testnet
-                  </Badge>
+                <div>
+                  <DialogTitle>Issue BlockWard</DialogTitle>
+                  <DialogDescription>
+                    Award a blockchain-verified achievement to a student
+                  </DialogDescription>
                 </div>
               </DialogHeader>
               <div className="space-y-4 py-4">
