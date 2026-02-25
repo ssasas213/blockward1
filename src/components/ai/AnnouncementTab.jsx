@@ -5,48 +5,48 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Send, BookmarkCheck, AlertCircle, CheckCircle2, Copy } from 'lucide-react';
-
-const audienceOptions = [
-  { value: 'whole_school', label: 'Whole School' },
-  { value: 'year_7', label: 'Year 7' },
-  { value: 'year_8', label: 'Year 8' },
-  { value: 'year_9', label: 'Year 9' },
-  { value: 'year_10', label: 'Year 10' },
-  { value: 'year_11', label: 'Year 11' },
-  { value: 'staff_only', label: 'Staff Only' },
-];
+import { Sparkles, Send, BookmarkCheck, AlertCircle, CheckCircle2, Copy, Lightbulb } from 'lucide-react';
 
 const exampleIntents = [
-  'Remind parents about the upcoming sports day',
-  'Notify Year 9 about a change to tomorrow\'s timetable',
-  'Congratulate students on excellent behaviour this week',
-  'Remind students about uniform policy',
+  "Remind parents about the upcoming sports day",
+  "Notify Year 9 about a change to tomorrow's timetable",
+  "Congratulate students on excellent behaviour this week",
+  "Remind students about uniform policy",
 ];
 
-export default function AnnouncementTab({ userEmail }) {
-  const [intent, setIntent] = useState('');
-  const [audience, setAudience] = useState('whole_school');
-  const [tone, setTone] = useState('friendly');
-  const [keyDetails, setKeyDetails] = useState('');
+export default function AnnouncementTab({ userEmail, userType, onInsert }) {
+  const [message, setMessage] = useState('');
+  const [tone, setTone] = useState('Friendly');
+  const [targetType, setTargetType] = useState('CLASS');
   const [loading, setLoading] = useState(false);
   const [draft, setDraft] = useState(null);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
-  const [saved, setSaved] = useState(null); // 'draft' | 'sent'
+  const [saved, setSaved] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [draftView, setDraftView] = useState('full');
+
+  const isAdmin = userType === 'admin';
 
   const generate = async () => {
-    if (!intent.trim()) return;
+    if (!message.trim()) return;
     setLoading(true);
     setError(null);
     setDraft(null);
     setSaved(null);
     try {
-      const res = await base44.functions.invoke('aiDraftAnnouncement', { intent, audience, tone, keyDetails });
-      setDraft(res.data);
+      const res = await base44.functions.invoke('blockwardAI', {
+        tool: 'DRAFT_ANNOUNCEMENT',
+        message,
+        tone,
+        draftTarget: { type: targetType },
+      });
+      const data = res.data;
+      if (!data.ok) {
+        setError(data.message || 'Generation failed.');
+      } else {
+        setDraft(data);
+      }
     } catch (e) {
       setError(e?.response?.data?.message || 'Generation failed. Please try again.');
     } finally {
@@ -61,12 +61,12 @@ export default function AnnouncementTab({ userEmail }) {
     try {
       await base44.entities.Announcement.create({
         title: draft.title,
-        body: draft.messageLong,
-        body_short: draft.messageShort,
-        audience,
+        body: draft.body,
+        body_short: draft.body?.slice(0, 200),
+        audience: targetType === 'SCHOOL' ? 'whole_school' : targetType === 'CLASS' ? 'custom' : 'custom',
         status,
         created_by: userEmail,
-        sent_at: isSend ? new Date().toISOString() : undefined
+        sent_at: isSend ? new Date().toISOString() : undefined,
       });
       setSaved(status);
     } catch (e) {
@@ -85,14 +85,14 @@ export default function AnnouncementTab({ userEmail }) {
 
   return (
     <div className="space-y-5">
-      {/* Example intents */}
+      {/* Examples */}
       <div>
         <p className="text-xs font-medium text-slate-500 mb-2">Try these examples</p>
         <div className="flex flex-wrap gap-2">
           {exampleIntents.map(ex => (
             <button
               key={ex}
-              onClick={() => setIntent(ex)}
+              onClick={() => setMessage(ex)}
               className="text-xs px-3 py-1.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors text-left"
             >
               {ex}
@@ -107,31 +107,23 @@ export default function AnnouncementTab({ userEmail }) {
           <Label className="text-sm font-medium">What do you want to announce?</Label>
           <Textarea
             placeholder="e.g. Remind Year 10 parents about the parents' evening on Thursday at 5pm in the main hall"
-            value={intent}
-            onChange={e => setIntent(e.target.value)}
+            value={message}
+            onChange={e => setMessage(e.target.value)}
             className="mt-1.5 resize-none min-h-[80px]"
-          />
-        </div>
-
-        <div>
-          <Label className="text-sm font-medium">Key details (optional)</Label>
-          <Input
-            placeholder="e.g. Date: Thursday 6pm, Location: Main Hall, Dress code: smart casual"
-            value={keyDetails}
-            onChange={e => setKeyDetails(e.target.value)}
-            className="mt-1.5"
           />
         </div>
 
         <div className="flex gap-3 flex-wrap">
           <div className="flex-1 min-w-[140px]">
-            <Label className="text-sm font-medium">Audience</Label>
-            <Select value={audience} onValueChange={setAudience}>
+            <Label className="text-sm font-medium">Target</Label>
+            <Select value={targetType} onValueChange={setTargetType}>
               <SelectTrigger className="mt-1.5">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {audienceOptions.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                <SelectItem value="CLASS">Class</SelectItem>
+                <SelectItem value="YEAR_GROUP">Year Group</SelectItem>
+                {isAdmin && <SelectItem value="SCHOOL">Whole School</SelectItem>}
               </SelectContent>
             </Select>
           </div>
@@ -143,15 +135,16 @@ export default function AnnouncementTab({ userEmail }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="friendly">Friendly</SelectItem>
-                <SelectItem value="formal">Formal</SelectItem>
-                <SelectItem value="short">Short & direct</SelectItem>
+                <SelectItem value="Friendly">Friendly</SelectItem>
+                <SelectItem value="Formal">Formal</SelectItem>
+                <SelectItem value="Short">Short & Direct</SelectItem>
+                <SelectItem value="Urgent">Urgent</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
-        <Button onClick={generate} disabled={loading || !intent.trim()} className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
+        <Button onClick={generate} disabled={loading || !message.trim()} className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
           <Sparkles className="h-4 w-4" />
           {loading ? 'Generating draft...' : 'Generate Announcement Draft'}
         </Button>
@@ -164,7 +157,6 @@ export default function AnnouncementTab({ userEmail }) {
         </div>
       )}
 
-      {/* Draft output */}
       {draft && (
         <div className="space-y-4 border border-indigo-200 rounded-xl p-5 bg-gradient-to-br from-indigo-50 to-white">
           <div className="flex items-center justify-between">
@@ -173,7 +165,7 @@ export default function AnnouncementTab({ userEmail }) {
               <h3 className="font-semibold text-slate-900">{draft.title}</h3>
             </div>
             <button
-              onClick={() => copyToClipboard(draft.messageLong)}
+              onClick={() => copyToClipboard(draft.body)}
               className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -181,28 +173,41 @@ export default function AnnouncementTab({ userEmail }) {
             </button>
           </div>
 
-          <div className="space-y-2">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setDraftView('full')}
-                  className={`text-xs px-3 py-1 rounded-md border transition-colors ${draftView === 'full' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                >Full version</button>
-                <button
-                  onClick={() => setDraftView('short')}
-                  className={`text-xs px-3 py-1 rounded-md border transition-colors ${draftView === 'short' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-300 text-slate-600 hover:bg-slate-50'}`}
-                >Short version</button>
+          <div className="p-3 bg-white rounded-lg border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+            {draft.body}
+          </div>
+
+          {draft.bullets?.length > 0 && (
+            <div className="p-3 bg-white rounded-lg border border-slate-200">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-xs font-medium text-slate-600">Key points</span>
               </div>
-              <div className="p-3 bg-white rounded-lg border border-slate-200 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
-                {draftView === 'full' ? draft.messageLong : draft.messageShort}
-              </div>
+              <ul className="space-y-1">
+                {draft.bullets.map((b, i) => (
+                  <li key={i} className="text-xs text-slate-600 flex items-start gap-2">
+                    <span className="text-indigo-400 mt-0.5">•</span>
+                    {b}
+                  </li>
+                ))}
+              </ul>
             </div>
+          )}
+
+          {onInsert && (
+            <Button
+              variant="outline"
+              onClick={() => onInsert(draft)}
+              className="w-full border-indigo-300 text-indigo-700 hover:bg-indigo-50"
+            >
+              Insert into Composer
+            </Button>
+          )}
 
           {saved ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
               <CheckCircle2 className="h-4 w-4" />
-              {saved === 'sent'
-                ? 'Announcement marked as sent and saved!'
-                : 'Draft saved successfully!'}
+              {saved === 'sent' ? 'Announcement marked as sent and saved!' : 'Draft saved successfully!'}
             </div>
           ) : (
             <div className="flex gap-3">
