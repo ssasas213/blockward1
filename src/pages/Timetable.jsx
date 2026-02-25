@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { 
-  Plus, Calendar, Clock, MapPin, Loader2, ChevronLeft, ChevronRight
+  Plus, Calendar, Clock, MapPin, Loader2, ChevronLeft, ChevronRight, Trash2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
