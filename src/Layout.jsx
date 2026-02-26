@@ -121,7 +121,7 @@ export default function Layout({ children, currentPageName }) {
     student: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
       { name: 'My Classes', icon: BookOpen, page: 'Classes' },
-      { name: 'Announcements', icon: Bell, page: 'Announcements' },
+      { name: 'Announcements', icon: Megaphone, page: 'Announcements' },
       { name: 'Messages', icon: FileText, page: 'Messages' },
       { name: 'Timetable', icon: Calendar, page: 'Timetable' },
       { name: 'School Events', icon: Calendar, page: 'SchoolEvents' },
