@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Calendar, Plus, MapPin, Clock, Search, Trash2, Loader2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import ImportCalendarDialog from '@/components/events/ImportCalendarDialog';
+import ImportCalendarDialog from '../components/events/ImportCalendarDialog';
 
 const AUDIENCE_OPTIONS = [
   { value: 'whole_school', label: 'Whole School' },
@@ -30,8 +30,8 @@ export default function SchoolEvents() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: '',
     start_time: '',
@@ -129,10 +129,16 @@ export default function SchoolEvents() {
           <p className="text-slate-500 mt-1">School calendar & events — visible to BlockWard AI</p>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowCreate(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 gap-2">
-            <Plus className="h-4 w-4" />
-            Add Event
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
+              <Upload className="h-4 w-4" />
+              Import Calendar
+            </Button>
+            <Button onClick={() => setShowCreate(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 gap-2">
+              <Plus className="h-4 w-4" />
+              Add Event
+            </Button>
+          </div>
         )}
       </div>
 
