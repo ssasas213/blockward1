@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles
+  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles, Megaphone
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { Button } from "@/components/ui/button";
@@ -218,11 +218,6 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {/* Notification Bell - fixed top right on mobile */}
-      <div className="lg:hidden fixed top-3 right-14 z-50">
-        <NotificationBell userEmail={user?.email} />
-      </div>
-
       {/* Floating AI Button - always visible except on BlockWardAI page */}
       {currentPageName !== 'BlockWardAI' && (
         <Link
@@ -288,14 +283,6 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
           );
         })}
       </nav>
-
-      {/* Notification Bell */}
-      <div className="px-4 pb-2">
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
-          <NotificationBell userEmail={user?.email} />
-          <span className="text-sm text-slate-600 font-medium">Notifications</span>
-        </div>
-      </div>
 
       {/* User Section */}
       <div className="p-4 border-t border-slate-100">
