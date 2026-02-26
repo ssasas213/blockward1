@@ -275,6 +275,31 @@ export default function Announcements() {
               schoolId={profile?.school_id}
             />
             <div>
+              <Label>Priority</Label>
+              <div className="flex gap-2 mt-1.5">
+                {[
+                  { value: 'normal', label: 'Normal', color: 'border-slate-300 text-slate-700' },
+                  { value: 'important', label: '📢 Important', color: 'border-amber-400 text-amber-700 bg-amber-50' },
+                  { value: 'urgent', label: '🚨 Urgent', color: 'border-red-400 text-red-700 bg-red-50' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, priority: opt.value }))}
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${opt.color} ${form.priority === opt.value ? 'ring-2 ring-offset-1 ring-violet-400' : 'opacity-70 hover:opacity-100'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {form.priority !== 'normal' && (
+                <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                  <Bell className="h-3 w-3" />
+                  Opted-in users will receive an in-app notification for this announcement.
+                </p>
+              )}
+            </div>
+            <div>
               <Label>Schedule for later (optional)</Label>
               <Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} className="mt-1.5" />
             </div>
