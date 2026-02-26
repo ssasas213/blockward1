@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Calendar, Plus, MapPin, Clock, Search, Trash2, Loader2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import ImportCalendarDialog from '../components/events/ImportCalendarDialog';
+import ImportCalendarDialog from '@/components/events/ImportCalendarDialog';
 
 const AUDIENCE_OPTIONS = [
   { value: 'whole_school', label: 'Whole School' },
