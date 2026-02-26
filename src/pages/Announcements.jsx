@@ -159,10 +159,11 @@ export default function Announcements() {
 
     setSaving(true);
     try {
-      await base44.entities.Announcement.create({
+      const created = await base44.entities.Announcement.create({
         title: form.title,
         body: form.body,
         body_short: form.body.slice(0, 200),
+        priority: form.priority || 'normal',
         scope_type: aud.scopeType,
         year_group_id: aud.yearGroupId || undefined,
         year_group_name: aud.yearGroupName || undefined,
@@ -177,9 +178,23 @@ export default function Announcements() {
         sent_at: statusOverride === 'sent' ? new Date().toISOString() : undefined,
         scheduled_at: statusOverride === 'scheduled' ? form.scheduled_at : undefined,
       });
+      // Dispatch notifications for urgent/important announcements when sent
+      if (statusOverride === 'sent' && (form.priority === 'urgent' || form.priority === 'important')) {
+        base44.functions.invoke('dispatchAnnouncementNotifications', {
+          announcement_id: created.id,
+          type: form.priority === 'urgent' ? 'announcement_urgent' : 'announcement_important',
+        }).catch(() => {});
+      }
+      // Dispatch reminder notifications for scheduled announcements
+      if (statusOverride === 'scheduled') {
+        base44.functions.invoke('dispatchAnnouncementNotifications', {
+          announcement_id: created.id,
+          type: 'announcement_scheduled_reminder',
+        }).catch(() => {});
+      }
       toast.success(statusOverride === 'sent' ? 'Announcement sent!' : statusOverride === 'scheduled' ? 'Announcement scheduled!' : 'Draft saved!');
       setShowCreate(false);
-      setForm({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
+      setForm({ title: '', body: '', priority: 'normal', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
       loadData();
     } catch (e) {
       toast.error('Failed to save announcement');
