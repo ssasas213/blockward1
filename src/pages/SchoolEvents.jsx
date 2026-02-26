@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Calendar, Plus, MapPin, Clock, Search, Trash2, Loader2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import ImportCalendarDialog from '../components/events/ImportCalendarDialog';
+import ImportCalendarDialog from '@/components/events/ImportCalendarDialog';
 
 const AUDIENCE_OPTIONS = [
   { value: 'whole_school', label: 'Whole School' },
@@ -30,8 +30,8 @@ export default function SchoolEvents() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [showImport, setShowImport] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState({
     title: '',
     start_time: '',
@@ -183,7 +183,8 @@ export default function SchoolEvents() {
       <ImportCalendarDialog
         open={showImport}
         onOpenChange={setShowImport}
-        onImported={() => { setShowImport(false); loadData(); toast.success('Calendar imported!'); }}
+        schoolId={profile?.school_id}
+        onImported={loadData}
       />
 
       {/* Create Dialog */}
