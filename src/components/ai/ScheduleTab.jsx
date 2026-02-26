@@ -79,7 +79,6 @@ export default function ScheduleTab({ userType }) {
 
   return (
     <div className="space-y-5">
-      {/* Personalised greeting */}
       {firstName && (
         <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-xl">
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
@@ -96,7 +95,6 @@ export default function ScheduleTab({ userType }) {
         </div>
       )}
 
-      {/* Quick prompts */}
       <div>
         <p className="text-xs font-medium text-slate-500 mb-2">Quick questions</p>
         <div className="flex flex-wrap gap-2">
@@ -112,7 +110,6 @@ export default function ScheduleTab({ userType }) {
         </div>
       </div>
 
-      {/* Input area */}
       <div className="space-y-3">
         <Textarea
           placeholder={
