@@ -140,10 +140,11 @@ export default function Announcements() {
 
     setSaving(true);
     try {
-      await base44.entities.Announcement.create({
+      const created = await base44.entities.Announcement.create({
         title: form.title,
         body: form.body,
         body_short: form.body.slice(0, 200),
+        priority: form.priority || 'normal',
         scope_type: aud.scopeType,
         year_group_id: aud.yearGroupId || undefined,
         year_group_name: aud.yearGroupName || undefined,
@@ -158,6 +159,12 @@ export default function Announcements() {
         sent_at: statusOverride === 'sent' ? new Date().toISOString() : undefined,
         scheduled_at: statusOverride === 'scheduled' ? form.scheduled_at : undefined,
       });
+      // Dispatch notifications for important/urgent sent announcements
+      if (statusOverride === 'sent' && (form.priority === 'urgent' || form.priority === 'important')) {
+        try {
+          await base44.functions.invoke('dispatchAnnouncementNotifications', { announcement_id: created.id });
+        } catch (_) {}
+      }
       toast.success(statusOverride === 'sent' ? 'Announcement sent!' : statusOverride === 'scheduled' ? 'Announcement scheduled!' : 'Draft saved!');
       setShowCreate(false);
       setForm({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
