@@ -202,6 +202,11 @@ export default function Layout({ children, currentPageName }) {
         </div>
       )}
 
+      {/* Desktop notification bell - top right */}
+      <div className="hidden lg:flex fixed top-4 right-6 z-40">
+        <NotificationBell userEmail={user?.email} />
+      </div>
+
       {/* Desktop Sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-72 lg:flex-col">
         <div className="flex flex-col flex-grow bg-white border-r border-slate-200">
