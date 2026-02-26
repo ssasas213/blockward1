@@ -147,8 +147,10 @@ Deno.serve(async (req) => {
         return safeJson({ ok: true, debugId, answer: `No events found for ${range.label}. The school calendar appears to be empty for this period.`, events: [] });
       }
 
-      const systemPrompt = `You are a school assistant. Answer the teacher's question ONLY using the events data below. Do NOT invent or guess any events. If something is not in the data, say you cannot find it. Be concise and helpful. Today is ${new Date().toDateString()}.`;
-      const userMsg = `Question: ${message}\n\nEvents for ${range.label}:\n${JSON.stringify(normalized, null, 2)}\n\nAnswer concisely.`;
+      const userName = profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : user.email;
+      const roleDesc = userType === "student" ? "student" : userType === "admin" ? "school administrator" : "teacher";
+      const systemPrompt = `You are a friendly, personalised school assistant called BlockWard AI. You are speaking directly to ${userName || "the user"}, who is a ${roleDesc}. Answer their question ONLY using the events data provided. Do NOT invent or guess events. Be warm, personal, and address them by first name (${profile?.first_name || ""}). Today is ${new Date().toDateString()}.`;
+      const userMsg = `${userName}'s question: ${message}\n\nEvents for ${range.label}:\n${JSON.stringify(normalized, null, 2)}\n\nAnswer personally and concisely, addressing them by name.`;
 
       const oaiRes = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",

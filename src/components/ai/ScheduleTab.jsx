@@ -1,25 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Clock, MapPin, Search, AlertCircle, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Search, AlertCircle, Sparkles, User, BookOpen, Star } from 'lucide-react';
 import { format } from 'date-fns';
 
-const quickQuestions = [
-  'Is there assembly today?',
-  'Any events this week?',
-  "What's happening tomorrow?",
-  'Any events next week?',
-];
-
-export default function ScheduleTab() {
+export default function ScheduleTab({ userType }) {
   const [question, setQuestion] = useState('');
-  const [scope, setScope] = useState('SCHOOL');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [userData, setUserData] = useState(null);
+
+  useEffect(() => {
+    loadUserContext();
+  }, []);
+
+  const loadUserContext = async () => {
+    try {
+      const u = await base44.auth.me();
+      if (!u) return;
+      const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
+      const profile = profiles[0] || null;
+      setUserData({ user: u, profile });
+    } catch (_) {}
+  };
+
+  const quickQuestions = userType === 'student'
+    ? [
+        'What classes do I have today?',
+        'Is there assembly this week?',
+        'What events are coming up?',
+        'What homework is due soon?',
+      ]
+    : [
+        'What classes do I teach today?',
+        'Is there assembly today?',
+        'Any staff events this week?',
+        "What's happening tomorrow?",
+      ];
 
   const ask = async (q) => {
     const finalQ = q || question;
@@ -31,13 +51,13 @@ export default function ScheduleTab() {
       const res = await base44.functions.invoke('blockwardAI', {
         tool: 'ASK_SCHEDULE',
         message: finalQ,
-        scope: { type: scope },
+        scope: { type: 'SCHOOL' },
       });
       const data = res.data;
       if (data.ok || data.events !== undefined) {
         setResult(data);
       } else if (data.code === 'OPENAI_ERROR' && data.message?.includes('429')) {
-        setError('AI is busy right now (rate limit). Please wait a moment and try again.');
+        setError('AI is busy right now. Please wait a moment and try again.');
       } else {
         setError(data.message || 'Something went wrong.');
       }
@@ -48,8 +68,34 @@ export default function ScheduleTab() {
     }
   };
 
+  const greeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const firstName = userData?.profile?.first_name || userData?.user?.full_name?.split(' ')[0] || '';
+
   return (
     <div className="space-y-5">
+      {/* Personalised greeting */}
+      {firstName && (
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-100 rounded-xl">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
+            {firstName[0].toUpperCase()}
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900">{greeting()}, {firstName}! 👋</p>
+            <p className="text-xs text-slate-500">
+              {userType === 'student'
+                ? "Ask me anything about your schedule, events or assemblies."
+                : "Ask me about school events, your classes or upcoming assemblies."}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Quick prompts */}
       <div>
         <p className="text-xs font-medium text-slate-500 mb-2">Quick questions</p>
@@ -69,27 +115,24 @@ export default function ScheduleTab() {
       {/* Input area */}
       <div className="space-y-3">
         <Textarea
-          placeholder="Ask anything about school events, e.g. 'Is there assembly on Thursday?' or 'Any events for Year 9 this week?'"
+          placeholder={
+            userType === 'student'
+              ? "Ask about your timetable, assemblies, events… e.g. 'What's on Thursday?'"
+              : "Ask about school events, assemblies… e.g. 'Any events for my classes this week?'"
+          }
           value={question}
           onChange={e => setQuestion(e.target.value)}
           className="resize-none min-h-[80px]"
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(); } }}
         />
-        <div className="flex gap-3 flex-wrap">
-          <Select value={scope} onValueChange={setScope}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Scope" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="SCHOOL">Whole School</SelectItem>
-              <SelectItem value="MY_CLASSES">My Classes</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={() => ask()} disabled={loading || !question.trim()} className="bg-violet-600 hover:bg-violet-700 gap-2">
-            <Search className="h-4 w-4" />
-            {loading ? 'Searching...' : 'Ask'}
-          </Button>
-        </div>
+        <Button
+          onClick={() => ask()}
+          disabled={loading || !question.trim()}
+          className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
+        >
+          <Search className="h-4 w-4" />
+          {loading ? 'Searching...' : 'Ask BlockWard AI'}
+        </Button>
       </div>
 
       {error && (
@@ -113,7 +156,9 @@ export default function ScheduleTab() {
 
           {result.events?.length > 0 && (
             <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Events found ({result.events.length})</p>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                Events found ({result.events.length})
+              </p>
               {result.events.map((ev, i) => (
                 <div key={i} className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
                   <div className="flex items-start justify-between gap-2">
