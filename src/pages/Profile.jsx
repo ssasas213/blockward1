@@ -12,6 +12,7 @@ import {
   User, Mail, Shield, Wallet, School, 
   Save, Loader2, Copy, Check, ExternalLink
 } from 'lucide-react';
+import NotificationPreferences from '@/components/notifications/NotificationPreferences';
 import { toast } from 'sonner';
 
 function ProfileContent() {

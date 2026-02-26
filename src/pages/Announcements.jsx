@@ -82,7 +82,7 @@ export default function Announcements() {
   const [saving, setSaving] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
-  const [form, setForm] = useState({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
+  const [form, setForm] = useState({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '', priority: 'normal' });
 
   useEffect(() => { loadData(); }, []);
 
