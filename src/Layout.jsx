@@ -218,6 +218,11 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
+      {/* Notification Bell - fixed top right on mobile */}
+      <div className="lg:hidden fixed top-3 right-14 z-50">
+        <NotificationBell userEmail={user?.email} />
+      </div>
+
       {/* Floating AI Button - always visible except on BlockWardAI page */}
       {currentPageName !== 'BlockWardAI' && (
         <Link
