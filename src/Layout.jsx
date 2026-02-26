@@ -289,6 +289,14 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
         })}
       </nav>
 
+      {/* Notification Bell */}
+      <div className="px-4 pb-2">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100">
+          <NotificationBell userEmail={user?.email} />
+          <span className="text-sm text-slate-600 font-medium">Notifications</span>
+        </div>
+      </div>
+
       {/* User Section */}
       <div className="p-4 border-t border-slate-100">
         <DropdownMenu>
