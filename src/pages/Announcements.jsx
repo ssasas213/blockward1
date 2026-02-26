@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudienceSelector from '@/components/announcements/AudienceSelector';
 import {
   Megaphone, Plus, Search, Clock, CheckCircle2, FileText,
-  Send, Loader2, CalendarClock, User, Users
+  Send, Loader2, CalendarClock, User, Users, AlertTriangle, Info, Bell
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
