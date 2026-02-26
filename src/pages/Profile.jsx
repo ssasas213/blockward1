@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { 
   User, Mail, Shield, Wallet, School, 
-  Save, Loader2, Copy, Check, ExternalLink
+  Save, Loader2, Copy, Check, ExternalLink, Bell
 } from 'lucide-react';
 import NotificationPreferences from '@/components/notifications/NotificationPreferences';
 import { toast } from 'sonner';
@@ -268,11 +268,6 @@ function ProfileContent() {
           )}
         </CardContent>
       </Card>
-
-      {/* Notification Preferences */}
-      {(userProfile?.user_type === 'student' || userProfile?.user_type === 'teacher') && (
-        <NotificationPreferences userEmail={user?.email} />
-      )}
 
       {/* Points Summary (Students Only) */}
       {userProfile?.user_type === 'student' && (
