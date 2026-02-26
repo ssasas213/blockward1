@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Calendar, Plus, MapPin, Clock, Search, Trash2, Loader2, Users } from 'lucide-react';
+import { Calendar, Plus, MapPin, Clock, Search, Trash2, Loader2, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import ImportCalendarDialog from '../components/events/ImportCalendarDialog';
 
 const AUDIENCE_OPTIONS = [
   { value: 'whole_school', label: 'Whole School' },
