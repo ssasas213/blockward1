@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AudienceSelector from '@/components/announcements/AudienceSelector';
 import {
   Megaphone, Plus, Search, Clock, CheckCircle2, FileText,
-  Send, Loader2, CalendarClock, User, Users, AlertTriangle, Info, Bell
+  Send, Loader2, CalendarClock, User, Users, AlertCircle, Star
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -82,7 +82,7 @@ export default function Announcements() {
   const [saving, setSaving] = useState(false);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
-  const [form, setForm] = useState({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '', priority: 'normal' });
+  const [form, setForm] = useState({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
 
   useEffect(() => { loadData(); }, []);
 
@@ -140,11 +140,10 @@ export default function Announcements() {
 
     setSaving(true);
     try {
-      const created = await base44.entities.Announcement.create({
+      await base44.entities.Announcement.create({
         title: form.title,
         body: form.body,
         body_short: form.body.slice(0, 200),
-        priority: form.priority || 'normal',
         scope_type: aud.scopeType,
         year_group_id: aud.yearGroupId || undefined,
         year_group_name: aud.yearGroupName || undefined,
@@ -159,12 +158,6 @@ export default function Announcements() {
         sent_at: statusOverride === 'sent' ? new Date().toISOString() : undefined,
         scheduled_at: statusOverride === 'scheduled' ? form.scheduled_at : undefined,
       });
-      // Dispatch notifications for important/urgent sent announcements
-      if (statusOverride === 'sent' && (form.priority === 'urgent' || form.priority === 'important')) {
-        try {
-          await base44.functions.invoke('dispatchAnnouncementNotifications', { announcement_id: created.id });
-        } catch (_) {}
-      }
       toast.success(statusOverride === 'sent' ? 'Announcement sent!' : statusOverride === 'scheduled' ? 'Announcement scheduled!' : 'Draft saved!');
       setShowCreate(false);
       setForm({ title: '', body: '', audience: DEFAULT_AUDIENCE, scheduled_at: '' });
@@ -281,31 +274,6 @@ export default function Announcements() {
               userEmail={user?.email}
               schoolId={profile?.school_id}
             />
-            <div>
-              <Label>Priority</Label>
-              <div className="flex gap-2 mt-1.5">
-                {[
-                  { value: 'normal', label: 'Normal', color: 'border-slate-300 text-slate-700' },
-                  { value: 'important', label: '📢 Important', color: 'border-amber-400 text-amber-700 bg-amber-50' },
-                  { value: 'urgent', label: '🚨 Urgent', color: 'border-red-400 text-red-700 bg-red-50' },
-                ].map(opt => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, priority: opt.value }))}
-                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${opt.color} ${form.priority === opt.value ? 'ring-2 ring-offset-1 ring-violet-400' : 'opacity-70 hover:opacity-100'}`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {form.priority !== 'normal' && (
-                <p className="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
-                  <Bell className="h-3 w-3" />
-                  Opted-in users will receive an in-app notification for this announcement.
-                </p>
-              )}
-            </div>
             <div>
               <Label>Schedule for later (optional)</Label>
               <Input type="datetime-local" value={form.scheduled_at} onChange={e => setForm(f => ({ ...f, scheduled_at: e.target.value }))} className="mt-1.5" />
