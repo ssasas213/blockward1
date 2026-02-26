@@ -11,130 +11,118 @@ function safeJson(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: corsHeaders });
 }
 
-function parseICSDate(dateStr) {
-  if (!dateStr) return null;
-  // Handle TZID format: DTSTART;TZID=America/New_York:20240101T090000
-  const valuePart = dateStr.includes(':') ? dateStr.split(':').pop() : dateStr;
-  if (!valuePart) return null;
-
-  // All-day date: 20240101
-  if (valuePart.length === 8) {
-    const y = valuePart.slice(0, 4);
-    const m = valuePart.slice(4, 6);
-    const d = valuePart.slice(6, 8);
-    return `${y}-${m}-${d}T00:00:00`;
-  }
-
-  // DateTime: 20240101T090000Z or 20240101T090000
-  const y = valuePart.slice(0, 4);
-  const mo = valuePart.slice(4, 6);
-  const d = valuePart.slice(6, 8);
-  const h = valuePart.slice(9, 11) || '00';
-  const mi = valuePart.slice(11, 13) || '00';
-  const s = valuePart.slice(13, 15) || '00';
-  return `${y}-${mo}-${d}T${h}:${mi}:${s}`;
-}
-
-function parseICS(text) {
+// Minimal ICS parser
+function parseICS(icsText) {
   const events = [];
-  const lines = text.replace(/\r\n /g, '').replace(/\r\n\t/g, '').split(/\r\n|\n|\r/);
+  const lines = icsText.replace(/\r\n /g, '').replace(/\r\n\t/g, '').split(/\r\n|\n|\r/);
 
   let current = null;
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
+
+  for (const line of lines) {
     if (line === 'BEGIN:VEVENT') {
       current = {};
     } else if (line === 'END:VEVENT' && current) {
-      if (current.title && current.start_time) {
+      if (current.summary && current.dtstart) {
         events.push(current);
       }
       current = null;
     } else if (current) {
-      if (line.startsWith('SUMMARY')) {
-        current.title = line.split(':').slice(1).join(':').trim();
-      } else if (line.startsWith('DTSTART')) {
-        current.start_time = parseICSDate(line.split(':').slice(1).join(':'));
-      } else if (line.startsWith('DTEND')) {
-        current.end_time = parseICSDate(line.split(':').slice(1).join(':'));
-      } else if (line.startsWith('LOCATION')) {
-        current.location = line.split(':').slice(1).join(':').trim();
-      } else if (line.startsWith('DESCRIPTION')) {
-        current.notes = line.split(':').slice(1).join(':').replace(/\\n/g, ' ').trim();
-      } else if (line.startsWith('UID')) {
-        current.external_uid = line.split(':').slice(1).join(':').trim();
-      }
+      const colonIdx = line.indexOf(':');
+      if (colonIdx === -1) continue;
+      const key = line.slice(0, colonIdx).split(';')[0].toUpperCase();
+      const value = line.slice(colonIdx + 1).trim();
+
+      if (key === 'SUMMARY') current.summary = value;
+      else if (key === 'DTSTART') current.dtstart = parseICSDate(value);
+      else if (key === 'DTEND') current.dtend = parseICSDate(value);
+      else if (key === 'LOCATION') current.location = value;
+      else if (key === 'DESCRIPTION') current.description = value.replace(/\\n/g, '\n').replace(/\\,/g, ',');
     }
   }
 
   return events;
 }
 
+function parseICSDate(val) {
+  // Handle date-only (YYYYMMDD) and datetime (YYYYMMDDTHHmmssZ)
+  const clean = val.replace('Z', '').replace('T', '');
+  if (clean.length === 8) {
+    // Date only
+    const y = clean.slice(0, 4), m = clean.slice(4, 6), d = clean.slice(6, 8);
+    return new Date(`${y}-${m}-${d}T00:00:00.000Z`).toISOString();
+  }
+  if (clean.length >= 14) {
+    const y = clean.slice(0, 4), mo = clean.slice(4, 6), d = clean.slice(6, 8);
+    const h = clean.slice(8, 10), min = clean.slice(10, 12), s = clean.slice(12, 14);
+    const suffix = val.endsWith('Z') ? 'Z' : '';
+    return new Date(`${y}-${mo}-${d}T${h}:${min}:${s}${suffix}`).toISOString();
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
-  if (req.method !== 'POST') return safeJson({ error: 'Method not allowed' }, 405);
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return safeJson({ ok: false, message: "Method not allowed" }, 405);
 
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) return safeJson({ error: 'Unauthorized' }, 401);
+    if (!user) return safeJson({ ok: false, message: "Unauthorized" }, 401);
 
+    // Only admins and teachers can import
     const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
     const profile = profiles[0] || null;
-
-    if (!profile || (profile.user_type !== 'admin' && profile.user_type !== 'teacher')) {
-      return safeJson({ error: 'Only admins and teachers can import calendars' }, 403);
+    if (!profile || profile.user_type === 'student') {
+      return safeJson({ ok: false, message: "Only staff can import calendars" }, 403);
     }
 
     const body = await req.json().catch(() => ({}));
-    const { ics_url, audience = 'whole_school' } = body;
+    const { ics_url, school_id } = body;
 
-    if (!ics_url) return safeJson({ error: 'ics_url is required' }, 400);
+    if (!ics_url) return safeJson({ ok: false, message: "ics_url is required" });
 
     // Fetch the ICS file
-    const res = await fetch(ics_url);
-    if (!res.ok) return safeJson({ error: `Failed to fetch calendar: HTTP ${res.status}` }, 400);
-
-    const text = await res.text();
-    if (!text.includes('BEGIN:VCALENDAR')) {
-      return safeJson({ error: 'URL does not appear to be a valid ICS calendar' }, 400);
+    let icsText;
+    try {
+      const res = await fetch(ics_url, { headers: { 'User-Agent': 'BlockWard/1.0' } });
+      if (!res.ok) return safeJson({ ok: false, message: `Failed to fetch calendar: HTTP ${res.status}` });
+      icsText = await res.text();
+    } catch (e) {
+      return safeJson({ ok: false, message: `Could not reach calendar URL: ${e.message}` });
     }
 
-    const parsed = parseICS(text);
+    if (!icsText.includes('BEGIN:VCALENDAR')) {
+      return safeJson({ ok: false, message: "URL does not appear to be a valid ICS calendar" });
+    }
+
+    const parsed = parseICS(icsText);
     if (parsed.length === 0) {
-      return safeJson({ ok: true, imported: 0, message: 'No events found in calendar' });
+      return safeJson({ ok: true, imported: 0, message: "No events found in the calendar" });
     }
 
-    // Only import future events (up to 6 months ahead)
+    // Import up to 100 upcoming events
     const now = new Date();
-    const sixMonths = new Date(now);
-    sixMonths.setMonth(now.getMonth() + 6);
+    const upcoming = parsed
+      .filter(ev => ev.dtstart && new Date(ev.dtstart) >= now)
+      .slice(0, 100);
 
-    const toImport = parsed.filter(ev => {
-      const start = new Date(ev.start_time);
-      return start >= now && start <= sixMonths;
-    }).slice(0, 50); // max 50 events
-
-    // Create events in bulk
-    const schoolId = profile.school_id;
     let imported = 0;
-    for (const ev of toImport) {
+    for (const ev of upcoming) {
       await base44.asServiceRole.entities.Event.create({
-        school_id: schoolId,
-        title: ev.title,
-        start_time: ev.start_time,
-        end_time: ev.end_time || null,
+        school_id: school_id || profile.school_id || null,
+        title: ev.summary,
+        start_time: ev.dtstart,
+        end_time: ev.dtend || null,
         location: ev.location || null,
-        notes: ev.notes ? ev.notes.slice(0, 200) : null,
-        audience,
+        notes: ev.description || null,
+        audience: 'whole_school',
         created_by: user.email,
-        tags: ['imported'],
       });
       imported++;
     }
 
     return safeJson({ ok: true, imported, total_found: parsed.length });
-
   } catch (err) {
-    return safeJson({ error: err.message || 'Unknown error' }, 500);
+    return safeJson({ ok: false, message: err.message || "Unknown error" }, 500);
   }
 });
