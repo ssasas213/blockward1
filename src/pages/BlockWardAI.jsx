@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import ScheduleTab from '@/components/ai/ScheduleTab.jsx';
+import ScheduleTab from '@/components/ai/ScheduleTab';
 import AnnouncementTab from '@/components/ai/AnnouncementTab';
 import AIErrorBoundary from '@/components/ai/AIErrorBoundary';
 import { Calendar, Megaphone, Sparkles } from 'lucide-react';
