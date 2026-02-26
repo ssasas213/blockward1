@@ -7,6 +7,7 @@ import {
   FileText, Settings, LogOut, Menu, X, ChevronDown,
   GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles
 } from 'lucide-react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
