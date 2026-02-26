@@ -269,6 +269,19 @@ function ProfileContent() {
         </CardContent>
       </Card>
 
+      {/* Notification Preferences */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Notification Preferences
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <NotificationPreferences userEmail={user?.email} />
+        </CardContent>
+      </Card>
+
       {/* Points Summary (Students Only) */}
       {userProfile?.user_type === 'student' && (
         <Card className="border-0 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-700">
