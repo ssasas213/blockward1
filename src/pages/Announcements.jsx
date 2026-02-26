@@ -298,6 +298,28 @@ export default function Announcements() {
               <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Announcement title" className="mt-1.5" />
             </div>
             <div>
+              <Label>Priority</Label>
+              <div className="flex gap-2 mt-1.5">
+                {[
+                  { value: 'normal', label: 'Normal', cls: 'border-slate-200 text-slate-600' },
+                  { value: 'important', label: '⭐ Important', cls: 'border-amber-300 text-amber-700 bg-amber-50' },
+                  { value: 'urgent', label: '🚨 Urgent', cls: 'border-red-300 text-red-700 bg-red-50' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, priority: opt.value }))}
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${opt.cls} ${form.priority === opt.value ? 'ring-2 ring-offset-1 ring-violet-400' : 'opacity-60 hover:opacity-100'}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {form.priority !== 'normal' && (
+                <p className="text-xs text-slate-400 mt-1">Users opted in to {form.priority} notifications will be alerted.</p>
+              )}
+            </div>
+            <div>
               <Label>Body *</Label>
               <Textarea value={form.body} onChange={e => setForm(f => ({ ...f, body: e.target.value }))} placeholder="Write your announcement..." className="mt-1.5 min-h-[120px] resize-none" />
             </div>
