@@ -14,6 +14,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showDemo, setShowDemo] = useState(false);
 
   useEffect(() => {
     checkAuth();
