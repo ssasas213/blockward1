@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Shield, Award, BookOpen, Bell, CheckCircle2, ChevronRight, GraduationCap, Star, Sparkles } from 'lucide-react';
+import { X, Shield, Award, BookOpen, Bell, CheckCircle2, ChevronRight, GraduationCap, Star, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { createPageUrl } from '@/utils';
 
 const teacherSteps = [
   {
