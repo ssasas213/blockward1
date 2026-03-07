@@ -14,7 +14,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [demoOpen, setDemoOpen] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -137,6 +137,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white font-sans">
+      <AnimatePresence>
+        {showDemo && <DemoModal onClose={() => setShowDemo(false)} />}
+      </AnimatePresence>
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-100 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -207,6 +210,7 @@ export default function Home() {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-6 border-2 border-white/20 text-white bg-white/5 hover:bg-white/10 backdrop-blur"
+              onClick={() => setShowDemo(true)}
               >
                 Watch Demo
               </Button>
