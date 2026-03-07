@@ -14,7 +14,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showDemo, setShowDemo] = useState(false);
+  const [demoOpen, setDemoOpen] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -207,7 +207,6 @@ export default function Home() {
                 size="lg"
                 variant="outline"
                 className="text-lg px-10 py-6 border-2 border-white/20 text-white bg-white/5 hover:bg-white/10 backdrop-blur"
-              onClick={() => setShowDemo(true)}
               >
                 Watch Demo
               </Button>
