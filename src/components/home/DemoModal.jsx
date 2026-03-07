@@ -276,7 +276,7 @@ export default function DemoModal({ open, onClose }) {
           </div>
 
           {/* Navigation */}
-          <div className="px-6 pb-6 flex items-center justify-between gap-4">
+          <div className="px-6 pb-2 flex items-center justify-between gap-4">
             <Button
               variant="outline"
               onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
