@@ -324,9 +324,9 @@ export default function DemoModal({ open, onClose }) {
                   </a>
                 ))}
               </div>
-              </div>
-              )}
-              </motion.div>
+            </div>
+          )}
+        </motion.div>
       </div>
     </AnimatePresence>
   );
