@@ -298,6 +298,33 @@ export default function DemoModal({ open, onClose }) {
               </Button>
             )}
           </div>
+
+          {/* Hands-on CTA */}
+          {activeStep === steps.length - 1 && (
+            <div className="mx-6 mb-6 p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 border-2 border-violet-200">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-5 w-5 text-violet-600" />
+                <p className="font-bold text-slate-900">Want a hands-on experience?</p>
+              </div>
+              <p className="text-sm text-slate-600 mb-4">
+                Try the live demo sandbox — log in as a Teacher, Admin, or Student and interact with the real platform using dummy data.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                {[
+                  { role: 'teacher', label: '👩‍🏫 Try as Teacher', color: 'bg-violet-600 hover:bg-violet-700' },
+                  { role: 'admin', label: '🛡️ Try as Admin', color: 'bg-rose-600 hover:bg-rose-700' },
+                  { role: 'student', label: '🎓 Try as Student', color: 'bg-blue-600 hover:bg-blue-700' },
+                ].map(({ role, label, color }) => (
+                  <a
+                    key={role}
+                    href={createPageUrl(`DemoSandbox?role=${role}`)}
+                    className={`flex-1 text-center text-sm font-semibold text-white py-2.5 px-4 rounded-xl ${color} transition-colors`}
+                  >
+                    {label}
+                  </a>
+                ))}
+              </div>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>
