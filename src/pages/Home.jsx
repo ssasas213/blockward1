@@ -7,7 +7,8 @@ import {
   Loader2, Brain, Users, Bell, BookOpen, BarChart3, Lock, Star,
   ChevronRight, Zap, Globe, TrendingUp
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import DemoModal from '@/components/home/DemoModal';
 
 export default function Home() {
   const [user, setUser] = useState(null);
