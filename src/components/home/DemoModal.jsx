@@ -180,6 +180,7 @@ export default function DemoModal({ open, onClose }) {
 
   const steps = activeRole === 'teacher' ? teacherSteps : studentSteps;
   const currentStep = steps[activeStep];
+  const isLastStep = activeStep === steps.length - 1;
 
   const handleRoleChange = (role) => {
     setActiveRole(role);
@@ -276,7 +277,7 @@ export default function DemoModal({ open, onClose }) {
           </div>
 
           {/* Navigation */}
-          <div className="px-6 pb-2 flex items-center justify-between gap-4">
+          <div className="px-6 pb-4 flex items-center justify-between gap-4">
             <Button
               variant="outline"
               onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
@@ -285,7 +286,7 @@ export default function DemoModal({ open, onClose }) {
             >
               Previous
             </Button>
-            {activeStep < steps.length - 1 ? (
+            {!isLastStep ? (
               <Button
                 onClick={() => setActiveStep(activeStep + 1)}
                 className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600"
@@ -300,14 +301,14 @@ export default function DemoModal({ open, onClose }) {
           </div>
 
           {/* Hands-on CTA */}
-          {activeStep === steps.length - 1 && (
+          {isLastStep && (
             <div className="mx-6 mb-6 p-5 rounded-2xl bg-gradient-to-br from-violet-50 to-indigo-50 border-2 border-violet-200">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="h-5 w-5 text-violet-600" />
                 <p className="font-bold text-slate-900">Want a hands-on experience?</p>
               </div>
               <p className="text-sm text-slate-600 mb-4">
-                Try the live demo sandbox — log in as a Teacher, Admin, or Student and interact with the real platform using dummy data.
+                Try the live demo sandbox — interact as a Teacher, Admin, or Student with dummy data.
               </p>
               <div className="flex flex-col sm:flex-row gap-2">
                 {[
