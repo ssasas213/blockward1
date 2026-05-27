@@ -137,20 +137,23 @@ function ClassesContent() {
       };
       const created = await base44.entities.Class.create(classData);
 
-      // Auto-add this class to the teacher's StaffMembership
-      const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
-      if (memberships.length > 0) {
-        const membership = memberships[0];
-        const updatedClassIds = [...(membership.class_ids || []), created.id];
-        await base44.entities.StaffMembership.update(membership.id, { class_ids: updatedClassIds });
-      } else {
-        // Create a StaffMembership if none exists
-        await base44.entities.StaffMembership.create({
-          school_id: profile?.school_id || null,
-          user_email: user.email,
-          role: 'TEACHER',
-          class_ids: [created.id]
-        });
+      // Auto-add this class to the teacher's StaffMembership (non-blocking)
+      try {
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        if (memberships.length > 0) {
+          const membership = memberships[0];
+          const updatedClassIds = [...(membership.class_ids || []), created.id];
+          await base44.entities.StaffMembership.update(membership.id, { class_ids: updatedClassIds });
+        } else if (profile?.school_id) {
+          await base44.entities.StaffMembership.create({
+            school_id: profile.school_id,
+            user_email: user.email,
+            role: 'TEACHER',
+            class_ids: [created.id]
+          });
+        }
+      } catch (membershipError) {
+        console.warn('StaffMembership update failed (non-critical):', membershipError);
       }
       setShowCreateDialog(false);
       setNewClass({ name: '', subject: '', description: '', room: '', grade_level: '' });
