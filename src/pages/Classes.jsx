@@ -171,8 +171,15 @@ function ClassesContent() {
     if (!joinCode || !user) return;
     setJoining(true);
     try {
-      const allClasses = await base44.entities.Class.list();
-      const classToJoin = allClasses.find(c => c.join_code?.toUpperCase() === joinCode.toUpperCase());
+      // Try direct filter first, then fall back to list search
+      let classToJoin = null;
+      const byCode = await base44.entities.Class.filter({ join_code: joinCode.toUpperCase() });
+      if (byCode.length > 0) {
+        classToJoin = byCode[0];
+      } else {
+        const allClasses = await base44.entities.Class.list();
+        classToJoin = allClasses.find(c => c.join_code?.toUpperCase() === joinCode.toUpperCase());
+      }
       
       if (!classToJoin) {
         toast.error('Invalid class code');
