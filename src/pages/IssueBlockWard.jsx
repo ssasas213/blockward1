@@ -196,10 +196,10 @@ function IssueBlockWardContent() {
             <p className="text-slate-600 mb-8">{formData.selectedStudent.name} — "{formData.title}"</p>
             {blockchainData && (
               <div className="bg-slate-50 rounded-xl p-6 mb-8 space-y-2 text-left">
-                <p className="text-xs text-slate-500">Token ID: <span className="font-mono text-slate-900">#{blockchainData.tokenId}</span></p>
-                <p className="text-xs text-slate-500 break-all">Mint TX: <span className="font-mono text-slate-900">{blockchainData.mintTxHash}</span></p>
-                {blockchainData.transferTxHash && (
-                  <a href={`https://sepolia.etherscan.io/tx/${blockchainData.transferTxHash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline">View on Etherscan →</a>
+                {blockchainData.tokenId && <p className="text-xs text-slate-500">Token ID: <span className="font-mono text-slate-900">#{blockchainData.tokenId}</span></p>}
+                {blockchainData.mintTxHash && <p className="text-xs text-slate-500 break-all">TX Hash: <span className="font-mono text-slate-900">{blockchainData.mintTxHash}</span></p>}
+                {blockchainData.mintTxHash && (
+                  <a href={`https://sepolia.etherscan.io/tx/${blockchainData.mintTxHash}`} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline">View on Sepolia Etherscan →</a>
                 )}
               </div>
             )}
@@ -263,7 +263,7 @@ function IssueBlockWardContent() {
               {currentStep === 1 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Class & Student</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Class &amp; Student</h2>
                     <p className="text-sm text-slate-500">You can only award students enrolled in your classes.</p>
                   </div>
 
@@ -388,7 +388,7 @@ function IssueBlockWardContent() {
               {currentStep === 3 && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Review & Issue</h2>
+                    <h2 className="text-xl font-semibold text-slate-900 mb-1">Review &amp; Issue</h2>
                     <p className="text-sm text-slate-500">Confirm the details before permanently issuing</p>
                   </div>
 

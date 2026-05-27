@@ -4,7 +4,7 @@ import { createPublicClient, createWalletClient, http, parseAbi, getAddress } fr
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { encodeBytes32String } from "npm:ethers@6.13.0";
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -133,12 +133,46 @@ Deno.serve(async (req) => {
 
   console.log(JSON.stringify({ fn: "issueBlockward", step: "DONE", tokenId: tokenId?.toString() ?? null, studentAddr }));
 
+  // Persist to BlockWard entity so it shows up in admin/teacher views
+  const studentRows = await base44.asServiceRole.entities.UserProfile.filter({ id: body.studentId });
+  const studentProfile = studentRows?.[0];
+  const issuerProfile = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email }).then(r => r?.[0]);
+
+  const blockwardRecord = {
+    school_id: body.schoolId || studentProfile?.school_id || null,
+    token_id: tokenId !== null ? tokenId.toString() : null,
+    student_email: studentProfile?.user_email || null,
+    student_name: studentProfile ? `${studentProfile.first_name} ${studentProfile.last_name}` : null,
+    student_wallet: studentAddr,
+    issuer_email: user.email,
+    issuer_name: issuerProfile ? `${issuerProfile.first_name} ${issuerProfile.last_name}` : user.email,
+    issuer_wallet: 'system',
+    title,
+    description: body.description || '',
+    category: category.toLowerCase(),
+    image_url: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`,
+    transaction_hash: mintReceipt.transactionHash,
+    block_number: Number(mintReceipt.blockNumber),
+    minted_at: new Date().toISOString(),
+    status: 'active'
+  };
+
+  let savedId = null;
+  try {
+    const saved = await base44.asServiceRole.entities.BlockWard.create(blockwardRecord);
+    savedId = saved?.id || null;
+    console.log(JSON.stringify({ fn: "issueBlockward", step: "DB_SAVED", id: savedId }));
+  } catch (dbErr) {
+    console.log(JSON.stringify({ fn: "issueBlockward", step: "DB_WARN", err: dbErr?.message }));
+  }
+
   return new Response(JSON.stringify({
     ok: true,
     mintTxHash: mintReceipt.transactionHash,
     tokenId: tokenId !== null ? tokenId.toString() : null,
     studentAddress: studentAddr,
     signerAddress: teacherVault,
+    blockwardId: savedId,
     title, category,
     blockNumber: mintReceipt.blockNumber.toString()
   }), { headers: CORS });
