@@ -15,27 +15,48 @@ export default function GoogleCalendarPanel() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const fetchEvents = async () => {
     setLoading(true);
     setError(null);
+    setDebugInfo(null);
+
     try {
       const res = await base44.functions.invoke('getGoogleCalendarEvents', {});
-      setEvents(res.data.events || []);
-      setConnectedEmail(res.data.connectedEmail || null);
+      // Success path
+      const data = res?.data ?? res;
+      setEvents(data.events || []);
+      setConnectedEmail(data.connectedEmail || null);
       setConnected(true);
+      setDebugInfo({ status: 'connected', eventsCount: (data.events || []).length });
     } catch (err) {
-      const errData = err?.response?.data;
-      if (errData?.error === 'not_connected') {
+      // Parse error from multiple possible locations
+      const responseData = err?.response?.data ?? err?.data ?? null;
+      const errorCode = responseData?.error ?? null;
+      const errorMsg = responseData?.message ?? err?.message ?? String(err);
+
+      setDebugInfo({
+        status: 'error',
+        errorCode,
+        errorMsg,
+        httpStatus: err?.response?.status ?? err?.status ?? 'unknown',
+      });
+
+      if (!errorCode || errorCode === 'not_connected' || err?.response?.status === 403) {
+        // Not connected — show connect button
         setConnected(false);
-      } else if (errData?.error === 'token_expired') {
+        setError(null);
+      } else if (errorCode === 'token_expired') {
         setConnected(false);
         setError('Your Google Calendar session expired. Please reconnect.');
-      } else if (errData?.error === 'permission_denied') {
+      } else if (errorCode === 'permission_denied') {
         setConnected(false);
         setError('Permission denied. Please reconnect and allow calendar access.');
       } else {
-        setError(errData?.message || 'Failed to load Google Calendar events.');
+        // Unknown error — still show connect button as fallback, with message
+        setConnected(false);
+        setError(errorMsg || 'Could not load Google Calendar. Try connecting.');
       }
     } finally {
       setLoading(false);
@@ -60,6 +81,7 @@ export default function GoogleCalendarPanel() {
       }, 500);
     } catch (err) {
       setConnecting(false);
+      setError('Could not open Google sign-in. Please try again.');
     }
   };
 
@@ -70,6 +92,7 @@ export default function GoogleCalendarPanel() {
       setEvents([]);
       setConnectedEmail(null);
       setError(null);
+      setDebugInfo(null);
     } catch (err) {
       // ignore
     }
@@ -130,16 +153,33 @@ export default function GoogleCalendarPanel() {
       </CardHeader>
 
       <CardContent>
+        {/* Temporary debug panel — remove once confirmed working */}
+        {debugInfo && (
+          <div className="mb-4 p-3 bg-slate-800 text-slate-200 rounded-lg text-xs font-mono space-y-1">
+            <p className="text-slate-400 font-semibold">Debug Info</p>
+            <p>Status: <span className={debugInfo.status === 'connected' ? 'text-emerald-400' : 'text-rose-400'}>{debugInfo.status}</span></p>
+            {debugInfo.status === 'connected' && <p>Events found: {debugInfo.eventsCount}</p>}
+            {debugInfo.errorCode && <p>Error code: {debugInfo.errorCode}</p>}
+            {debugInfo.errorMsg && <p>Error msg: {debugInfo.errorMsg}</p>}
+            {debugInfo.httpStatus && debugInfo.status === 'error' && <p>HTTP status: {debugInfo.httpStatus}</p>}
+            <p>Connector ID: {CONNECTOR_ID}</p>
+            <p>Loading state: {String(loading)}</p>
+            <p>Connected: {String(connected)}</p>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            <span className="ml-2 text-sm text-slate-500">Checking Google Calendar...</span>
           </div>
         ) : error ? (
           <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
             <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
             <div>
               <p className="text-sm text-red-700">{error}</p>
-              <Button size="sm" variant="outline" className="mt-2" onClick={handleConnect}>
+              <Button size="sm" variant="outline" className="mt-2" onClick={handleConnect} disabled={connecting}>
+                {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Reconnect
               </Button>
             </div>
@@ -147,10 +187,18 @@ export default function GoogleCalendarPanel() {
         ) : !connected ? (
           <div className="text-center py-8 text-slate-400">
             <Calendar className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">Connect your Google Calendar to see upcoming events here.</p>
+            <p className="text-sm mb-4">Connect your Google Calendar to see upcoming events here.</p>
+            <Button
+              onClick={handleConnect}
+              disabled={connecting}
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+            >
+              {connecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plug className="h-4 w-4 mr-2" />}
+              Connect Google Calendar
+            </Button>
           </div>
         ) : events.length === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-6">No upcoming events found.</p>
+          <p className="text-sm text-slate-500 text-center py-6">No upcoming events found in your Google Calendar.</p>
         ) : (
           <div className="space-y-2">
             {events.map((event) => (
