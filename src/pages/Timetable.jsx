@@ -24,6 +24,7 @@ import {
 import { 
   Plus, Calendar, Clock, MapPin, Loader2, ChevronLeft, ChevronRight, Trash2
 } from 'lucide-react';
+import GoogleCalendarPanel from '@/components/timetable/GoogleCalendarPanel';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -363,6 +364,9 @@ export default function Timetable() {
           </div>
         </Card>
       </div>
+
+      {/* Google Calendar */}
+      <GoogleCalendarPanel />
 
       {/* Legend */}
       {classes.length > 0 && (
