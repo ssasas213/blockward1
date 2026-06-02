@@ -204,7 +204,8 @@ export default function BlockWards() {
     bw.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const canMint = profile?.user_type === 'teacher' && profile?.can_issue_blockwards || profile?.user_type === 'admin';
+  // Only teachers with explicit permission can issue BlockWards. Admins manage records — they do NOT issue.
+  const canMint = profile?.user_type === 'teacher' && profile?.can_issue_blockwards === true;
 
   if (loading) {
     return (
@@ -440,9 +441,11 @@ export default function BlockWards() {
             <Shield className="h-16 w-16 mx-auto text-slate-300 mb-4" />
             <h3 className="text-xl font-semibold text-slate-900 mb-2">No BlockWards yet</h3>
             <p className="text-slate-500 mb-6">
-              {profile?.user_type === 'student' 
-                ? 'Keep up the great work and earn your first BlockWard!' 
-                : 'Issue BlockWards to recognize student achievements'}
+              {profile?.user_type === 'student'
+                ? 'Keep up the great work and earn your first BlockWard!'
+                : profile?.user_type === 'admin'
+                  ? 'No BlockWard records found. Teachers issue BlockWards to students.'
+                  : 'Issue BlockWards to recognize student achievements'}
             </p>
           </CardContent>
         </Card>
@@ -457,7 +460,7 @@ export default function BlockWards() {
                 <div className="flex items-center justify-between">
                   <Shield className="h-10 w-10 text-white" />
                   <Badge className={`${selectedBlockWard.status === 'active' ? 'bg-white/20 text-white' : 'bg-red-500/80 text-white'} border-0`}>
-                    {selectedBlockWard.status === 'active' ? 'Verified on Polygon' : 'Revoked'}
+                    {selectedBlockWard.status === 'active' ? 'Verified on Sepolia' : 'Revoked'}
                   </Badge>
                 </div>
                 <div>
