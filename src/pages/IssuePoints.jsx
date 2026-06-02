@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { 
   Award, Search, User, Check, ArrowLeft,
-  Loader2, Star, AlertTriangle, TrendingUp, TrendingDown
+  Loader2, AlertTriangle, TrendingUp, TrendingDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
@@ -52,15 +52,21 @@ export default function IssuePoints() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
 
-        // Load classes: use StaffMembership first, fall back to teacher_email
-        const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        // Load classes: use StaffMembership first, fall back to teacher_email or co_teacher
+        const [memberships, allClasses] = await Promise.all([
+          base44.entities.StaffMembership.filter({ user_email: user.email }),
+          base44.entities.Class.list()
+        ]);
         const membership = memberships[0];
         let teacherClasses = [];
         if (membership?.class_ids?.length > 0) {
-          const allClasses = await base44.entities.Class.list();
           teacherClasses = allClasses.filter(c => membership.class_ids.includes(c.id));
         } else {
-          teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
+          // Legacy: check teacher_email or co_teachers array
+          teacherClasses = allClasses.filter(c =>
+            c.teacher_email === user.email ||
+            (c.co_teachers && c.co_teachers.includes(user.email))
+          );
         }
         setClasses(teacherClasses);
 
@@ -90,10 +96,11 @@ export default function IssuePoints() {
         const allProfiles = await base44.entities.UserProfile.list();
         setStudents(allProfiles.filter(p => emails.includes(p.user_email) && p.user_type === 'student'));
       } else {
-        const classData = await base44.entities.Class.filter({ id: classId });
-        if (classData.length > 0 && classData[0].student_emails?.length > 0) {
+        // Fallback: use class object from already-loaded classes state
+        const cls = classes.find(c => c.id === classId);
+        if (cls?.student_emails?.length > 0) {
           const allProfiles = await base44.entities.UserProfile.list();
-          setStudents(allProfiles.filter(p => classData[0].student_emails.includes(p.user_email) && p.user_type === 'student'));
+          setStudents(allProfiles.filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student'));
         } else {
           setStudents([]);
         }
@@ -195,6 +202,20 @@ export default function IssuePoints() {
         <h1 className="text-3xl font-bold text-slate-900">Issue Points</h1>
         <p className="text-slate-500 mt-1">Award achievement or behaviour points to students</p>
       </div>
+
+      {/* No categories warning */}
+      {categories.length === 0 && (
+        <div className="flex items-start gap-4 p-5 bg-amber-50 border border-amber-200 rounded-xl">
+          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium text-amber-900">No point categories set up yet</p>
+            <p className="text-sm text-amber-700 mt-1">An admin needs to create point categories before you can issue points.</p>
+            <Link to={createPageUrl('PointCategories')} className="text-sm text-amber-800 font-semibold underline mt-2 inline-block">
+              Go to Point Categories →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column - Student Selection */}
