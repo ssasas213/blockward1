@@ -507,27 +507,18 @@ function IssueBlockWardContent() {
                         </div>
                       </div>
                     ) : (
-                      <div
+                      <Button
+                        type="button"
                         onClick={openFilePicker}
-                        className="flex flex-col items-center justify-center gap-3 h-28 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-white hover:border-violet-500 hover:bg-violet-50 transition-all duration-200 group"
+                        disabled={uploadingImage}
+                        className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white gap-2"
                       >
                         {uploadingImage ? (
-                          <>
-                            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                            <span className="text-sm font-medium text-violet-600">Uploading...</span>
-                          </>
+                          <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
                         ) : (
-                          <>
-                            <div className="h-10 w-10 rounded-full bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors">
-                              <Upload className="h-5 w-5 text-violet-600" />
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm font-semibold text-violet-700">Click to upload NFT image</p>
-                              <p className="text-xs text-slate-400 mt-0.5">PNG, JPG, GIF, WebP</p>
-                            </div>
-                          </>
+                          <><Upload className="h-4 w-4" /> Upload Image</>
                         )}
-                      </div>
+                      </Button>
                     )}
                   </div>
 
