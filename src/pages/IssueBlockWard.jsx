@@ -469,6 +469,68 @@ function IssueBlockWardContent() {
                     />
                   </div>
 
+                  {/* NFT Image Upload */}
+                  <div className="space-y-3 border-2 border-violet-200 bg-violet-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <Label className="font-bold text-slate-900 text-sm">Upload Custom NFT Image</Label>
+                        <p className="text-xs text-slate-500">Optional — replaces the icon below with your own image</p>
+                      </div>
+                    </div>
+
+                    {formData.imageUrl ? (
+                      <div className="flex items-center gap-4 p-4 bg-white border-2 border-violet-200 rounded-xl">
+                        <img
+                          src={formData.imageUrl}
+                          alt="NFT preview"
+                          className="h-20 w-20 object-cover rounded-xl border-2 border-violet-300 shadow-md flex-shrink-0"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            <p className="text-sm font-semibold text-slate-800">Image ready</p>
+                          </div>
+                          <p className="text-xs text-slate-500 mb-3">This image will be embedded in the NFT metadata</p>
+                          <div className="flex gap-3">
+                            <button type="button" onClick={openFilePicker}
+                              className="text-xs text-violet-600 hover:text-violet-800 font-medium underline underline-offset-2">
+                              Change image
+                            </button>
+                            <button type="button" onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-2">
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={openFilePicker}
+                        className="flex flex-col items-center justify-center gap-3 h-28 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-white hover:border-violet-500 hover:bg-violet-50 transition-all duration-200 group"
+                      >
+                        {uploadingImage ? (
+                          <>
+                            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+                            <span className="text-sm font-medium text-violet-600">Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <div className="h-10 w-10 rounded-full bg-violet-100 group-hover:bg-violet-200 flex items-center justify-center transition-colors">
+                              <Upload className="h-5 w-5 text-violet-600" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-semibold text-violet-700">Click to upload NFT image</p>
+                              <p className="text-xs text-slate-400 mt-0.5">PNG, JPG, GIF, WebP</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="font-semibold">Category *</Label>
@@ -506,67 +568,6 @@ function IssueBlockWardContent() {
                     </div>
                   </div>
 
-                  {/* NFT Image Upload */}
-                  <div className="space-y-3 border-t-2 border-violet-100 pt-5 bg-violet-50/40 rounded-xl p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
-                        <ImageIcon className="h-4 w-4 text-white" />
-                      </div>
-                      <div>
-                        <Label className="font-bold text-slate-900 text-sm">Upload Custom NFT Image</Label>
-                        <p className="text-xs text-slate-500">Optional — replaces the icon above with your own image</p>
-                      </div>
-                    </div>
-
-                    {formData.imageUrl ? (
-                      <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-violet-50 to-indigo-50 border-2 border-violet-200 rounded-xl">
-                        <img
-                          src={formData.imageUrl}
-                          alt="NFT preview"
-                          className="h-20 w-20 object-cover rounded-xl border-2 border-violet-300 shadow-md flex-shrink-0"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                            <p className="text-sm font-semibold text-slate-800">Image ready</p>
-                          </div>
-                          <p className="text-xs text-slate-500 mb-3">This image will be embedded in the NFT metadata</p>
-                          <div className="flex gap-3">
-                            <button type="button" onClick={openFilePicker}
-                              className="text-xs text-violet-600 hover:text-violet-800 font-medium underline underline-offset-2">
-                              Change image
-                            </button>
-                            <button type="button" onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium underline underline-offset-2">
-                              Remove
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div
-                        onClick={openFilePicker}
-                        className="flex flex-col items-center justify-center gap-3 h-32 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-gradient-to-br from-violet-50 to-indigo-50 hover:border-violet-500 hover:from-violet-100 hover:to-indigo-100 transition-all duration-200 group"
-                      >
-                        {uploadingImage ? (
-                          <>
-                            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                            <span className="text-sm font-medium text-violet-600">Uploading...</span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="h-12 w-12 rounded-full bg-white group-hover:bg-violet-100 flex items-center justify-center shadow-sm transition-colors">
-                              <Upload className="h-6 w-6 text-violet-500" />
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm font-semibold text-violet-700">Click to upload NFT image</p>
-                              <p className="text-xs text-slate-400 mt-0.5">PNG, JPG, GIF, WebP · Max 10MB</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
 
