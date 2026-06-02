@@ -389,7 +389,7 @@ function IssueBlockWardContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Icon (fallback if no image)</Label>
+                    <Label>Icon</Label>
                     <div className="grid grid-cols-6 gap-2">
                       {EMOJIS.map(e => (
                         <button key={e} type="button" onClick={() => setFormData(p => ({ ...p, icon: e }))}
@@ -400,43 +400,29 @@ function IssueBlockWardContent() {
                     </div>
                   </div>
 
-                  {/* NFT Image Upload */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
-                      Upload NFT Image <span className="text-violet-500 font-normal">(optional — overrides icon)</span>
-                    </Label>
+                  <div className="space-y-2 border-t pt-4">
+                    <Label className="text-sm font-semibold text-slate-700">Upload NFT Image <span className="text-violet-500 font-normal">(optional)</span></Label>
+                    <input ref={imageInputRef} type="file" accept="image/png,image/jpg,image/jpeg" className="hidden" disabled={uploadingImage} onChange={handleImageUpload} />
                     {formData.imageUrl ? (
                       <div className="flex items-center gap-4 p-4 bg-violet-50 border-2 border-violet-200 rounded-xl">
                         <img src={formData.imageUrl} alt="NFT preview" className="h-20 w-20 object-cover rounded-xl border-2 border-violet-300 shadow-md flex-shrink-0" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-violet-900 mb-1">Image uploaded ✓</p>
-                          <p className="text-xs text-slate-500 mb-2">This image will be embedded in the NFT</p>
-                          <button type="button" onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))} className="text-xs text-red-500 hover:text-red-700 underline">
-                            Remove image
-                          </button>
+                          <button type="button" onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))} className="text-xs text-red-500 hover:text-red-700 underline">Remove image</button>
                         </div>
                       </div>
                     ) : (
-                      <div
+                      <button
+                        type="button"
                         onClick={() => !uploadingImage && imageInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center gap-3 h-28 border-2 border-dashed border-violet-400 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-600 hover:bg-violet-100 transition-all"
+                        className="w-full flex flex-col items-center justify-center gap-2 h-24 border-2 border-dashed border-violet-400 rounded-xl bg-violet-50 hover:border-violet-600 hover:bg-violet-100 transition-all"
                       >
                         {uploadingImage ? (
-                          <>
-                            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
-                            <span className="text-sm text-violet-600">Uploading...</span>
-                          </>
+                          <><Loader2 className="h-5 w-5 animate-spin text-violet-500" /><span className="text-sm text-violet-600">Uploading...</span></>
                         ) : (
-                          <>
-                            <Upload className="h-6 w-6 text-violet-500" />
-                            <div className="text-center">
-                              <p className="text-sm font-medium text-violet-700">Click to upload NFT image</p>
-                              <p className="text-xs text-slate-500">PNG, JPG · 512×512px recommended</p>
-                            </div>
-                          </>
+                          <><Upload className="h-5 w-5 text-violet-500" /><span className="text-sm font-medium text-violet-700">Click to upload image</span><span className="text-xs text-slate-400">PNG, JPG recommended</span></>
                         )}
-                        <input ref={imageInputRef} type="file" accept="image/png,image/jpg,image/jpeg" className="hidden" disabled={uploadingImage} onChange={handleImageUpload} />
-                      </div>
+                      </button>
                     )}
                   </div>
                 </div>
