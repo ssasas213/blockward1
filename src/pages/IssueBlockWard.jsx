@@ -371,24 +371,7 @@ function IssueBlockWardContent() {
                     <Textarea value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Describe the achievement..." rows={3} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Category *</Label>
-                      <Select value={formData.category} onValueChange={v => setFormData(p => ({ ...p, category: v }))}>
-                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Rarity</Label>
-                      <Select value={formData.rarity} onValueChange={v => setFormData(p => ({ ...p, rarity: v }))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>{RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* NFT Image Upload */}
+                  {/* NFT Image Upload — shown first so it's always visible */}
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold text-slate-700">
                       NFT Image <span className="text-violet-500 font-normal">(recommended)</span>
@@ -407,7 +390,7 @@ function IssueBlockWardContent() {
                     ) : (
                       <div
                         onClick={() => !uploadingImage && imageInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center gap-3 h-32 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-500 hover:bg-violet-100 transition-all"
+                        className="flex flex-col items-center justify-center gap-3 h-28 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-500 hover:bg-violet-100 transition-all"
                       >
                         {uploadingImage ? (
                           <>
@@ -426,6 +409,23 @@ function IssueBlockWardContent() {
                         <input ref={imageInputRef} type="file" accept="image/png,image/jpg,image/jpeg" className="hidden" disabled={uploadingImage} onChange={handleImageUpload} />
                       </div>
                     )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Category *</Label>
+                      <Select value={formData.category} onValueChange={v => setFormData(p => ({ ...p, category: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Rarity</Label>
+                      <Select value={formData.rarity} onValueChange={v => setFormData(p => ({ ...p, rarity: v }))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{RARITIES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
