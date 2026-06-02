@@ -272,7 +272,7 @@ function IssueBlockWardContent() {
 
       <IssueStepper currentStep={currentStep} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg">
             <CardContent className="p-6 md:p-8">
@@ -489,19 +489,17 @@ function IssueBlockWardContent() {
 
         {/* Preview Sidebar */}
         <div className="lg:col-span-1">
-          <div className="sticky top-8">
-            <h3 className="text-sm font-semibold text-slate-900 mb-4">Preview</h3>
-            {formData.title || formData.category ? (
-              <BlockWardPreviewCard blockWard={formData} />
-            ) : (
-              <Card className="border-2 border-dashed border-slate-200">
-                <CardContent className="p-8 text-center">
-                  <Award className="h-12 w-12 mx-auto text-slate-300 mb-3" />
-                  <p className="text-sm text-slate-500">Preview appears as you fill in details</p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">Preview</h3>
+          {formData.title || formData.category ? (
+            <BlockWardPreviewCard blockWard={formData} />
+          ) : (
+            <Card className="border-2 border-dashed border-slate-200">
+              <CardContent className="p-8 text-center">
+                <Award className="h-12 w-12 mx-auto text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500">Preview appears as you fill in details</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
