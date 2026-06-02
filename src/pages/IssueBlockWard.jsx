@@ -390,7 +390,7 @@ function IssueBlockWardContent() {
                     ) : (
                       <div
                         onClick={() => !uploadingImage && imageInputRef.current?.click()}
-                        className="flex flex-col items-center justify-center gap-3 h-28 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-500 hover:bg-violet-100 transition-all"
+                        className="flex flex-col items-center justify-center gap-3 h-32 border-2 border-dashed border-violet-400 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-600 hover:bg-violet-100 transition-all shadow-sm"
                       >
                         {uploadingImage ? (
                           <>
