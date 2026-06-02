@@ -1,0 +1,40 @@
+{
+  "name": "School",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "School name"
+    },
+    "code": {
+      "type": "string",
+      "description": "Unique school code"
+    },
+    "student_join_code": {
+      "type": "string",
+      "description": "Code for students to join the school"
+    },
+    "teacher_join_code": {
+      "type": "string",
+      "description": "Code for teachers to join the school"
+    },
+    "address": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "admin_email": {
+      "type": "string",
+      "description": "Primary admin email"
+    },
+    "settings": {
+      "type": "object",
+      "description": "School-specific settings"
+    }
+  },
+  "required": [
+    "name",
+    "code"
+  ]
+}

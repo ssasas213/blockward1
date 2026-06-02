@@ -1,0 +1,39 @@
+{
+  "name": "PointCategory",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Category name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "achievement",
+        "behaviour"
+      ],
+      "description": "Positive or negative points"
+    },
+    "default_points": {
+      "type": "number",
+      "description": "Default point value"
+    },
+    "color": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "default_points"
+  ]
+}

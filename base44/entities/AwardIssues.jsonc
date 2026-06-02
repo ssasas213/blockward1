@@ -1,0 +1,75 @@
+{
+  "name": "AwardIssues",
+  "type": "object",
+  "properties": {
+    "award_type_id": {
+      "type": "string",
+      "description": "Foreign key to AwardTypes.id"
+    },
+    "issued_by_teacher_user_id": {
+      "type": "string",
+      "description": "Foreign key to User.id"
+    },
+    "student_user_id": {
+      "type": "string",
+      "description": "Foreign key to User.id"
+    },
+    "teacher_vault_address": {
+      "type": "string",
+      "description": "Snapshot of teacher vault at issue time"
+    },
+    "student_vault_address": {
+      "type": "string",
+      "description": "Snapshot of student vault at issue time"
+    },
+    "token_uri": {
+      "type": "string",
+      "description": "Metadata URI for NFT"
+    },
+    "award_type_bytes32": {
+      "type": "string",
+      "description": "Keccak256 hash of award code (0x...)"
+    },
+    "network": {
+      "type": "string",
+      "default": "sepolia"
+    },
+    "contract_address": {
+      "type": "string",
+      "description": "Snapshot of contract address"
+    },
+    "tx_hash": {
+      "type": "string",
+      "description": "Transaction hash - set after submission"
+    },
+    "chain_status": {
+      "type": "string",
+      "enum": [
+        "created",
+        "submitted",
+        "pending",
+        "confirmed",
+        "failed"
+      ],
+      "default": "created",
+      "description": "Blockchain transaction status"
+    },
+    "token_id": {
+      "type": "number",
+      "description": "NFT token ID - extracted after confirmation"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details if failed"
+    }
+  },
+  "required": [
+    "award_type_id",
+    "issued_by_teacher_user_id",
+    "student_user_id",
+    "student_vault_address",
+    "token_uri",
+    "award_type_bytes32",
+    "contract_address"
+  ]
+}

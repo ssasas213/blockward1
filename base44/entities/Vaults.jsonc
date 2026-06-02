@@ -1,0 +1,40 @@
+{
+  "name": "Vaults",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "description": "Foreign key to User.id"
+    },
+    "address": {
+      "type": "string",
+      "description": "EVM wallet address (0x...)"
+    },
+    "chain": {
+      "type": "string",
+      "enum": [
+        "sepolia",
+        "amoy",
+        "polygon"
+      ],
+      "default": "sepolia"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "locked"
+      ],
+      "default": "active"
+    },
+    "private_key_encrypted": {
+      "type": "string",
+      "description": "Encrypted private key - NEVER expose to frontend"
+    }
+  },
+  "required": [
+    "user_id",
+    "address",
+    "chain"
+  ]
+}

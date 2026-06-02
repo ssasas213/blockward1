@@ -1,0 +1,161 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Links to User entity"
+    },
+    "school_id": {
+      "type": "string",
+      "description": "School this user belongs to"
+    },
+    "user_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "teacher",
+        "student"
+      ],
+      "description": "Role in the system"
+    },
+    "admin_level": {
+      "type": "string",
+      "enum": [
+        "super_admin",
+        "head_of_year",
+        "head_of_department",
+        "data_manager",
+        "basic_admin"
+      ],
+      "description": "Access level for admin users"
+    },
+    "admin_permissions": {
+      "type": "object",
+      "description": "Granular permissions for admins",
+      "properties": {
+        "manage_users": {
+          "type": "boolean",
+          "default": false
+        },
+        "manage_classes": {
+          "type": "boolean",
+          "default": false
+        },
+        "issue_blockwards": {
+          "type": "boolean",
+          "default": false
+        },
+        "view_all_points": {
+          "type": "boolean",
+          "default": false
+        },
+        "edit_points": {
+          "type": "boolean",
+          "default": false
+        },
+        "view_reports": {
+          "type": "boolean",
+          "default": false
+        },
+        "manage_categories": {
+          "type": "boolean",
+          "default": false
+        },
+        "manage_school_settings": {
+          "type": "boolean",
+          "default": false
+        },
+        "view_parent_contacts": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "first_name": {
+      "type": "string"
+    },
+    "last_name": {
+      "type": "string"
+    },
+    "avatar_url": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string",
+      "description": "Student ID number (for students)"
+    },
+    "grade_level": {
+      "type": "string",
+      "description": "Year/Grade level (for students)"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department (for teachers)"
+    },
+    "subjects": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Subjects taught (for teachers)"
+    },
+    "parent_name": {
+      "type": "string",
+      "description": "Parent/Guardian name (for students)"
+    },
+    "parent_email": {
+      "type": "string",
+      "description": "Parent/Guardian email (for students)"
+    },
+    "parent_phone": {
+      "type": "string",
+      "description": "Parent/Guardian phone (for students)"
+    },
+    "wallet_address": {
+      "type": "string",
+      "description": "Custodial blockchain wallet address"
+    },
+    "wallet_private_key_encrypted": {
+      "type": "string",
+      "description": "Encrypted private key (server-side only)"
+    },
+    "blockchain_role": {
+      "type": "string",
+      "enum": [
+        "ADMIN",
+        "TEACHER",
+        "STUDENT"
+      ],
+      "description": "On-chain role"
+    },
+    "can_issue_blockwards": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether teacher is approved to mint BlockWards"
+    },
+    "total_achievement_points": {
+      "type": "number",
+      "default": 0
+    },
+    "total_behaviour_points": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive",
+        "suspended"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "user_email",
+    "user_type",
+    "first_name",
+    "last_name"
+  ]
+}

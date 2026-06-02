@@ -1,0 +1,38 @@
+{
+  "name": "StaffMembership",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Foreign key to School.id"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Staff member email"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Staff member user id"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "SCHOOL_ADMIN",
+        "TEACHER"
+      ],
+      "description": "Staff role within the school"
+    },
+    "class_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Class IDs this teacher is assigned to"
+    }
+  },
+  "required": [
+    "school_id",
+    "user_email",
+    "role"
+  ]
+}

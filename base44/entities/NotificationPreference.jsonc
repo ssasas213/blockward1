@@ -1,0 +1,28 @@
+{
+  "name": "NotificationPreference",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "User email"
+    },
+    "notify_urgent": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify for urgent announcements"
+    },
+    "notify_important": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notify for important announcements"
+    },
+    "notify_scheduled_reminder": {
+      "type": "boolean",
+      "default": false,
+      "description": "Notify before scheduled announcements are sent"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

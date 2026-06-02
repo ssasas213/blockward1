@@ -1,0 +1,67 @@
+{
+  "name": "Event",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this event belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Event title"
+    },
+    "start_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event start datetime"
+    },
+    "end_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event end datetime"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location (optional)"
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "whole_school",
+        "year_7",
+        "year_8",
+        "year_9",
+        "year_10",
+        "year_11",
+        "staff_only",
+        "custom"
+      ],
+      "default": "whole_school",
+      "description": "Target audience"
+    },
+    "audience_class_id": {
+      "type": "string",
+      "description": "Class ID if audience is a specific class"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Tags e.g. assembly, sports_day, parents_evening"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Teacher/admin user email"
+    }
+  },
+  "required": [
+    "title",
+    "start_time",
+    "created_by"
+  ]
+}

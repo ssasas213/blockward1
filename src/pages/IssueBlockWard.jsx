@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import IssueStepper from '@/components/blockwards/IssueStepper';
 import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award, BookOpen, User, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award, BookOpen, User, AlertTriangle, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -49,7 +49,9 @@ function IssueBlockWardContent() {
     rarity: 'Common',
     icon: '🏆',
     confirmed: false,
+    imageUrl: '',
   });
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Submit states
   const [issuing, setIssuing] = useState(false);
@@ -141,6 +143,20 @@ function IssueBlockWardContent() {
     }
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData(p => ({ ...p, imageUrl: file_url }));
+    } catch (err) {
+      toast.error('Image upload failed. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handleNext = () => {
     if (currentStep === 1) {
       if (!formData.selectedClass) { toast.error('Please select a class'); return; }
@@ -164,6 +180,7 @@ function IssueBlockWardContent() {
         description: formData.description,
         classId: formData.selectedClass?.id,
         schoolId,
+        imageUrl: formData.imageUrl || null,
       });
       const data = response.data;
       if (!data.ok) throw new Error(data.message || data.error || 'Failed to issue BlockWard');
@@ -371,7 +388,7 @@ function IssueBlockWardContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Icon</Label>
+                    <Label>Icon (used when no image is uploaded)</Label>
                     <div className="grid grid-cols-6 gap-2">
                       {EMOJIS.map(e => (
                         <button key={e} onClick={() => setFormData(p => ({ ...p, icon: e }))}
@@ -380,6 +397,43 @@ function IssueBlockWardContent() {
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>NFT Image (optional — PNG, JPG, JPEG)</Label>
+                    {formData.imageUrl ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={formData.imageUrl}
+                          alt="NFT preview"
+                          className="h-32 w-32 object-cover rounded-xl border-2 border-violet-300"
+                        />
+                        <button
+                          onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
+                          className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImage ? 'opacity-60 cursor-not-allowed' : 'border-slate-300 hover:border-violet-400 hover:bg-violet-50'}`}>
+                        {uploadingImage ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                        ) : (
+                          <>
+                            <Upload className="h-6 w-6 text-slate-400" />
+                            <span className="text-sm text-slate-500">Click to upload image</span>
+                          </>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpg,image/jpeg"
+                          className="hidden"
+                          disabled={uploadingImage}
+                          onChange={handleImageUpload}
+                        />
+                      </label>
+                    )}
                   </div>
                 </div>
               )}

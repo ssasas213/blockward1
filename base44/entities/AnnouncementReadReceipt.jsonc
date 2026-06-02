@@ -1,0 +1,25 @@
+{
+  "name": "AnnouncementReadReceipt",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "announcement_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User email who read it"
+    },
+    "read_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "announcement_id",
+    "user_id",
+    "read_at"
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "direct",
+        "announcement"
+      ],
+      "description": "Direct message or class announcement"
+    },
+    "sender_email": {
+      "type": "string"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "sender_type": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "student",
+        "parent",
+        "admin"
+      ]
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "For direct messages"
+    },
+    "recipient_name": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "For class announcements"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "read_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "parent_message_id": {
+      "type": "string",
+      "description": "For threaded conversations"
+    }
+  },
+  "required": [
+    "type",
+    "sender_email",
+    "sender_name",
+    "content"
+  ]
+}

@@ -1,0 +1,96 @@
+{
+  "name": "BlockWard",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "token_id": {
+      "type": "string",
+      "description": "On-chain token ID from smart contract"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "student_wallet": {
+      "type": "string",
+      "description": "Student's custodial wallet address"
+    },
+    "issuer_email": {
+      "type": "string"
+    },
+    "issuer_name": {
+      "type": "string"
+    },
+    "issuer_wallet": {
+      "type": "string",
+      "description": "Always 'system' - teachers don't have wallets"
+    },
+    "title": {
+      "type": "string",
+      "description": "e.g. Top in Maths - Term 1"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "special"
+      ],
+      "description": "Achievement category"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "NFT image/badge URL"
+    },
+    "metadata_uri": {
+      "type": "string",
+      "description": "IPFS URI for token metadata JSON"
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Polygon transaction hash"
+    },
+    "block_number": {
+      "type": "number",
+      "description": "Polygon block number"
+    },
+    "minted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "revoked_by": {
+      "type": "string"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoke_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "student_email",
+    "issuer_email",
+    "title",
+    "category"
+  ]
+}

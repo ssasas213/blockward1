@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   if (!user) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: CORS });
 
   const body = await req.json();
-  const { studentId, title, category, description, tokenURI } = body;
+  const { studentId, title, category, description, tokenURI, imageUrl } = body;
 
   console.log(JSON.stringify({ fn: "issueBlockward", step: "START", studentId, title, category }));
 
@@ -64,13 +64,16 @@ Deno.serve(async (req) => {
   console.log(JSON.stringify({ fn: "issueBlockward", step: "STUDENT", studentAddr }));
 
   // Build metadata URI
+  const DEFAULT_IMAGE = `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`;
   let uri = tokenURI;
   if (!uri) {
     const meta = {
       name: title,
       description: description || '',
-      category,
-      image: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`
+      image: imageUrl || DEFAULT_IMAGE,
+      attributes: [
+        { trait_type: 'Category', value: category },
+      ]
     };
     uri = `data:application/json;base64,${btoa(unescape(encodeURIComponent(JSON.stringify(meta))))}`;
   }
@@ -150,7 +153,7 @@ Deno.serve(async (req) => {
     title,
     description: body.description || '',
     category: category.toLowerCase(),
-    image_url: `https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(title)}`,
+    image_url: imageUrl || DEFAULT_IMAGE,
     transaction_hash: mintReceipt.transactionHash,
     block_number: Number(mintReceipt.blockNumber),
     minted_at: new Date().toISOString(),

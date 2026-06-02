@@ -1,0 +1,55 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Recipient user email"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "announcement_urgent",
+        "announcement_important",
+        "announcement_scheduled_reminder"
+      ],
+      "description": "Notification type"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "important",
+        "urgent"
+      ],
+      "default": "normal"
+    },
+    "related_id": {
+      "type": "string",
+      "description": "ID of the related entity (e.g. announcement ID)"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    },
+    "read_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_email",
+    "title",
+    "body",
+    "type"
+  ]
+}

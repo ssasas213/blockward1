@@ -1,0 +1,22 @@
+{
+  "name": "YearGroup",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Foreign key to School.id"
+    },
+    "name": {
+      "type": "string",
+      "description": "e.g. Year 7, Grade 10"
+    },
+    "year_number": {
+      "type": "number",
+      "description": "Numeric year (optional)"
+    }
+  },
+  "required": [
+    "school_id",
+    "name"
+  ]
+}

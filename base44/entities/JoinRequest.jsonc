@@ -1,0 +1,38 @@
+{
+  "name": "JoinRequest",
+  "type": "object",
+  "properties": {
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending"
+    },
+    "reviewed_by": {
+      "type": "string"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "class_id",
+    "student_email"
+  ]
+}

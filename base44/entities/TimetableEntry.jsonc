@@ -1,0 +1,45 @@
+{
+  "name": "TimetableEntry",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "day_of_week": {
+      "type": "number",
+      "description": "0=Monday, 1=Tuesday, etc."
+    },
+    "start_time": {
+      "type": "string",
+      "description": "HH:MM format"
+    },
+    "end_time": {
+      "type": "string",
+      "description": "HH:MM format"
+    },
+    "room": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "period_number": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "class_id",
+    "day_of_week",
+    "start_time",
+    "end_time"
+  ]
+}

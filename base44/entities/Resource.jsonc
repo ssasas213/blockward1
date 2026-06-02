@@ -1,0 +1,56 @@
+{
+  "name": "Resource",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_type": {
+      "type": "string",
+      "enum": [
+        "pdf",
+        "document",
+        "image",
+        "video",
+        "link",
+        "other"
+      ]
+    },
+    "file_size": {
+      "type": "number"
+    },
+    "category": {
+      "type": "string",
+      "description": "e.g. Notes, Textbook, Worksheet"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "class_id",
+    "title",
+    "file_url"
+  ]
+}

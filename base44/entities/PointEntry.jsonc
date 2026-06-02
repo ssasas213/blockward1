@@ -1,0 +1,59 @@
+{
+  "name": "PointEntry",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "teacher_name": {
+      "type": "string"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "category_id": {
+      "type": "string"
+    },
+    "category_name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "achievement",
+        "behaviour"
+      ],
+      "description": "Positive or negative"
+    },
+    "points": {
+      "type": "number",
+      "description": "Point value (+ for achievement, - for behaviour)"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "student_email",
+    "teacher_email",
+    "type",
+    "points",
+    "reason"
+  ]
+}

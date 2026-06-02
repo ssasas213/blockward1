@@ -1,0 +1,40 @@
+{
+  "name": "Enrollment",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Foreign key to School.id"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Foreign key to Class.id"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "year_group_id": {
+      "type": "string",
+      "description": "Foreign key to YearGroup.id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "school_id",
+    "class_id",
+    "student_email"
+  ]
+}

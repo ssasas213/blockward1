@@ -1,0 +1,25 @@
+{
+  "name": "AwardTypes",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Unique code like TOP_HELPER"
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title like 'Top Helper'"
+    },
+    "description": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "code",
+    "title"
+  ]
+}

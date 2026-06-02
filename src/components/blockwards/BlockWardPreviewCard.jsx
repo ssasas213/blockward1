@@ -11,17 +11,23 @@ const rarityColors = {
 export default function BlockWardPreviewCard({ blockWard }) {
   const gradientClass = rarityColors[blockWard.rarity] || rarityColors.Common;
 
+  const imageUrl = blockWard.imageUrl || blockWard.image_url;
+
   return (
-    <Card className="border-2 border-violet-200 shadow-lg">
-      <div className={`h-40 bg-gradient-to-br ${gradientClass} p-6 flex flex-col justify-between`}>
-        <div className="flex items-center justify-between">
-          <div className="text-6xl">{blockWard.icon || '🏆'}</div>
+    <Card className="border-2 border-violet-200 shadow-lg overflow-hidden">
+      <div
+        className={`h-40 p-6 flex flex-col justify-between relative ${!imageUrl ? `bg-gradient-to-br ${gradientClass}` : ''}`}
+        style={imageUrl ? { backgroundImage: `url(${imageUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+      >
+        {imageUrl && <div className="absolute inset-0 bg-black/40" />}
+        <div className="flex items-center justify-between relative z-10">
+          <div className="text-6xl">{!imageUrl ? (blockWard.icon || '🏆') : ''}</div>
           <Badge className="bg-white/30 text-white border-0 backdrop-blur-sm">
             {blockWard.rarity}
           </Badge>
         </div>
-        <div>
-          <h3 className="text-white font-bold text-xl">{blockWard.title || 'Untitled'}</h3>
+        <div className="relative z-10">
+          <h3 className="text-white font-bold text-xl drop-shadow">{blockWard.title || 'Untitled'}</h3>
         </div>
       </div>
       <CardContent className="p-4 space-y-3">

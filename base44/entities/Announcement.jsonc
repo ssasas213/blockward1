@@ -1,0 +1,107 @@
+{
+  "name": "Announcement",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this announcement belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Announcement title"
+    },
+    "body": {
+      "type": "string",
+      "description": "Full announcement body"
+    },
+    "body_short": {
+      "type": "string",
+      "description": "Short version of the announcement"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "important",
+        "urgent"
+      ],
+      "default": "normal",
+      "description": "Urgency level - urgent/important trigger notifications"
+    },
+    "scope_type": {
+      "type": "string",
+      "enum": [
+        "SCHOOL",
+        "YEAR_GROUP",
+        "CLASS",
+        "TEAM",
+        "STUDENTS"
+      ],
+      "default": "SCHOOL",
+      "description": "Who this announcement targets"
+    },
+    "year_group_id": {
+      "type": "string",
+      "description": "Year group ID if scope is YEAR_GROUP"
+    },
+    "year_group_name": {
+      "type": "string",
+      "description": "Year group display name"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class ID if scope is CLASS"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Class display name"
+    },
+    "team_name": {
+      "type": "string",
+      "description": "Team/Department name if scope is TEAM"
+    },
+    "student_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specific student emails if scope is STUDENTS"
+    },
+    "student_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Display names of targeted students"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "scheduled",
+        "sent"
+      ],
+      "default": "draft",
+      "description": "Announcement status"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Teacher/admin user email"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the announcement was sent"
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When to auto-send the announcement"
+    }
+  },
+  "required": [
+    "title",
+    "body",
+    "created_by"
+  ]
+}

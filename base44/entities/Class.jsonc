@@ -1,0 +1,63 @@
+{
+  "name": "Class",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Class name e.g. Year 9 Math - Set A"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "join_code": {
+      "type": "string",
+      "description": "Code students use to join"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Primary teacher"
+    },
+    "co_teachers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Additional teacher emails"
+    },
+    "student_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Enrolled student emails"
+    },
+    "grade_level": {
+      "type": "string"
+    },
+    "room": {
+      "type": "string"
+    },
+    "color": {
+      "type": "string",
+      "description": "Display color for timetable"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "name",
+    "teacher_email"
+  ]
+}
