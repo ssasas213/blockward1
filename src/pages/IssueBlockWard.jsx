@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
@@ -52,6 +52,7 @@ function IssueBlockWardContent() {
     imageUrl: '',
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef(null);
 
   // Submit states
   const [issuing, setIssuing] = useState(false);
@@ -402,7 +403,7 @@ function IssueBlockWardContent() {
                       </div>
                     ) : (
                       <div
-                        onClick={() => !uploadingImage && document.getElementById('nft-image-input').click()}
+                        onClick={() => !uploadingImage && imageInputRef.current?.click()}
                         className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImage ? 'opacity-60 cursor-not-allowed border-slate-300' : 'border-slate-300 hover:border-violet-400 hover:bg-violet-50'}`}
                       >
                         {uploadingImage ? (
@@ -414,7 +415,7 @@ function IssueBlockWardContent() {
                           </>
                         )}
                         <input
-                          id="nft-image-input"
+                          ref={imageInputRef}
                           type="file"
                           accept="image/png,image/jpg,image/jpeg"
                           className="hidden"
