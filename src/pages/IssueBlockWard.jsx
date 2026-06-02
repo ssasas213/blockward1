@@ -388,27 +388,12 @@ function IssueBlockWardContent() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Icon (used when no image is uploaded)</Label>
-                    <div className="grid grid-cols-6 gap-2">
-                      {EMOJIS.map(e => (
-                        <button key={e} onClick={() => setFormData(p => ({ ...p, icon: e }))}
-                          className={`text-2xl p-2 rounded-lg border-2 hover:border-violet-500 transition-all ${formData.icon === e ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
-                          {e}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>NFT Image (optional — PNG, JPG, JPEG)</Label>
+                    <Label>NFT Image (optional)</Label>
                     {formData.imageUrl ? (
                       <div className="relative inline-block">
-                        <img
-                          src={formData.imageUrl}
-                          alt="NFT preview"
-                          className="h-32 w-32 object-cover rounded-xl border-2 border-violet-300"
-                        />
+                        <img src={formData.imageUrl} alt="NFT preview" className="h-32 w-32 object-cover rounded-xl border-2 border-violet-300" />
                         <button
+                          type="button"
                           onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
                           className="absolute -top-2 -right-2 h-6 w-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
                         >
@@ -416,24 +401,40 @@ function IssueBlockWardContent() {
                         </button>
                       </div>
                     ) : (
-                      <label className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImage ? 'opacity-60 cursor-not-allowed' : 'border-slate-300 hover:border-violet-400 hover:bg-violet-50'}`}>
+                      <div
+                        onClick={() => !uploadingImage && document.getElementById('nft-image-input').click()}
+                        className={`flex flex-col items-center justify-center gap-2 h-28 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${uploadingImage ? 'opacity-60 cursor-not-allowed border-slate-300' : 'border-slate-300 hover:border-violet-400 hover:bg-violet-50'}`}
+                      >
                         {uploadingImage ? (
                           <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
                         ) : (
                           <>
                             <Upload className="h-6 w-6 text-slate-400" />
-                            <span className="text-sm text-slate-500">Click to upload image</span>
+                            <span className="text-sm text-slate-500">Click to upload image (PNG, JPG)</span>
                           </>
                         )}
                         <input
+                          id="nft-image-input"
                           type="file"
                           accept="image/png,image/jpg,image/jpeg"
                           className="hidden"
                           disabled={uploadingImage}
                           onChange={handleImageUpload}
                         />
-                      </label>
+                      </div>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Icon (fallback if no image)</Label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {EMOJIS.map(e => (
+                        <button key={e} type="button" onClick={() => setFormData(p => ({ ...p, icon: e }))}
+                          className={`text-2xl p-2 rounded-lg border-2 hover:border-violet-500 transition-all ${formData.icon === e ? 'border-violet-500 bg-violet-50' : 'border-slate-200'}`}>
+                          {e}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
