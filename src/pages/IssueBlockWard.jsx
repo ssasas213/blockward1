@@ -275,7 +275,7 @@ function IssueBlockWardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg">
-            <CardContent className="p-6 md:p-8 overflow-y-auto max-h-[75vh]">
+            <CardContent className="p-6 md:p-8">
 
               {/* ── Step 1: Class → Student ── */}
               {currentStep === 1 && (
@@ -388,20 +388,18 @@ function IssueBlockWardContent() {
                     </div>
                   </div>
 
+                  {/* NFT Image Upload */}
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">NFT Image <span className="text-violet-500">(recommended)</span></Label>
-                    <p className="text-xs text-slate-500">Upload a custom image for this BlockWard NFT. It will appear on the student's vault.</p>
+                    <Label className="text-sm font-semibold text-slate-700">
+                      NFT Image <span className="text-violet-500 font-normal">(recommended)</span>
+                    </Label>
                     {formData.imageUrl ? (
                       <div className="flex items-center gap-4 p-4 bg-violet-50 border-2 border-violet-200 rounded-xl">
                         <img src={formData.imageUrl} alt="NFT preview" className="h-20 w-20 object-cover rounded-xl border-2 border-violet-300 shadow-md flex-shrink-0" />
                         <div className="flex-1">
                           <p className="text-sm font-medium text-violet-900 mb-1">Image uploaded ✓</p>
-                          <p className="text-xs text-slate-500 mb-3">This image will be embedded in the NFT metadata</p>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))}
-                            className="text-xs text-red-500 hover:text-red-700 underline"
-                          >
+                          <p className="text-xs text-slate-500 mb-2">This image will be embedded in the NFT</p>
+                          <button type="button" onClick={() => setFormData(p => ({ ...p, imageUrl: '' }))} className="text-xs text-red-500 hover:text-red-700 underline">
                             Remove image
                           </button>
                         </div>
@@ -409,33 +407,23 @@ function IssueBlockWardContent() {
                     ) : (
                       <div
                         onClick={() => !uploadingImage && imageInputRef.current?.click()}
-                        className={`flex flex-col items-center justify-center gap-3 h-40 border-3 border-dashed rounded-2xl cursor-pointer transition-all ${uploadingImage ? 'opacity-60 cursor-not-allowed border-slate-300 bg-slate-50' : 'border-violet-300 bg-violet-50 hover:border-violet-500 hover:bg-violet-100'}`}
-                        style={{ borderWidth: '2px' }}
+                        className="flex flex-col items-center justify-center gap-3 h-32 border-2 border-dashed border-violet-300 rounded-xl cursor-pointer bg-violet-50 hover:border-violet-500 hover:bg-violet-100 transition-all"
                       >
                         {uploadingImage ? (
                           <>
-                            <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                            <span className="text-sm font-medium text-violet-600">Uploading...</span>
+                            <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
+                            <span className="text-sm text-violet-600">Uploading...</span>
                           </>
                         ) : (
                           <>
-                            <div className="h-14 w-14 rounded-2xl bg-violet-200 flex items-center justify-center">
-                              <Upload className="h-7 w-7 text-violet-600" />
-                            </div>
+                            <Upload className="h-6 w-6 text-violet-500" />
                             <div className="text-center">
-                              <p className="text-sm font-semibold text-violet-700">Click to upload NFT image</p>
-                              <p className="text-xs text-slate-500 mt-1">PNG, JPG supported · Recommended 512×512px</p>
+                              <p className="text-sm font-medium text-violet-700">Click to upload NFT image</p>
+                              <p className="text-xs text-slate-500">PNG, JPG · 512×512px recommended</p>
                             </div>
                           </>
                         )}
-                        <input
-                          ref={imageInputRef}
-                          type="file"
-                          accept="image/png,image/jpg,image/jpeg"
-                          className="hidden"
-                          disabled={uploadingImage}
-                          onChange={handleImageUpload}
-                        />
+                        <input ref={imageInputRef} type="file" accept="image/png,image/jpg,image/jpeg" className="hidden" disabled={uploadingImage} onChange={handleImageUpload} />
                       </div>
                     )}
                   </div>
