@@ -275,7 +275,7 @@ function IssueBlockWardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <Card className="border-0 shadow-lg">
-            <CardContent className="p-8">
+            <CardContent className="p-6 md:p-8 overflow-y-auto max-h-[75vh]">
 
               {/* ── Step 1: Class → Student ── */}
               {currentStep === 1 && (
