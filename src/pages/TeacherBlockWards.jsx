@@ -64,8 +64,8 @@ function TeacherBlockWardsContent() {
 
   const stats = {
     total: issuedBlockWards.length,
-    pending: issuedBlockWards.filter(bw => bw.status === 'pending').length,
-    issued: issuedBlockWards.filter(bw => bw.status === 'active' || bw.status === 'minted').length
+    pending: issuedBlockWards.filter(bw => !bw.status || bw.status === 'pending').length,
+    issued: issuedBlockWards.filter(bw => bw.status === 'active' || bw.status === 'minted' || bw.status === 'confirmed').length
   };
 
   if (loading) {

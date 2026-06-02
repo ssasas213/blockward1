@@ -26,7 +26,9 @@ export default function StatusBadge({ status }) {
     }
   };
 
-  const config = statusConfig[status] || statusConfig.pending;
+  // treat null/undefined/empty as 'active' since all minted records are active
+  const normalised = status || 'active';
+  const config = statusConfig[normalised] || statusConfig.active;
   const Icon = config.icon;
 
   return (

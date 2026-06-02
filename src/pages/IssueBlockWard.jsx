@@ -507,10 +507,15 @@ function IssueBlockWardContent() {
                   </div>
 
                   {/* NFT Image Upload */}
-                  <div className="space-y-3 border-t border-slate-100 pt-5">
+                  <div className="space-y-3 border-t-2 border-violet-100 pt-5 bg-violet-50/40 rounded-xl p-4">
                     <div className="flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-violet-500" />
-                      <Label className="font-semibold">NFT Image <span className="font-normal text-violet-500">(optional — overrides icon)</span></Label>
+                      <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <Label className="font-bold text-slate-900 text-sm">Upload Custom NFT Image</Label>
+                        <p className="text-xs text-slate-500">Optional — replaces the icon above with your own image</p>
+                      </div>
                     </div>
 
                     {formData.imageUrl ? (
