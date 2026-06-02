@@ -493,7 +493,7 @@ export default function BlockWards() {
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
                     <a 
-                      href={`https://amoy.polygonscan.com/tx/${selectedBlockWard.transaction_hash}`}
+                      href={`https://sepolia.etherscan.io/tx/${selectedBlockWard.transaction_hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="font-mono text-xs text-violet-600 hover:text-violet-700 break-all flex items-center gap-2"
@@ -509,7 +509,7 @@ export default function BlockWards() {
                   {selectedBlockWard.transaction_hash && (
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Network</p>
-                    <Badge variant="outline" className="text-xs">Polygon Amoy Testnet</Badge>
+                    <Badge variant="outline" className="text-xs">Sepolia Testnet</Badge>
                   </div>
                   )}
                 </div>

@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, BookOpen, Award, Shield, TrendingUp, 
-  ArrowUpRight, Plus, ChevronRight, Activity
+  ArrowUpRight, Plus, ChevronRight, Activity, RefreshCw, Loader2
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { motion } from 'framer-motion';
@@ -16,6 +17,21 @@ import { motion } from 'framer-motion';
 function AdminDashboardContent() {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState(null);
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    setReconcileResult(null);
+    try {
+      const res = await base44.functions.invoke('reconcileBlockWards', {});
+      setReconcileResult(res.data?.results || { error: 'No results returned' });
+    } catch (err) {
+      setReconcileResult({ error: err.message });
+    } finally {
+      setReconciling(false);
+    }
+  };
   const [school, setSchool] = useState(null);
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -131,8 +147,29 @@ function AdminDashboardContent() {
               View BlockWards
             </Link>
           </Button>
+          <Button variant="outline" onClick={handleReconcile} disabled={reconciling}>
+            {reconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Reconcile BlockWards
+          </Button>
         </div>
       </div>
+
+      {reconcileResult && (
+        <div className={`p-4 rounded-xl border text-sm ${reconcileResult.error ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+          {reconcileResult.error ? (
+            <p><strong>Reconciliation failed:</strong> {reconcileResult.error}</p>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              <span>✅ <strong>Total scanned:</strong> {reconcileResult.total}</span>
+              <span>🔧 <strong>Repaired:</strong> {reconcileResult.repaired}</span>
+              <span>✓ <strong>Already correct:</strong> {reconcileResult.alreadyCorrect}</span>
+              <span>⏳ <strong>Pending on-chain:</strong> {reconcileResult.pending}</span>
+              <span>❌ <strong>Failed:</strong> {reconcileResult.failed}</span>
+              <span>📝 <strong>No tx hash:</strong> {reconcileResult.noTx}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
