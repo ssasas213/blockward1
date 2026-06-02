@@ -14,6 +14,11 @@ export default function StatusBadge({ status }) {
       label: 'Issued',
       className: 'bg-green-100 text-green-700 border-green-200'
     },
+    active: {
+      icon: CheckCircle2,
+      label: 'Issued',
+      className: 'bg-green-100 text-green-700 border-green-200'
+    },
     failed: {
       icon: XCircle,
       label: 'Failed',
