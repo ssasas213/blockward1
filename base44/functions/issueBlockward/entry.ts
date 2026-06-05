@@ -40,8 +40,8 @@ Deno.serve(async (req) => {
   if (!callerProfile || callerProfile.user_type !== 'teacher') {
     return new Response(JSON.stringify({ ok: false, error: 'Only teachers can issue BlockWards' }), { status: 403, headers: CORS });
   }
-  if (callerProfile.can_issue_blockwards === false) {
-    return new Response(JSON.stringify({ ok: false, error: 'You are not approved to issue BlockWards. Ask your admin.' }), { status: 403, headers: CORS });
+  if (callerProfile.can_issue_blockwards !== true) {
+    return new Response(JSON.stringify({ ok: false, error: 'You are not approved to issue BlockWards. Ask your admin to enable your permission.' }), { status: 403, headers: CORS });
   }
 
   const RPC = Deno.env.get("SEPOLIA_RPC_URL");
@@ -52,10 +52,9 @@ Deno.serve(async (req) => {
   if (!RPC || !CONTRACT || !PK) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing env vars' }), { headers: CORS });
   }
-  // Allow sepolia (testnet) and polygon/amoy (mainnet)
-  const ALLOWED_NETWORKS = ["sepolia", "polygon", "amoy"];
-  if (!ALLOWED_NETWORKS.includes(NETWORK)) {
-    return new Response(JSON.stringify({ ok: false, error: 'Unknown network: ' + NETWORK }), { headers: CORS });
+  // Only allow sepolia (testnet) and polygon (mainnet)
+  if (NETWORK !== "sepolia" && NETWORK !== "polygon") {
+    return new Response(JSON.stringify({ ok: false, error: `Unsupported network: "${NETWORK}". Set NETWORK to "sepolia" or "polygon".` }), { headers: CORS });
   }
 
   const account = privateKeyToAccount(PK);
@@ -82,7 +81,7 @@ Deno.serve(async (req) => {
     const meta = {
       name: title,
       description: description || '',
-      image: imageUrl || DEFAULT_IMAGE,
+      image: (imageUrl && imageUrl.trim()) ? imageUrl.trim() : DEFAULT_IMAGE,
       attributes: [
         { trait_type: 'Category', value: category },
       ]

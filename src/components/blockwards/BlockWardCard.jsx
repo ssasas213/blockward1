@@ -47,14 +47,14 @@ export default function BlockWardCard({ blockWard, onClick }) {
             <Badge variant="outline" className="text-xs">
               {blockWard.category}
             </Badge>
-            {blockWard.issuedBy && (
+            {(blockWard.issuer_name || blockWard.issuer_email) && (
               <p className="text-xs text-slate-500">
-                Issued by {blockWard.issuedBy}
+                Issued by {blockWard.issuer_name || blockWard.issuer_email}
               </p>
             )}
-            {blockWard.issuedAt && (
+            {(blockWard.minted_at || blockWard.issuedAt) && (
               <p className="text-xs text-slate-400">
-                {format(new Date(blockWard.issuedAt), 'MMM d, yyyy')}
+                {format(new Date(blockWard.minted_at || blockWard.issuedAt), 'MMM d, yyyy')}
               </p>
             )}
           </div>

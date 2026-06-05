@@ -234,15 +234,18 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  // ── Role guard: only teachers can issue ──
-  if (profile && profile.user_type !== 'teacher') {
+  // ── Role guard: only approved teachers can issue ──
+  if (profile && (profile.user_type !== 'teacher' || profile.can_issue_blockwards !== true)) {
+    const reason = profile.user_type !== 'teacher'
+      ? 'Only teachers can issue BlockWards.'
+      : 'Your account is not approved to issue BlockWards. Ask your admin to enable your BlockWard permission.';
     return (
       <div className="max-w-md mx-auto py-20 text-center">
         <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-500">Only approved teachers can issue BlockWards.</p>
+        <p className="text-slate-500">{reason}</p>
       </div>
     );
   }
