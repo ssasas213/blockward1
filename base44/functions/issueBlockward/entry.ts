@@ -2,7 +2,7 @@
 // Soulbound NFT: minted directly to student via issueAward, no transfer needed
 import { createPublicClient, createWalletClient, http, parseAbi, getAddress } from "npm:viem@2.7.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
-import { sepolia } from "npm:viem@2.7.0/chains";
+import { sepolia, polygon } from "npm:viem@2.7.0/chains";
 import { encodeBytes32String } from "npm:ethers@6.13.0";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
@@ -34,6 +34,16 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: 'Missing studentId/title/category' }), { headers: CORS });
   }
 
+  // ── ROLE ENFORCEMENT: caller must be an approved teacher ──
+  const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+  const callerProfile = callerProfiles?.[0];
+  if (!callerProfile || callerProfile.user_type !== 'teacher') {
+    return new Response(JSON.stringify({ ok: false, error: 'Only teachers can issue BlockWards' }), { status: 403, headers: CORS });
+  }
+  if (callerProfile.can_issue_blockwards === false) {
+    return new Response(JSON.stringify({ ok: false, error: 'You are not approved to issue BlockWards. Ask your admin.' }), { status: 403, headers: CORS });
+  }
+
   const RPC = Deno.env.get("SEPOLIA_RPC_URL");
   const CONTRACT = Deno.env.get("CONTRACT_ADDRESS");
   const PK = Deno.env.get("ISSUER_PRIVATE_KEY");
@@ -42,8 +52,10 @@ Deno.serve(async (req) => {
   if (!RPC || !CONTRACT || !PK) {
     return new Response(JSON.stringify({ ok: false, error: 'Missing env vars' }), { headers: CORS });
   }
-  if (NETWORK !== "sepolia") {
-    return new Response(JSON.stringify({ ok: false, error: 'Wrong network: ' + NETWORK }), { headers: CORS });
+  // Allow sepolia (testnet) and polygon/amoy (mainnet)
+  const ALLOWED_NETWORKS = ["sepolia", "polygon", "amoy"];
+  if (!ALLOWED_NETWORKS.includes(NETWORK)) {
+    return new Response(JSON.stringify({ ok: false, error: 'Unknown network: ' + NETWORK }), { headers: CORS });
   }
 
   const account = privateKeyToAccount(PK);
@@ -82,8 +94,9 @@ Deno.serve(async (req) => {
 
   console.log(JSON.stringify({ fn: "issueBlockward", step: "ARGS", studentVault: studentAddr, teacherVault, awardType: awardBytes }));
 
-  const pub = createPublicClient({ chain: sepolia, transport: http(RPC) });
-  const wal = createWalletClient({ account, chain: sepolia, transport: http(RPC) });
+  const chain = NETWORK === "polygon" ? polygon : sepolia;
+  const pub = createPublicClient({ chain, transport: http(RPC) });
+  const wal = createWalletClient({ account, chain, transport: http(RPC) });
 
   // Simulate issueAward
   let sim;
@@ -153,7 +166,7 @@ Deno.serve(async (req) => {
     title,
     description: body.description || '',
     category: category.toLowerCase(),
-    image_url: imageUrl || DEFAULT_IMAGE,
+    image_url: (imageUrl && imageUrl.trim()) ? imageUrl.trim() : DEFAULT_IMAGE,
     transaction_hash: mintReceipt.transactionHash,
     block_number: Number(mintReceipt.blockNumber),
     minted_at: new Date().toISOString(),

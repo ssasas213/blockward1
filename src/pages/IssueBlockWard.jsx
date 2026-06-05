@@ -234,6 +234,19 @@ function IssueBlockWardContent() {
     </div>
   );
 
+  // ── Role guard: only teachers can issue ──
+  if (profile && profile.user_type !== 'teacher') {
+    return (
+      <div className="max-w-md mx-auto py-20 text-center">
+        <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
+          <AlertTriangle className="h-10 w-10 text-red-500" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
+        <p className="text-slate-500">Only approved teachers can issue BlockWards.</p>
+      </div>
+    );
+  }
+
   // ── Success ──
   if (issueSuccess) return (
     <div className="max-w-2xl mx-auto py-12">
