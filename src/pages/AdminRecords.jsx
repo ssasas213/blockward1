@@ -19,6 +19,7 @@ export default function AdminRecords() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [loadError, setLoadError] = useState(null);
   const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => { loadData(); }, []);
@@ -48,6 +49,7 @@ export default function AdminRecords() {
 
       setRecords(schoolRecs);
     } catch (e) {
+      setLoadError(e.message);
       toast.error(e.message);
     } finally {
       setLoading(false);
@@ -80,8 +82,16 @@ export default function AdminRecords() {
         <p className="text-slate-500 mt-1">Review, sign, and manage all digital custodian records for your school</p>
       </div>
 
+      {/* Error Panel */}
+      {loadError && (
+        <div className="bg-red-900 text-red-200 rounded-xl p-4 font-mono text-xs">
+          <p className="text-red-300 font-bold mb-1">❌ LOAD ERROR</p>
+          <p>{loadError}</p>
+        </div>
+      )}
+
       {/* Debug Panel */}
-      {debugInfo && (
+      {debugInfo ? (
         <div className="bg-slate-900 text-green-400 rounded-xl p-4 font-mono text-xs space-y-1">
           <p className="text-yellow-400 font-bold mb-2">🔍 DEBUG PANEL (live values)</p>
           <p>email: <span className="text-white">{debugInfo.userEmail}</span></p>
@@ -94,6 +104,11 @@ export default function AdminRecords() {
           <p>awaiting_admin_signature: <span className="text-white">{debugInfo.awaitingSignature}</span></p>
           <p>─────────────────────────────</p>
           <p>school_ids found in DB: <span className="text-white">{debugInfo.allSchoolIds.join(', ') || 'none'}</span></p>
+        </div>
+      ) : !loadError && (
+        <div className="bg-slate-900 text-yellow-400 rounded-xl p-4 font-mono text-xs">
+          <p>⚠️ debugInfo is null — loadData did not complete or user is not authenticated</p>
+          <p className="text-white mt-1">profile state: {profile ? JSON.stringify({user_type: profile.user_type, school_id: profile.school_id}) : 'null'}</p>
         </div>
       )}
 
@@ -140,7 +155,7 @@ export default function AdminRecords() {
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-52">
-            <SelectValue placeholder="Filter by status" />
+            <SelectValue>{statusFilter === 'all' ? 'All Statuses' : statusFilter.replace(/_/g, ' ')}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
