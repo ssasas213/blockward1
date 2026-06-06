@@ -97,6 +97,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Messages', icon: Bell, page: 'Messages' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
       { name: 'BlockWards', icon: Award, page: 'BlockWards' },
+      { name: 'Student Records', icon: FileText, page: 'AdminRecords' },
       { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
       { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
       { name: 'Reports', icon: FileText, page: 'Reports' },
@@ -116,6 +117,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
       { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
       { name: 'BlockWards', icon: Shield, page: 'TeacherBlockWards' },
+      { name: 'Student Records', icon: FileText, page: 'TeacherRecords' },
       { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
@@ -128,6 +130,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'School Events', icon: Calendar, page: 'SchoolEvents' },
       { name: 'My Points', icon: Award, page: 'MyPoints' },
       { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
+      { name: 'My Records', icon: FileText, page: 'StudentMyRecords' },
       { name: 'Resources', icon: FileText, page: 'Resources' },
     ],
   };

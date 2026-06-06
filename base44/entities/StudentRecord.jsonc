@@ -1,0 +1,139 @@
+{
+  "name": "StudentRecord",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this record belongs to \u2014 enforces data isolation"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "teacher_id": {
+      "type": "string",
+      "description": "UserProfile.id of the issuing teacher"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "teacher_name": {
+      "type": "string"
+    },
+    "admin_id": {
+      "type": "string",
+      "description": "UserProfile.id of the signing admin"
+    },
+    "admin_email": {
+      "type": "string"
+    },
+    "admin_name": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the student"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "behaviour",
+        "special"
+      ],
+      "default": "academic"
+    },
+    "description": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Uploaded image or supporting file"
+    },
+    "file_type": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "awaiting_admin_signature",
+        "awaiting_student_signature",
+        "approved",
+        "pending_drive_save",
+        "active",
+        "rejected"
+      ],
+      "default": "draft",
+      "description": "Workflow status"
+    },
+    "admin_signed": {
+      "type": "boolean",
+      "default": false
+    },
+    "admin_signature_id": {
+      "type": "string",
+      "description": "Reference to DigitalSignature record"
+    },
+    "admin_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "student_signed": {
+      "type": "boolean",
+      "default": false
+    },
+    "student_signature_id": {
+      "type": "string",
+      "description": "Reference to DigitalSignature record"
+    },
+    "student_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "drive_file_url": {
+      "type": "string",
+      "description": "Google Drive saved file URL"
+    },
+    "drive_file_id": {
+      "type": "string"
+    },
+    "drive_folder_path": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "school_id",
+    "student_email",
+    "teacher_email",
+    "title",
+    "category"
+  ]
+}

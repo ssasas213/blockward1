@@ -1,0 +1,58 @@
+{
+  "name": "DigitalSignature",
+  "type": "object",
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "description": "StudentRecord.id this signature belongs to"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "signer_email": {
+      "type": "string"
+    },
+    "signer_name": {
+      "type": "string"
+    },
+    "signer_role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "student"
+      ],
+      "description": "Who signed"
+    },
+    "signature_type": {
+      "type": "string",
+      "enum": [
+        "typed",
+        "drawn"
+      ],
+      "default": "typed"
+    },
+    "signature_value": {
+      "type": "string",
+      "description": "Typed name or base64 drawn signature image data URL"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "record_id",
+    "school_id",
+    "signer_email",
+    "signer_name",
+    "signer_role",
+    "signature_value",
+    "signed_at"
+  ]
+}

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Award, Shield, Calendar, BookOpen, 
-  ChevronRight, TrendingUp, Star, Clock, FileText
+  ChevronRight, TrendingUp, Star, Clock, FileText, PenLine
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -318,6 +318,26 @@ function StudentDashboardContent() {
               </Button>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* My Records Quick Access */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-orange-50 to-amber-50">
+        <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center">
+              <PenLine className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">My Digital Records</p>
+              <p className="text-sm text-slate-500">View your awards, sign pending records, access Drive files</p>
+            </div>
+          </div>
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white shrink-0" asChild>
+            <Link to={createPageUrl('StudentMyRecords')}>
+              <FileText className="h-4 w-4 mr-2" /> My Records
+            </Link>
+          </Button>
         </CardContent>
       </Card>
 

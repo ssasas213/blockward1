@@ -11,7 +11,7 @@ import {
   Users, BookOpen, Award, Shield, TrendingUp,
   ArrowUpRight, ChevronRight, Activity, RefreshCw, Loader2,
   Settings, BarChart3, FileText, HeartPulse, Download,
-  CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink, Info
+  CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink, Info, PenLine
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -394,6 +394,37 @@ function AdminDashboardContent() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ─── DIGITAL CUSTODIAN RECORDS ─── */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-orange-100 flex items-center justify-center">
+              <PenLine className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Digital Custodian Records</CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">Review, sign, and approve student award records. Records require both admin and student signatures.</p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" size="sm" asChild>
+              <Link to={createPageUrl('AdminRecords')}>
+                <FileText className="h-4 w-4 mr-2" />
+                All Student Records
+              </Link>
+            </Button>
+            <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white" size="sm" asChild>
+              <Link to={createPageUrl('AdminRecords')}>
+                <PenLine className="h-4 w-4 mr-2" />
+                Records Awaiting My Signature
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

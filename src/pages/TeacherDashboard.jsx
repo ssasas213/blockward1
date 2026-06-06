@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, BookOpen, Award, Shield, Calendar,
-  Plus, ChevronRight, Clock, FileText
+  Plus, ChevronRight, Clock, FileText, PenLine
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -238,6 +238,26 @@ function TeacherDashboardContent() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Student Records Quick Access */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
+        <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center">
+              <PenLine className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-900">Digital Custodian Records</p>
+              <p className="text-sm text-slate-500">Create and track award records for your students</p>
+            </div>
+          </div>
+          <Button className="bg-orange-500 hover:bg-orange-600 text-white shrink-0" asChild>
+            <Link to={createPageUrl('TeacherRecords')}>
+              <FileText className="h-4 w-4 mr-2" /> My Records
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Quick Actions */}
       <Card className="border-0 shadow-lg">

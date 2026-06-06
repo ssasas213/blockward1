@@ -82,6 +82,10 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
 import DemoSandbox from './pages/DemoSandbox';
+import AdminRecords from './pages/AdminRecords';
+import TeacherRecords from './pages/TeacherRecords';
+import StudentMyRecords from './pages/StudentMyRecords';
+import RecordDetail from './pages/RecordDetail';
 import __Layout from './Layout.jsx';
 
 
@@ -121,6 +125,10 @@ export const PAGES = {
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
     "DemoSandbox": DemoSandbox,
+    "AdminRecords": AdminRecords,
+    "TeacherRecords": TeacherRecords,
+    "StudentMyRecords": StudentMyRecords,
+    "RecordDetail": RecordDetail,
 }
 
 export const pagesConfig = {
