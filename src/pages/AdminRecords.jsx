@@ -22,6 +22,8 @@ export default function AdminRecords() {
 
   useEffect(() => { loadData(); }, []);
 
+  const [debugInfo, setDebugInfo] = useState(null);
+
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
@@ -29,13 +31,23 @@ export default function AdminRecords() {
       const p = profiles[0];
       setProfile(p);
 
-      if (!p) return;
-
-      // Admin only sees their own school's records
-      const recs = p.school_id
-        ? await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date')
+      const allRecs = await base44.entities.StudentRecord.filter({}, '-created_date');
+      const schoolRecs = p?.school_id
+        ? allRecs.filter(r => r.school_id === p.school_id)
         : [];
-      setRecords(recs);
+
+      setDebugInfo({
+        userEmail: user.email,
+        profileSchoolId: p?.school_id || 'NULL',
+        profileUserType: p?.user_type || 'NULL',
+        profileStatus: p?.status || 'NULL',
+        totalRecordsInDB: allRecs.length,
+        recordsMatchingSchool: schoolRecs.length,
+        awaitingSignature: schoolRecs.filter(r => r.status === 'awaiting_admin_signature').length,
+        allSchoolIds: [...new Set(allRecs.map(r => r.school_id))],
+      });
+
+      setRecords(schoolRecs);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -68,6 +80,23 @@ export default function AdminRecords() {
         <h1 className="text-3xl font-bold text-slate-900">Student Records</h1>
         <p className="text-slate-500 mt-1">Review, sign, and manage all digital custodian records for your school</p>
       </div>
+
+      {/* Debug Panel */}
+      {debugInfo && (
+        <div className="bg-slate-900 text-green-400 rounded-xl p-4 font-mono text-xs space-y-1">
+          <p className="text-yellow-400 font-bold mb-2">🔍 DEBUG PANEL (live values)</p>
+          <p>email: <span className="text-white">{debugInfo.userEmail}</span></p>
+          <p>profile.user_type: <span className="text-white">{debugInfo.profileUserType}</span></p>
+          <p>profile.school_id: <span className="text-white">{debugInfo.profileSchoolId}</span></p>
+          <p>profile.status: <span className="text-white">{debugInfo.profileStatus}</span></p>
+          <p>─────────────────────────────</p>
+          <p>total StudentRecords in DB: <span className="text-white">{debugInfo.totalRecordsInDB}</span></p>
+          <p>records matching school_id: <span className={debugInfo.recordsMatchingSchool > 0 ? 'text-green-300' : 'text-red-400'}>{debugInfo.recordsMatchingSchool}</span></p>
+          <p>awaiting_admin_signature: <span className="text-white">{debugInfo.awaitingSignature}</span></p>
+          <p>─────────────────────────────</p>
+          <p>school_ids found in DB: <span className="text-white">{debugInfo.allSchoolIds.join(', ') || 'none'}</span></p>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
