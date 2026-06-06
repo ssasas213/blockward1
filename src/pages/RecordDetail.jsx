@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { ArrowLeft, PenLine, Check, X, HardDrive, ExternalLink, Loader2, FileText, Shield, User, BookOpen, SendHorizonal } from 'lucide-react';
+import { ArrowLeft, PenLine, Check, X, HardDrive, ExternalLink, Loader2, FileText, Shield, User, SendHorizonal, RefreshCw } from 'lucide-react';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
@@ -30,6 +30,8 @@ export default function RecordDetail() {
   const [rejectReason, setRejectReason] = useState('');
   const [savingToDrive, setSavingToDrive] = useState(false);
   const [signing, setSigning] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
 
   useEffect(() => { loadAll(); }, [recordId]);
 
@@ -42,16 +44,23 @@ export default function RecordDetail() {
       const p = profiles[0];
       setProfile(p);
 
+      // Block inactive users
+      if (p?.status === 'inactive' || p?.status === 'suspended') {
+        toast.error('Your account is inactive. Contact your administrator.');
+        navigate(-1);
+        return;
+      }
+
       const records = await base44.entities.StudentRecord.filter({ id: recordId });
       if (!records.length) { toast.error('Record not found'); return; }
       const rec = records[0];
 
-      // Security: enforce school isolation
-      if (p.school_id && rec.school_id && p.school_id !== rec.school_id) {
+      // School isolation
+      if (p?.school_id && rec.school_id && p.school_id !== rec.school_id) {
         toast.error('Access denied'); navigate(-1); return;
       }
       // Students can only see their own records
-      if (p.user_type === 'student' && rec.student_email !== currentUser.email) {
+      if (p?.user_type === 'student' && rec.student_email !== currentUser.email) {
         toast.error('Access denied'); navigate(-1); return;
       }
 
@@ -71,59 +80,31 @@ export default function RecordDetail() {
     }
   };
 
-  const handleAdminSubmit = async () => {
-    // Teacher submits draft → awaiting admin signature
+  // All transitions go through backend recordWorkflow
+  const callWorkflow = async (action, extra = {}) => {
+    const res = await base44.functions.invoke('recordWorkflow', { action, recordId, ...extra });
+    if (!res.data?.ok) throw new Error(res.data?.error || 'Action failed');
+    return res.data;
+  };
+
+  const handleSubmit = async () => {
+    setSubmitting(true);
     try {
-      await base44.entities.StudentRecord.update(recordId, {
-        status: 'awaiting_admin_signature',
-        submitted_at: new Date().toISOString()
-      });
-      await logAction('submitted', record.status, 'awaiting_admin_signature', 'Submitted for admin review');
+      await callWorkflow('submitRecord');
       toast.success('Submitted for admin signature');
       loadAll();
     } catch (e) { toast.error(e.message); }
+    finally { setSubmitting(false); }
   };
 
   const handleSign = async (sigData) => {
     setSigning(true);
     try {
       const isAdmin = profile.user_type === 'admin';
-      const sigRecord = await base44.entities.DigitalSignature.create({
-        record_id: recordId,
-        school_id: record.school_id,
-        signer_email: user.email,
-        signer_name: `${profile.first_name} ${profile.last_name}`,
-        signer_role: isAdmin ? 'admin' : 'student',
-        signature_type: sigData.type,
-        signature_value: sigData.value,
-        signed_at: new Date().toISOString()
-      });
-
-      if (isAdmin) {
-        const newStatus = record.student_signed ? 'pending_drive_save' : 'awaiting_student_signature';
-        await base44.entities.StudentRecord.update(recordId, {
-          admin_signed: true,
-          admin_signature_id: sigRecord.id,
-          admin_signed_at: new Date().toISOString(),
-          admin_id: profile.id,
-          admin_email: user.email,
-          admin_name: `${profile.first_name} ${profile.last_name}`,
-          status: newStatus
-        });
-        await logAction('admin_signed', record.status, newStatus, 'Admin signature added');
-      } else {
-        const newStatus = record.admin_signed ? 'pending_drive_save' : 'awaiting_admin_signature';
-        await base44.entities.StudentRecord.update(recordId, {
-          student_signed: true,
-          student_signature_id: sigRecord.id,
-          student_signed_at: new Date().toISOString(),
-          status: newStatus
-        });
-        await logAction('student_signed', record.status, newStatus, 'Student signature added');
-      }
-
+      const action = isAdmin ? 'adminSignRecord' : 'studentSignRecord';
+      await callWorkflow(action, { signatureData: sigData });
       setShowSignDialog(false);
-      toast.success('Signature saved');
+      toast.success('Signature saved successfully');
       loadAll();
     } catch (e) {
       toast.error(e.message);
@@ -133,16 +114,16 @@ export default function RecordDetail() {
   };
 
   const handleReject = async () => {
+    if (!rejectReason.trim()) { toast.error('Please provide a rejection reason'); return; }
+    setRejecting(true);
     try {
-      await base44.entities.StudentRecord.update(recordId, {
-        status: 'rejected',
-        rejection_reason: rejectReason
-      });
-      await logAction('admin_rejected', record.status, 'rejected', rejectReason);
+      await callWorkflow('adminRejectRecord', { rejectionReason: rejectReason });
       setShowRejectDialog(false);
+      setRejectReason('');
       toast.success('Record rejected');
       loadAll();
     } catch (e) { toast.error(e.message); }
+    finally { setRejecting(false); }
   };
 
   const handleSaveToDrive = async () => {
@@ -150,41 +131,46 @@ export default function RecordDetail() {
     try {
       const res = await base44.functions.invoke('saveRecordToDrive', { recordId });
       if (res.data?.ok) {
-        toast.success('Saved successfully!');
+        toast.success('Saved to Google Drive successfully!');
         loadAll();
       } else {
-        toast.error(res.data?.error || 'Failed to save');
+        // Never silently succeed — show the real error
+        toast.error(res.data?.error || 'Failed to save to Drive');
       }
-    } catch (e) { toast.error(e.message); }
-    finally { setSavingToDrive(false); }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSavingToDrive(false);
+    }
   };
 
-  const logAction = async (action, oldStatus, newStatus, notes) => {
-    await base44.entities.AuditLog.create({
-      record_id: recordId,
-      school_id: record.school_id,
-      actor_email: user.email,
-      actor_name: `${profile.first_name} ${profile.last_name}`,
-      actor_role: profile.user_type,
-      action, old_status: oldStatus, new_status: newStatus, notes,
-      timestamp: new Date().toISOString()
-    });
-  };
+  // Derived permissions
+  const canSubmit = record?.status === 'draft'
+    && profile?.user_type === 'teacher'
+    && record?.teacher_email === user?.email
+    && profile?.status !== 'inactive' && profile?.status !== 'suspended';
 
   const canSign = () => {
     if (!record || !profile) return false;
+    if (profile.status === 'inactive' || profile.status === 'suspended') return false;
     if (profile.user_type === 'admin') {
       return record.status === 'awaiting_admin_signature' && !record.admin_signed;
     }
     if (profile.user_type === 'student') {
-      return (record.status === 'awaiting_student_signature' || record.admin_signed) && !record.student_signed && record.student_email === user?.email;
+      return record.status === 'awaiting_student_signature' && !record.student_signed && record.student_email === user?.email;
     }
     return false;
   };
 
-  const canSubmit = record?.status === 'draft' && profile?.user_type === 'teacher' && record?.teacher_email === user?.email;
-  const canReject = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
-  const canSaveToDrive = (record?.status === 'pending_drive_save') && record?.admin_signed && record?.student_signed;
+  const canReject = record?.status === 'awaiting_admin_signature'
+    && profile?.user_type === 'admin'
+    && profile?.status !== 'inactive';
+
+  // HIGH PRIORITY FIX: only admin can trigger Drive save
+  const canSaveToDrive = record?.status === 'pending_drive_save'
+    && record?.admin_signed
+    && record?.student_signed
+    && profile?.user_type === 'admin';
 
   const CATEGORY_COLORS = {
     academic: 'bg-blue-100 text-blue-700',
@@ -223,11 +209,20 @@ export default function RecordDetail() {
         </div>
       </div>
 
+      {/* Rejection reason banner */}
+      {record.status === 'rejected' && record.rejection_reason && (
+        <div className="rounded-xl p-4 bg-red-50 border border-red-200">
+          <p className="text-sm font-semibold text-red-700 mb-1">Rejection Reason</p>
+          <p className="text-sm text-red-600">{record.rejection_reason}</p>
+        </div>
+      )}
+
       {/* Action Bar */}
       <div className="flex flex-wrap gap-3">
         {canSubmit && (
-          <Button onClick={handleAdminSubmit} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-            <SendHorizonal className="h-4 w-4 mr-2" /> Submit for Admin Review
+          <Button onClick={handleSubmit} disabled={submitting} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
+            Submit for Admin Review
           </Button>
         )}
         {canSign() && (
@@ -243,13 +238,17 @@ export default function RecordDetail() {
         {canSaveToDrive && (
           <Button onClick={handleSaveToDrive} disabled={savingToDrive} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700">
             {savingToDrive ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-            Save to Drive
+            Save to Google Drive
           </Button>
+        )}
+        {/* Retry button for failed drive saves */}
+        {record.status === 'pending_drive_save' && profile?.user_type === 'admin' && !savingToDrive && record.admin_signed && record.student_signed && (
+          <p className="text-xs text-slate-500 self-center">Ready to save to Google Drive</p>
         )}
         {record.drive_file_url && (
           <Button variant="outline" asChild>
             <a href={record.drive_file_url} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4 mr-2" /> View Saved File
+              <ExternalLink className="h-4 w-4 mr-2" /> View on Google Drive
             </a>
           </Button>
         )}
@@ -286,6 +285,18 @@ export default function RecordDetail() {
                     <p className="font-medium">{record.admin_name}</p>
                   </div>
                 )}
+                {record.submitted_at && (
+                  <div>
+                    <p className="text-slate-500">Submitted At</p>
+                    <p className="font-medium">{format(new Date(record.submitted_at), 'MMM d, yyyy HH:mm')}</p>
+                  </div>
+                )}
+                {record.approved_at && (
+                  <div>
+                    <p className="text-slate-500">Approved At</p>
+                    <p className="font-medium">{format(new Date(record.approved_at), 'MMM d, yyyy HH:mm')}</p>
+                  </div>
+                )}
               </div>
               {record.description && (
                 <div>
@@ -295,7 +306,7 @@ export default function RecordDetail() {
               )}
               {record.file_url && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-2">Attached File</p>
+                  <p className="text-sm text-slate-500 mb-2">Attached Evidence</p>
                   {record.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                     <img src={record.file_url} alt="Record attachment" className="max-h-48 rounded-lg border" />
                   ) : (
@@ -310,7 +321,7 @@ export default function RecordDetail() {
             </CardContent>
           </Card>
 
-          {/* Signatures */}
+          {/* Signatures — read-only display, no editing allowed */}
           <Card className="border-0 shadow-md">
             <CardHeader><CardTitle className="text-base flex items-center gap-2"><PenLine className="h-4 w-4" /> Digital Signatures</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -320,6 +331,7 @@ export default function RecordDetail() {
                   <div className="flex items-center gap-2">
                     <Shield className="h-4 w-4 text-violet-600" />
                     <span className="font-medium text-sm">Admin Signature</span>
+                    {record.admin_signed && <span className="text-xs text-slate-400 ml-1">(immutable)</span>}
                   </div>
                   {record.admin_signed
                     ? <Badge className="bg-violet-100 text-violet-700 border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
@@ -344,6 +356,7 @@ export default function RecordDetail() {
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-emerald-600" />
                     <span className="font-medium text-sm">Student Signature</span>
+                    {record.student_signed && <span className="text-xs text-slate-400 ml-1">(immutable)</span>}
                   </div>
                   {record.student_signed
                     ? <Badge className="bg-emerald-100 text-emerald-700 border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
@@ -367,9 +380,10 @@ export default function RecordDetail() {
                 <div className="rounded-xl p-4 border border-purple-200 bg-purple-50">
                   <div className="flex items-center gap-2 mb-1">
                     <HardDrive className="h-4 w-4 text-purple-600" />
-                    <span className="font-medium text-sm text-purple-800">Saved to Drive</span>
+                    <span className="font-medium text-sm text-purple-800">Saved to Google Drive</span>
                   </div>
                   <p className="text-xs text-purple-600">{record.drive_folder_path}</p>
+                  {record.drive_file_id && <p className="text-xs text-purple-400 mt-1">File ID: {record.drive_file_id}</p>}
                 </div>
               )}
             </CardContent>
@@ -394,11 +408,17 @@ export default function RecordDetail() {
                 const stepIdx = ORDER.indexOf(step.key);
                 const done = current > stepIdx;
                 const active = current === stepIdx;
+                const isRejected = record.status === 'rejected';
                 return (
                   <div key={step.key} className="flex items-start gap-3 mb-3">
                     <div className="flex flex-col items-center">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${done ? 'bg-violet-600 text-white' : active ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-500' : 'bg-slate-100 text-slate-400'}`}>
-                        {done ? <Check className="h-3 w-3" /> : i + 1}
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                        isRejected && step.key === 'awaiting_admin_signature' ? 'bg-red-500 text-white' :
+                        done ? 'bg-violet-600 text-white' :
+                        active ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-500' :
+                        'bg-slate-100 text-slate-400'
+                      }`}>
+                        {done ? <Check className="h-3 w-3" /> : isRejected && step.key === 'awaiting_admin_signature' ? <X className="h-3 w-3" /> : i + 1}
                       </div>
                       {i < arr.length - 1 && <div className={`w-0.5 h-5 mt-0.5 ${done ? 'bg-violet-400' : 'bg-slate-200'}`} />}
                     </div>
@@ -406,6 +426,11 @@ export default function RecordDetail() {
                   </div>
                 );
               })}
+              {record.status === 'rejected' && (
+                <div className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
+                  <p className="text-xs font-semibold text-red-600">Record Rejected</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -429,6 +454,9 @@ export default function RecordDetail() {
             <p className="text-sm text-slate-600 mb-4">
               By signing, you confirm you have reviewed this record: <strong>{record.title}</strong>
             </p>
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
+              ⚠️ Signatures are permanent and cannot be edited or deleted after submission.
+            </p>
             <SignatureCapture
               signerName={`${profile?.first_name} ${profile?.last_name}`}
               onConfirm={handleSign}
@@ -450,7 +478,10 @@ export default function RecordDetail() {
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleReject}>Confirm Rejection</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={rejecting}>
+              {rejecting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Confirm Rejection
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

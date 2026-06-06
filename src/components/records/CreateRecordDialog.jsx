@@ -68,8 +68,7 @@ export default function CreateRecordDialog({ open, onOpenChange, teacherProfile,
         category: form.category,
         description: form.description,
         file_url: fileUrl,
-        status: 'draft',
-        submitted_at: new Date().toISOString()
+        status: 'draft'
       });
 
       await base44.entities.AuditLog.create({
