@@ -19,10 +19,9 @@ export default function AdminRecords() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => { loadData(); }, []);
-
-  const [debugInfo, setDebugInfo] = useState(null);
 
   const loadData = async () => {
     try {
