@@ -86,6 +86,7 @@ import AdminRecords from './pages/AdminRecords';
 import TeacherRecords from './pages/TeacherRecords';
 import StudentMyRecords from './pages/StudentMyRecords';
 import RecordDetail from './pages/RecordDetail';
+import RouteDebug from './pages/RouteDebug';
 import __Layout from './Layout.jsx';
 
 
@@ -129,6 +130,7 @@ export const PAGES = {
     "TeacherRecords": TeacherRecords,
     "StudentMyRecords": StudentMyRecords,
     "RecordDetail": RecordDetail,
+    "RouteDebug": RouteDebug,
 }
 
 export const pagesConfig = {
