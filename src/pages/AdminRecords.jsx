@@ -35,9 +35,29 @@ export default function AdminRecords() {
     };
 
     try {
-      // Step 1: auth
-      const user = await base44.auth.me();
-      debug.authUser = user?.email || 'null';
+      // Step 1: auth — catch separately so we can redirect vs error
+      let user = null;
+      try {
+        user = await base44.auth.me();
+      } catch (e) {
+        debug.queryErrors.auth = e.message;
+        debug.authUser = 'AUTH_FAILED: ' + e.message;
+        setDebugInfo(debug);
+        setLoading(false);
+        // Redirect to login
+        base44.auth.redirectToLogin(window.location.href);
+        return;
+      }
+
+      if (!user) {
+        debug.authUser = 'null (no user returned)';
+        setDebugInfo(debug);
+        setLoading(false);
+        base44.auth.redirectToLogin(window.location.href);
+        return;
+      }
+
+      debug.authUser = user.email || 'null';
 
       // Step 2: UserProfile lookup
       let p = null;
@@ -112,6 +132,18 @@ export default function AdminRecords() {
     </div>
   );
 
+  // Not authenticated — show login prompt instead of blank/error page
+  if (!loading && debugInfo?.authUser?.startsWith('AUTH_FAILED') || (!loading && debugInfo?.authUser === 'null (no user returned)')) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <p className="text-slate-600 font-medium">You need to be logged in to view Student Records.</p>
+        <Button onClick={() => base44.auth.redirectToLogin(window.location.href)}>
+          Log In
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -121,9 +153,17 @@ export default function AdminRecords() {
 
       {/* Error Panel */}
       {loadError && (
-        <div className="bg-red-900 text-red-200 rounded-xl p-4 font-mono text-xs">
-          <p className="text-red-300 font-bold mb-1">❌ LOAD ERROR</p>
+        <div className="bg-red-900 text-red-200 rounded-xl p-4 font-mono text-xs space-y-2">
+          <p className="text-red-300 font-bold">❌ LOAD ERROR</p>
           <p>{loadError}</p>
+          <div className="flex gap-2 pt-1">
+            <button onClick={loadData} className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white rounded text-xs">
+              ↺ Retry
+            </button>
+            <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs">
+              → Re-login
+            </button>
+          </div>
         </div>
       )}
 
