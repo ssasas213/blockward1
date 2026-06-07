@@ -25,32 +25,69 @@ export default function AdminRecords() {
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
+    const debug = {
+      authUser: null,
+      profileFound: false,
+      profileRole: null,
+      profileSchoolId: null,
+      queryResults: {},
+      queryErrors: {},
+    };
+
     try {
+      // Step 1: auth
       const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      const p = profiles[0];
+      debug.authUser = user?.email || 'null';
+
+      // Step 2: UserProfile lookup
+      let p = null;
+      try {
+        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+        p = profiles[0] || null;
+        debug.profileFound = !!p;
+        debug.profileRole = p?.user_type || 'NULL';
+        debug.profileSchoolId = p?.school_id || 'NULL';
+        debug.queryResults.UserProfile = `${profiles.length} result(s)`;
+      } catch (e) {
+        debug.queryErrors.UserProfile = e.message;
+        setDebugInfo(debug);
+        setLoadError('UserProfile query failed: ' + e.message);
+        setLoading(false);
+        return;
+      }
+
       setProfile(p);
 
-      const allRecs = await base44.entities.StudentRecord.filter({}, '-created_date');
-      const schoolRecs = p?.school_id
-        ? allRecs.filter(r => r.school_id === p.school_id)
-        : [];
+      if (!p?.school_id) {
+        debug.queryErrors.StudentRecord = 'SKIPPED — no school_id on profile';
+        setDebugInfo(debug);
+        setRecords([]);
+        setLoading(false);
+        return;
+      }
 
-      setDebugInfo({
-        userEmail: user.email,
-        profileSchoolId: p?.school_id || 'NULL',
-        profileUserType: p?.user_type || 'NULL',
-        profileStatus: p?.status || 'NULL',
-        totalRecordsInDB: allRecs.length,
-        recordsMatchingSchool: schoolRecs.length,
-        awaitingSignature: schoolRecs.filter(r => r.status === 'awaiting_admin_signature').length,
-        allSchoolIds: [...new Set(allRecs.map(r => r.school_id))],
-      });
+      // Step 3: StudentRecord filtered by school_id server-side (avoids full table scan + RLS join)
+      let schoolRecs = [];
+      try {
+        schoolRecs = await base44.entities.StudentRecord.filter(
+          { school_id: p.school_id },
+          '-created_date'
+        );
+        debug.queryResults.StudentRecord = `${schoolRecs.length} result(s)`;
+      } catch (e) {
+        debug.queryErrors.StudentRecord = e.message;
+        setDebugInfo(debug);
+        setLoadError('StudentRecord query failed: ' + e.message);
+        setLoading(false);
+        return;
+      }
 
       setRecords(schoolRecs);
+      setDebugInfo(debug);
     } catch (e) {
-      setLoadError(e.message);
-      toast.error(e.message);
+      debug.queryErrors.unexpected = e.message;
+      setDebugInfo(debug);
+      setLoadError('Unexpected error: ' + e.message);
     } finally {
       setLoading(false);
     }
@@ -93,22 +130,25 @@ export default function AdminRecords() {
       {/* Debug Panel */}
       {debugInfo ? (
         <div className="bg-slate-900 text-green-400 rounded-xl p-4 font-mono text-xs space-y-1">
-          <p className="text-yellow-400 font-bold mb-2">🔍 DEBUG PANEL (live values)</p>
-          <p>email: <span className="text-white">{debugInfo.userEmail}</span></p>
-          <p>profile.user_type: <span className="text-white">{debugInfo.profileUserType}</span></p>
-          <p>profile.school_id: <span className="text-white">{debugInfo.profileSchoolId}</span></p>
-          <p>profile.status: <span className="text-white">{debugInfo.profileStatus}</span></p>
-          <p>─────────────────────────────</p>
-          <p>total StudentRecords in DB: <span className="text-white">{debugInfo.totalRecordsInDB}</span></p>
-          <p>records matching school_id: <span className={debugInfo.recordsMatchingSchool > 0 ? 'text-green-300' : 'text-red-400'}>{debugInfo.recordsMatchingSchool}</span></p>
-          <p>awaiting_admin_signature: <span className="text-white">{debugInfo.awaitingSignature}</span></p>
-          <p>─────────────────────────────</p>
-          <p>school_ids found in DB: <span className="text-white">{debugInfo.allSchoolIds.join(', ') || 'none'}</span></p>
+          <p className="text-yellow-400 font-bold mb-2">🔍 DEBUG PANEL</p>
+          <p>authUser: <span className="text-white">{debugInfo.authUser}</span></p>
+          <p>profileFound: <span className={debugInfo.profileFound ? 'text-green-300' : 'text-red-400'}>{String(debugInfo.profileFound)}</span></p>
+          <p>profileRole: <span className="text-white">{debugInfo.profileRole}</span></p>
+          <p>profileSchoolId: <span className="text-white">{debugInfo.profileSchoolId}</span></p>
+          <p className="pt-1 text-yellow-300">queryResults:</p>
+          {Object.entries(debugInfo.queryResults).map(([k, v]) => (
+            <p key={k} className="pl-2">  {k}: <span className="text-green-300">{v}</span></p>
+          ))}
+          {Object.keys(debugInfo.queryErrors).length > 0 && <>
+            <p className="pt-1 text-red-400">queryErrors:</p>
+            {Object.entries(debugInfo.queryErrors).map(([k, v]) => (
+              <p key={k} className="pl-2">  {k}: <span className="text-red-300">{v}</span></p>
+            ))}
+          </>}
         </div>
       ) : !loadError && (
         <div className="bg-slate-900 text-yellow-400 rounded-xl p-4 font-mono text-xs">
-          <p>⚠️ debugInfo is null — loadData did not complete or user is not authenticated</p>
-          <p className="text-white mt-1">profile state: {profile ? JSON.stringify({user_type: profile.user_type, school_id: profile.school_id}) : 'null'}</p>
+          <p>⚠️ debugInfo is null — loadData crashed before setting it</p>
         </div>
       )}
 
