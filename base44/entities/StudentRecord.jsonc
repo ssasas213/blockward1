@@ -14,7 +14,7 @@
     },
     "teacher_id": {
       "type": "string",
-      "description": "UserProfile.id of the issuing teacher"
+      "description": "UserProfile.id of the reviewing teacher"
     },
     "teacher_email": {
       "type": "string"
@@ -61,9 +61,14 @@
     "description": {
       "type": "string"
     },
+    "date_achieved": {
+      "type": "string",
+      "format": "date",
+      "description": "When the achievement occurred"
+    },
     "file_url": {
       "type": "string",
-      "description": "Uploaded image or supporting file"
+      "description": "Student-uploaded evidence image or file"
     },
     "file_type": {
       "type": "string"
@@ -73,15 +78,30 @@
       "enum": [
         "draft",
         "submitted",
+        "awaiting_teacher_signature",
         "awaiting_admin_signature",
-        "awaiting_student_signature",
         "approved",
-        "pending_drive_save",
-        "active",
+        "minted",
+        "archived",
         "rejected"
       ],
       "default": "draft",
       "description": "Workflow status"
+    },
+    "teacher_signed": {
+      "type": "boolean",
+      "default": false
+    },
+    "teacher_signature_id": {
+      "type": "string",
+      "description": "Reference to DigitalSignature record"
+    },
+    "teacher_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "teacher_rejection_reason": {
+      "type": "string"
     },
     "admin_signed": {
       "type": "boolean",
@@ -95,15 +115,22 @@
       "type": "string",
       "format": "date-time"
     },
-    "student_signed": {
-      "type": "boolean",
-      "default": false
-    },
-    "student_signature_id": {
+    "nft_token_id": {
       "type": "string",
-      "description": "Reference to DigitalSignature record"
+      "description": "NFT token ID after minting"
     },
-    "student_signed_at": {
+    "nft_image_url": {
+      "type": "string",
+      "description": "Generated NFT badge image URL"
+    },
+    "nft_metadata": {
+      "type": "object",
+      "description": "Full NFT metadata JSON"
+    },
+    "nft_transaction_hash": {
+      "type": "string"
+    },
+    "minted_at": {
       "type": "string",
       "format": "date-time"
     },
@@ -127,12 +154,15 @@
     },
     "rejection_reason": {
       "type": "string"
+    },
+    "verify_id": {
+      "type": "string",
+      "description": "Public verification ID for /verify/{verify_id}"
     }
   },
   "required": [
     "school_id",
     "student_email",
-    "teacher_email",
     "title",
     "category"
   ]

@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, ChevronRight, PenLine, Clock, CheckCircle2, FileText, Shield } from 'lucide-react';
+import { Search, ChevronRight, PenLine, Shield, Trophy, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import { toast } from 'sonner';
@@ -19,95 +19,21 @@ export default function AdminRecords() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [loadError, setLoadError] = useState(null);
-  const [debugInfo, setDebugInfo] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
-    const debug = {
-      authUser: null,
-      profileFound: false,
-      profileRole: null,
-      profileSchoolId: null,
-      queryResults: {},
-      queryErrors: {},
-    };
-
     try {
-      // Step 1: auth — catch separately so we can redirect vs error
-      let user = null;
-      try {
-        user = await base44.auth.me();
-      } catch (e) {
-        debug.queryErrors.auth = e.message;
-        debug.authUser = 'AUTH_FAILED: ' + e.message;
-        setDebugInfo(debug);
-        setLoading(false);
-        // Redirect to login
-        base44.auth.redirectToLogin(window.location.href);
-        return;
-      }
-
-      if (!user) {
-        debug.authUser = 'null (no user returned)';
-        setDebugInfo(debug);
-        setLoading(false);
-        base44.auth.redirectToLogin(window.location.href);
-        return;
-      }
-
-      debug.authUser = user.email || 'null';
-
-      // Step 2: UserProfile lookup
-      let p = null;
-      try {
-        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-        p = profiles[0] || null;
-        debug.profileFound = !!p;
-        debug.profileRole = p?.user_type || 'NULL';
-        debug.profileSchoolId = p?.school_id || 'NULL';
-        debug.queryResults.UserProfile = `${profiles.length} result(s)`;
-      } catch (e) {
-        debug.queryErrors.UserProfile = e.message;
-        setDebugInfo(debug);
-        setLoadError('UserProfile query failed: ' + e.message);
-        setLoading(false);
-        return;
-      }
-
+      const user = await base44.auth.me();
+      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const p = profiles[0];
       setProfile(p);
+      if (!p?.school_id) { setLoading(false); return; }
 
-      if (!p?.school_id) {
-        debug.queryErrors.StudentRecord = 'SKIPPED — no school_id on profile';
-        setDebugInfo(debug);
-        setRecords([]);
-        setLoading(false);
-        return;
-      }
-
-      // Step 3: StudentRecord filtered by school_id server-side (avoids full table scan + RLS join)
-      let schoolRecs = [];
-      try {
-        schoolRecs = await base44.entities.StudentRecord.filter(
-          { school_id: p.school_id },
-          '-created_date'
-        );
-        debug.queryResults.StudentRecord = `${schoolRecs.length} result(s)`;
-      } catch (e) {
-        debug.queryErrors.StudentRecord = e.message;
-        setDebugInfo(debug);
-        setLoadError('StudentRecord query failed: ' + e.message);
-        setLoading(false);
-        return;
-      }
-
-      setRecords(schoolRecs);
-      setDebugInfo(debug);
+      const recs = await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date');
+      setRecords(recs);
     } catch (e) {
-      debug.queryErrors.unexpected = e.message;
-      setDebugInfo(debug);
-      setLoadError('Unexpected error: ' + e.message);
+      toast.error(e.message);
     } finally {
       setLoading(false);
     }
@@ -123,8 +49,8 @@ export default function AdminRecords() {
   });
 
   const pendingAdmin = records.filter(r => r.status === 'awaiting_admin_signature').length;
-  const pendingDrive = records.filter(r => r.status === 'pending_drive_save').length;
-  const active = records.filter(r => r.status === 'active').length;
+  const approved = records.filter(r => r.status === 'approved').length;
+  const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -132,97 +58,54 @@ export default function AdminRecords() {
     </div>
   );
 
-  // Not authenticated — show login prompt instead of blank/error page
-  if (!loading && debugInfo?.authUser?.startsWith('AUTH_FAILED') || (!loading && debugInfo?.authUser === 'null (no user returned)')) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p className="text-slate-600 font-medium">You need to be logged in to view Student Records.</p>
-        <Button onClick={() => base44.auth.redirectToLogin(window.location.href)}>
-          Log In
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Student Records</h1>
-        <p className="text-slate-500 mt-1">Review, sign, and manage all digital custodian records for your school</p>
+        <h1 className="text-3xl font-bold text-slate-900">Achievement Approvals</h1>
+        <p className="text-slate-500 mt-1">Review teacher-endorsed achievements, give final approval, and authorize NFT minting</p>
       </div>
-
-      {/* Error Panel */}
-      {loadError && (
-        <div className="bg-red-900 text-red-200 rounded-xl p-4 font-mono text-xs space-y-2">
-          <p className="text-red-300 font-bold">❌ LOAD ERROR</p>
-          <p>{loadError}</p>
-          <div className="flex gap-2 pt-1">
-            <button onClick={loadData} className="px-3 py-1 bg-red-700 hover:bg-red-600 text-white rounded text-xs">
-              ↺ Retry
-            </button>
-            <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs">
-              → Re-login
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Debug Panel */}
-      {debugInfo ? (
-        <div className="bg-slate-900 text-green-400 rounded-xl p-4 font-mono text-xs space-y-1">
-          <p className="text-yellow-400 font-bold mb-2">🔍 DEBUG PANEL</p>
-          <p>authUser: <span className="text-white">{debugInfo.authUser}</span></p>
-          <p>profileFound: <span className={debugInfo.profileFound ? 'text-green-300' : 'text-red-400'}>{String(debugInfo.profileFound)}</span></p>
-          <p>profileRole: <span className="text-white">{debugInfo.profileRole}</span></p>
-          <p>profileSchoolId: <span className="text-white">{debugInfo.profileSchoolId}</span></p>
-          <p className="pt-1 text-yellow-300">queryResults:</p>
-          {Object.entries(debugInfo.queryResults).map(([k, v]) => (
-            <p key={k} className="pl-2">  {k}: <span className="text-green-300">{v}</span></p>
-          ))}
-          {Object.keys(debugInfo.queryErrors).length > 0 && <>
-            <p className="pt-1 text-red-400">queryErrors:</p>
-            {Object.entries(debugInfo.queryErrors).map(([k, v]) => (
-              <p key={k} className="pl-2">  {k}: <span className="text-red-300">{v}</span></p>
-            ))}
-          </>}
-        </div>
-      ) : !loadError && (
-        <div className="bg-slate-900 text-yellow-400 rounded-xl p-4 font-mono text-xs">
-          <p>⚠️ debugInfo is null — loadData crashed before setting it</p>
-        </div>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Records', value: records.length, color: 'from-slate-500 to-slate-600' },
-          { label: 'Awaiting My Signature', value: pendingAdmin, color: 'from-amber-500 to-orange-500', alert: pendingAdmin > 0 },
-          { label: 'Pending Drive Save', value: pendingDrive, color: 'from-purple-500 to-indigo-500' },
-          { label: 'Active Records', value: active, color: 'from-emerald-500 to-green-500' },
+          { label: 'Total', value: records.length, color: 'text-slate-600' },
+          { label: 'Awaiting My Approval', value: pendingAdmin, color: 'text-orange-600', alert: pendingAdmin > 0 },
+          { label: 'Ready to Mint', value: approved, color: 'text-green-600', alert: approved > 0 },
+          { label: 'Minted NFTs', value: minted, color: 'text-violet-600' },
         ].map(s => (
           <Card key={s.label} className={`border-0 shadow-md ${s.alert ? 'ring-2 ring-amber-400' : ''}`}>
-            <CardContent className="p-4">
-              <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${s.color} flex items-center justify-center mb-2`}>
-                <FileText className="h-4 w-4 text-white" />
-              </div>
-              <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-              <p className="text-xs text-slate-500">{s.label}</p>
+            <CardContent className="p-4 text-center">
+              <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
+              <p className="text-xs text-slate-500 mt-1">{s.label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Pending signature alert */}
+      {/* Alerts */}
       {pendingAdmin > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-          <PenLine className="h-5 w-5 text-amber-600 flex-shrink-0" />
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 flex items-center gap-3">
+          <Shield className="h-5 w-5 text-orange-600 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-semibold text-amber-800">{pendingAdmin} record{pendingAdmin > 1 ? 's' : ''} awaiting your signature</p>
-            <p className="text-sm text-amber-600">Review and sign to progress these records to students.</p>
+            <p className="font-semibold text-orange-800">{pendingAdmin} achievement{pendingAdmin > 1 ? 's' : ''} awaiting your approval</p>
+            <p className="text-sm text-orange-600">Teacher-endorsed submissions waiting for your final signature to authorize minting.</p>
           </div>
-          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white"
+          <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white"
             onClick={() => setStatusFilter('awaiting_admin_signature')}>
-            Review Now
+            Approve Now
+          </Button>
+        </div>
+      )}
+      {approved > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+          <Sparkles className="h-5 w-5 text-green-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-green-800">{approved} achievement{approved > 1 ? 's' : ''} ready to be minted as NFTs</p>
+            <p className="text-sm text-green-600">These have been fully approved — open each one to trigger NFT minting and Drive archiving.</p>
+          </div>
+          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => setStatusFilter('approved')}>
+            View
           </Button>
         </div>
       )}
@@ -234,17 +117,16 @@ export default function AdminRecords() {
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search records..." className="pl-10" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-52">
+          <SelectTrigger className="w-56">
             <SelectValue>{statusFilter === 'all' ? 'All Statuses' : statusFilter.replace(/_/g, ' ')}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="submitted">Submitted</SelectItem>
-            <SelectItem value="awaiting_admin_signature">Awaiting My Signature</SelectItem>
-            <SelectItem value="awaiting_student_signature">Awaiting Student Signature</SelectItem>
-            <SelectItem value="pending_drive_save">Pending Drive Save</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="awaiting_teacher_signature">Awaiting Teacher</SelectItem>
+            <SelectItem value="awaiting_admin_signature">Awaiting My Approval</SelectItem>
+            <SelectItem value="approved">Approved — Ready to Mint</SelectItem>
+            <SelectItem value="minted">Minted</SelectItem>
+            <SelectItem value="archived">Archived to Drive</SelectItem>
             <SelectItem value="rejected">Rejected</SelectItem>
           </SelectContent>
         </Select>
@@ -257,10 +139,10 @@ export default function AdminRecords() {
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
-                <TableHead>Title</TableHead>
+                <TableHead>Achievement</TableHead>
                 <TableHead>Teacher</TableHead>
+                <TableHead>Evidence</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Signatures</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -269,11 +151,12 @@ export default function AdminRecords() {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-12 text-slate-400">
+                    <Trophy className="h-10 w-10 mx-auto mb-3 opacity-40" />
                     No records found
                   </TableCell>
                 </TableRow>
               ) : filtered.map(r => (
-                <TableRow key={r.id} className="hover:bg-slate-50">
+                <TableRow key={r.id} className={`hover:bg-slate-50 ${r.status === 'awaiting_admin_signature' ? 'bg-orange-50/30' : r.status === 'approved' ? 'bg-green-50/30' : ''}`}>
                   <TableCell>
                     <p className="font-medium text-slate-900">{r.student_name}</p>
                     <p className="text-xs text-slate-400">{r.student_email}</p>
@@ -282,25 +165,26 @@ export default function AdminRecords() {
                     <p className="font-medium text-slate-800">{r.title}</p>
                     <Badge className="text-xs bg-slate-100 text-slate-600 border-0 capitalize mt-0.5">{r.category}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-slate-600">{r.teacher_name}</TableCell>
-                  <TableCell><RecordStatusBadge status={r.status} /></TableCell>
+                  <TableCell className="text-sm text-slate-600">{r.teacher_name || '—'}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Badge className={`text-xs border-0 gap-1 ${r.admin_signed ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-400'}`}>
-                        <Shield className="h-2.5 w-2.5" />{r.admin_signed ? '✓' : '○'}
-                      </Badge>
-                      <Badge className={`text-xs border-0 ${r.student_signed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-400'}`}>
-                        👤 {r.student_signed ? '✓' : '○'}
-                      </Badge>
-                    </div>
+                    {r.file_url
+                      ? r.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                        ? <img src={r.file_url} alt="evidence" className="h-10 w-10 rounded-lg object-cover border" />
+                        : <Badge className="bg-blue-50 text-blue-600 border-0 text-xs">File</Badge>
+                      : <span className="text-xs text-slate-400">—</span>
+                    }
                   </TableCell>
+                  <TableCell><RecordStatusBadge status={r.status} /></TableCell>
                   <TableCell className="text-xs text-slate-500">
                     {r.created_date ? format(new Date(r.created_date), 'MMM d, yyyy') : '—'}
                   </TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button
+                      variant={['awaiting_admin_signature', 'approved'].includes(r.status) ? 'default' : 'ghost'}
+                      size="sm" asChild
+                      className={r.status === 'awaiting_admin_signature' ? 'bg-orange-600 hover:bg-orange-700' : r.status === 'approved' ? 'bg-violet-600 hover:bg-violet-700' : ''}>
                       <Link to={createPageUrl(`RecordDetail?id=${r.id}`)}>
-                        <ChevronRight className="h-4 w-4" />
+                        {r.status === 'awaiting_admin_signature' ? 'Approve' : r.status === 'approved' ? 'Mint NFT' : <ChevronRight className="h-4 w-4" />}
                       </Link>
                     </Button>
                   </TableCell>
