@@ -112,6 +112,21 @@
       "type": "string",
       "description": "Parent/Guardian phone (for students)"
     },
+    "parent_relationship": {
+      "type": "string",
+      "enum": [
+        "mother",
+        "father",
+        "guardian",
+        "other"
+      ],
+      "description": "Relationship of parent/guardian to student"
+    },
+    "parent_contact_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the parent contact was last updated by the student"
+    },
     "wallet_address": {
       "type": "string",
       "description": "Custodial blockchain wallet address"

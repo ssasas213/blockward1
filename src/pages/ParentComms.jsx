@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Send, Users, Search, Loader2 } from 'lucide-react';
+import { Mail, Send, Users, Search, Loader2, Phone } from 'lucide-react';
+
+const RELATIONSHIP_LABELS = { mother: 'Mother', father: 'Father', guardian: 'Guardian', other: 'Other' };
 import { toast } from 'sonner';
 
 export default function ParentComms() {
@@ -35,18 +37,20 @@ export default function ParentComms() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
         
-        // Load students based on role
-        if (profiles[0].user_type === 'teacher') {
+        const p = profiles[0];
+        // Load students based on role — always scoped to same school
+        if (p.user_type === 'teacher') {
           const classes = await base44.entities.Class.filter({ teacher_email: user.email });
           const studentEmails = new Set();
           classes.forEach(cls => {
             cls.student_emails?.forEach(email => studentEmails.add(email));
           });
-          
-          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
+          // Filter by school AND assigned class students
+          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student', school_id: p.school_id });
           setStudents(studentProfiles.filter(s => studentEmails.has(s.user_email)));
-        } else if (profiles[0].user_type === 'admin') {
-          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
+        } else if (p.user_type === 'admin') {
+          // Admins only see their own school's students
+          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student', school_id: p.school_id });
           setStudents(studentProfiles);
         }
       }
@@ -171,16 +175,15 @@ export default function ParentComms() {
                     <p className="font-semibold text-slate-900">
                       {student.first_name} {student.last_name}
                     </p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <p className="text-sm text-slate-500">ID: {student.student_id}</p>
-                      {student.parent_email && (
-                        <Badge variant="outline" className="text-xs">
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {student.student_id && <p className="text-sm text-slate-500">ID: {student.student_id}</p>}
+                      {student.parent_email ? (
+                        <Badge variant="outline" className="text-xs text-green-700 border-green-300 bg-green-50">
                           <Mail className="h-3 w-3 mr-1" />
-                          Parent: {student.parent_name || student.parent_email}
+                          {student.parent_name || 'Parent'}{student.parent_relationship ? ` (${RELATIONSHIP_LABELS[student.parent_relationship] || student.parent_relationship})` : ''}
                         </Badge>
-                      )}
-                      {!student.parent_email && (
-                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-300">
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-orange-600 border-orange-300 bg-orange-50">
                           No parent email
                         </Badge>
                       )}

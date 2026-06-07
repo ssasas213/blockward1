@@ -12,6 +12,7 @@ import {
   ChevronRight, TrendingUp, Star, Clock, FileText, PenLine
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import ParentContactSection from '@/components/student/ParentContactSection';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -340,6 +341,13 @@ function StudentDashboardContent() {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Parent/Guardian Contact */}
+      <ParentContactSection
+        profile={userProfile}
+        userEmail={user?.email}
+        onUpdated={loadDashboardData}
+      />
 
       {/* BlockWards Showcase */}
       {stats.blockWards.length > 0 && (
