@@ -1,0 +1,49 @@
+{
+  "name": "DriveVault",
+  "type": "object",
+  "properties": {
+    "student_email": {
+      "type": "string",
+      "description": "Student who owns this vault"
+    },
+    "record_id": {
+      "type": "string",
+      "description": "StudentRecord.id"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "drive_file_id": {
+      "type": "string"
+    },
+    "drive_folder_path": {
+      "type": "string"
+    },
+    "drive_url": {
+      "type": "string"
+    },
+    "metadata_file_id": {
+      "type": "string"
+    },
+    "certificate_file_id": {
+      "type": "string"
+    },
+    "saved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "saved",
+        "failed"
+      ],
+      "default": "saved"
+    }
+  },
+  "required": [
+    "student_email",
+    "record_id",
+    "school_id"
+  ]
+}

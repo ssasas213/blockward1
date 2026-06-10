@@ -1,0 +1,51 @@
+{
+  "name": "SignatureProfile",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Owner of this signature profile"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "user_role": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "admin"
+      ]
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Full legal/display name"
+    },
+    "title": {
+      "type": "string",
+      "description": "Job title or role label shown on signatures"
+    },
+    "signature_type": {
+      "type": "string",
+      "enum": [
+        "typed",
+        "drawn"
+      ],
+      "default": "typed"
+    },
+    "signature_value": {
+      "type": "string",
+      "description": "Typed name or base64 drawn signature image"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "user_email",
+    "school_id",
+    "user_role",
+    "display_name",
+    "signature_value"
+  ]
+}
