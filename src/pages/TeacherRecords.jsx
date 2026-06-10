@@ -30,9 +30,17 @@ export default function TeacherRecords() {
       setProfile(p);
       if (!p?.school_id) return;
 
-      // Teachers see all pending submissions for their school
-      const recs = await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date');
-      setRecords(recs);
+      // Teachers only see records from students in their assigned classes
+      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
+      const assignedStudentEmails = new Set();
+      classes.forEach(cls => (cls.student_emails || []).forEach(e => assignedStudentEmails.add(e)));
+
+      const allRecs = await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date');
+      // Filter to only assigned students (or records the teacher has already signed — keep those visible)
+      const filtered = allRecs.filter(r =>
+        assignedStudentEmails.has(r.student_email) || r.teacher_email === user.email
+      );
+      setRecords(filtered);
     } catch (e) {
       toast.error(e.message);
     } finally {

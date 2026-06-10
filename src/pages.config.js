@@ -88,6 +88,7 @@ import StudentMyRecords from './pages/StudentMyRecords';
 import RecordDetail from './pages/RecordDetail';
 import RouteDebug from './pages/RouteDebug';
 import Verify from './pages/Verify';
+import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import __Layout from './Layout.jsx';
 
 
@@ -133,6 +134,7 @@ export const PAGES = {
     "RecordDetail": RecordDetail,
     "RouteDebug": RouteDebug,
     "Verify": Verify,
+    "StudentPortfolioVault": StudentPortfolioVault,
 }
 
 export const pagesConfig = {

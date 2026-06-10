@@ -16,6 +16,8 @@ import {
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
+import SignatureSetup from '@/components/records/SignatureSetup';
+import SignatureConfirmDialog from '@/components/records/SignatureConfirmDialog';
 
 const CATEGORY_COLORS = {
   academic: 'from-blue-500 to-indigo-500',
@@ -46,6 +48,8 @@ export default function RecordDetail() {
   const [signing, setSigning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [sigProfile, setSigProfile] = useState(null);
+  const [showSigSetup, setShowSigSetup] = useState(false);
 
   useEffect(() => { loadAll(); }, [recordId]);
 
@@ -67,6 +71,12 @@ export default function RecordDetail() {
       const records = await base44.entities.StudentRecord.filter({ id: recordId });
       if (!records.length) { toast.error('Record not found'); return; }
       const rec = records[0];
+
+      // Load signature profile for teacher/admin
+      if (p?.user_type === 'teacher' || p?.user_type === 'admin') {
+        const sigProfiles = await base44.entities.SignatureProfile.filter({ user_email: currentUser.email });
+        setSigProfile(sigProfiles[0] || null);
+      }
 
       if (p?.school_id && rec.school_id && p.school_id !== rec.school_id) {
         toast.error('Access denied'); navigate(-1); return;
@@ -139,10 +149,21 @@ export default function RecordDetail() {
   const handleMintAndArchive = async () => {
     setMinting(true);
     try {
-      const res = await base44.functions.invoke('mintAndArchive', { recordId });
+      // Try per-student Drive first; fall back to shared Drive
+      const res = await base44.functions.invoke('saveToStudentDrive', { recordId });
       if (res.data?.ok) {
-        toast.success('NFT minted and archived to Google Drive!');
+        toast.success('NFT archived to student\'s Google Drive!');
         loadAll();
+      } else if (res.data?.needs_student_drive) {
+        // Student hasn't connected Drive — fall back to shared Drive archive
+        toast.info('Student Drive not connected — archiving to school Drive instead...');
+        const fallback = await base44.functions.invoke('mintAndArchive', { recordId });
+        if (fallback.data?.ok) {
+          toast.success('NFT minted and archived to school Google Drive!');
+          loadAll();
+        } else {
+          toast.error(fallback.data?.error || 'Minting failed');
+        }
       } else {
         toast.error(res.data?.error || 'Minting failed');
       }
@@ -256,7 +277,16 @@ export default function RecordDetail() {
           </Button>
         )}
         {(canTeacherSign || canAdminSign) && (
-          <Button onClick={() => setShowSignDialog(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+          <Button
+            onClick={() => {
+              if (!sigProfile) {
+                setShowSigSetup(true);
+              } else {
+                setShowSignDialog(true);
+              }
+            }}
+            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+          >
             <PenLine className="h-4 w-4 mr-2" />
             {canAdminSign ? 'Sign & Approve' : 'Sign & Endorse'}
           </Button>
@@ -469,21 +499,37 @@ export default function RecordDetail() {
         </div>
       </div>
 
-      {/* Sign Dialog */}
-      <Dialog open={showSignDialog} onOpenChange={setShowSignDialog}>
+      {/* Signature Profile Setup (first-time) */}
+      {showSigSetup && (
+        <SignatureSetup
+          profile={profile}
+          userEmail={user?.email}
+          onComplete={(newSigProfile) => {
+            setSigProfile(newSigProfile);
+            setShowSigSetup(false);
+            setShowSignDialog(true);
+          }}
+        />
+      )}
+
+      {/* Sign Confirm Dialog (reuses saved signature profile) */}
+      <SignatureConfirmDialog
+        open={showSignDialog}
+        onOpenChange={setShowSignDialog}
+        sigProfile={sigProfile}
+        record={record}
+        userType={profile?.user_type}
+        onConfirm={handleSign}
+        disabled={signing}
+      />
+
+      {/* Fallback: if somehow sign dialog is opened without a sigProfile, show SignatureCapture */}
+      <Dialog open={showSignDialog && !sigProfile} onOpenChange={setShowSignDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{profile?.user_type === 'admin' ? 'Sign & Approve Achievement' : 'Sign & Endorse Achievement'}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
-            <p className="text-sm text-slate-600 mb-4">
-              You are {profile?.user_type === 'admin' ? 'giving final approval to' : 'endorsing'}: <strong>{record.title}</strong>
-            </p>
-            {profile?.user_type === 'admin' && (
-              <p className="text-xs text-violet-700 bg-violet-50 rounded-lg p-3 mb-4">
-                ✅ After your signature, the admin can mint this as an NFT and archive it to Google Drive.
-              </p>
-            )}
             <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
               ⚠️ Signatures are permanent and cannot be edited or deleted.
             </p>
