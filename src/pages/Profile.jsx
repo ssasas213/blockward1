@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, Wallet, Copy, Check, AlertTriangle } from 'lucide-react';
+import { Bell, Wallet, Copy, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -12,32 +11,44 @@ import EditProfileForm from '@/components/profile/EditProfileForm';
 import ProfileStats from '@/components/profile/ProfileStats';
 import GoogleIntegrationStatus from '@/components/profile/GoogleIntegrationStatus';
 import SecuritySection from '@/components/profile/SecuritySection';
+import SignatureProfileSection from '@/components/profile/SignatureProfileSection';
 
-function ProfileContent() {
+export default function Profile() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [copiedWallet, setCopiedWallet] = useState(false);
 
   useEffect(() => { load(); }, []);
 
   const load = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-      if (!currentUser) return;
+
+      if (!currentUser) {
+        setLoading(false);
+        return;
+      }
 
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const p = profiles[0] || null;
       setProfile(p);
 
       if (p?.school_id) {
-        const schools = await base44.entities.School.filter({ id: p.school_id });
-        if (schools.length) setSchool(schools[0]);
+        try {
+          const schools = await base44.entities.School.filter({ id: p.school_id });
+          if (schools.length) setSchool(schools[0]);
+        } catch (_) {
+          // school load is non-critical
+        }
       }
     } catch (e) {
-      // not authenticated
+      setError(e.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -52,20 +63,43 @@ function ProfileContent() {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
-    </div>
-  );
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+          <p className="text-sm text-slate-500">Loading your profile…</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (!user) return (
-    <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-slate-50 rounded-2xl">
-      <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
-      <p className="font-semibold text-slate-700">You are not logged in.</p>
-    </div>
-  );
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-red-50 border border-red-200 rounded-2xl">
+        <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-3" />
+        <p className="font-semibold text-red-700 mb-2">Failed to load profile</p>
+        <p className="text-sm text-red-600 mb-4">{error}</p>
+        <Button onClick={load} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
+          Try Again
+        </Button>
+      </div>
+    );
+  }
 
-  // Missing profile warning
+  // Not logged in state
+  if (!user) {
+    return (
+      <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-slate-50 rounded-2xl">
+        <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+        <p className="font-semibold text-slate-700">You are not logged in.</p>
+      </div>
+    );
+  }
+
+  // Missing fields warning
   const missingFields = [];
   if (!profile?.first_name) missingFields.push('First name');
   if (!profile?.last_name) missingFields.push('Last name');
@@ -97,7 +131,7 @@ function ProfileContent() {
       ) : (
         <div className="p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl text-center text-slate-500">
           <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-amber-400" />
-          <p className="font-medium">No profile found. Please complete your profile below.</p>
+          <p className="font-medium">No profile record found. Please complete your profile below.</p>
         </div>
       )}
 
@@ -106,6 +140,9 @@ function ProfileContent() {
 
       {/* Edit Profile Form */}
       <EditProfileForm profile={profile} onSaved={load} />
+
+      {/* Signature Profile (teachers & admins only) */}
+      <SignatureProfileSection userEmail={user?.email} userRole={profile?.user_type} />
 
       {/* Google Integrations */}
       <GoogleIntegrationStatus />
@@ -130,7 +167,7 @@ function ProfileContent() {
             </div>
             {profile.blockchain_role && (
               <div className="p-3 bg-violet-50 rounded-xl border border-violet-100">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge className="bg-violet-100 text-violet-700 border-0">On-chain: {profile.blockchain_role}</Badge>
                   {profile.user_type === 'teacher' && (
                     <Badge className={profile.can_issue_blockwards ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-amber-100 text-amber-700 border-0'}>
@@ -185,13 +222,5 @@ function ProfileContent() {
       {/* Security */}
       <SecuritySection />
     </div>
-  );
-}
-
-export default function Profile() {
-  return (
-    <ProtectedRoute>
-      <ProfileContent />
-    </ProtectedRoute>
   );
 }
