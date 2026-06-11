@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { 
   LayoutDashboard, Users, BookOpen, Calendar, Award, 
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles, Megaphone, Trophy, HardDrive
+  GraduationCap, Shield, UserCircle, Bell, Search, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Resources', icon: FileText, page: 'Resources' },
       { name: 'BlockWards', icon: Award, page: 'BlockWards' },
       { name: 'Achievement Approvals', icon: Trophy, page: 'AdminRecords' },
+      { name: 'Approval Queue', icon: PenLine, page: 'AdminApprovalQueue' },
       { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
       { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
       { name: 'Reports', icon: FileText, page: 'Reports' },

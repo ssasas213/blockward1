@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
   Users, BookOpen, Award, Shield, Calendar,
-  Plus, ChevronRight, Clock, FileText, PenLine
+  Plus, ChevronRight, Clock, FileText, PenLine, ClipboardCheck
 } from 'lucide-react';
+import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
 import { motion } from 'framer-motion';
 
 function TeacherDashboardContent() {
@@ -115,10 +116,10 @@ function TeacherDashboardContent() {
             </Link>
           </Button>
           {userProfile?.can_issue_blockwards && (
-            <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
-              <Link to={createPageUrl('TeacherBlockWards')}>
-                <Shield className="h-4 w-4 mr-2" />
-                Issue BlockWard
+            <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600" asChild>
+              <Link to={createPageUrl('IssueBlockWard')}>
+                <PenLine className="h-4 w-4 mr-2" />
+                Submit for Approval
               </Link>
             </Button>
           )}
@@ -239,6 +240,14 @@ function TeacherDashboardContent() {
         </Card>
       </div>
 
+      {/* Pending Signatures Widget */}
+      <PendingSignaturesWidget
+        userEmail={user?.email}
+        schoolId={userProfile?.school_id}
+        role="teacher"
+        targetPage="TeacherRecords"
+      />
+
       {/* Student Records Quick Access */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
         <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -289,11 +298,11 @@ function TeacherDashboardContent() {
             </Link>
             {userProfile?.can_issue_blockwards && (
               <Link
-                to={createPageUrl('TeacherBlockWards')}
-                className="flex flex-col items-center gap-3 p-6 bg-slate-50 rounded-xl hover:bg-violet-50 hover:text-violet-600 transition-colors"
+                to={createPageUrl('IssueBlockWard')}
+                className="flex flex-col items-center gap-3 p-6 bg-slate-50 rounded-xl hover:bg-amber-50 hover:text-amber-600 transition-colors"
               >
-                <Shield className="h-8 w-8" />
-                <span className="text-sm font-medium">BlockWard</span>
+                <ClipboardCheck className="h-8 w-8" />
+                <span className="text-sm font-medium">Submit Achievement</span>
               </Link>
             )}
           </div>

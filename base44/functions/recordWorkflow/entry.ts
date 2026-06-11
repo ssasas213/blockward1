@@ -22,6 +22,7 @@ const CORS = {
 
 const VALID_TRANSITIONS = {
   submitRecord:         { fromStatus: 'draft',                       requiredRole: 'student' },
+  teacherSubmitRecord:  { fromStatus: 'draft',                       requiredRole: 'teacher' },
   teacherSignRecord:    { fromStatus: 'awaiting_teacher_signature',  requiredRole: 'teacher' },
   teacherRejectRecord:  { fromStatus: 'awaiting_teacher_signature',  requiredRole: 'teacher' },
   adminSignRecord:      { fromStatus: 'awaiting_admin_signature',    requiredRole: 'admin' },
@@ -80,6 +81,19 @@ Deno.serve(async (req) => {
       submitted_at: now
     });
     await audit(base44, recordId, record.school_id, user.email, actorName, 'student', 'submitted', 'draft', 'awaiting_teacher_signature', 'Student submitted achievement for teacher review');
+    return Response.json({ ok: true, newStatus: 'awaiting_teacher_signature' }, { headers: CORS });
+  }
+
+  // --- teacherSubmitRecord: teacher creates and submits on behalf of student ---
+  if (action === 'teacherSubmitRecord') {
+    await base44.asServiceRole.entities.StudentRecord.update(recordId, {
+      status: 'awaiting_teacher_signature',
+      submitted_at: now,
+      teacher_id: profile.id,
+      teacher_email: user.email,
+      teacher_name: actorName,
+    });
+    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'submitted', 'draft', 'awaiting_teacher_signature', `Teacher submitted achievement on behalf of student`);
     return Response.json({ ok: true, newStatus: 'awaiting_teacher_signature' }, { headers: CORS });
   }
 

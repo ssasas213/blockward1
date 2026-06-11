@@ -46,11 +46,11 @@ Deno.serve(async (req) => {
   if (profile.school_id !== record.school_id) {
     return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });
   }
-  if (record.status !== 'approved') {
-    return Response.json({ ok: false, error: `Record must be 'approved'. Current: '${record.status}'` }, { status: 409, headers: CORS });
+  if (!['approved', 'minted'].includes(record.status)) {
+    return Response.json({ ok: false, error: `Record must be 'approved' to mint. Current: '${record.status}'` }, { status: 409, headers: CORS });
   }
   if (!record.admin_signed || !record.teacher_signed) {
-    return Response.json({ ok: false, error: 'Both teacher and admin signatures required' }, { status: 409, headers: CORS });
+    return Response.json({ ok: false, error: 'Both teacher and admin signatures required before minting' }, { status: 409, headers: CORS });
   }
 
   const [signatures, auditLogs, schools] = await Promise.all([
@@ -238,13 +238,13 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
 
     // Mark as minted & archived
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
-      status: 'archived',
+      status: 'minted',
       nft_metadata: nftMetadata,
       minted_at: now.toISOString(),
       drive_file_url: driveFileUrl,
       drive_file_id: certFile.id,
       drive_folder_path: folderPath,
-      approved_at: now.toISOString()
+      approved_at: record.approved_at || now.toISOString()
     });
 
     // Audit
@@ -257,8 +257,8 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       actor_role: 'admin',
       action: 'drive_saved',
       old_status: 'approved',
-      new_status: 'archived',
-      notes: `NFT minted and archived to Google Drive: ${folderPath}`,
+      new_status: 'minted',
+      notes: `NFT certificate generated and saved to Google Drive: ${folderPath}`,
       timestamp: now.toISOString()
     });
 

@@ -89,6 +89,7 @@ import RecordDetail from './pages/RecordDetail';
 import RouteDebug from './pages/RouteDebug';
 import Verify from './pages/Verify';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
+import AdminApprovalQueue from './pages/AdminApprovalQueue';
 import __Layout from './Layout.jsx';
 
 
@@ -135,6 +136,7 @@ export const PAGES = {
     "RouteDebug": RouteDebug,
     "Verify": Verify,
     "StudentPortfolioVault": StudentPortfolioVault,
+    "AdminApprovalQueue": AdminApprovalQueue,
 }
 
 export const pagesConfig = {

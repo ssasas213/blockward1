@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
 import {
   Users, BookOpen, Award, Shield, TrendingUp,
   ArrowUpRight, ChevronRight, Activity, RefreshCw, Loader2,
@@ -397,6 +398,14 @@ function AdminDashboardContent() {
         </CardContent>
       </Card>
 
+      {/* ─── PENDING SIGNATURES WIDGET ─── */}
+      <PendingSignaturesWidget
+        userEmail={userProfile?.user_email}
+        schoolId={userProfile?.school_id}
+        role="admin"
+        targetPage="AdminApprovalQueue"
+      />
+
       {/* ─── DIGITAL CUSTODIAN RECORDS ─── */}
       <Card className="border-0 shadow-md">
         <CardHeader className="pb-3">
@@ -419,9 +428,9 @@ function AdminDashboardContent() {
               </Link>
             </Button>
             <Button className="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white" size="sm" asChild>
-              <Link to={createPageUrl('AdminRecords')}>
+              <Link to={createPageUrl('AdminApprovalQueue')}>
                 <PenLine className="h-4 w-4 mr-2" />
-                Records Awaiting My Signature
+                Approval Queue
               </Link>
             </Button>
           </div>
