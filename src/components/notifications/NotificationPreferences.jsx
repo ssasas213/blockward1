@@ -43,11 +43,17 @@ export default function NotificationPreferences({ userEmail }) {
   }, [userEmail]);
 
   const loadPrefs = async () => {
-    const data = await base44.entities.NotificationPreference.filter({ user_email: userEmail });
-    if (data.length > 0) {
-      setPrefs(data[0]);
-      setPrefId(data[0].id);
-    } else {
+    try {
+      const data = await base44.entities.NotificationPreference.filter({ user_email: userEmail });
+      if (data.length > 0) {
+        setPrefs(data[0]);
+        setPrefId(data[0].id);
+      } else {
+        setPrefs({ notify_urgent: true, notify_important: true, notify_scheduled_reminder: false });
+        setPrefId(null);
+      }
+    } catch (_) {
+      // Use defaults if entity/query fails
       setPrefs({ notify_urgent: true, notify_important: true, notify_scheduled_reminder: false });
       setPrefId(null);
     }

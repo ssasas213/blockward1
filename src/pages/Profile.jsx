@@ -12,6 +12,8 @@ import ProfileStats from '@/components/profile/ProfileStats';
 import GoogleIntegrationStatus from '@/components/profile/GoogleIntegrationStatus';
 import SecuritySection from '@/components/profile/SecuritySection';
 import SignatureProfileSection from '@/components/profile/SignatureProfileSection';
+import DriveVaultSection from '@/components/profile/DriveVaultSection';
+import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -43,11 +45,10 @@ export default function Profile() {
         try {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length) setSchool(schools[0]);
-        } catch (_) {
-          // school load is non-critical
-        }
+        } catch (_) {}
       }
     } catch (e) {
+      console.error('[Profile] Load failed:', e?.message || e);
       setError(e.message || 'Failed to load profile');
     } finally {
       setLoading(false);
@@ -63,7 +64,6 @@ export default function Profile() {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-64">
@@ -75,7 +75,6 @@ export default function Profile() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-red-50 border border-red-200 rounded-2xl">
@@ -89,7 +88,6 @@ export default function Profile() {
     );
   }
 
-  // Not logged in state
   if (!user) {
     return (
       <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-slate-50 rounded-2xl">
@@ -99,20 +97,19 @@ export default function Profile() {
     );
   }
 
-  // Missing fields warning
   const missingFields = [];
   if (!profile?.first_name) missingFields.push('First name');
   if (!profile?.last_name) missingFields.push('Last name');
   if (profile?.user_type === 'student' && !profile?.parent_email) missingFields.push('Parent email');
 
   return (
+    <ProfileErrorBoundary>
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
         <p className="text-slate-500 mt-1">Manage your account, contact details and integrations</p>
       </div>
 
-      {/* Missing fields warning */}
       {missingFields.length > 0 && (
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <AlertTriangle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
@@ -125,7 +122,6 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Profile header card */}
       {profile ? (
         <ProfileHeader profile={profile} user={user} school={school} />
       ) : (
@@ -135,19 +131,12 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Digital Custodian Stats */}
       <ProfileStats profile={profile} userEmail={user?.email} />
-
-      {/* Edit Profile Form */}
       <EditProfileForm profile={profile} onSaved={load} />
-
-      {/* Signature Profile (teachers & admins only) */}
       <SignatureProfileSection userEmail={user?.email} userRole={profile?.user_type} />
-
-      {/* Google Integrations */}
       <GoogleIntegrationStatus />
+      <DriveVaultSection userEmail={user?.email} userType={profile?.user_type} />
 
-      {/* Blockchain Wallet */}
       {profile?.wallet_address && (
         <Card className="border-0 shadow-lg">
           <CardHeader>
@@ -186,7 +175,6 @@ export default function Profile() {
         </Card>
       )}
 
-      {/* Points Summary (students) */}
       {profile?.user_type === 'student' && (
         <Card className="border-0 shadow-lg">
           <CardHeader>
@@ -207,7 +195,6 @@ export default function Profile() {
         </Card>
       )}
 
-      {/* Notification Preferences */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -219,8 +206,8 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {/* Security */}
       <SecuritySection />
     </div>
+    </ProfileErrorBoundary>
   );
 }
