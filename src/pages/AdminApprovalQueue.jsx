@@ -253,9 +253,5 @@ function AdminApprovalQueueContent() {
 }
 
 export default function AdminApprovalQueue() {
-  return (
-    <ProtectedRoute>
-      <AdminApprovalQueueContent />
-    </ProtectedRoute>
-  );
+  return <AdminApprovalQueueContent />;
 }
