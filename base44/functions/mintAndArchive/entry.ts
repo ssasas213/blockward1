@@ -236,9 +236,9 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
     const driveFileUrl = certFile.webViewLink || `https://drive.google.com/file/d/${certFile.id}/view`;
     const folderPath = `BlockWard / ${schoolName} / ${studentName} / NFTs`;
 
-    // Mark as minted & archived
+    // Mark as archived (same as saveToStudentDrive — both routes end in 'archived')
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
-      status: 'minted',
+      status: 'archived',
       nft_metadata: nftMetadata,
       minted_at: now.toISOString(),
       drive_file_url: driveFileUrl,
@@ -247,8 +247,21 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       approved_at: record.approved_at || now.toISOString()
     });
 
-    // Audit
+    // Create DriveVault entry so it shows in Student Portfolio Vault
     const actorName = `${profile.first_name} ${profile.last_name}`;
+    await base44.asServiceRole.entities.DriveVault.create({
+      student_email: record.student_email,
+      record_id: recordId,
+      school_id: record.school_id,
+      drive_file_id: certFile.id,
+      drive_folder_path: folderPath,
+      drive_url: driveFileUrl,
+      certificate_file_id: certFile.id,
+      saved_at: now.toISOString(),
+      status: 'saved'
+    });
+
+    // Audit
     await base44.asServiceRole.entities.AuditLog.create({
       record_id: recordId,
       school_id: record.school_id,
@@ -257,7 +270,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       actor_role: 'admin',
       action: 'drive_saved',
       old_status: 'approved',
-      new_status: 'minted',
+      new_status: 'archived',
       notes: `NFT certificate generated and saved to Google Drive: ${folderPath}`,
       timestamp: now.toISOString()
     });

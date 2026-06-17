@@ -39,18 +39,26 @@ export default function StudentPortfolioVault() {
     setLoading(false);
   };
 
-  // Rule 2: reusable fetch — also serves as connection check
+  // Rule 2: check actual Drive connection status + load data
   const loadVaultData = async (email) => {
+    const targetEmail = email || user?.email;
+    try {
+      // Check if student has an active OAuth token for their Drive
+      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
+      setConnected(!!connStatus?.connected);
+    } catch {
+      setConnected(false);
+    }
     try {
       const [vault, recs] = await Promise.all([
-        base44.entities.DriveVault.filter({ student_email: email || user?.email }),
-        base44.entities.StudentRecord.filter({ student_email: email || user?.email, status: 'archived' })
+        base44.entities.DriveVault.filter({ student_email: targetEmail }),
+        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'archived' })
       ]);
       setVaultEntries(vault.sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)));
       setRecords(recs);
-      setConnected(true);
-    } catch (e) {
-      setConnected(false);
+    } catch {
+      setVaultEntries([]);
+      setRecords([]);
     }
   };
 
