@@ -41,9 +41,14 @@ Deno.serve(async (req) => {
   const { recordId } = body;
   if (!recordId) return Response.json({ ok: false, error: 'Missing recordId' }, { headers: CORS });
 
-  const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
-  if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
-  const record = records[0];
+  let record;
+  try {
+    const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
+    if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+    record = records[0];
+  } catch (e) {
+    return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+  }
 
   if (profile.school_id !== record.school_id) {
     return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });

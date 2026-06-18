@@ -1,11 +1,11 @@
 /**
  * mintAndArchive — Admin only
- * 
+ *
  * 1. Validates: admin role, school_id match, status === 'approved', both signatures present
  * 2. Generates NFT metadata JSON
- * 3. Creates Google Drive folder: BlockWard / School Name / Student Name / NFTs
+ * 3. Creates Google Drive folder: BlockWard / School Name / Student Name / NFTs (findOrCreate)
  * 4. Uploads: NFT Metadata JSON + Signed Record HTML
- * 5. Marks record as 'minted' then 'archived'
+ * 5. Marks record as 'archived', stores both file IDs in DriveVault
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -35,13 +35,22 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, error: 'Account inactive' }, { status: 403, headers: CORS });
   }
 
-  const body = await req.json();
+  let body;
+  try { body = await req.json(); } catch (e) {
+    return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400, headers: CORS });
+  }
   const { recordId } = body;
-  if (!recordId) return Response.json({ ok: false, error: 'Missing recordId' }, { headers: CORS });
+  if (!recordId) return Response.json({ ok: false, error: 'Missing recordId' }, { status: 400, headers: CORS });
 
-  const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
-  if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
-  const record = records[0];
+  // --- Fetch record — return 404 on missing/invalid, never 500 ---
+  let record;
+  try {
+    const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
+    if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+    record = records[0];
+  } catch (e) {
+    return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+  }
 
   if (profile.school_id !== record.school_id) {
     return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });
@@ -76,18 +85,20 @@ Deno.serve(async (req) => {
       { trait_type: 'Category', value: record.category },
       { trait_type: 'Student', value: studentName },
       { trait_type: 'School', value: schoolName },
-      { trait_type: 'Teacher', value: record.teacher_name || '' },
-      { trait_type: 'Admin', value: record.admin_name || '' },
+      { trait_type: 'Teacher', value: teacherSig?.signer_name || record.teacher_name || '' },
+      { trait_type: 'Admin', value: adminSig?.signer_name || record.admin_name || '' },
       { trait_type: 'Date Achieved', value: record.date_achieved || dateStr },
       { trait_type: 'Date Minted', value: dateStr },
       { trait_type: 'Verify ID', value: record.verify_id || recordId },
     ],
     teacher_signature: {
       signer: teacherSig?.signer_name || record.teacher_name,
+      title: teacherSig?.signer_title || '',
       signed_at: teacherSig?.signed_at || record.teacher_signed_at,
     },
     admin_signature: {
       signer: adminSig?.signer_name || record.admin_name,
+      title: adminSig?.signer_title || '',
       signed_at: adminSig?.signed_at || record.admin_signed_at,
     },
     verification_url: `${Deno.env.get('APP_URL') || 'https://blockward.app'}/Verify?id=${record.verify_id || recordId}`,
@@ -156,7 +167,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
   <label style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:600;">📚 Teacher Endorsement</label>
   <div style="margin-top:8px;">${sigDisplay(teacherSig)}</div>
   <p style="font-size:12px;color:#64748b;margin-top:6px;">
-    Signed by: <strong>${teacherSig?.signer_name || record.teacher_name || 'N/A'}</strong><br/>
+    Signed by: <strong>${teacherSig?.signer_name || record.teacher_name || 'N/A'}</strong>${teacherSig?.signer_title ? ` — ${teacherSig.signer_title}` : ''}<br/>
     Date: ${teacherSig?.signed_at ? new Date(teacherSig.signed_at).toLocaleString() : 'N/A'}
   </p>
 </div>
@@ -164,7 +175,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
   <label style="font-size:12px;color:#64748b;text-transform:uppercase;font-weight:600;">🛡️ Admin Approval</label>
   <div style="margin-top:8px;">${sigDisplay(adminSig)}</div>
   <p style="font-size:12px;color:#64748b;margin-top:6px;">
-    Signed by: <strong>${adminSig?.signer_name || record.admin_name || 'N/A'}</strong><br/>
+    Signed by: <strong>${adminSig?.signer_name || record.admin_name || 'N/A'}</strong>${adminSig?.signer_title ? ` — ${adminSig.signer_title}` : ''}<br/>
     Date: ${adminSig?.signed_at ? new Date(adminSig.signed_at).toLocaleString() : 'N/A'}
   </p>
 </div>
@@ -188,20 +199,22 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
     const conn = await base44.asServiceRole.connectors.getConnection('googledrive');
     accessToken = conn.accessToken;
   } catch (e) {
-    return Response.json({ ok: false, error: 'Google Drive not connected: ' + e.message }, { status: 500, headers: CORS });
+    return Response.json({ ok: false, error: 'Google Drive not connected: ' + e.message }, { status: 503, headers: CORS });
   }
 
   const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-  async function createFolder(name, parentId) {
+  async function findOrCreateFolder(name, parentId) {
+    const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parentId ? ` and '${parentId}' in parents` : ''}`;
+    const searchRes = await fetch(`${DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, { headers: authHeader });
+    if (searchRes.ok) {
+      const { files } = await searchRes.json();
+      if (files && files.length > 0) return files[0].id;
+    }
     const res = await fetch(`${DRIVE_API}/files`, {
       method: 'POST',
       headers: { ...authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        mimeType: 'application/vnd.google-apps.folder',
-        ...(parentId ? { parents: [parentId] } : {})
-      })
+      body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parentId ? { parents: [parentId] } : {}) })
     });
     if (!res.ok) throw new Error(`Folder create failed '${name}': ${await res.text()}`);
     return (await res.json()).id;
@@ -220,23 +233,24 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
   }
 
   try {
-    const rootId   = await createFolder('BlockWard');
-    const schoolId = await createFolder(schoolName, rootId);
-    const studId   = await createFolder(studentName, schoolId);
-    const nftId    = await createFolder('NFTs', studId);
+    const rootId    = await findOrCreateFolder('BlockWard', null);
+    const schoolId  = await findOrCreateFolder(schoolName, rootId);
+    const studId    = await findOrCreateFolder(studentName, schoolId);
+    const nftId     = await findOrCreateFolder('NFTs', studId);
 
-    const safeName = `${record.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}_${dateStr}`;
+    const safeName = `${record.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 40)}_${dateStr}`;
 
-    // Upload metadata JSON
-    await uploadFile(`${safeName}_Metadata.json`, 'application/json', JSON.stringify(nftMetadata, null, 2), nftId);
-
-    // Upload signed certificate HTML
-    const certFile = await uploadFile(`${safeName}_Certificate.html`, 'text/html', htmlDoc, nftId);
+    // Upload both files and capture both IDs
+    const [metaFile, certFile] = await Promise.all([
+      uploadFile(`${safeName}_Metadata.json`, 'application/json', JSON.stringify(nftMetadata, null, 2), nftId),
+      uploadFile(`${safeName}_Certificate.html`, 'text/html', htmlDoc, nftId)
+    ]);
 
     const driveFileUrl = certFile.webViewLink || `https://drive.google.com/file/d/${certFile.id}/view`;
     const folderPath = `BlockWard / ${schoolName} / ${studentName} / NFTs`;
+    const actorName = `${profile.first_name} ${profile.last_name}`;
 
-    // Mark as archived (same as saveToStudentDrive — both routes end in 'archived')
+    // Update StudentRecord
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
       status: 'archived',
       nft_metadata: nftMetadata,
@@ -247,8 +261,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       approved_at: record.approved_at || now.toISOString()
     });
 
-    // Create DriveVault entry so it shows in Student Portfolio Vault
-    const actorName = `${profile.first_name} ${profile.last_name}`;
+    // Create DriveVault entry with BOTH file IDs
     await base44.asServiceRole.entities.DriveVault.create({
       student_email: record.student_email,
       record_id: recordId,
@@ -256,6 +269,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       drive_file_id: certFile.id,
       drive_folder_path: folderPath,
       drive_url: driveFileUrl,
+      metadata_file_id: metaFile.id,
       certificate_file_id: certFile.id,
       saved_at: now.toISOString(),
       status: 'saved'
@@ -275,7 +289,7 @@ ${record.file_url ? `<p style="margin-top:12px;"><strong>Evidence:</strong> <a h
       timestamp: now.toISOString()
     });
 
-    return Response.json({ ok: true, driveFileUrl, folderPath }, { headers: CORS });
+    return Response.json({ ok: true, driveFileUrl, folderPath, certFileId: certFile.id, metadataFileId: metaFile.id }, { headers: CORS });
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500, headers: CORS });
   }

@@ -13,12 +13,18 @@
       "type": "string"
     },
     "signer_name": {
-      "type": "string"
+      "type": "string",
+      "description": "Display name from SignatureProfile (legal name)"
+    },
+    "signer_title": {
+      "type": "string",
+      "description": "Job title from SignatureProfile"
     },
     "signer_role": {
       "type": "string",
       "enum": [
         "admin",
+        "teacher",
         "student"
       ],
       "description": "Who signed"

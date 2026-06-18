@@ -16,7 +16,8 @@ import { toast } from 'sonner';
 export default function SignatureSetup({ profile, userEmail, onComplete }) {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState('typed');
-  const [displayName, setDisplayName] = useState(`${profile?.first_name || ''} ${profile?.last_name || ''}`.trim());
+  // displayName is locked to the profile's real name to prevent identity mismatch
+  const displayName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim();
   const [title, setTitle] = useState('');
   const [typedSig, setTypedSig] = useState('');
   const [hasDrawing, setHasDrawing] = useState(false);
@@ -45,7 +46,7 @@ export default function SignatureSetup({ profile, userEmail, onComplete }) {
   const endDraw = () => setIsDrawing(false);
   const clearCanvas = () => { canvasRef.current.getContext('2d').clearRect(0, 0, 480, 160); setHasDrawing(false); };
 
-  const canSave = displayName.trim() && title.trim() && (tab === 'typed' ? typedSig.trim() : hasDrawing);
+  const canSave = title.trim() && (tab === 'typed' ? typedSig.trim() : hasDrawing);
 
   const handleSave = async () => {
     if (!canSave) { toast.error('Please fill in all fields and provide your signature'); return; }
@@ -87,8 +88,11 @@ export default function SignatureSetup({ profile, userEmail, onComplete }) {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Full Legal Name *</Label>
-              <Input value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="e.g. Dr. Sarah Johnson" />
+              <Label>Full Name (from your profile)</Label>
+              <div className="h-9 flex items-center px-3 rounded-md border border-slate-200 bg-slate-50 text-sm font-medium text-slate-700">
+                {displayName || '—'}
+              </div>
+              <p className="text-xs text-slate-400">Locked to your profile identity</p>
             </div>
             <div className="space-y-1.5">
               <Label>{profile?.user_type === 'admin' ? 'Admin Title *' : 'Position / Title *'}</Label>

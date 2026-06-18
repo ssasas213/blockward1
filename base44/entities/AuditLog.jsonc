@@ -28,6 +28,8 @@
       "enum": [
         "created",
         "submitted",
+        "teacher_signed",
+        "teacher_rejected",
         "admin_signed",
         "admin_rejected",
         "student_signed",

@@ -2,14 +2,19 @@
  * recordWorkflow — backend state machine for Digital Achievement & NFT Approval System.
  *
  * Status flow:
- *   draft → submitted → awaiting_teacher_signature → awaiting_admin_signature → approved → minted → archived
+ *   draft → awaiting_teacher_signature → awaiting_admin_signature → approved → archived
  *
  * Actions:
  *   submitRecord         draft → awaiting_teacher_signature  (student, own record)
+ *   teacherSubmitRecord  draft → awaiting_teacher_signature  (teacher, on behalf of student)
  *   teacherSignRecord    awaiting_teacher_signature → awaiting_admin_signature  (teacher)
  *   teacherRejectRecord  awaiting_teacher_signature → rejected  (teacher)
  *   adminSignRecord      awaiting_admin_signature → approved  (admin)
  *   adminRejectRecord    awaiting_admin_signature → rejected  (admin)
+ *
+ * Signature identity:
+ *   Teacher/admin signatures use the signer's SavedSignatureProfile (display_name, title, signature_value).
+ *   signer_name is always the legal display_name from SignatureProfile, never the raw profile name.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -44,17 +49,26 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, error: 'Your account is inactive. Contact your administrator.' }, { status: 403, headers: CORS });
   }
 
-  const body = await req.json();
+  let body;
+  try { body = await req.json(); } catch (e) {
+    return Response.json({ ok: false, error: 'Invalid JSON body' }, { status: 400, headers: CORS });
+  }
   const { action, recordId, signatureData, rejectionReason } = body;
 
-  if (!action || !recordId) return Response.json({ ok: false, error: 'Missing action or recordId' }, { headers: CORS });
+  if (!action || !recordId) return Response.json({ ok: false, error: 'Missing action or recordId' }, { status: 400, headers: CORS });
 
   const rule = VALID_TRANSITIONS[action];
-  if (!rule) return Response.json({ ok: false, error: `Unknown action: ${action}` }, { headers: CORS });
+  if (!rule) return Response.json({ ok: false, error: `Unknown action: ${action}` }, { status: 400, headers: CORS });
 
-  const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
-  if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
-  const record = records[0];
+  // Fetch record — return 404, never 500, on bad ID
+  let record;
+  try {
+    const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
+    if (!records.length) return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+    record = records[0];
+  } catch (e) {
+    return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
+  }
 
   if (profile.school_id !== record.school_id) {
     return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });
@@ -69,6 +83,7 @@ Deno.serve(async (req) => {
   }
 
   const now = new Date().toISOString();
+  // actorName used for audit logs — always the profile name for students, SignatureProfile display_name for teacher/admin
   const actorName = `${profile.first_name} ${profile.last_name}`;
 
   // --- submitRecord: student submits their own achievement ---
@@ -93,22 +108,27 @@ Deno.serve(async (req) => {
       teacher_email: user.email,
       teacher_name: actorName,
     });
-    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'submitted', 'draft', 'awaiting_teacher_signature', `Teacher submitted achievement on behalf of student`);
+    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'submitted', 'draft', 'awaiting_teacher_signature', 'Teacher submitted achievement on behalf of student');
     return Response.json({ ok: true, newStatus: 'awaiting_teacher_signature' }, { headers: CORS });
   }
 
   // --- teacherSignRecord: teacher endorses and signs ---
   if (action === 'teacherSignRecord') {
-    if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { headers: CORS });
+    if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { status: 400, headers: CORS });
     if (record.teacher_signed) return Response.json({ ok: false, error: 'Record already has a teacher signature' }, { status: 409, headers: CORS });
+
+    // Resolve display identity: use SignatureProfile if provided, fallback to profile name
+    const sigDisplayName = signatureData.display_name || actorName;
+    const sigTitle = signatureData.title || '';
 
     const sigRecord = await base44.asServiceRole.entities.DigitalSignature.create({
       record_id: recordId,
       school_id: record.school_id,
       signer_email: user.email,
-      signer_name: actorName,
+      signer_name: sigDisplayName,
+      signer_title: sigTitle,
       signer_role: 'teacher',
-      signature_type: signatureData.type,
+      signature_type: signatureData.type || 'typed',
       signature_value: signatureData.value,
       signed_at: now
     });
@@ -119,10 +139,10 @@ Deno.serve(async (req) => {
       teacher_signed_at: now,
       teacher_id: profile.id,
       teacher_email: user.email,
-      teacher_name: actorName,
+      teacher_name: sigDisplayName,
       status: 'awaiting_admin_signature'
     });
-    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'teacher_signed', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'Teacher approved and signed');
+    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'teacher', 'teacher_signed', 'awaiting_teacher_signature', 'awaiting_admin_signature', `Teacher signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}`);
     return Response.json({ ok: true, newStatus: 'awaiting_admin_signature', signatureId: sigRecord.id }, { headers: CORS });
   }
 
@@ -133,27 +153,31 @@ Deno.serve(async (req) => {
       status: 'rejected',
       teacher_rejection_reason: reason
     });
-    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'admin_rejected', 'awaiting_teacher_signature', 'rejected', reason);
+    await audit(base44, recordId, record.school_id, user.email, actorName, 'teacher', 'teacher_rejected', 'awaiting_teacher_signature', 'rejected', reason);
     return Response.json({ ok: true, newStatus: 'rejected' }, { headers: CORS });
   }
 
   // --- adminSignRecord: admin gives final approval ---
   if (action === 'adminSignRecord') {
-    if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { headers: CORS });
+    if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { status: 400, headers: CORS });
     if (record.admin_signed) return Response.json({ ok: false, error: 'Record already has an admin signature' }, { status: 409, headers: CORS });
+
+    // Resolve display identity: use SignatureProfile if provided, fallback to profile name
+    const sigDisplayName = signatureData.display_name || actorName;
+    const sigTitle = signatureData.title || '';
 
     const sigRecord = await base44.asServiceRole.entities.DigitalSignature.create({
       record_id: recordId,
       school_id: record.school_id,
       signer_email: user.email,
-      signer_name: actorName,
+      signer_name: sigDisplayName,
+      signer_title: sigTitle,
       signer_role: 'admin',
-      signature_type: signatureData.type,
+      signature_type: signatureData.type || 'typed',
       signature_value: signatureData.value,
       signed_at: now
     });
 
-    // Generate a unique verify ID
     const verifyId = `${recordId.slice(-8)}-${Date.now().toString(36)}`;
 
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
@@ -162,12 +186,12 @@ Deno.serve(async (req) => {
       admin_signed_at: now,
       admin_id: profile.id,
       admin_email: user.email,
-      admin_name: actorName,
+      admin_name: sigDisplayName,
       status: 'approved',
       approved_at: now,
       verify_id: verifyId
     });
-    await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'approved', 'Admin approved and signed — ready to mint NFT');
+    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'approved', `Admin approved and signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}`);
     return Response.json({ ok: true, newStatus: 'approved', signatureId: sigRecord.id, verifyId }, { headers: CORS });
   }
 
@@ -182,7 +206,7 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, newStatus: 'rejected' }, { headers: CORS });
   }
 
-  return Response.json({ ok: false, error: 'Unhandled action' }, { headers: CORS });
+  return Response.json({ ok: false, error: 'Unhandled action' }, { status: 400, headers: CORS });
 });
 
 async function audit(base44, recordId, schoolId, actorEmail, actorName, actorRole, action, oldStatus, newStatus, notes) {
