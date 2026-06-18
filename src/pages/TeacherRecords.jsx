@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, ChevronRight, PenLine, Trophy, Clock } from 'lucide-react';
+import { Search, ChevronRight, PenLine, Trophy, Clock, HardDrive } from 'lucide-react';
 import { format } from 'date-fns';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import { toast } from 'sonner';
@@ -166,7 +166,18 @@ export default function TeacherRecords() {
                       : <span className="text-xs text-slate-400">None</span>
                     }
                   </TableCell>
-                  <TableCell><RecordStatusBadge status={r.status} /></TableCell>
+                  <TableCell>
+                    <RecordStatusBadge status={r.status} />
+                    {r.drive_file_url && (
+                      <a href={r.drive_file_url} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-emerald-600 hover:underline mt-1">
+                        <HardDrive className="h-3 w-3" /> View in Drive
+                      </a>
+                    )}
+                    {r.verify_id && (
+                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{r.verify_id}</p>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs text-slate-500">
                     {r.created_date ? format(new Date(r.created_date), 'MMM d, yyyy') : '—'}
                   </TableCell>

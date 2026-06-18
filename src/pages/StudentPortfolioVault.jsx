@@ -144,90 +144,97 @@ export default function StudentPortfolioVault() {
 
       {!connected && (
         <Card className="border-0 shadow-md bg-gradient-to-br from-violet-50 to-indigo-50">
-          <CardContent className="p-6 text-center">
-            <FolderOpen className="h-12 w-12 text-violet-400 mx-auto mb-3" />
-            <h3 className="font-semibold text-slate-800 mb-2">Why connect Google Drive?</h3>
-            <p className="text-sm text-slate-600 max-w-md mx-auto">
-              When an admin mints your NFT achievement, it gets automatically saved to your personal Google Drive in a secure folder: <strong>BlockWard / School / Your Name / Awards and Records</strong>. You'll own those files permanently.
-            </p>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-start">
+              <FolderOpen className="h-10 w-10 text-violet-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-slate-800 mb-1">Connect your Drive to receive future certificates</h3>
+                <p className="text-sm text-slate-600 mb-3">
+                  When you connect Google Drive, your verified NFT certificates will be saved directly to your personal Drive folder: <strong>BlockWard / School / Your Name / Awards and Records</strong>.
+                </p>
+                {vaultEntries.length > 0 && (
+                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    ✅ Your school has already archived <strong>{vaultEntries.length}</strong> certificate{vaultEntries.length !== 1 ? 's' : ''} to the school Drive. Connect your personal Drive to receive future ones directly.
+                  </p>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {connected && (
-        <>
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { label: 'Certificates Saved', value: vaultEntries.length, color: 'text-emerald-600 bg-emerald-50' },
-              { label: 'Minted Records', value: records.length, color: 'text-violet-600 bg-violet-50' },
-              { label: 'Pending Approval', value: 0, color: 'text-amber-600 bg-amber-50' },
-            ].map(s => (
-              <Card key={s.label} className="border-0 shadow-sm">
-                <CardContent className={`p-4 text-center rounded-xl ${s.color.split(' ')[1]}`}>
-                  <p className={`text-3xl font-bold ${s.color.split(' ')[0]}`}>{s.value}</p>
-                  <p className="text-xs text-slate-500 mt-1">{s.label}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Vault Entries */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <HardDrive className="h-4 w-4" /> Saved Certificates
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {vaultEntries.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
-                  <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                  <p className="font-medium">No certificates saved yet</p>
-                  <p className="text-sm mt-1">Your verified achievements will appear here after an admin mints and archives them.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {vaultEntries.map(entry => {
-                    const rec = records.find(r => r.id === entry.record_id);
-                    return (
-                      <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
-                            <Trophy className="h-5 w-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-slate-800">{rec?.title || 'Achievement'}</p>
-                            <p className="text-xs text-slate-400">
-                              {entry.drive_folder_path} · {entry.saved_at ? format(new Date(entry.saved_at), 'MMM d, yyyy') : ''}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          {entry.drive_url && (
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={entry.drive_url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open in Drive
-                              </a>
-                            </Button>
-                          )}
-                          {rec && (
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link to={createPageUrl(`RecordDetail?id=${rec.id}`)}>
-                                <Link2 className="h-3.5 w-3.5" />
-                              </Link>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
+      {/* Stats — always visible when there are entries */}
+      {vaultEntries.length > 0 && (
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Certificates Saved', value: vaultEntries.length, color: 'text-emerald-600 bg-emerald-50' },
+            { label: 'Minted Records', value: records.length, color: 'text-violet-600 bg-violet-50' },
+            { label: 'Drive Connected', value: connected ? '✓' : '✗', color: connected ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50' },
+          ].map(s => (
+            <Card key={s.label} className="border-0 shadow-sm">
+              <CardContent className={`p-4 text-center rounded-xl ${s.color.split(' ')[1]}`}>
+                <p className={`text-3xl font-bold ${s.color.split(' ')[0]}`}>{s.value}</p>
+                <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       )}
+
+      {/* Vault Entries — visible regardless of Drive connection status */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <HardDrive className="h-4 w-4" /> Archived Certificates
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {vaultEntries.length === 0 ? (
+            <div className="text-center py-12 text-slate-400">
+              <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
+              <p className="font-medium">No certificates archived yet</p>
+              <p className="text-sm mt-1">Your verified achievements will appear here once an admin approves and archives them.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {vaultEntries.map(entry => {
+                const rec = records.find(r => r.id === entry.record_id);
+                return (
+                  <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
+                        <Trophy className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800">{rec?.title || 'Achievement'}</p>
+                        <p className="text-xs text-slate-400">
+                          {entry.drive_folder_path} · {entry.saved_at ? format(new Date(entry.saved_at), 'MMM d, yyyy') : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {entry.drive_url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a href={entry.drive_url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open in Drive
+                          </a>
+                        </Button>
+                      )}
+                      {rec && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={createPageUrl(`RecordDetail?id=${rec.id}`)}>
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

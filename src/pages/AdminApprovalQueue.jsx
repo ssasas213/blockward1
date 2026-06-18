@@ -62,7 +62,9 @@ function AdminApprovalQueueContent() {
   };
 
   const filtered = records.filter(r => {
-    const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
+    const matchesStatus = filterStatus === 'all'
+      || r.status === filterStatus
+      || (filterStatus === 'archived' && (r.status === 'archived' || r.status === 'minted'));
     const q = search.toLowerCase();
     const matchesSearch = !q ||
       r.student_name?.toLowerCase().includes(q) ||
@@ -77,10 +79,13 @@ function AdminApprovalQueueContent() {
   const approved = records.filter(r => r.status === 'approved').length;
   const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
 
+  const archived = records.filter(r => r.status === 'archived' || r.status === 'minted').length;
+
   const filterTabs = [
     { key: 'awaiting_admin_signature', label: 'Needs My Signature', count: awaitingAdmin },
     { key: 'awaiting_teacher_signature', label: 'With Teacher', count: awaitingTeacher },
     { key: 'approved', label: 'Approved', count: approved },
+    { key: 'archived', label: 'Archived', count: archived },
     { key: 'all', label: 'All Records', count: records.length },
   ];
 
