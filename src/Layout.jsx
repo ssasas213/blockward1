@@ -99,6 +99,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'BlockWards', icon: Award, page: 'BlockWards' },
       { name: 'Achievement Approvals', icon: Trophy, page: 'AdminRecords' },
       { name: 'Approval Queue', icon: PenLine, page: 'AdminApprovalQueue' },
+      { name: 'Custodian Dashboard', icon: Shield, page: 'CustodianDashboard' },
       { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
       { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
       { name: 'Reports', icon: FileText, page: 'Reports' },

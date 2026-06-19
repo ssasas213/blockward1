@@ -90,6 +90,7 @@ import RouteDebug from './pages/RouteDebug';
 import Verify from './pages/Verify';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import AdminApprovalQueue from './pages/AdminApprovalQueue';
+import CustodianDashboard from './pages/CustodianDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -137,6 +138,7 @@ export const PAGES = {
     "Verify": Verify,
     "StudentPortfolioVault": StudentPortfolioVault,
     "AdminApprovalQueue": AdminApprovalQueue,
+    "CustodianDashboard": CustodianDashboard,
 }
 
 export const pagesConfig = {

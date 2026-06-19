@@ -76,5 +76,67 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, notified: 'admins', count: adminProfiles.length });
   }
 
+  // --- Parent notification on ARCHIVED (verified + archived) ---
+  if (newStatus === 'archived' && data.student_email) {
+    // Fetch the student's profile to get parent contact
+    const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_email: data.student_email
+    });
+    const studentProfile = studentProfiles[0];
+
+    if (studentProfile?.parent_email) {
+      const appUrl = Deno.env.get('APP_URL') || 'https://blockward.app';
+      const verifyUrl = data.verify_id
+        ? `${appUrl}/Verify?id=${data.verify_id}`
+        : recordUrl;
+
+      await base44.asServiceRole.integrations.Core.SendEmail({
+        to: studentProfile.parent_email,
+        subject: `🎓 ${data.student_name || 'Your child'} has received a verified achievement certificate`,
+        body: `
+<p>Dear ${studentProfile.parent_name || 'Parent/Guardian'},</p>
+<p>We are pleased to inform you that <strong>${data.student_name || 'your child'}</strong> has received a verified digital achievement certificate from ${data.teacher_name ? `${data.teacher_name} and the admin team` : 'the school'}.</p>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:20px 0;">
+  <h3 style="color:#5b21b6;margin:0 0 12px;">${data.title}</h3>
+  ${data.description ? `<p style="color:#475569;margin:0 0 8px;">${data.description}</p>` : ''}
+  <p style="color:#64748b;font-size:13px;margin:0;"><strong>Category:</strong> ${data.category || 'Achievement'}</p>
+  ${data.date_achieved ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Date:</strong> ${data.date_achieved}</p>` : ''}
+  ${data.verify_id ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Verification ID:</strong> ${data.verify_id}</p>` : ''}
+</div>
+<p>This achievement has been reviewed and digitally signed by both the teacher and school administration. It is permanently archived and can be verified at any time.</p>
+<p>
+  <a href="${verifyUrl}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">
+    View & Verify Certificate →
+  </a>
+</p>
+${data.drive_file_url ? `<p><a href="${data.drive_file_url}" style="color:#7c3aed;">View Certificate in Google Drive</a></p>` : ''}
+<p style="color:#94a3b8;font-size:12px;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
+  This certificate was issued by BlockWard — the school's digital custodian platform for verified student achievements.
+</p>
+        `.trim()
+      });
+      return Response.json({ ok: true, notified: 'parent', email: studentProfile.parent_email });
+    }
+  }
+
+  // --- Student notification on rejection ---
+  if (newStatus === 'rejected' && data.student_email) {
+    const reason = data.rejection_reason || data.teacher_rejection_reason || 'Please contact your teacher for details.';
+    await base44.asServiceRole.integrations.Core.SendEmail({
+      to: data.student_email,
+      subject: `Update on your achievement submission: "${data.title}"`,
+      body: `
+<p>Hi ${data.student_name || 'there'},</p>
+<p>Your achievement submission <strong>"${data.title}"</strong> has been reviewed and was not approved at this time.</p>
+<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:16px;margin:16px 0;">
+  <p style="color:#dc2626;margin:0;"><strong>Reason:</strong> ${reason}</p>
+</div>
+<p>You may resubmit with updated evidence or contact your teacher for guidance.</p>
+<p><a href="${recordUrl}" style="background:#7c3aed;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">View Record →</a></p>
+      `.trim()
+    });
+    return Response.json({ ok: true, notified: 'student_rejected', email: data.student_email });
+  }
+
   return Response.json({ ok: true, skipped: `status ${newStatus} — no notification needed` });
 });

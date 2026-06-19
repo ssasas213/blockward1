@@ -438,10 +438,10 @@ export default function RecordDetail() {
             <CardContent>
               {[
                 { key: 'draft', label: 'Student Submits' },
-                { key: 'awaiting_teacher_signature', label: 'Teacher Reviews' },
-                { key: 'awaiting_admin_signature', label: 'Admin Approves' },
-                { key: 'approved', label: 'NFT Minting' },
-                { key: 'minted', label: 'Archived to Drive' },
+                { key: 'awaiting_teacher_signature', label: 'Teacher Signs' },
+                { key: 'awaiting_admin_signature', label: 'Admin Signs' },
+                { key: 'approved', label: 'VERIFIED — Ready to Archive' },
+                { key: 'minted', label: 'ARCHIVED to Drive' },
               ].map((step, i, arr) => {
                 const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'approved', 'minted', 'archived'];
                 const current = ORDER.indexOf(record.status === 'archived' ? 'archived' : record.status);

@@ -74,6 +74,7 @@ export default function StudentMyRecords() {
         setUploading(false);
       }
 
+      const now = new Date().toISOString();
       const record = await base44.entities.StudentRecord.create({
         school_id: profile.school_id,
         student_id: profile.id,
@@ -84,7 +85,8 @@ export default function StudentMyRecords() {
         description: form.description,
         date_achieved: form.date_achieved || null,
         file_url: fileUrl,
-        status: 'draft'
+        status: 'awaiting_teacher_signature',
+        submitted_at: now
       });
 
       await base44.entities.AuditLog.create({
@@ -93,12 +95,13 @@ export default function StudentMyRecords() {
         actor_email: user.email,
         actor_name: `${profile.first_name} ${profile.last_name}`,
         actor_role: 'student',
-        action: 'created',
-        new_status: 'draft',
-        timestamp: new Date().toISOString()
+        action: 'submitted',
+        old_status: 'draft',
+        new_status: 'awaiting_teacher_signature',
+        timestamp: now
       });
 
-      toast.success('Achievement submitted!');
+      toast.success('Achievement submitted for teacher review!');
       setShowSubmit(false);
       setForm({ title: '', category: 'academic', description: '', date_achieved: '' });
       setFile(null);
@@ -281,7 +284,7 @@ export default function StudentMyRecords() {
             <Button variant="outline" onClick={() => setShowSubmit(false)}>Cancel</Button>
             <Button onClick={handleSubmitNew} disabled={saving || uploading} className="bg-gradient-to-r from-violet-600 to-indigo-600">
               {(saving || uploading) && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {uploading ? 'Uploading...' : 'Save as Draft'}
+              {uploading ? 'Uploading...' : 'Submit Achievement'}
             </Button>
           </DialogFooter>
         </DialogContent>
