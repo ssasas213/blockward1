@@ -6,12 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Shield, Search, ExternalLink, User, Loader2, XCircle, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Shield, Search, ExternalLink, User, Loader2, XCircle, AlertTriangle, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -104,10 +100,11 @@ export default function BlockWards() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
-          <p className="text-slate-500 mt-1">
+          <p className="text-slate-500 mt-1 flex items-center gap-1.5">
+            <Lock className="h-3.5 w-3.5" />
             {profile?.user_type === 'student'
               ? 'Your blockchain-verified achievements'
-              : 'Manage soulbound achievement tokens'}
+              : 'Manage soulbound achievement tokens — secure 3-step issuance required'}
           </p>
         </div>
         {(canIssue || profile?.user_type === 'admin') && (
