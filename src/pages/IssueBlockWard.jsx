@@ -119,18 +119,15 @@ function IssueBlockWardContent() {
       const sid = p?.school_id || null;
       setSchoolId(sid);
 
+      // Teachers only — admins are blocked by the access denied screen above
       let classes = [];
-      if (p?.user_type === 'admin') {
-        classes = sid ? await base44.entities.Class.filter({ school_id: sid }) : await base44.entities.Class.list();
+      const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+      const membership = memberships[0];
+      if (membership?.class_ids?.length > 0) {
+        const all = await base44.entities.Class.list();
+        classes = all.filter(c => membership.class_ids.includes(c.id));
       } else {
-        const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-        const membership = memberships[0];
-        if (membership?.class_ids?.length > 0) {
-          const all = await base44.entities.Class.list();
-          classes = all.filter(c => membership.class_ids.includes(c.id));
-        } else {
-          classes = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-        }
+        classes = await base44.entities.Class.filter({ teacher_email: currentUser.email });
       }
       setMyClasses(classes);
     } catch (e) {
@@ -251,14 +248,19 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  if (profile && profile.user_type !== 'teacher' && profile.user_type !== 'admin') {
+  // SECURITY: Only teachers can create achievement records. Admins review/approve only.
+  if (profile && profile.user_type !== 'teacher') {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
         <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-500">Only teachers and admins can submit achievement records.</p>
+        <p className="text-slate-500 mb-3">Only teachers can create and submit achievement records.</p>
+        <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg p-3">
+          Admins can review and approve records via the <strong>Approval Queue</strong>.
+          Achievement records must be created by a teacher and go through the full approval workflow.
+        </p>
       </div>
     );
   }
@@ -329,7 +331,7 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  const backPage = profile?.user_type === 'admin' ? 'AdminApprovalQueue' : 'TeacherRecords';
+  const backPage = 'TeacherRecords';
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto pb-12">

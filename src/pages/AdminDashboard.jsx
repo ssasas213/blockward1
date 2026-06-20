@@ -190,7 +190,7 @@ function AdminDashboardContent() {
         <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3 max-w-2xl">
           <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-blue-700">
-            Admins manage users, classes, system settings, and NFT records. <strong>Teachers issue BlockWards to students.</strong>
+            Admins review, approve, and sign achievement records. <strong>Only teachers can create and submit achievement records.</strong> Admins cannot issue BlockWards directly.
           </p>
         </div>
       </div>
@@ -490,7 +490,7 @@ function AdminDashboardContent() {
           {/* Recent BlockWards preview */}
           {stats.recentBlockWards.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">Recent BlockWard Records</p>
+              <p className="text-sm font-medium text-slate-700 mb-2">Recent Minted NFT Records</p>
               <div className="space-y-2">
                 {stats.recentBlockWards.slice(0, 4).map((bw) => (
                   <div key={bw.id} className="flex items-center justify-between py-2 px-3 bg-slate-50 rounded-lg">
@@ -526,8 +526,8 @@ function AdminDashboardContent() {
                 ))}
               </div>
               <Button variant="ghost" size="sm" className="mt-2 text-violet-600" asChild>
-                <Link to={createPageUrl('BlockWards')}>
-                  View all records <ChevronRight className="h-3 w-3 ml-1" />
+                <Link to={createPageUrl('AdminRecords')}>
+                  View all achievement records <ChevronRight className="h-3 w-3 ml-1" />
                 </Link>
               </Button>
             </div>
