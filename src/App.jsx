@@ -10,6 +10,16 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
+// Explicit imports for pages that must always be routable (not relying on pagesConfig loop)
+import RecordDetail from './pages/RecordDetail';
+import AdminApprovalQueue from './pages/AdminApprovalQueue';
+import AdminRecords from './pages/AdminRecords';
+import TeacherRecords from './pages/TeacherRecords';
+import StudentMyRecords from './pages/StudentMyRecords';
+import StudentPortfolioVault from './pages/StudentPortfolioVault';
+import Verify from './pages/Verify';
+import CustodianDashboard from './pages/CustodianDashboard';
+
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
@@ -60,6 +70,16 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      {/* Explicit routes for critical pages — guaranteed to resolve regardless of pagesConfig loop */}
+      <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><RecordDetail /></LayoutWrapper>} />
+      <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><AdminApprovalQueue /></LayoutWrapper>} />
+      <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><AdminRecords /></LayoutWrapper>} />
+      <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><TeacherRecords /></LayoutWrapper>} />
+      <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><StudentMyRecords /></LayoutWrapper>} />
+      <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><StudentPortfolioVault /></LayoutWrapper>} />
+      <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
+      <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><CustodianDashboard /></LayoutWrapper>} />
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
