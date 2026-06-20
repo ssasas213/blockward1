@@ -13,10 +13,15 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
   const [lastSig, setLastSig] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const isEligible = ['teacher', 'admin'].includes(userRole);
+
   useEffect(() => {
-    if (!userEmail) return;
+    if (!userEmail || !isEligible) {
+      setLoading(false);
+      return;
+    }
     load();
-  }, [userEmail]);
+  }, [userEmail, userRole]);
 
   const load = async () => {
     try {
@@ -26,7 +31,6 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
       ]);
       setSigProfile(profiles[0] || null);
       if (sigs.length > 0) {
-        // Get the most recent signature
         const sorted = [...sigs].sort((a, b) => new Date(b.signed_at) - new Date(a.signed_at));
         setLastSig(sorted[0]);
       }
@@ -37,8 +41,8 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
     }
   };
 
-  // Only show for teachers and admins
-  if (!['teacher', 'admin'].includes(userRole)) return null;
+  // Only show for teachers and admins — AFTER all hooks
+  if (!isEligible) return null;
 
   return (
     <Card className="border-0 shadow-lg">

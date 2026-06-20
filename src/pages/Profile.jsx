@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bell, Wallet, Copy, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { Bell, Wallet, Copy, Check, AlertTriangle, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -15,7 +15,7 @@ import SignatureProfileSection from '@/components/profile/SignatureProfileSectio
 import DriveVaultSection from '@/components/profile/DriveVaultSection';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 
-export default function Profile() {
+function ProfileContent() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
@@ -49,7 +49,7 @@ export default function Profile() {
       }
     } catch (e) {
       console.error('[Profile] Load failed:', e?.message || e);
-      setError(e.message || 'Failed to load profile');
+      setError(e?.message || 'Failed to load profile');
     } finally {
       setLoading(false);
     }
@@ -66,11 +66,9 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-          <p className="text-sm text-slate-500">Loading your profile…</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-64 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        <p className="text-sm text-slate-500">Loading your profile…</p>
       </div>
     );
   }
@@ -79,10 +77,11 @@ export default function Profile() {
     return (
       <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-red-50 border border-red-200 rounded-2xl">
         <AlertTriangle className="h-10 w-10 text-red-500 mx-auto mb-3" />
-        <p className="font-semibold text-red-700 mb-2">Failed to load profile</p>
+        <p className="font-semibold text-red-700 mb-2">Unable to load profile</p>
         <p className="text-sm text-red-600 mb-4">{error}</p>
-        <Button onClick={load} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50">
-          Try Again
+        <p className="text-xs text-red-500 mb-4">Please refresh or contact your administrator.</p>
+        <Button onClick={load} variant="outline" className="border-red-300 text-red-600 hover:bg-red-50 gap-2">
+          <RefreshCw className="h-4 w-4" /> Try Again
         </Button>
       </div>
     );
@@ -90,9 +89,10 @@ export default function Profile() {
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-slate-50 rounded-2xl">
+      <div className="max-w-lg mx-auto mt-16 text-center p-8 bg-slate-50 rounded-2xl border border-slate-200">
         <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
         <p className="font-semibold text-slate-700">You are not logged in.</p>
+        <p className="text-sm text-slate-500 mt-1">Please sign in to view your profile.</p>
       </div>
     );
   }
@@ -103,7 +103,6 @@ export default function Profile() {
   if (profile?.user_type === 'student' && !profile?.parent_email) missingFields.push('Parent email');
 
   return (
-    <ProfileErrorBoundary>
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
@@ -122,6 +121,7 @@ export default function Profile() {
         </div>
       )}
 
+      {/* SECTION 1 — User Info / Header */}
       {profile ? (
         <ProfileHeader profile={profile} user={user} school={school} />
       ) : (
@@ -131,12 +131,20 @@ export default function Profile() {
         </div>
       )}
 
+      {/* SECTION 4 — Digital Custodian Status */}
       <ProfileStats profile={profile} userEmail={user?.email} />
+
+      {/* Edit Profile Form */}
       <EditProfileForm profile={profile} onSaved={load} />
+
+      {/* SECTION 2 — Digital Signature Profile (teacher/admin only) */}
       <SignatureProfileSection userEmail={user?.email} userRole={profile?.user_type} />
+
+      {/* SECTION 3 — Google Drive Connection */}
       <GoogleIntegrationStatus />
       <DriveVaultSection userEmail={user?.email} userType={profile?.user_type} />
 
+      {/* Blockchain Wallet */}
       {profile?.wallet_address && (
         <Card className="border-0 shadow-lg">
           <CardHeader>
@@ -166,7 +174,7 @@ export default function Profile() {
                 </div>
                 <p className="text-xs text-violet-600 mt-2">
                   {profile.user_type === 'student' && 'Your wallet can only receive BlockWards.'}
-                  {profile.user_type === 'teacher' && 'Your wallet can mint BlockWards to students.'}
+                  {profile.user_type === 'teacher' && 'Your wallet can submit achievements for approval.'}
                   {profile.user_type === 'admin' && 'You have administrative control over role assignments.'}
                 </p>
               </div>
@@ -175,6 +183,7 @@ export default function Profile() {
         </Card>
       )}
 
+      {/* Points Summary — students only */}
       {profile?.user_type === 'student' && (
         <Card className="border-0 shadow-lg">
           <CardHeader>
@@ -195,6 +204,7 @@ export default function Profile() {
         </Card>
       )}
 
+      {/* Notification Preferences */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -208,6 +218,13 @@ export default function Profile() {
 
       <SecuritySection />
     </div>
+  );
+}
+
+export default function Profile() {
+  return (
+    <ProfileErrorBoundary>
+      <ProfileContent />
     </ProfileErrorBoundary>
   );
 }
