@@ -5,75 +5,195 @@ import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award,
-  BookOpen, User, AlertTriangle, Upload, ImageIcon, FileText,
-  Clock, ClipboardCheck, Sparkles, Shield, PenLine
-} from 'lucide-react';
+import { Check, ArrowLeft, Loader2, CheckCircle2, Award, User, AlertTriangle, Shield, PenLine, Trash2, Clock, School } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import TeacherSignaturePad from '@/components/blockwards/TeacherSignaturePad';
+import IssueStepper from '@/components/blockwards/IssueStepper';
+import StudentPicker from '@/components/blockwards/StudentPicker';
+import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
 
-const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
-const CATEGORY_LABELS = {
-  academic: 'Academic', sports: 'Sports', arts: 'Arts',
-  leadership: 'Leadership', community: 'Community', special: 'Special'
-};
+// ─── Signature Pad ────────────────────────────────────────────────────────────
+function SignaturePad({ profile, schoolName, onConfirm }) {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasStrokes, setHasStrokes] = useState(false);
+  const [lastPos, setLastPos] = useState(null);
 
-// Step progress indicator
-function StepProgress({ currentStep }) {
-  const steps = [
-    { num: 1, label: 'Select Student', icon: User },
-    { num: 2, label: 'Choose Award', icon: FileText },
-    { num: 3, label: 'Teacher Signature', icon: PenLine },
-    { num: 4, label: 'Review & Issue', icon: ClipboardCheck },
-  ];
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.strokeStyle = '#1e293b';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  }, []);
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    if (e.touches) {
+      return { x: (e.touches[0].clientX - rect.left) * sx, y: (e.touches[0].clientY - rect.top) * sy };
+    }
+    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+  };
+
+  const startDraw = (e) => { e.preventDefault(); setIsDrawing(true); setLastPos(getPos(e)); };
+  const draw = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastPos.x, lastPos.y);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    setLastPos(pos);
+    setHasStrokes(true);
+  };
+  const stopDraw = (e) => { e?.preventDefault(); setIsDrawing(false); };
+
+  const clear = () => {
+    const canvas = canvasRef.current;
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    setHasStrokes(false);
+  };
+
+  const confirm = () => {
+    if (!hasStrokes) return;
+    onConfirm(canvasRef.current.toDataURL('image/png'), new Date().toISOString());
+  };
+
+  const now = new Date();
+
   return (
-    <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-5">
-      <p className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-4 text-center">Secure Issuance Workflow</p>
-      <div className="flex items-center justify-between max-w-lg mx-auto">
-        {steps.map((step, i) => (
-          <React.Fragment key={step.num}>
-            <div className="flex flex-col items-center gap-2 flex-1">
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${
-                currentStep === step.num
-                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
-                  : currentStep > step.num
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white border-2 border-slate-200 text-slate-400'
-              }`}>
-                {currentStep > step.num
-                  ? <CheckCircle2 className="h-6 w-6" />
-                  : <step.icon className="h-5 w-5" />
-                }
-              </div>
+    <div className="space-y-5">
+      {/* Signatory info */}
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <User className="h-4 w-4 text-violet-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Teacher</p>
+            <p className="text-sm font-semibold text-slate-900">{profile ? `${profile.first_name} ${profile.last_name}` : '—'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <School className="h-4 w-4 text-indigo-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">School</p>
+            <p className="text-sm font-semibold text-slate-900">{schoolName || '—'}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+            <Clock className="h-4 w-4 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Date & Time</p>
+            <p className="text-sm font-semibold text-slate-900">{now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+            <p className="text-xs text-slate-400">{now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Canvas */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-slate-700">Sign Here *</p>
+          {hasStrokes && (
+            <Button type="button" variant="ghost" size="sm" onClick={clear} className="text-red-500 hover:text-red-700 hover:bg-red-50 gap-1 h-8">
+              <Trash2 className="h-3.5 w-3.5" /> Clear Signature
+            </Button>
+          )}
+        </div>
+        <div className={`relative border-2 rounded-xl overflow-hidden transition-colors ${hasStrokes ? 'border-violet-400 bg-white' : 'border-dashed border-slate-300 bg-slate-50'}`}>
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={200}
+            style={{ height: '180px' }}
+            className="w-full touch-none cursor-crosshair"
+            onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onMouseLeave={stopDraw}
+            onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}
+          />
+          {!hasStrokes && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
-                <p className={`text-xs font-semibold ${currentStep >= step.num ? 'text-slate-800' : 'text-slate-400'}`}>
-                  Step {step.num}
-                </p>
-                <p className={`text-xs ${currentStep >= step.num ? 'text-slate-600' : 'text-slate-400'}`}>
-                  {step.label}
-                </p>
+                <PenLine className="h-7 w-7 text-slate-300 mx-auto mb-1" />
+                <p className="text-sm text-slate-400">Sign here using your mouse or finger</p>
               </div>
             </div>
-            {i < steps.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-2 mb-6 transition-all ${currentStep > step.num ? 'bg-green-400' : 'bg-slate-200'}`} />
-            )}
-          </React.Fragment>
-        ))}
+          )}
+          <div className="absolute bottom-8 left-6 right-6 border-b border-slate-300 pointer-events-none" />
+          <p className="absolute bottom-2 left-6 text-xs text-slate-400 pointer-events-none">Signature</p>
+        </div>
+        <p className="text-xs text-slate-400">By signing, you confirm this BlockWard is accurate and authentic. Your signature will be permanently stored.</p>
       </div>
+
+      <Button onClick={confirm} disabled={!hasStrokes}
+        className="w-full h-11 bg-gradient-to-r from-violet-600 to-indigo-600 text-white gap-2 disabled:opacity-40">
+        <CheckCircle2 className="h-5 w-5" /> Confirm Signature & Continue
+      </Button>
     </div>
   );
 }
 
+// ─── Award type picker ────────────────────────────────────────────────────────
+const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
+
+function AwardPicker({ awardTypes, selectedAward, onSelect }) {
+  const [catFilter, setCatFilter] = useState('all');
+  const filtered = catFilter === 'all' ? awardTypes : awardTypes.filter(a => a.category === catFilter || !a.category);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {['all', ...CATEGORIES].map(c => (
+          <button key={c} type="button" onClick={() => setCatFilter(c)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${catFilter === c ? 'bg-violet-600 text-white border-violet-600' : 'border-slate-200 text-slate-600 hover:border-violet-400'}`}>
+            {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-center text-slate-400 py-8">No award types found</p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+          {filtered.map(award => {
+            const isSelected = selectedAward?.id === award.id;
+            return (
+              <button key={award.id} type="button" onClick={() => onSelect(award)}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${isSelected ? 'border-violet-500 bg-violet-50 shadow-md' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-slate-900">{award.title}</p>
+                    {award.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{award.description}</p>}
+                  </div>
+                  {isSelected && <CheckCircle2 className="h-5 w-5 text-violet-500 flex-shrink-0" />}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {award.category && <Badge variant="outline" className="text-xs">{award.category}</Badge>}
+                  <Badge variant="outline" className="text-xs">Common</Badge>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 function IssueBlockWardContent() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -81,204 +201,99 @@ function IssueBlockWardContent() {
   const [profile, setProfile] = useState(null);
   const [user, setUser] = useState(null);
   const [schoolId, setSchoolId] = useState(null);
-  const [myClasses, setMyClasses] = useState([]);
-  const [selectedClassId, setSelectedClassId] = useState('');
-  const [enrolledStudents, setEnrolledStudents] = useState([]);
-  const [loadingStudents, setLoadingStudents] = useState(false);
-  const [uploadingEvidence, setUploadingEvidence] = useState(false);
-  const [uploadingSupporting, setUploadingSupporting] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [submittedRecord, setSubmittedRecord] = useState(null);
-
-  const [teacherSignature, setTeacherSignature] = useState(null); // base64 data URL
-  const [teacherSignedAt, setTeacherSignedAt] = useState(null);
   const [schoolName, setSchoolName] = useState('');
+  const [students, setStudents] = useState([]);
+  const [awardTypes, setAwardTypes] = useState([]);
+  const [issuing, setIssuing] = useState(false);
+  const [issueSuccess, setIssueSuccess] = useState(false);
+  const [issuedResult, setIssuedResult] = useState(null);
 
-  const [formData, setFormData] = useState({
-    selectedStudent: null,
-    selectedClass: null,
-    title: '',
-    description: '',
-    category: '',
-    dateAchieved: new Date().toISOString().split('T')[0],
-    teacherComments: '',
-    evidenceUrl: '',
-    evidenceType: '',
-    supportingDocUrl: '',
-    confirmed: false,
-  });
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedAward, setSelectedAward] = useState(null);
+  const [teacherSignature, setTeacherSignature] = useState(null);
+  const [teacherSignedAt, setTeacherSignedAt] = useState(null);
+  const [confirmed, setConfirmed] = useState(false);
 
-  const evidenceInputRef = useRef(null);
-  const supportingInputRef = useRef(null);
+  useEffect(() => { loadData(); }, []);
 
-  useEffect(() => { loadContext(); }, []);
-
-  const loadContext = async () => {
+  const loadData = async () => {
     try {
       const currentUser = await base44.auth.me();
       if (!currentUser) return;
       setUser(currentUser);
+
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const p = profiles[0] || null;
       setProfile(p);
       const sid = p?.school_id || null;
       setSchoolId(sid);
 
-      // Load school name
       if (sid) {
         const schools = await base44.entities.School.filter({ id: sid });
         if (schools[0]) setSchoolName(schools[0].name);
+
+        // Load students
+        const allProfiles = await base44.entities.UserProfile.filter({ school_id: sid, user_type: 'student' });
+        const mapped = allProfiles.map(sp => ({
+          id: sp.id,
+          name: `${sp.first_name} ${sp.last_name}`,
+          email: sp.user_email,
+          class: sp.grade_level || 'Student',
+          avatarUrl: sp.avatar_url || null,
+        }));
+        setStudents(mapped);
       }
 
-      // Teachers only — admins are blocked by the access denied screen above
-      let classes = [];
-      const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-      const membership = memberships[0];
-      if (membership?.class_ids?.length > 0) {
-        const all = await base44.entities.Class.list();
-        classes = all.filter(c => membership.class_ids.includes(c.id));
-      } else {
-        classes = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-      }
-      setMyClasses(classes);
+      // Load award types
+      const awards = await base44.entities.AwardTypes.filter({ is_active: true });
+      setAwardTypes(awards);
     } catch (e) {
-      toast.error('Failed to load class data');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClassSelect = async (classId) => {
-    setSelectedClassId(classId);
-    const cls = myClasses.find(c => c.id === classId) || null;
-    setFormData(prev => ({ ...prev, selectedStudent: null, selectedClass: cls }));
-    setEnrolledStudents([]);
-    setLoadingStudents(true);
-    try {
-      const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
-      let students = [];
-      if (enrollments.length > 0) {
-        const emails = enrollments.map(e => e.student_email);
-        const allProfiles = await base44.entities.UserProfile.list();
-        students = allProfiles
-          .filter(p => emails.includes(p.user_email) && p.user_type === 'student')
-          .map(p => ({ id: p.id, name: `${p.first_name} ${p.last_name}`, email: p.user_email, gradeLevel: p.grade_level || '' }));
-      } else if (cls?.student_emails?.length > 0) {
-        const allProfiles = await base44.entities.UserProfile.list();
-        students = allProfiles
-          .filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student')
-          .map(p => ({ id: p.id, name: `${p.first_name} ${p.last_name}`, email: p.user_email, gradeLevel: p.grade_level || '' }));
-      }
-      setEnrolledStudents(students);
-    } catch (e) {
-      toast.error('Failed to load students');
-    } finally {
-      setLoadingStudents(false);
-    }
-  };
-
-  const handleFileUpload = async (e, field) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const setter = field === 'evidence' ? setUploadingEvidence : setUploadingSupporting;
-    setter(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      const ext = file.name.split('.').pop().toLowerCase();
-      const type = ['pdf'].includes(ext) ? 'pdf' : ['mp4', 'mov', 'webm'].includes(ext) ? 'video' : 'image';
-      if (field === 'evidence') {
-        setFormData(p => ({ ...p, evidenceUrl: file_url, evidenceType: type }));
-      } else {
-        setFormData(p => ({ ...p, supportingDocUrl: file_url }));
-      }
-      toast.success('File uploaded successfully!');
-    } catch (err) {
-      toast.error('Upload failed. Please try again.');
-    } finally {
-      setter(false);
-    }
-  };
-
   const handleNext = () => {
-    if (currentStep === 1) {
-      if (!formData.selectedClass) { toast.error('Please select a class'); return; }
-      if (!formData.selectedStudent) { toast.error('Please select a student'); return; }
-    }
-    if (currentStep === 2) {
-      if (!formData.title.trim()) { toast.error('Please enter a title'); return; }
-      if (!formData.category) { toast.error('Please select a category'); return; }
-      if (!formData.description.trim()) { toast.error('Description is required'); return; }
-      if (!formData.dateAchieved) { toast.error('Please enter the date achieved'); return; }
-      if (!formData.evidenceUrl) { toast.error('Evidence upload is required'); return; }
-    }
-    if (currentStep === 3) {
-      if (!teacherSignature) { toast.error('Please draw your signature before continuing'); return; }
-    }
+    if (currentStep === 1 && !selectedStudent) { toast.error('Please select a student'); return; }
+    if (currentStep === 2 && !selectedAward) { toast.error('Please select an award'); return; }
+    if (currentStep === 3 && !teacherSignature) { toast.error('Please draw your signature before continuing'); return; }
     setCurrentStep(s => Math.min(s + 1, 4));
   };
 
-  const handleSignatureComplete = (dataUrl) => {
-    setTeacherSignature(dataUrl);
-    if (dataUrl) {
-      setTeacherSignedAt(new Date().toISOString());
-      toast.success('Signature captured! Click "Continue" to review and submit.');
-    }
-  };
+  const handleBack = () => setCurrentStep(s => Math.max(s - 1, 1));
 
-  const handleSubmitForApproval = async () => {
-    if (!formData.confirmed) { toast.error('Please tick the confirmation checkbox'); return; }
+  const handleIssue = async () => {
+    if (!confirmed) { toast.error('Please tick the confirmation checkbox'); return; }
     if (!teacherSignature) { toast.error('Teacher signature is required'); return; }
-    setSubmitting(true);
+    setIssuing(true);
     try {
-      const teacherName = `${profile.first_name} ${profile.last_name}`;
-
-      // Upload signature image to storage
-      let signatureUrl = '';
+      // Upload signature
+      let signatureUrl = teacherSignature;
       try {
         const blob = await (await fetch(teacherSignature)).blob();
         const sigFile = new File([blob], 'teacher-signature.png', { type: 'image/png' });
         const { file_url } = await base44.integrations.Core.UploadFile({ file: sigFile });
         signatureUrl = file_url;
-      } catch (e) {
-        // fallback: store as data URL if upload fails
-        signatureUrl = teacherSignature;
-      }
+      } catch {}
 
-      const record = await base44.entities.StudentRecord.create({
-        school_id: schoolId,
-        class_id: formData.selectedClass?.id,
-        class_name: formData.selectedClass?.name,
-        teacher_id: profile.id,
-        teacher_email: user.email,
-        teacher_name: teacherName,
-        student_id: formData.selectedStudent?.id,
-        student_email: formData.selectedStudent?.email,
-        student_name: formData.selectedStudent?.name,
-        title: formData.title,
-        category: formData.category,
-        description: formData.description,
-        date_achieved: formData.dateAchieved,
-        file_url: formData.evidenceUrl,
-        file_type: formData.evidenceType,
-        // Signature fields
-        teacher_signature_url: signatureUrl,
-        teacher_signed_at: teacherSignedAt,
-        status: 'draft',
+      const result = await base44.functions.invoke('issueBlockward', {
+        studentEmail: selectedStudent.email,
+        awardTypeId: selectedAward.id,
+        teacherEmail: user.email,
+        teacherName: `${profile.first_name} ${profile.last_name}`,
+        teacherSignatureUrl: signatureUrl,
+        teacherSignedAt: teacherSignedAt,
+        schoolId,
       });
 
-      await base44.functions.invoke('recordWorkflow', {
-        action: 'teacherSubmitRecord',
-        recordId: record.id,
-      });
-
-      setSubmittedRecord(record);
-      setSubmitSuccess(true);
-      toast.success('Achievement record created! Now apply your digital signature.');
+      setIssuedResult(result?.data);
+      setIssueSuccess(true);
+      toast.success('BlockWard issued successfully!');
     } catch (error) {
-      toast.error(error.message || 'Failed to submit achievement.');
+      toast.error(error.message || 'Failed to issue BlockWard');
     } finally {
-      setSubmitting(false);
+      setIssuing(false);
     }
   };
 
@@ -288,7 +303,6 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  // SECURITY: Only teachers can create achievement records. Admins review/approve only.
   if (profile && profile.user_type !== 'teacher') {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
@@ -296,28 +310,12 @@ function IssueBlockWardContent() {
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-500 mb-3">Only teachers can create and submit achievement records.</p>
-        <p className="text-xs text-slate-400 bg-slate-50 border border-slate-200 rounded-lg p-3">
-          Admins can review and approve records via the <strong>Approval Queue</strong>.
-          Achievement records must be created by a teacher and go through the full approval workflow.
-        </p>
+        <p className="text-slate-500">Only teachers can issue BlockWards.</p>
       </div>
     );
   }
 
-  if (submitting) return (
-    <div className="max-w-2xl mx-auto py-12">
-      <Card className="border-0 shadow-2xl">
-        <CardContent className="p-12 text-center space-y-4">
-          <Loader2 className="h-16 w-16 animate-spin text-violet-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-slate-900">Creating Achievement Record...</h2>
-          <p className="text-slate-500">Routing through the digital custodian approval workflow.</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  if (submitSuccess) return (
+  if (issueSuccess) return (
     <div className="max-w-2xl mx-auto py-12">
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
         <Card className="border-0 shadow-2xl">
@@ -325,44 +323,19 @@ function IssueBlockWardContent() {
             <div className="h-24 w-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
               <CheckCircle2 className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Record Created!</h2>
-            <p className="text-slate-500 mb-6">
-              Achievement record for <strong className="text-slate-800">{formData.selectedStudent?.name}</strong> is now awaiting your digital signature.
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">BlockWard Issued!</h2>
+            <p className="text-slate-500 mb-8">
+              <strong className="text-slate-800">{selectedAward?.title}</strong> has been issued to <strong className="text-slate-800">{selectedStudent?.name}</strong>.
             </p>
-            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-8 text-left space-y-3">
-              <p className="text-sm font-bold text-violet-800">3-Step Approval Required:</p>
-              <div className="space-y-2">
-                {[
-                  { num: '1', label: 'Your Digital Signature', desc: 'Apply your teacher signature to verify this achievement', done: false, active: true },
-                  { num: '2', label: 'Admin Review & Approval', desc: 'Admin reviews evidence and applies their signature', done: false, active: false },
-                  { num: '3', label: 'Certificate & Archive', desc: 'Certificate generated and saved to student portfolio', done: false, active: false },
-                ].map(s => (
-                  <div key={s.num} className={`flex items-start gap-3 p-3 rounded-lg ${s.active ? 'bg-violet-100' : 'bg-white border border-violet-100'}`}>
-                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${s.active ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
-                      {s.num}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-semibold ${s.active ? 'text-violet-900' : 'text-slate-600'}`}>{s.label}</p>
-                      <p className="text-xs text-slate-500">{s.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {submittedRecord && (
-                <Button
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg"
-                  onClick={() => navigate(createPageUrl(`RecordDetail?id=${submittedRecord.id}`))}
-                >
-                  <PenLine className="h-4 w-4 mr-2" /> Apply My Signature Now
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => navigate(createPageUrl('TeacherRecords'))}>
-                <FileText className="h-4 w-4 mr-2" /> View All Records
+              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 gap-2" onClick={() => navigate(createPageUrl('TeacherBlockWards'))}>
+                <Award className="h-4 w-4" /> View All BlockWards
               </Button>
-              <Button variant="ghost" onClick={() => window.location.reload()}>
-                <Award className="h-4 w-4 mr-2" /> Create Another
+              <Button variant="outline" onClick={() => {
+                setCurrentStep(1); setSelectedStudent(null); setSelectedAward(null);
+                setTeacherSignature(null); setTeacherSignedAt(null); setConfirmed(false); setIssueSuccess(false);
+              }}>
+                Issue Another
               </Button>
             </div>
           </CardContent>
@@ -371,417 +344,190 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  const backPage = 'TeacherRecords';
+  const blockWardPreview = selectedAward ? {
+    title: selectedAward.title,
+    description: selectedAward.description || '',
+    category: selectedAward.category || 'special',
+    rarity: 'Common',
+    icon: '🏆',
+  } : null;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto pb-12">
-      <input ref={evidenceInputRef} type="file" accept="image/*,.pdf,.mp4,.mov,.webm" className="hidden"
-        onChange={e => handleFileUpload(e, 'evidence')} />
-      <input ref={supportingInputRef} type="file" accept=".pdf,.doc,.docx,image/*" className="hidden"
-        onChange={e => handleFileUpload(e, 'supporting')} />
-
-      {/* Page Header */}
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl(backPage))}
-          className="hover:bg-slate-100 rounded-xl">
+        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('TeacherBlockWards'))} className="hover:bg-slate-100 rounded-xl">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Create Achievement Record</h1>
-          <p className="text-slate-500 mt-0.5">Secure 3-step digital custodian approval workflow</p>
+          <h1 className="text-3xl font-bold text-slate-900">Issue a BlockWard</h1>
+          <p className="text-slate-500 mt-0.5">Recognize student achievements</p>
         </div>
       </div>
 
-      {/* Security Banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-        <Shield className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-semibold text-amber-800">Secure Issuance — No direct NFT minting allowed</p>
-          <p className="text-xs text-amber-700 mt-0.5">All records require: evidence upload → teacher digital signature → admin approval → then the certificate and NFT are generated automatically.</p>
-        </div>
-      </div>
+      {/* Stepper */}
+      <IssueStepper currentStep={currentStep} />
 
-      <StepProgress currentStep={currentStep} />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main card */}
+        <Card className="lg:col-span-2 border-0 shadow-xl shadow-slate-200/60">
+          <CardContent className="p-8">
 
-      <Card className="border-0 shadow-xl shadow-slate-200/60">
-        <CardContent className="p-8">
-
-          {/* Step 1: Select Class & Student */}
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 1 — Select Student</h2>
-                <p className="text-sm text-slate-500">Choose the class and student this achievement record is for.</p>
-              </div>
-
-              {myClasses.length === 0 ? (
-                <div className="text-center py-16">
-                  <BookOpen className="h-14 w-14 mx-auto mb-4 text-slate-300" />
-                  <p className="font-semibold text-slate-600">No classes assigned yet</p>
-                  <p className="text-sm text-slate-400 mt-1">Ask an admin to assign you to a class first.</p>
+            {/* Step 1: Select Student */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Student</h2>
+                  <p className="text-sm text-slate-500">Choose the student to receive this BlockWard.</p>
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label className="font-semibold">Class *</Label>
-                    <Select value={selectedClassId} onValueChange={handleClassSelect}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select a class" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {myClasses.map(cls => (
-                          <SelectItem key={cls.id} value={cls.id}>
-                            {cls.name}{cls.subject ? ` — ${cls.subject}` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {selectedClassId && (
-                    <div className="space-y-3">
-                      <Label className="font-semibold">Student *</Label>
-                      {loadingStudents ? (
-                        <div className="flex items-center gap-3 text-slate-500 text-sm py-6">
-                          <Loader2 className="h-5 w-5 animate-spin text-violet-500" /> Loading students...
-                        </div>
-                      ) : enrolledStudents.length === 0 ? (
-                        <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl">
-                          <User className="h-10 w-10 mx-auto mb-3 text-slate-300" />
-                          <p className="font-medium text-slate-500">No students enrolled in this class</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {enrolledStudents.map(student => {
-                            const isSelected = formData.selectedStudent?.id === student.id;
-                            return (
-                              <button
-                                key={student.id}
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, selectedStudent: student }))}
-                                className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
-                                  isSelected
-                                    ? 'border-violet-500 bg-violet-50 shadow-md shadow-violet-100'
-                                    : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0 ${
-                                  isSelected ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-600'
-                                }`}>
-                                  {student.name[0]?.toUpperCase()}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-semibold text-slate-900 truncate">{student.name}</p>
-                                  {student.gradeLevel && <p className="text-xs text-slate-500">{student.gradeLevel}</p>}
-                                </div>
-                                {isSelected && <CheckCircle2 className="h-5 w-5 text-violet-500 flex-shrink-0" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Step 2: Achievement Details */}
-          {currentStep === 2 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 2 — Achievement Details</h2>
-                <p className="text-sm text-slate-500">
-                  For <strong className="text-slate-700">{formData.selectedStudent?.name}</strong>
-                  {formData.selectedClass?.name && <> · <strong className="text-slate-700">{formData.selectedClass.name}</strong></>}
-                </p>
+                <StudentPicker students={students} selectedStudent={selectedStudent} onSelect={setSelectedStudent} />
               </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold">Achievement Title *</Label>
-                <Input
-                  value={formData.title}
-                  onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-                  placeholder="e.g. Top in Mathematics - Term 1"
-                  className="h-11"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-semibold">Category *</Label>
-                  <Select value={formData.category} onValueChange={v => setFormData(p => ({ ...p, category: v }))}>
-                    <SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-semibold">Date Achieved *</Label>
-                  <Input
-                    type="date"
-                    value={formData.dateAchieved}
-                    onChange={e => setFormData(p => ({ ...p, dateAchieved: e.target.value }))}
-                    className="h-11"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold">Description * <span className="font-normal text-slate-400 text-xs">(required for approval)</span></Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                  placeholder="Describe what the student did to earn this achievement in detail..."
-                  rows={4}
-                  className="resize-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="font-semibold">Teacher Comments <span className="font-normal text-slate-400 text-xs">(for admin review)</span></Label>
-                <Textarea
-                  value={formData.teacherComments}
-                  onChange={e => setFormData(p => ({ ...p, teacherComments: e.target.value }))}
-                  placeholder="Additional context for the reviewing admin..."
-                  rows={2}
-                  className="resize-none"
-                />
-              </div>
-
-              {/* Evidence Upload — REQUIRED */}
-              <div className="space-y-3 border-2 border-violet-200 bg-violet-50 rounded-xl p-5">
-                <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
-                    <ImageIcon className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <Label className="font-bold text-slate-900 text-sm">Evidence Upload * <span className="font-normal text-red-500">(required)</span></Label>
-                    <p className="text-xs text-slate-500">Photo, PDF, or video proving the achievement</p>
-                  </div>
-                </div>
-
-                {formData.evidenceUrl ? (
-                  <div className="flex items-center gap-4 p-4 bg-white border-2 border-green-200 rounded-xl">
-                    {formData.evidenceType === 'image' ? (
-                      <img src={formData.evidenceUrl} alt="Evidence" className="h-16 w-16 object-cover rounded-lg border border-green-200 flex-shrink-0" />
-                    ) : (
-                      <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <FileText className="h-8 w-8 text-green-500" />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                        <p className="text-sm font-semibold text-slate-800">Evidence uploaded</p>
-                      </div>
-                      <div className="flex gap-3">
-                        <button type="button" onClick={() => evidenceInputRef.current?.click()}
-                          className="text-xs text-violet-600 hover:text-violet-800 font-medium underline">Change</button>
-                        <button type="button" onClick={() => setFormData(p => ({ ...p, evidenceUrl: '', evidenceType: '' }))}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium underline">Remove</button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <Button type="button" onClick={() => evidenceInputRef.current?.click()} disabled={uploadingEvidence}
-                    className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white gap-2">
-                    {uploadingEvidence ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><Upload className="h-4 w-4" /> Upload Evidence File</>}
-                  </Button>
-                )}
-              </div>
-
-              {/* Supporting Documents — Optional */}
-              <div className="space-y-3 border border-slate-200 rounded-xl p-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                    <FileText className="h-4 w-4 text-slate-500" />
-                  </div>
-                  <div>
-                    <Label className="font-semibold text-slate-800 text-sm">Supporting Documents <span className="font-normal text-slate-400">(optional)</span></Label>
-                    <p className="text-xs text-slate-400">Letters, certificates, or additional files</p>
-                  </div>
-                </div>
-                {formData.supportingDocUrl ? (
-                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <p className="text-sm text-slate-700 flex-1">Supporting document uploaded</p>
-                    <button type="button" onClick={() => setFormData(p => ({ ...p, supportingDocUrl: '' }))}
-                      className="text-xs text-red-500 underline">Remove</button>
-                  </div>
-                ) : (
-                  <Button type="button" variant="outline" onClick={() => supportingInputRef.current?.click()} disabled={uploadingSupporting}
-                    className="w-full h-10 gap-2 text-slate-600">
-                    {uploadingSupporting ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><Upload className="h-4 w-4" /> Upload Supporting Document</>}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Teacher Signature */}
-          {currentStep === 3 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 3 — Teacher Digital Signature</h2>
-                <p className="text-sm text-slate-500">Sign below to verify this achievement record. Your signature will be permanently attached.</p>
-              </div>
-
-              {teacherSignature ? (
-                <div className="space-y-4">
-                  <div className="border-2 border-green-300 bg-green-50 rounded-xl p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <p className="text-sm font-semibold text-green-800">Signature captured</p>
-                    </div>
-                    <img src={teacherSignature} alt="Teacher signature" className="max-h-24 border border-green-200 rounded-lg bg-white p-2" />
-                    <div className="mt-2 text-xs text-green-700">
-                      Signed by: <strong>{profile?.first_name} {profile?.last_name}</strong> · {teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : ''}
-                    </div>
-                  </div>
-                  <Button type="button" variant="outline" onClick={() => { setTeacherSignature(null); setTeacherSignedAt(null); }}
-                    className="gap-2 text-red-600 border-red-200 hover:bg-red-50">
-                    <PenLine className="h-4 w-4" /> Re-sign
-                  </Button>
-                </div>
-              ) : (
-                <TeacherSignaturePad
-                  profile={profile}
-                  schoolName={schoolName}
-                  onSignatureComplete={handleSignatureComplete}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Step 4: Review & Submit */}
-          {currentStep === 4 && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 4 — Review & Submit</h2>
-                <p className="text-sm text-slate-500">Carefully review all details before submitting for admin approval.</p>
-              </div>
-
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-2">
-                  <ClipboardCheck className="h-4 w-4 text-slate-500" />
-                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Submission Summary</p>
-                </div>
-                <div className="p-5 space-y-4">
-                  <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-                    <div className="h-12 w-12 rounded-full bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-lg flex-shrink-0">
-                      {formData.selectedStudent?.name?.[0]?.toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-bold text-slate-900 text-lg">{formData.selectedStudent?.name}</p>
-                      <p className="text-sm text-slate-500">{formData.selectedClass?.name}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Achievement Title</p>
-                    <p className="font-bold text-slate-900 text-lg">{formData.title}</p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Badge className="bg-violet-100 text-violet-700 border-violet-200">{CATEGORY_LABELS[formData.category]}</Badge>
-                    <Badge variant="outline" className="text-slate-600">{formData.dateAchieved}</Badge>
-                    {formData.evidenceUrl && <Badge className="bg-green-100 text-green-700 border-green-200">✓ Evidence attached</Badge>}
-                    {formData.supportingDocUrl && <Badge className="bg-blue-100 text-blue-700 border-blue-200">✓ Supporting docs</Badge>}
-                  </div>
-                  {formData.description && (
-                    <div className="bg-slate-50 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-slate-500 mb-1">Description</p>
-                      <p className="text-sm text-slate-700">{formData.description}</p>
-                    </div>
-                  )}
-                  {formData.teacherComments && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-blue-600 mb-1">Teacher Comments (for admin)</p>
-                      <p className="text-sm text-blue-800">{formData.teacherComments}</p>
-                    </div>
-                  )}
-                  {formData.evidenceUrl && formData.evidenceType === 'image' && (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-500 mb-2">Evidence Preview</p>
-                      <img src={formData.evidenceUrl} alt="Evidence" className="h-32 w-full object-cover rounded-lg border border-slate-200" />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Teacher Signature Preview */}
-              {teacherSignature && (
-                <div className="border border-violet-200 rounded-xl overflow-hidden">
-                  <div className="bg-violet-50 px-5 py-3 border-b border-violet-200 flex items-center gap-2">
-                    <PenLine className="h-4 w-4 text-violet-600" />
-                    <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">Teacher Signature</p>
-                  </div>
-                  <div className="p-5 space-y-3">
-                    <img src={teacherSignature} alt="Teacher signature" className="max-h-20 border border-slate-200 rounded-lg bg-white p-2" />
-                    <div className="text-sm text-slate-700 space-y-1">
-                      <p><span className="font-semibold text-slate-500 text-xs uppercase">Signed By</span><br /><strong>{profile?.first_name} {profile?.last_name}</strong></p>
-                      <p><span className="font-semibold text-slate-500 text-xs uppercase">Signed At</span><br />{teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : ''}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-semibold text-violet-800">📋 What happens after you submit:</p>
-                <ol className="text-sm text-violet-700 space-y-1 list-decimal list-inside">
-                  <li>Your digital signature is permanently attached to this record</li>
-                  <li>Admin receives notification and reviews your submission with evidence</li>
-                  <li>Admin applies their <strong>digital signature</strong> to approve</li>
-                  <li>Certificate PDF and NFT are automatically generated and archived</li>
-                </ol>
-              </div>
-
-              <div className="flex items-start gap-3 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl">
-                <Checkbox
-                  id="confirm"
-                  checked={formData.confirmed}
-                  onCheckedChange={v => setFormData(p => ({ ...p, confirmed: v }))}
-                  className="mt-0.5"
-                />
-                <label htmlFor="confirm" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                  I, <strong>{profile?.first_name} {profile?.last_name}</strong>, confirm this achievement record for <strong>{formData.selectedStudent?.name}</strong> is accurate and genuine. I understand this will go through a mandatory multi-step approval process before being permanently recorded. I am responsible for the authenticity of this submission.
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div className="flex justify-between pt-6 mt-6 border-t border-slate-100">
-            <Button variant="outline" onClick={() => setCurrentStep(s => Math.max(s - 1, 1))}
-              disabled={currentStep === 1} className="gap-2">
-              <ArrowLeft className="h-4 w-4" /> Back
-            </Button>
-            {currentStep < 4 ? (
-              currentStep === 3 ? (
-                // On signature step: only show Next if signature captured, otherwise the pad has its own confirm button
-                teacherSignature ? (
-                  <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
-                    Continue to Review <ArrowRight className="h-4 w-4" />
-                  </Button>
-                ) : null
-              ) : (
-                <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
-                  Next <ArrowRight className="h-4 w-4" />
-                </Button>
-              )
-            ) : (
-              <Button
-                onClick={handleSubmitForApproval}
-                disabled={!formData.confirmed || !teacherSignature}
-                className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg disabled:opacity-40"
-              >
-                <PenLine className="h-4 w-4" /> Submit For Approval
-              </Button>
             )}
-          </div>
-        </CardContent>
-      </Card>
+
+            {/* Step 2: Choose Award */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Choose Award</h2>
+                  <p className="text-sm text-slate-500">Select the achievement type for <strong className="text-slate-700">{selectedStudent?.name}</strong>.</p>
+                </div>
+                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={setSelectedAward} />
+              </div>
+            )}
+
+            {/* Step 3: Teacher Signature */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Teacher Signature</h2>
+                  <p className="text-sm text-slate-500">Sign below to verify this BlockWard. Your signature will be permanently attached.</p>
+                </div>
+                {teacherSignature ? (
+                  <div className="space-y-4">
+                    <div className="border-2 border-green-300 bg-green-50 rounded-xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <p className="text-sm font-semibold text-green-800">Signature captured</p>
+                      </div>
+                      <img src={teacherSignature} alt="Signature" className="max-h-20 border border-green-200 rounded-lg bg-white p-2" />
+                      <p className="text-xs text-green-700 mt-2">
+                        Signed by <strong>{profile?.first_name} {profile?.last_name}</strong> · {teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : ''}
+                      </p>
+                    </div>
+                    <Button variant="outline" onClick={() => { setTeacherSignature(null); setTeacherSignedAt(null); }}
+                      className="gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                      <PenLine className="h-4 w-4" /> Re-sign
+                    </Button>
+                  </div>
+                ) : (
+                  <SignaturePad
+                    profile={profile}
+                    schoolName={schoolName}
+                    onConfirm={(sig, ts) => { setTeacherSignature(sig); setTeacherSignedAt(ts); toast.success('Signature captured!'); }}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Step 4: Review & Issue */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Review & Issue</h2>
+                  <p className="text-sm text-slate-500">Confirm the details before permanently issuing</p>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
+                  <div className="p-5">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Awarding To</p>
+                    <p className="font-bold text-slate-900 text-lg">{selectedStudent?.name}</p>
+                    <p className="text-sm text-slate-500">{selectedStudent?.class}</p>
+                  </div>
+                  <div className="p-5">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Achievement</p>
+                    <p className="font-bold text-slate-900 text-lg">{selectedAward?.title}</p>
+                    {selectedAward?.description && <p className="text-sm text-slate-500">{selectedAward.description}</p>}
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {selectedAward?.category && <Badge variant="outline" className="text-xs capitalize">{selectedAward.category}</Badge>}
+                      <Badge variant="outline" className="text-xs">Common</Badge>
+                      <span className="text-lg">🏆</span>
+                    </div>
+                  </div>
+                  <div className="p-5">
+                    <p className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-2">Teacher Signature</p>
+                    {teacherSignature && (
+                      <img src={teacherSignature} alt="Signature" className="max-h-16 border border-slate-200 rounded-lg bg-white p-1.5 mb-2" />
+                    )}
+                    <p className="text-sm text-slate-700"><span className="font-semibold">Signed By:</span> {profile?.first_name} {profile?.last_name}</p>
+                    <p className="text-sm text-slate-500"><span className="font-semibold">Signed At:</span> {teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : '—'}</p>
+                  </div>
+                </div>
+
+                {/* Confirm checkbox */}
+                <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-colors ${confirmed ? 'bg-violet-50 border-violet-300' : 'bg-slate-50 border-slate-200'}`}>
+                  <Checkbox
+                    id="confirm"
+                    checked={confirmed}
+                    onCheckedChange={v => setConfirmed(v)}
+                    className="mt-0.5"
+                  />
+                  <label htmlFor="confirm" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
+                    I confirm this award is accurate and should be permanently issued to <strong>{selectedStudent?.name}</strong>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="flex justify-between pt-6 mt-6 border-t border-slate-100">
+              <Button variant="outline" onClick={handleBack} disabled={currentStep === 1} className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+              {currentStep < 4 ? (
+                currentStep === 3 && !teacherSignature ? null : (
+                  <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
+                    Next <Award className="h-4 w-4" />
+                  </Button>
+                )
+              ) : (
+                <Button
+                  onClick={handleIssue}
+                  disabled={!confirmed || !teacherSignature || issuing}
+                  className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg disabled:opacity-40"
+                >
+                  {issuing ? <><Loader2 className="h-4 w-4 animate-spin" /> Issuing...</> : <><Shield className="h-4 w-4" /> Issue BlockWard</>}
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Preview panel */}
+        <div className="space-y-4">
+          {blockWardPreview && (
+            <div>
+              <p className="text-sm font-semibold text-slate-700 mb-3">Preview</p>
+              <BlockWardPreviewCard blockWard={blockWardPreview} />
+            </div>
+          )}
+          {selectedStudent && (
+            <Card className="border border-violet-200 bg-violet-50">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-2">Selected Student</p>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold">
+                    {selectedStudent.name[0]?.toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">{selectedStudent.name}</p>
+                    <p className="text-xs text-slate-500">{selectedStudent.class}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
