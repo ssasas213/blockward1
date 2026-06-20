@@ -133,15 +133,36 @@ function IssueBlockWardContent() {
       if (sid) {
         const schools = await base44.entities.School.filter({ id: sid });
         if (schools[0]) setSchoolName(schools[0].name);
+      }
 
-        const allProfiles = await base44.entities.UserProfile.filter({ school_id: sid, user_type: 'student' });
-        setStudents(allProfiles.map(sp => ({
-          id: sp.id,
-          name: `${sp.first_name} ${sp.last_name}`,
-          email: sp.user_email,
-          class: sp.grade_level || 'Student',
-          avatarUrl: sp.avatar_url || null,
-        })));
+      // Load students from teacher's classes (via student_emails on Class entity)
+      const teacherClasses = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+      if (teacherClasses.length > 0) {
+        // Collect all unique student emails across classes
+        const emailToClass = {};
+        for (const cls of teacherClasses) {
+          for (const email of (cls.student_emails || [])) {
+            if (!emailToClass[email]) emailToClass[email] = cls.name;
+          }
+        }
+        const allEmails = Object.keys(emailToClass);
+        if (allEmails.length > 0) {
+          // Fetch UserProfile for each student email
+          const profileResults = await Promise.all(
+            allEmails.map(email => base44.entities.UserProfile.filter({ user_email: email }))
+          );
+          const studentList = profileResults
+            .flat()
+            .filter(sp => sp)
+            .map(sp => ({
+              id: sp.id,
+              name: `${sp.first_name} ${sp.last_name}`,
+              email: sp.user_email,
+              class: emailToClass[sp.user_email] || sp.grade_level || 'Student',
+              avatarUrl: sp.avatar_url || null,
+            }));
+          setStudents(studentList);
+        }
       }
 
       const awards = await base44.entities.AwardTypes.filter({ is_active: true });
