@@ -36,5 +36,39 @@
   "required": [
     "name",
     "code"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.admin_email": "{{user.email}}"
+    },
+    "read": {
+      "data.id": "{{user.profile.school_id}}"
+    },
+    "update": {
+      "data.id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          },
+          "data.admin_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin",
+            "admin_level": "super_admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin",
+        "admin_level": "super_admin"
+      }
+    }
+  }
 }

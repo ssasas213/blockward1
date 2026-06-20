@@ -92,5 +92,42 @@
     "issuer_email",
     "title",
     "category"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          },
+          "data.issuer_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "student"
+          },
+          "data.student_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }

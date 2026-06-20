@@ -60,5 +60,33 @@
     "signer_role",
     "signature_value",
     "signed_at"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.signer_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }

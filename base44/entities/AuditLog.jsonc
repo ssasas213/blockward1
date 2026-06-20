@@ -59,5 +59,33 @@
     "actor_email",
     "action",
     "timestamp"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.actor_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }

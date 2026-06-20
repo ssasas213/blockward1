@@ -21,5 +21,28 @@
   "required": [
     "code",
     "title"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }

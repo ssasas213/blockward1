@@ -45,5 +45,33 @@
     "student_email",
     "record_id",
     "school_id"
-  ]
+  ],
+  "rls": {
+    "create": {},
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.student_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      },
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }

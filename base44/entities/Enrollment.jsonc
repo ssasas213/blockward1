@@ -36,5 +36,70 @@
     "school_id",
     "class_id",
     "student_email"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          }
+        }
+      ]
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          },
+          "data.class_id": {
+            "$in": "{{user.profile.class_ids}}"
+          }
+        },
+        {
+          "data.student_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          },
+          "data.class_id": {
+            "$in": "{{user.profile.class_ids}}"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

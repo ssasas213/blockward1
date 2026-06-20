@@ -63,5 +63,61 @@
     "title",
     "start_time",
     "created_by"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "user_condition": {
+        "role": {
+          "$in": [
+            "admin",
+            "teacher"
+          ]
+        }
+      }
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          }
+        },
+        {
+          "data.audience": "whole_school"
+        },
+        {
+          "user_condition": {
+            "role": "student"
+          },
+          "data.audience": "whole_school"
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

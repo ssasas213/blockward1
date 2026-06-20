@@ -47,5 +47,32 @@
     "user_role",
     "display_name",
     "signature_value"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}",
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.user_email": "{{user.email}}",
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}",
+      "data.school_id": "{{user.profile.school_id}}"
+    }
+  }
 }
