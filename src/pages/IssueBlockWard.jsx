@@ -16,41 +16,56 @@ import {
 import {
   ArrowLeft, ArrowRight, Loader2, CheckCircle2, Award,
   BookOpen, User, AlertTriangle, Upload, ImageIcon, FileText,
-  Clock, ClipboardCheck, Sparkles
+  Clock, ClipboardCheck, Sparkles, Shield, PenLine
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
-const CATEGORIES = ['Academic', 'Sports', 'Arts', 'Leadership', 'Community', 'Innovation'];
-
-const RARITY_GRADIENTS = {
-  Common: 'from-slate-400 to-slate-600',
-  Rare: 'from-blue-500 to-indigo-600',
-  Epic: 'from-purple-500 to-violet-700',
-  Legendary: 'from-amber-400 to-orange-600',
+const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
+const CATEGORY_LABELS = {
+  academic: 'Academic', sports: 'Sports', arts: 'Arts',
+  leadership: 'Leadership', community: 'Community', special: 'Special'
 };
 
-function WorkflowSteps() {
+// Step progress indicator
+function StepProgress({ currentStep }) {
   const steps = [
-    { icon: Upload, label: 'Submit Evidence', desc: 'Upload & describe achievement' },
-    { icon: ClipboardCheck, label: 'Teacher Review', desc: 'Teacher signs off' },
-    { icon: CheckCircle2, label: 'Admin Approval', desc: 'Admin authorises' },
-    { icon: Sparkles, label: 'NFT Minted', desc: 'Permanently on-chain' },
+    { num: 1, label: 'Create Record', icon: FileText },
+    { num: 2, label: 'Teacher Signature', icon: PenLine },
+    { num: 3, label: 'Admin Approval', icon: Shield },
   ];
   return (
     <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-5">
-      <p className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-4">Approval Workflow</p>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {steps.map((s, i) => (
-          <div key={i} className="flex flex-col items-center text-center gap-2">
-            <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${i === 0 ? 'bg-violet-600 text-white' : 'bg-white border-2 border-violet-200 text-violet-400'}`}>
-              <s.icon className="h-5 w-5" />
+      <p className="text-xs font-bold text-violet-700 uppercase tracking-wider mb-4 text-center">Secure Issuance Workflow</p>
+      <div className="flex items-center justify-between max-w-lg mx-auto">
+        {steps.map((step, i) => (
+          <React.Fragment key={step.num}>
+            <div className="flex flex-col items-center gap-2 flex-1">
+              <div className={`h-12 w-12 rounded-xl flex items-center justify-center transition-all ${
+                currentStep === step.num
+                  ? 'bg-violet-600 text-white shadow-lg shadow-violet-500/30'
+                  : currentStep > step.num
+                  ? 'bg-green-500 text-white'
+                  : 'bg-white border-2 border-slate-200 text-slate-400'
+              }`}>
+                {currentStep > step.num
+                  ? <CheckCircle2 className="h-6 w-6" />
+                  : <step.icon className="h-5 w-5" />
+                }
+              </div>
+              <div className="text-center">
+                <p className={`text-xs font-semibold ${currentStep >= step.num ? 'text-slate-800' : 'text-slate-400'}`}>
+                  Step {step.num}
+                </p>
+                <p className={`text-xs ${currentStep >= step.num ? 'text-slate-600' : 'text-slate-400'}`}>
+                  {step.label}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-xs font-semibold text-slate-800">{s.label}</p>
-              <p className="text-xs text-slate-500">{s.desc}</p>
-            </div>
-          </div>
+            {i < steps.length - 1 && (
+              <div className={`h-0.5 flex-1 mx-2 mb-6 transition-all ${currentStep > step.num ? 'bg-green-400' : 'bg-slate-200'}`} />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>
@@ -68,7 +83,8 @@ function IssueBlockWardContent() {
   const [selectedClassId, setSelectedClassId] = useState('');
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadingEvidence, setUploadingEvidence] = useState(false);
+  const [uploadingSupporting, setUploadingSupporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState(null);
@@ -83,10 +99,12 @@ function IssueBlockWardContent() {
     teacherComments: '',
     evidenceUrl: '',
     evidenceType: '',
+    supportingDocUrl: '',
     confirmed: false,
   });
 
-  const fileInputRef = useRef(null);
+  const evidenceInputRef = useRef(null);
+  const supportingInputRef = useRef(null);
 
   useEffect(() => { loadContext(); }, []);
 
@@ -151,20 +169,25 @@ function IssueBlockWardContent() {
     }
   };
 
-  const handleFileChange = async (e) => {
+  const handleFileUpload = async (e, field) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadingFile(true);
+    const setter = field === 'evidence' ? setUploadingEvidence : setUploadingSupporting;
+    setter(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       const ext = file.name.split('.').pop().toLowerCase();
       const type = ['pdf'].includes(ext) ? 'pdf' : ['mp4', 'mov', 'webm'].includes(ext) ? 'video' : 'image';
-      setFormData(p => ({ ...p, evidenceUrl: file_url, evidenceType: type }));
-      toast.success('Evidence uploaded!');
+      if (field === 'evidence') {
+        setFormData(p => ({ ...p, evidenceUrl: file_url, evidenceType: type }));
+      } else {
+        setFormData(p => ({ ...p, supportingDocUrl: file_url }));
+      }
+      toast.success('File uploaded successfully!');
     } catch (err) {
       toast.error('Upload failed. Please try again.');
     } finally {
-      setUploadingFile(false);
+      setter(false);
     }
   };
 
@@ -176,7 +199,9 @@ function IssueBlockWardContent() {
     if (currentStep === 2) {
       if (!formData.title.trim()) { toast.error('Please enter a title'); return; }
       if (!formData.category) { toast.error('Please select a category'); return; }
+      if (!formData.description.trim()) { toast.error('Description is required'); return; }
       if (!formData.dateAchieved) { toast.error('Please enter the date achieved'); return; }
+      if (!formData.evidenceUrl) { toast.error('Evidence upload is required'); return; }
     }
     setCurrentStep(s => Math.min(s + 1, 3));
   };
@@ -185,7 +210,6 @@ function IssueBlockWardContent() {
     if (!formData.confirmed) { toast.error('Please tick the confirmation checkbox'); return; }
     setSubmitting(true);
     try {
-      // 1. Create the StudentRecord as draft
       const teacherName = `${profile.first_name} ${profile.last_name}`;
       const record = await base44.entities.StudentRecord.create({
         school_id: schoolId,
@@ -198,7 +222,7 @@ function IssueBlockWardContent() {
         student_email: formData.selectedStudent?.email,
         student_name: formData.selectedStudent?.name,
         title: formData.title,
-        category: formData.category.toLowerCase(),
+        category: formData.category,
         description: formData.description,
         date_achieved: formData.dateAchieved,
         file_url: formData.evidenceUrl,
@@ -206,7 +230,6 @@ function IssueBlockWardContent() {
         status: 'draft',
       });
 
-      // 2. Use workflow to move draft → awaiting_teacher_signature
       await base44.functions.invoke('recordWorkflow', {
         action: 'teacherSubmitRecord',
         recordId: record.id,
@@ -214,7 +237,7 @@ function IssueBlockWardContent() {
 
       setSubmittedRecord(record);
       setSubmitSuccess(true);
-      toast.success('Achievement submitted for approval!');
+      toast.success('Achievement record created! Now apply your digital signature.');
     } catch (error) {
       toast.error(error.message || 'Failed to submit achievement.');
     } finally {
@@ -228,7 +251,7 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  if (profile && (profile.user_type !== 'teacher' && profile.user_type !== 'admin')) {
+  if (profile && profile.user_type !== 'teacher' && profile.user_type !== 'admin') {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
         <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
@@ -245,8 +268,8 @@ function IssueBlockWardContent() {
       <Card className="border-0 shadow-2xl">
         <CardContent className="p-12 text-center space-y-4">
           <Loader2 className="h-16 w-16 animate-spin text-violet-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-slate-900">Submitting for Approval...</h2>
-          <p className="text-slate-500">Creating the achievement record and routing it for review.</p>
+          <h2 className="text-2xl font-bold text-slate-900">Creating Achievement Record...</h2>
+          <p className="text-slate-500">Routing through the digital custodian approval workflow.</p>
         </CardContent>
       </Card>
     </div>
@@ -257,35 +280,47 @@ function IssueBlockWardContent() {
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
         <Card className="border-0 shadow-2xl">
           <CardContent className="p-12 text-center">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-amber-500/30">
-              <Clock className="h-12 w-12 text-white" />
+            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/30">
+              <CheckCircle2 className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">Submitted for Approval!</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Record Created!</h2>
             <p className="text-slate-500 mb-6">
-              The achievement for <strong className="text-slate-800">{formData.selectedStudent?.name}</strong> has been submitted.
+              Achievement record for <strong className="text-slate-800">{formData.selectedStudent?.name}</strong> is now awaiting your digital signature.
             </p>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-8 text-left space-y-2">
-              <p className="text-sm font-semibold text-amber-800">What happens next:</p>
-              <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-                <li>You must review and digitally sign this record</li>
-                <li>An admin will then review and sign</li>
-                <li>Once both signatures are applied, the NFT can be minted</li>
-              </ol>
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 mb-8 text-left space-y-3">
+              <p className="text-sm font-bold text-violet-800">3-Step Approval Required:</p>
+              <div className="space-y-2">
+                {[
+                  { num: '1', label: 'Your Digital Signature', desc: 'Apply your teacher signature to verify this achievement', done: false, active: true },
+                  { num: '2', label: 'Admin Review & Approval', desc: 'Admin reviews evidence and applies their signature', done: false, active: false },
+                  { num: '3', label: 'Certificate & Archive', desc: 'Certificate generated and saved to student portfolio', done: false, active: false },
+                ].map(s => (
+                  <div key={s.num} className={`flex items-start gap-3 p-3 rounded-lg ${s.active ? 'bg-violet-100' : 'bg-white border border-violet-100'}`}>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5 ${s.active ? 'bg-violet-600 text-white' : 'bg-slate-200 text-slate-500'}`}>
+                      {s.num}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${s.active ? 'text-violet-900' : 'text-slate-600'}`}>{s.label}</p>
+                      <p className="text-xs text-slate-500">{s.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button variant="outline" onClick={() => navigate(createPageUrl('TeacherRecords'))}>
-                <FileText className="h-4 w-4 mr-2" /> View My Records
-              </Button>
               {submittedRecord && (
                 <Button
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600"
+                  className="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg"
                   onClick={() => navigate(createPageUrl(`RecordDetail?id=${submittedRecord.id}`))}
                 >
-                  Sign This Record Now →
+                  <PenLine className="h-4 w-4 mr-2" /> Apply My Signature Now
                 </Button>
               )}
+              <Button variant="outline" onClick={() => navigate(createPageUrl('TeacherRecords'))}>
+                <FileText className="h-4 w-4 mr-2" /> View All Records
+              </Button>
               <Button variant="ghost" onClick={() => window.location.reload()}>
-                <Award className="h-4 w-4 mr-2" /> Submit Another
+                <Award className="h-4 w-4 mr-2" /> Create Another
               </Button>
             </div>
           </CardContent>
@@ -294,45 +329,37 @@ function IssueBlockWardContent() {
     </div>
   );
 
+  const backPage = profile?.user_type === 'admin' ? 'AdminApprovalQueue' : 'TeacherRecords';
+
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-12">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*,.pdf,.mp4,.mov,.webm"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+    <div className="space-y-8 max-w-4xl mx-auto pb-12">
+      <input ref={evidenceInputRef} type="file" accept="image/*,.pdf,.mp4,.mov,.webm" className="hidden"
+        onChange={e => handleFileUpload(e, 'evidence')} />
+      <input ref={supportingInputRef} type="file" accept=".pdf,.doc,.docx,image/*" className="hidden"
+        onChange={e => handleFileUpload(e, 'supporting')} />
 
       {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('TeacherRecords'))}
+        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl(backPage))}
           className="hover:bg-slate-100 rounded-xl">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Submit Achievement for Approval</h1>
-          <p className="text-slate-500 mt-0.5">Start the digital custodian approval workflow</p>
+          <h1 className="text-3xl font-bold text-slate-900">Create Achievement Record</h1>
+          <p className="text-slate-500 mt-0.5">Secure 3-step digital custodian approval workflow</p>
         </div>
       </div>
 
-      <WorkflowSteps />
-
-      {/* Step Indicators */}
-      <div className="flex items-center gap-2">
-        {[1, 2, 3].map(step => (
-          <React.Fragment key={step}>
-            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-              currentStep === step ? 'bg-violet-600 text-white' :
-              currentStep > step ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'
-            }`}>
-              {currentStep > step ? <CheckCircle2 className="h-4 w-4" /> : <span>{step}</span>}
-              <span className="hidden sm:inline">{['Select Student', 'Achievement Details', 'Review & Submit'][step - 1]}</span>
-            </div>
-            {step < 3 && <div className="h-px flex-1 bg-slate-200" />}
-          </React.Fragment>
-        ))}
+      {/* Security Banner */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+        <Shield className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Secure Issuance — No direct NFT minting allowed</p>
+          <p className="text-xs text-amber-700 mt-0.5">All records require: evidence upload → teacher digital signature → admin approval → then the certificate and NFT are generated automatically.</p>
+        </div>
       </div>
+
+      <StepProgress currentStep={currentStep} />
 
       <Card className="border-0 shadow-xl shadow-slate-200/60">
         <CardContent className="p-8">
@@ -341,8 +368,8 @@ function IssueBlockWardContent() {
           {currentStep === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Class &amp; Student</h2>
-                <p className="text-sm text-slate-500">Choose which student to submit an achievement for.</p>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 1 — Select Student</h2>
+                <p className="text-sm text-slate-500">Choose the class and student this achievement record is for.</p>
               </div>
 
               {myClasses.length === 0 ? (
@@ -390,7 +417,7 @@ function IssueBlockWardContent() {
                                 key={student.id}
                                 type="button"
                                 onClick={() => setFormData(prev => ({ ...prev, selectedStudent: student }))}
-                                className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all duration-150 ${
+                                className={`flex items-center gap-3 p-4 rounded-xl border-2 text-left transition-all ${
                                   isSelected
                                     ? 'border-violet-500 bg-violet-50 shadow-md shadow-violet-100'
                                     : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'
@@ -422,10 +449,10 @@ function IssueBlockWardContent() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Achievement Details</h2>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 2 — Achievement Details</h2>
                 <p className="text-sm text-slate-500">
-                  Submitting for <strong className="text-slate-700">{formData.selectedStudent?.name}</strong>
-                  {formData.selectedClass?.name && <> in <strong className="text-slate-700">{formData.selectedClass.name}</strong></>}
+                  For <strong className="text-slate-700">{formData.selectedStudent?.name}</strong>
+                  {formData.selectedClass?.name && <> · <strong className="text-slate-700">{formData.selectedClass.name}</strong></>}
                 </p>
               </div>
 
@@ -434,7 +461,7 @@ function IssueBlockWardContent() {
                 <Input
                   value={formData.title}
                   onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
-                  placeholder="e.g. Perfect Attendance, Top Scorer, Most Creative"
+                  placeholder="e.g. Top in Mathematics - Term 1"
                   className="h-11"
                 />
               </div>
@@ -444,7 +471,9 @@ function IssueBlockWardContent() {
                   <Label className="font-semibold">Category *</Label>
                   <Select value={formData.category} onValueChange={v => setFormData(p => ({ ...p, category: v }))}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger>
-                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    <SelectContent>
+                      {CATEGORIES.map(c => <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
@@ -459,47 +488,46 @@ function IssueBlockWardContent() {
               </div>
 
               <div className="space-y-2">
-                <Label className="font-semibold">Description <span className="font-normal text-slate-400">(optional)</span></Label>
+                <Label className="font-semibold">Description * <span className="font-normal text-slate-400 text-xs">(required for approval)</span></Label>
                 <Textarea
                   value={formData.description}
                   onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
-                  placeholder="Describe what the student did to earn this achievement..."
-                  rows={3}
+                  placeholder="Describe what the student did to earn this achievement in detail..."
+                  rows={4}
                   className="resize-none"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="font-semibold">Teacher Comments <span className="font-normal text-slate-400">(for admin review)</span></Label>
+                <Label className="font-semibold">Teacher Comments <span className="font-normal text-slate-400 text-xs">(for admin review)</span></Label>
                 <Textarea
                   value={formData.teacherComments}
                   onChange={e => setFormData(p => ({ ...p, teacherComments: e.target.value }))}
-                  placeholder="Add context for the admin reviewer..."
+                  placeholder="Additional context for the reviewing admin..."
                   rows={2}
                   className="resize-none"
                 />
               </div>
 
-              {/* Evidence Upload */}
-              <div className="space-y-3 border-2 border-violet-200 bg-violet-50 rounded-xl p-4">
+              {/* Evidence Upload — REQUIRED */}
+              <div className="space-y-3 border-2 border-violet-200 bg-violet-50 rounded-xl p-5">
                 <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
+                  <div className="h-8 w-8 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
                     <ImageIcon className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <Label className="font-bold text-slate-900 text-sm">Upload Evidence</Label>
-                    <p className="text-xs text-slate-500">Image, PDF, or video — supports the approval request</p>
+                    <Label className="font-bold text-slate-900 text-sm">Evidence Upload * <span className="font-normal text-red-500">(required)</span></Label>
+                    <p className="text-xs text-slate-500">Photo, PDF, or video proving the achievement</p>
                   </div>
                 </div>
 
                 {formData.evidenceUrl ? (
-                  <div className="flex items-center gap-4 p-4 bg-white border-2 border-violet-200 rounded-xl">
-                    {formData.evidenceType === 'image' && (
-                      <img src={formData.evidenceUrl} alt="Evidence" className="h-16 w-16 object-cover rounded-lg border border-violet-200 flex-shrink-0" />
-                    )}
-                    {formData.evidenceType !== 'image' && (
-                      <div className="h-16 w-16 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <FileText className="h-8 w-8 text-violet-500" />
+                  <div className="flex items-center gap-4 p-4 bg-white border-2 border-green-200 rounded-xl">
+                    {formData.evidenceType === 'image' ? (
+                      <img src={formData.evidenceUrl} alt="Evidence" className="h-16 w-16 object-cover rounded-lg border border-green-200 flex-shrink-0" />
+                    ) : (
+                      <div className="h-16 w-16 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <FileText className="h-8 w-8 text-green-500" />
                       </div>
                     )}
                     <div className="flex-1">
@@ -508,29 +536,43 @@ function IssueBlockWardContent() {
                         <p className="text-sm font-semibold text-slate-800">Evidence uploaded</p>
                       </div>
                       <div className="flex gap-3">
-                        <button type="button" onClick={() => fileInputRef.current?.click()}
-                          className="text-xs text-violet-600 hover:text-violet-800 font-medium underline">
-                          Change file
-                        </button>
+                        <button type="button" onClick={() => evidenceInputRef.current?.click()}
+                          className="text-xs text-violet-600 hover:text-violet-800 font-medium underline">Change</button>
                         <button type="button" onClick={() => setFormData(p => ({ ...p, evidenceUrl: '', evidenceType: '' }))}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium underline">
-                          Remove
-                        </button>
+                          className="text-xs text-red-500 hover:text-red-700 font-medium underline">Remove</button>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <Button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingFile}
-                    className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white gap-2"
-                  >
-                    {uploadingFile ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</>
-                    ) : (
-                      <><Upload className="h-4 w-4" /> Upload Evidence File</>
-                    )}
+                  <Button type="button" onClick={() => evidenceInputRef.current?.click()} disabled={uploadingEvidence}
+                    className="w-full h-11 bg-violet-600 hover:bg-violet-700 text-white gap-2">
+                    {uploadingEvidence ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><Upload className="h-4 w-4" /> Upload Evidence File</>}
+                  </Button>
+                )}
+              </div>
+
+              {/* Supporting Documents — Optional */}
+              <div className="space-y-3 border border-slate-200 rounded-xl p-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                    <FileText className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <Label className="font-semibold text-slate-800 text-sm">Supporting Documents <span className="font-normal text-slate-400">(optional)</span></Label>
+                    <p className="text-xs text-slate-400">Letters, certificates, or additional files</p>
+                  </div>
+                </div>
+                {formData.supportingDocUrl ? (
+                  <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <p className="text-sm text-slate-700 flex-1">Supporting document uploaded</p>
+                    <button type="button" onClick={() => setFormData(p => ({ ...p, supportingDocUrl: '' }))}
+                      className="text-xs text-red-500 underline">Remove</button>
+                  </div>
+                ) : (
+                  <Button type="button" variant="outline" onClick={() => supportingInputRef.current?.click()} disabled={uploadingSupporting}
+                    className="w-full h-10 gap-2 text-slate-600">
+                    {uploadingSupporting ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</> : <><Upload className="h-4 w-4" /> Upload Supporting Document</>}
                   </Button>
                 )}
               </div>
@@ -541,53 +583,67 @@ function IssueBlockWardContent() {
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Review &amp; Submit for Approval</h2>
-                <p className="text-sm text-slate-500">This will route the record through the digital custodian approval workflow.</p>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 3 — Review & Submit for Signature</h2>
+                <p className="text-sm text-slate-500">Carefully review all details before submitting. Once submitted, you must apply your digital signature.</p>
               </div>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Submission Summary</p>
+                <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center gap-2">
+                  <ClipboardCheck className="h-4 w-4 text-slate-500" />
+                  <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Submission Summary</p>
                 </div>
                 <div className="p-5 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center font-bold text-violet-700 flex-shrink-0">
+                  <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                    <div className="h-12 w-12 rounded-full bg-violet-100 flex items-center justify-center font-bold text-violet-700 text-lg flex-shrink-0">
                       {formData.selectedStudent?.name?.[0]?.toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{formData.selectedStudent?.name}</p>
-                      <p className="text-xs text-slate-500">{formData.selectedClass?.name}</p>
+                      <p className="font-bold text-slate-900 text-lg">{formData.selectedStudent?.name}</p>
+                      <p className="text-sm text-slate-500">{formData.selectedClass?.name}</p>
                     </div>
                   </div>
-                  <div className="h-px bg-slate-200" />
                   <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Achievement</p>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Achievement Title</p>
                     <p className="font-bold text-slate-900 text-lg">{formData.title}</p>
-                    {formData.description && <p className="text-sm text-slate-600 mt-1">{formData.description}</p>}
                   </div>
-                  <div className="flex gap-2 flex-wrap items-center">
-                    <Badge variant="outline" className="border-violet-200 text-violet-700">{formData.category}</Badge>
-                    <Badge variant="outline" className="border-slate-200 text-slate-600">{formData.dateAchieved}</Badge>
-                    {formData.evidenceUrl && <Badge className="bg-green-100 text-green-700 border-green-200" variant="outline">✓ Evidence attached</Badge>}
+                  <div className="flex gap-2 flex-wrap">
+                    <Badge className="bg-violet-100 text-violet-700 border-violet-200">{CATEGORY_LABELS[formData.category]}</Badge>
+                    <Badge variant="outline" className="text-slate-600">{formData.dateAchieved}</Badge>
+                    {formData.evidenceUrl && <Badge className="bg-green-100 text-green-700 border-green-200">✓ Evidence attached</Badge>}
+                    {formData.supportingDocUrl && <Badge className="bg-blue-100 text-blue-700 border-blue-200">✓ Supporting docs</Badge>}
                   </div>
+                  {formData.description && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-slate-500 mb-1">Description</p>
+                      <p className="text-sm text-slate-700">{formData.description}</p>
+                    </div>
+                  )}
                   {formData.teacherComments && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-xs font-semibold text-blue-700 mb-1">Teacher Comments</p>
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
+                      <p className="text-xs font-semibold text-blue-600 mb-1">Teacher Comments (for admin)</p>
                       <p className="text-sm text-blue-800">{formData.teacherComments}</p>
+                    </div>
+                  )}
+                  {formData.evidenceUrl && formData.evidenceType === 'image' && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 mb-2">Evidence Preview</p>
+                      <img src={formData.evidenceUrl} alt="Evidence" className="h-32 w-full object-cover rounded-lg border border-slate-200" />
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Workflow note */}
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
-                <p className="text-sm font-semibold text-amber-800">⚠️ Important: You must also sign this record</p>
-                <p className="text-sm text-amber-700">
-                  After submitting, you will be taken to the record detail page where you must apply your digital signature. The record then routes to admin for final approval before the NFT can be minted.
-                </p>
+              <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-2">
+                <p className="text-sm font-semibold text-violet-800">📋 What happens after you submit:</p>
+                <ol className="text-sm text-violet-700 space-y-1 list-decimal list-inside">
+                  <li>You will be taken to apply your <strong>digital teacher signature</strong></li>
+                  <li>Admin receives notification and reviews your submission with evidence</li>
+                  <li>Admin applies their <strong>digital signature</strong> to approve</li>
+                  <li>Certificate PDF and NFT are automatically generated and archived</li>
+                </ol>
               </div>
 
-              <div className="flex items-start gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+              <div className="flex items-start gap-3 p-4 bg-slate-50 border-2 border-slate-200 rounded-xl">
                 <Checkbox
                   id="confirm"
                   checked={formData.confirmed}
@@ -595,7 +651,7 @@ function IssueBlockWardContent() {
                   className="mt-0.5"
                 />
                 <label htmlFor="confirm" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                  I confirm this achievement is accurate. I understand it will go through a multi-step approval process before being permanently recorded on the blockchain. Submitting for <strong>{formData.selectedStudent?.name}</strong>.
+                  I, <strong>{profile?.first_name} {profile?.last_name}</strong>, confirm this achievement record for <strong>{formData.selectedStudent?.name}</strong> is accurate and genuine. I understand this will go through a mandatory multi-step approval process before being permanently recorded. I am responsible for the authenticity of this submission.
                 </label>
               </div>
             </div>
@@ -603,25 +659,21 @@ function IssueBlockWardContent() {
 
           {/* Navigation */}
           <div className="flex justify-between pt-6 mt-6 border-t border-slate-100">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentStep(s => Math.max(s - 1, 1))}
-              disabled={currentStep === 1}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={() => setCurrentStep(s => Math.max(s - 1, 1))}
+              disabled={currentStep === 1} className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
             {currentStep < 3 ? (
-              <Button onClick={handleNext} className="gap-2 bg-slate-900 hover:bg-slate-700">
+              <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
                 Next <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button
                 onClick={handleSubmitForApproval}
                 disabled={!formData.confirmed}
-                className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg disabled:opacity-40"
+                className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg disabled:opacity-40"
               >
-                <ClipboardCheck className="h-4 w-4" /> Submit For Approval
+                <PenLine className="h-4 w-4" /> Submit For Signature
               </Button>
             )}
           </div>
