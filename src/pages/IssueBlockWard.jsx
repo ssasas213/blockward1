@@ -360,8 +360,8 @@ function IssueBlockWardContent() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Issue a BlockWard</h1>
-          <p className="text-slate-500 mt-0.5">Recognize student achievements</p>
+          <h1 className="text-3xl font-bold text-slate-900">Issue a BlockWard ✓</h1>
+          <p className="text-slate-500 mt-0.5">Recognize student achievements — 4 steps</p>
         </div>
       </div>
 
