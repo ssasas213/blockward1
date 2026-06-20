@@ -117,6 +117,7 @@ export default function Layout({ children, currentPageName }) {
       { name: 'School Events', icon: Calendar, page: 'SchoolEvents' },
       { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
       { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
+      { name: 'My BlockWards', icon: Award, page: 'TeacherBlockWards' },
       { name: 'Create Achievement', icon: Trophy, page: 'IssueBlockWard' },
       { name: 'My Submissions', icon: Shield, page: 'TeacherRecords' },
       { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
