@@ -142,6 +142,8 @@ function IssueBlockWardContent() {
   const [schoolId, setSchoolId] = useState(null);
   const [schoolName, setSchoolName] = useState('');
   const [students, setStudents] = useState([]);
+  const [teacherClasses, setTeacherClasses] = useState([]);
+  const [debugInfo, setDebugInfo] = useState(null);
   const [awardTypes, setAwardTypes] = useState([]);
   const [awardLoadError, setAwardLoadError] = useState(null);
   const [issuing, setIssuing] = useState(false);
@@ -173,34 +175,61 @@ function IssueBlockWardContent() {
       }
 
       // Load students from teacher's classes (via student_emails on Class entity)
-      const teacherClasses = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-      if (teacherClasses.length > 0) {
-        // Collect all unique student emails across classes
-        const emailToClass = {};
-        for (const cls of teacherClasses) {
-          for (const email of (cls.student_emails || [])) {
-            if (!emailToClass[email]) emailToClass[email] = cls.name;
+      // Also check co_teachers field in case teacher is listed there
+      const [primaryClasses, coTeacherClasses] = await Promise.all([
+        base44.entities.Class.filter({ teacher_email: currentUser.email }),
+        base44.entities.Class.filter({ co_teachers: currentUser.email }).catch(() => []),
+      ]);
+      const allClasses = [...primaryClasses, ...coTeacherClasses.filter(c => !primaryClasses.find(p => p.id === c.id))];
+      setTeacherClasses(allClasses);
+
+      // Collect all unique student emails mapped to class info
+      const emailToClassInfo = {}; // email -> { className, classId }
+      for (const cls of allClasses) {
+        for (const email of (cls.student_emails || [])) {
+          if (!emailToClassInfo[email]) {
+            emailToClassInfo[email] = { className: cls.name, classId: cls.id };
           }
         }
-        const allEmails = Object.keys(emailToClass);
-        if (allEmails.length > 0) {
-          // Fetch UserProfile for each student email
-          const profileResults = await Promise.all(
-            allEmails.map(email => base44.entities.UserProfile.filter({ user_email: email }))
-          );
-          const studentList = profileResults
-            .flat()
-            .filter(sp => sp)
-            .map(sp => ({
-              id: sp.id,
-              name: `${sp.first_name} ${sp.last_name}`,
-              email: sp.user_email,
-              class: emailToClass[sp.user_email] || sp.grade_level || 'Student',
-              avatarUrl: sp.avatar_url || null,
-            }));
-          setStudents(studentList);
+      }
+      const allEmails = Object.keys(emailToClassInfo);
+
+      let studentList = [];
+      if (allEmails.length > 0) {
+        // Fetch ALL UserProfiles at once (same approach as ClassDetail which works)
+        const allProfiles = await base44.entities.UserProfile.list();
+        const matchedProfiles = allProfiles.filter(p => allEmails.includes(p.user_email));
+
+        if (matchedProfiles.length > 0) {
+          studentList = matchedProfiles.map(sp => ({
+            id: sp.id,
+            name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
+            email: sp.user_email,
+            className: emailToClassInfo[sp.user_email]?.className || 'Student',
+            classId: emailToClassInfo[sp.user_email]?.classId || null,
+            avatarUrl: sp.avatar_url || null,
+          }));
+        } else {
+          // Fallback: no UserProfiles found — build minimal student entries from email list alone
+          studentList = allEmails.map(email => ({
+            id: email,
+            name: email,
+            email,
+            className: emailToClassInfo[email]?.className || 'Student',
+            classId: emailToClassInfo[email]?.classId || null,
+            avatarUrl: null,
+          }));
         }
       }
+
+      setStudents(studentList);
+      setDebugInfo({
+        teacherEmail: currentUser.email,
+        schoolId: sid,
+        classCount: allClasses.length,
+        enrolledEmailCount: allEmails.length,
+        studentCount: studentList.length,
+      });
 
       // Load awards — try active first, fall back to all, then seed defaults
       setAwardLoadError(null);
@@ -373,7 +402,13 @@ function IssueBlockWardContent() {
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Student</h2>
                   <p className="text-sm text-slate-500">Choose the student to receive this BlockWard.</p>
                 </div>
-                <StudentPicker students={students} selectedStudent={selectedStudent} onSelect={setSelectedStudent} />
+                <StudentPicker
+                  students={students}
+                  classes={teacherClasses}
+                  selectedStudent={selectedStudent}
+                  onSelect={setSelectedStudent}
+                  debugInfo={debugInfo}
+                />
               </div>
             )}
 
@@ -418,7 +453,7 @@ function IssueBlockWardContent() {
                   <div className="p-5">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Awarding To</p>
                     <p className="font-bold text-slate-900 text-lg">{selectedStudent?.name}</p>
-                    <p className="text-sm text-slate-500">{selectedStudent?.class}</p>
+                    <p className="text-sm text-slate-500">{selectedStudent?.className}</p>
                   </div>
                   <div className="p-5">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Achievement</p>
@@ -500,7 +535,7 @@ function IssueBlockWardContent() {
                   </div>
                   <div>
                     <p className="font-semibold text-slate-900">{selectedStudent.name}</p>
-                    <p className="text-xs text-slate-500">{selectedStudent.class}</p>
+                    <p className="text-xs text-slate-500">{selectedStudent.className}</p>
                   </div>
                 </div>
               </CardContent>

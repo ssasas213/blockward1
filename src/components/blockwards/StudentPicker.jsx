@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -8,20 +9,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, User } from 'lucide-react';
+import { Search, User, AlertTriangle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
-export default function StudentPicker({ students, selectedStudent, onSelect }) {
+export default function StudentPicker({ students, classes = [], selectedStudent, onSelect, debugInfo }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('all');
 
-  const classes = [...new Set(students.map(s => s.class))];
-
   const filteredStudents = students.filter(student => {
-    const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesClass = classFilter === 'all' || student.class === classFilter;
+    const matchesSearch =
+      student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      student.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesClass = classFilter === 'all' || student.classId === classFilter;
     return matchesSearch && matchesClass;
   });
+
+  const showDebug = debugInfo && students.length === 0;
 
   return (
     <div className="space-y-4">
@@ -33,7 +36,7 @@ export default function StudentPicker({ students, selectedStudent, onSelect }) {
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Type student name..."
+              placeholder="Type student name or email..."
               className="pl-10"
             />
           </div>
@@ -45,23 +48,67 @@ export default function StudentPicker({ students, selectedStudent, onSelect }) {
               <SelectValue placeholder="All classes" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Classes</SelectItem>
-              {classes.map((cls) => (
-                <SelectItem key={cls} value={cls}>
-                  {cls}
-                </SelectItem>
-              ))}
+              <SelectItem value="all">All Classes ({students.length} students)</SelectItem>
+              {classes.map((cls) => {
+                const count = students.filter(s => s.classId === cls.id).length;
+                return (
+                  <SelectItem key={cls.id} value={cls.id}>
+                    {cls.name} ({count})
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto">
-        {filteredStudents.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            No students found
+      {/* Debug panel — shown only when no students found */}
+      {showDebug && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2 text-amber-700 font-semibold">
+            <AlertTriangle className="h-4 w-4" />
+            No students found — Debug Info
           </div>
-        ) : (
+          <div className="text-xs text-amber-800 space-y-1 font-mono">
+            <p>Teacher email: <span className="font-bold">{debugInfo.teacherEmail}</span></p>
+            <p>School ID: <span className="font-bold">{debugInfo.schoolId || 'not set'}</span></p>
+            <p>Classes found: <span className="font-bold">{debugInfo.classCount}</span></p>
+            <p>Enrolled emails in classes: <span className="font-bold">{debugInfo.enrolledEmailCount}</span></p>
+            <p>Student profiles matched: <span className="font-bold">{debugInfo.studentCount}</span></p>
+          </div>
+          {debugInfo.classCount === 0 && (
+            <p className="text-xs text-amber-700 mt-2">
+              ⚠️ No classes assigned to this teacher. Add students to a class first via the Classes page.
+            </p>
+          )}
+          {debugInfo.classCount > 0 && debugInfo.enrolledEmailCount === 0 && (
+            <p className="text-xs text-amber-700 mt-2">
+              ⚠️ Classes found but no students enrolled. Add students via Class Detail → Add Student.
+            </p>
+          )}
+          {debugInfo.enrolledEmailCount > 0 && debugInfo.studentCount === 0 && (
+            <p className="text-xs text-amber-700 mt-2">
+              ⚠️ Student emails found in class but no matching UserProfiles. Students may not have completed profile setup.
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="space-y-2 max-h-96 overflow-y-auto">
+        {students.length > 0 && filteredStudents.length === 0 ? (
+          <div className="text-center py-8 text-slate-500">
+            No students match your search
+            {classFilter !== 'all' && (
+              <button
+                type="button"
+                onClick={() => setClassFilter('all')}
+                className="block mx-auto text-violet-600 text-sm underline mt-2"
+              >
+                Show all classes
+              </button>
+            )}
+          </div>
+        ) : students.length === 0 ? null : (
           filteredStudents.map((student) => (
             <button
               key={student.id}
@@ -77,12 +124,13 @@ export default function StudentPicker({ students, selectedStudent, onSelect }) {
                 {student.avatarUrl ? (
                   <img src={student.avatarUrl} alt={student.name} className="h-full w-full rounded-full object-cover" />
                 ) : (
-                  <User className="h-6 w-6 text-white" />
+                  <span className="text-white font-bold text-lg">{student.name[0]?.toUpperCase() || <User className="h-6 w-6 text-white" />}</span>
                 )}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-slate-900 truncate">{student.name}</p>
-                <p className="text-sm text-slate-500">{student.class}</p>
+                <p className="text-sm text-slate-500 truncate">{student.email}</p>
+                <Badge variant="outline" className="text-xs mt-1">{student.className}</Badge>
               </div>
               {selectedStudent?.id === student.id && (
                 <div className="h-6 w-6 rounded-full bg-violet-600 flex items-center justify-center flex-shrink-0">
