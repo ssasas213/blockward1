@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
+import TeacherSignaturePad from '@/components/blockwards/TeacherSignaturePad';
 
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
 const CATEGORY_LABELS = {
@@ -30,9 +31,10 @@ const CATEGORY_LABELS = {
 // Step progress indicator
 function StepProgress({ currentStep }) {
   const steps = [
-    { num: 1, label: 'Create Record', icon: FileText },
-    { num: 2, label: 'Teacher Signature', icon: PenLine },
-    { num: 3, label: 'Admin Approval', icon: Shield },
+    { num: 1, label: 'Select Student', icon: User },
+    { num: 2, label: 'Choose Award', icon: FileText },
+    { num: 3, label: 'Teacher Signature', icon: PenLine },
+    { num: 4, label: 'Review & Issue', icon: ClipboardCheck },
   ];
   return (
     <div className="bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl p-5">
@@ -89,6 +91,10 @@ function IssueBlockWardContent() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submittedRecord, setSubmittedRecord] = useState(null);
 
+  const [teacherSignature, setTeacherSignature] = useState(null); // base64 data URL
+  const [teacherSignedAt, setTeacherSignedAt] = useState(null);
+  const [schoolName, setSchoolName] = useState('');
+
   const [formData, setFormData] = useState({
     selectedStudent: null,
     selectedClass: null,
@@ -118,6 +124,12 @@ function IssueBlockWardContent() {
       setProfile(p);
       const sid = p?.school_id || null;
       setSchoolId(sid);
+
+      // Load school name
+      if (sid) {
+        const schools = await base44.entities.School.filter({ id: sid });
+        if (schools[0]) setSchoolName(schools[0].name);
+      }
 
       // Teachers only — admins are blocked by the access denied screen above
       let classes = [];
@@ -200,14 +212,39 @@ function IssueBlockWardContent() {
       if (!formData.dateAchieved) { toast.error('Please enter the date achieved'); return; }
       if (!formData.evidenceUrl) { toast.error('Evidence upload is required'); return; }
     }
-    setCurrentStep(s => Math.min(s + 1, 3));
+    if (currentStep === 3) {
+      if (!teacherSignature) { toast.error('Please draw your signature before continuing'); return; }
+    }
+    setCurrentStep(s => Math.min(s + 1, 4));
+  };
+
+  const handleSignatureComplete = (dataUrl) => {
+    setTeacherSignature(dataUrl);
+    if (dataUrl) {
+      setTeacherSignedAt(new Date().toISOString());
+      toast.success('Signature captured! Click "Continue" to review and submit.');
+    }
   };
 
   const handleSubmitForApproval = async () => {
     if (!formData.confirmed) { toast.error('Please tick the confirmation checkbox'); return; }
+    if (!teacherSignature) { toast.error('Teacher signature is required'); return; }
     setSubmitting(true);
     try {
       const teacherName = `${profile.first_name} ${profile.last_name}`;
+
+      // Upload signature image to storage
+      let signatureUrl = '';
+      try {
+        const blob = await (await fetch(teacherSignature)).blob();
+        const sigFile = new File([blob], 'teacher-signature.png', { type: 'image/png' });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: sigFile });
+        signatureUrl = file_url;
+      } catch (e) {
+        // fallback: store as data URL if upload fails
+        signatureUrl = teacherSignature;
+      }
+
       const record = await base44.entities.StudentRecord.create({
         school_id: schoolId,
         class_id: formData.selectedClass?.id,
@@ -224,6 +261,9 @@ function IssueBlockWardContent() {
         date_achieved: formData.dateAchieved,
         file_url: formData.evidenceUrl,
         file_type: formData.evidenceType,
+        // Signature fields
+        teacher_signature_url: signatureUrl,
+        teacher_signed_at: teacherSignedAt,
         status: 'draft',
       });
 
@@ -581,12 +621,47 @@ function IssueBlockWardContent() {
             </div>
           )}
 
-          {/* Step 3: Review & Submit */}
+          {/* Step 3: Teacher Signature */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 3 — Review & Submit for Signature</h2>
-                <p className="text-sm text-slate-500">Carefully review all details before submitting. Once submitted, you must apply your digital signature.</p>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 3 — Teacher Digital Signature</h2>
+                <p className="text-sm text-slate-500">Sign below to verify this achievement record. Your signature will be permanently attached.</p>
+              </div>
+
+              {teacherSignature ? (
+                <div className="space-y-4">
+                  <div className="border-2 border-green-300 bg-green-50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      <p className="text-sm font-semibold text-green-800">Signature captured</p>
+                    </div>
+                    <img src={teacherSignature} alt="Teacher signature" className="max-h-24 border border-green-200 rounded-lg bg-white p-2" />
+                    <div className="mt-2 text-xs text-green-700">
+                      Signed by: <strong>{profile?.first_name} {profile?.last_name}</strong> · {teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : ''}
+                    </div>
+                  </div>
+                  <Button type="button" variant="outline" onClick={() => { setTeacherSignature(null); setTeacherSignedAt(null); }}
+                    className="gap-2 text-red-600 border-red-200 hover:bg-red-50">
+                    <PenLine className="h-4 w-4" /> Re-sign
+                  </Button>
+                </div>
+              ) : (
+                <TeacherSignaturePad
+                  profile={profile}
+                  schoolName={schoolName}
+                  onSignatureComplete={handleSignatureComplete}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Step 4: Review & Submit */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900 mb-1">Step 4 — Review & Submit</h2>
+                <p className="text-sm text-slate-500">Carefully review all details before submitting for admin approval.</p>
               </div>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -635,10 +710,27 @@ function IssueBlockWardContent() {
                 </div>
               </div>
 
+              {/* Teacher Signature Preview */}
+              {teacherSignature && (
+                <div className="border border-violet-200 rounded-xl overflow-hidden">
+                  <div className="bg-violet-50 px-5 py-3 border-b border-violet-200 flex items-center gap-2">
+                    <PenLine className="h-4 w-4 text-violet-600" />
+                    <p className="text-xs font-semibold text-violet-700 uppercase tracking-wider">Teacher Signature</p>
+                  </div>
+                  <div className="p-5 space-y-3">
+                    <img src={teacherSignature} alt="Teacher signature" className="max-h-20 border border-slate-200 rounded-lg bg-white p-2" />
+                    <div className="text-sm text-slate-700 space-y-1">
+                      <p><span className="font-semibold text-slate-500 text-xs uppercase">Signed By</span><br /><strong>{profile?.first_name} {profile?.last_name}</strong></p>
+                      <p><span className="font-semibold text-slate-500 text-xs uppercase">Signed At</span><br />{teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : ''}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 space-y-2">
                 <p className="text-sm font-semibold text-violet-800">📋 What happens after you submit:</p>
                 <ol className="text-sm text-violet-700 space-y-1 list-decimal list-inside">
-                  <li>You will be taken to apply your <strong>digital teacher signature</strong></li>
+                  <li>Your digital signature is permanently attached to this record</li>
                   <li>Admin receives notification and reviews your submission with evidence</li>
                   <li>Admin applies their <strong>digital signature</strong> to approve</li>
                   <li>Certificate PDF and NFT are automatically generated and archived</li>
@@ -665,17 +757,26 @@ function IssueBlockWardContent() {
               disabled={currentStep === 1} className="gap-2">
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
-            {currentStep < 3 ? (
-              <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
-                Next <ArrowRight className="h-4 w-4" />
-              </Button>
+            {currentStep < 4 ? (
+              currentStep === 3 ? (
+                // On signature step: only show Next if signature captured, otherwise the pad has its own confirm button
+                teacherSignature ? (
+                  <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
+                    Continue to Review <ArrowRight className="h-4 w-4" />
+                  </Button>
+                ) : null
+              ) : (
+                <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
+                  Next <ArrowRight className="h-4 w-4" />
+                </Button>
+              )
             ) : (
               <Button
                 onClick={handleSubmitForApproval}
-                disabled={!formData.confirmed}
+                disabled={!formData.confirmed || !teacherSignature}
                 className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg disabled:opacity-40"
               >
-                <PenLine className="h-4 w-4" /> Submit For Signature
+                <PenLine className="h-4 w-4" /> Submit For Approval
               </Button>
             )}
           </div>

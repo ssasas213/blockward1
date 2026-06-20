@@ -5,7 +5,8 @@ import { cn } from "@/lib/utils";
 const steps = [
   { id: 1, name: 'Select Student' },
   { id: 2, name: 'Choose Award' },
-  { id: 3, name: 'Review & Issue' }
+  { id: 3, name: 'Teacher Signature' },
+  { id: 4, name: 'Review & Issue' },
 ];
 
 export default function IssueStepper({ currentStep }) {
