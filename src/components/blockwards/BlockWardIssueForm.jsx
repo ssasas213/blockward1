@@ -11,7 +11,10 @@ import { toast } from "sonner";
 
 const categories = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
 
+// DEPRECATED: This component is no longer used. All issuance goes through IssueBlockWard page multi-step flow.
+// DO NOT import or render this component anywhere.
 export default function BlockWardIssueForm({ students, onIssueSuccess }) {
+  return null; // Disabled — use IssueBlockWard page instead
   const [formData, setFormData] = useState({
     studentId: '',
     title: '',
