@@ -174,31 +174,15 @@ function IssueBlockWardContent() {
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      // EXACT COPY of Classes page logic (lines 75-87) PLUS co_teachers fallback
-      let classData = [];
-      
-      // Step 1: Try StaffMembership first (same as Classes page)
-      const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-      const membership = memberships[0];
-      
-      if (membership?.class_ids?.length > 0) {
-        // Load all classes and filter by membership.class_ids
-        const allClasses = sid
-          ? await base44.entities.Class.filter({ school_id: sid })
-          : await base44.entities.Class.list();
-        classData = allClasses.filter(c => membership.class_ids.includes(c.id));
-      } else {
-        // Step 2: Fall back to teacher_email filter (same as Classes page)
-        classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-        
-        // Step 3: NEW - Check co_teachers if still no classes (RLS co_teacher rule)
-        if (classData.length === 0) {
-          const allClasses = sid
-            ? await base44.entities.Class.filter({ school_id: sid })
-            : await base44.entities.Class.list();
-          classData = allClasses.filter(c => c.co_teachers?.includes(currentUser.email));
-        }
-      }
+      // Use Class.list() — lets RLS do the filtering (matches teacher_email OR co_teachers)
+      // This is the same mechanism ClassDetail uses: fetch by teacher context, not school_id
+      const allVisibleClasses = await base44.entities.Class.list();
+      // Client-side filter to only classes where this teacher is primary or co-teacher
+      const classData = allVisibleClasses.filter(c =>
+        c.teacher_email === currentUser.email ||
+        c.co_teachers?.includes(currentUser.email)
+      );
+      const membership = null; // kept for debug info compat
       
       setTeacherClasses(classData);
 
@@ -236,8 +220,7 @@ function IssueBlockWardContent() {
         userId: currentUser.id,
         teacherEmail: currentUser.email,
         schoolId: sid,
-        hasMembership: !!membership,
-        membershipClassIds: membership?.class_ids || [],
+        allVisibleClassCount: allVisibleClasses.length,
         classCount: classData.length,
         classIds: classData.map(c => ({ id: c.id, name: c.name, teacher_email: c.teacher_email, co_teachers: c.co_teachers, isCoTeacher: c.co_teachers?.includes(currentUser.email) })),
         enrolledEmailCount: allEmailsArray.length,
