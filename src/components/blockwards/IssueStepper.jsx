@@ -2,6 +2,7 @@ import React from 'react';
 import { Check } from 'lucide-react';
 import { cn } from "@/lib/utils";
 
+// 4-step workflow — DO NOT REMOVE Teacher Signature (step 3)
 const steps = [
   { id: 1, name: 'Select Student' },
   { id: 2, name: 'Choose Award' },
