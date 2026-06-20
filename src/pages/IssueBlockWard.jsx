@@ -174,60 +174,49 @@ function IssueBlockWardContent() {
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      // Load students from teacher's classes (via student_emails on Class entity)
-      // Also check co_teachers field in case teacher is listed there
-      const [primaryClasses, coTeacherClasses] = await Promise.all([
-        base44.entities.Class.filter({ teacher_email: currentUser.email }),
-        base44.entities.Class.filter({ co_teachers: currentUser.email }).catch(() => []),
-      ]);
-      const allClasses = [...primaryClasses, ...coTeacherClasses.filter(c => !primaryClasses.find(p => p.id === c.id))];
-      setTeacherClasses(allClasses);
+      // EXACT COPY of ClassDetail student loading logic (lines 66-72)
+      // Step 1: Load all classes assigned to this teacher
+      const teacherClasses = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+      setTeacherClasses(teacherClasses);
 
-      // Collect all unique student emails mapped to class info
-      const emailToClassInfo = {}; // email -> { className, classId }
-      for (const cls of allClasses) {
+      // Step 2: Collect all unique student emails from all classes
+      const allStudentEmails = new Set();
+      const emailToClassInfo = {};
+      for (const cls of teacherClasses) {
         for (const email of (cls.student_emails || [])) {
+          allStudentEmails.add(email);
           if (!emailToClassInfo[email]) {
             emailToClassInfo[email] = { className: cls.name, classId: cls.id };
           }
         }
       }
-      const allEmails = Object.keys(emailToClassInfo);
+      const allEmailsArray = Array.from(allStudentEmails);
 
-      let studentList = [];
-      if (allEmails.length > 0) {
-        // Fetch ALL UserProfiles at once (same approach as ClassDetail which works)
-        const allProfiles = await base44.entities.UserProfile.list();
-        const matchedProfiles = allProfiles.filter(p => allEmails.includes(p.user_email));
+      // Step 3: Load ALL UserProfiles (exact same as ClassDetail line 68)
+      const allProfiles = await base44.entities.UserProfile.list();
 
-        if (matchedProfiles.length > 0) {
-          studentList = matchedProfiles.map(sp => ({
-            id: sp.id,
-            name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
-            email: sp.user_email,
-            className: emailToClassInfo[sp.user_email]?.className || 'Student',
-            classId: emailToClassInfo[sp.user_email]?.classId || null,
-            avatarUrl: sp.avatar_url || null,
-          }));
-        } else {
-          // Fallback: no UserProfiles found — build minimal student entries from email list alone
-          studentList = allEmails.map(email => ({
-            id: email,
-            name: email,
-            email,
-            className: emailToClassInfo[email]?.className || 'Student',
-            classId: emailToClassInfo[email]?.classId || null,
-            avatarUrl: null,
-          }));
-        }
-      }
+      // Step 4: Filter client-side where user_email is in class student_emails (exact same as ClassDetail lines 69-71)
+      const matchedProfiles = allProfiles.filter(p => allEmailsArray.includes(p.user_email));
+
+      // Step 5: Map to student format for StudentPicker
+      const studentList = matchedProfiles.map(sp => ({
+        id: sp.id,
+        name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
+        email: sp.user_email,
+        className: emailToClassInfo[sp.user_email]?.className || 'Student',
+        classId: emailToClassInfo[sp.user_email]?.classId || null,
+        avatarUrl: sp.avatar_url || null,
+      }));
 
       setStudents(studentList);
       setDebugInfo({
+        userId: currentUser.id,
         teacherEmail: currentUser.email,
         schoolId: sid,
-        classCount: allClasses.length,
-        enrolledEmailCount: allEmails.length,
+        classCount: teacherClasses.length,
+        enrolledEmailCount: allEmailsArray.length,
+        allProfilesCount: allProfiles.length,
+        matchedProfilesCount: matchedProfiles.length,
         studentCount: studentList.length,
       });
 

@@ -70,11 +70,14 @@ export default function StudentPicker({ students, classes = [], selectedStudent,
             No students found — Debug Info
           </div>
           <div className="text-xs text-amber-800 space-y-1 font-mono">
+            <p>User ID: <span className="font-bold">{debugInfo.userId || 'N/A'}</span></p>
             <p>Teacher email: <span className="font-bold">{debugInfo.teacherEmail}</span></p>
             <p>School ID: <span className="font-bold">{debugInfo.schoolId || 'not set'}</span></p>
-            <p>Classes found: <span className="font-bold">{debugInfo.classCount}</span></p>
-            <p>Enrolled emails in classes: <span className="font-bold">{debugInfo.enrolledEmailCount}</span></p>
-            <p>Student profiles matched: <span className="font-bold">{debugInfo.studentCount}</span></p>
+            <p>Classes loaded: <span className="font-bold">{debugInfo.classCount}</span></p>
+            <p>Enrolled emails: <span className="font-bold">{debugInfo.enrolledEmailCount}</span></p>
+            <p>All UserProfiles in DB: <span className="font-bold">{debugInfo.allProfilesCount || 'N/A'}</span></p>
+            <p>Matched profiles: <span className="font-bold">{debugInfo.matchedProfilesCount || 0}</span></p>
+            <p>Final student count: <span className="font-bold">{debugInfo.studentCount}</span></p>
           </div>
           {debugInfo.classCount === 0 && (
             <p className="text-xs text-amber-700 mt-2">
@@ -89,6 +92,11 @@ export default function StudentPicker({ students, classes = [], selectedStudent,
           {debugInfo.enrolledEmailCount > 0 && debugInfo.studentCount === 0 && (
             <p className="text-xs text-amber-700 mt-2">
               ⚠️ Student emails found in class but no matching UserProfiles. Students may not have completed profile setup.
+            </p>
+          )}
+          {debugInfo.allProfilesCount === 0 && (
+            <p className="text-xs text-amber-700 mt-2">
+              ⚠️ UserProfile entity is completely empty. No users have profiles in the system.
             </p>
           )}
         </div>
