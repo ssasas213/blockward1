@@ -2,184 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { 
-  Shield, Plus, Search, ExternalLink, Clock, User,
-  Loader2, Award, CheckCircle, XCircle, AlertTriangle
-} from 'lucide-react';
+import { Shield, Search, ExternalLink, User, Loader2, XCircle, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+
+const categories = [
+  { value: 'academic', label: 'Academic Excellence', color: 'from-blue-500 to-cyan-500' },
+  { value: 'sports', label: 'Sports Achievement', color: 'from-emerald-500 to-green-500' },
+  { value: 'arts', label: 'Arts & Creativity', color: 'from-pink-500 to-rose-500' },
+  { value: 'leadership', label: 'Leadership', color: 'from-violet-500 to-purple-500' },
+  { value: 'community', label: 'Community Service', color: 'from-amber-500 to-orange-500' },
+  { value: 'special', label: 'Special Recognition', color: 'from-indigo-500 to-blue-500' }
+];
+
+const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || categories[5];
 
 export default function BlockWards() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [blockWards, setBlockWards] = useState([]);
-  const [students, setStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showMintDialog, setShowMintDialog] = useState(false);
-  const [minting, setMinting] = useState(false);
   const [selectedBlockWard, setSelectedBlockWard] = useState(null);
-  const [myClasses, setMyClasses] = useState([]);
-  const [selectedClassId, setSelectedClassId] = useState('');
-  const [classStudents, setClassStudents] = useState([]);
-  const [loadingClassStudents, setLoadingClassStudents] = useState(false);
-  const [newBlockWard, setNewBlockWard] = useState({
-    student_email: '',
-    title: '',
-    description: '',
-    category: ''
-  });
 
-  const categories = [
-    { value: 'academic', label: 'Academic Excellence', color: 'from-blue-500 to-cyan-500' },
-    { value: 'sports', label: 'Sports Achievement', color: 'from-emerald-500 to-green-500' },
-    { value: 'arts', label: 'Arts & Creativity', color: 'from-pink-500 to-rose-500' },
-    { value: 'leadership', label: 'Leadership', color: 'from-violet-500 to-purple-500' },
-    { value: 'community', label: 'Community Service', color: 'from-amber-500 to-orange-500' },
-    { value: 'special', label: 'Special Recognition', color: 'from-indigo-500 to-blue-500' }
-  ];
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
       const user = await base44.auth.me();
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        const userProfile = profiles[0];
-        setProfile(userProfile);
+      if (profiles.length === 0) return;
 
-        // Load BlockWards based on user type, scoped by school
-        const schoolId = userProfile.school_id;
-        let bwData = [];
-        if (userProfile.user_type === 'student') {
-          bwData = await base44.entities.BlockWard.filter({ student_email: user.email }, '-created_date');
-        } else if (userProfile.user_type === 'teacher') {
-          bwData = await base44.entities.BlockWard.filter({ issuer_email: user.email }, '-created_date');
-          // Load only students in teacher's classes (via enrollments or class.student_emails)
-          const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
-          const membership = memberships[0];
-          let classIds = membership?.class_ids || [];
-          if (classIds.length === 0) {
-            const teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
-            classIds = teacherClasses.map(c => c.id);
-          }
-          if (classIds.length > 0) {
-            // Store assigned classes for the dialog class selector
-            const allClasses = await base44.entities.Class.list();
-            setMyClasses(allClasses.filter(c => classIds.includes(c.id)));
-            const enrollments = await base44.entities.Enrollment.filter({ class_id: classIds[0], status: 'active' });
-            const allEmails = new Set(enrollments.map(e => e.student_email));
-            for (const cid of classIds.slice(1)) {
-              const enr = await base44.entities.Enrollment.filter({ class_id: cid, status: 'active' });
-              enr.forEach(e => allEmails.add(e.student_email));
-            }
-            if (allEmails.size > 0) {
-              const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
-              setStudents(allProfiles.filter(p => allEmails.has(p.user_email)));
-            }
-          } else {
-            // Legacy fallback: use class.student_emails
-            const teacherClasses = await base44.entities.Class.filter({ teacher_email: user.email });
-            setMyClasses(teacherClasses);
-            const emailSet = new Set();
-            teacherClasses.forEach(c => c.student_emails?.forEach(e => emailSet.add(e)));
-            if (emailSet.size > 0) {
-              const allProfiles = await base44.entities.UserProfile.filter({ user_type: 'student' });
-              setStudents(allProfiles.filter(p => emailSet.has(p.user_email)));
-            } else {
-              setStudents([]);
-            }
-          }
-        } else {
-          // Admin: scope to school
-          if (schoolId) {
-            bwData = await base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date');
-          } else {
-            bwData = await base44.entities.BlockWard.list('-created_date');
-          }
-          const allProfiles = schoolId
-            ? await base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId })
-            : await base44.entities.UserProfile.filter({ user_type: 'student' });
-          setStudents(allProfiles);
-        }
-        setBlockWards(bwData || []);
+      const userProfile = profiles[0];
+      setProfile(userProfile);
+      const schoolId = userProfile.school_id;
+
+      let bwData = [];
+      if (userProfile.user_type === 'student') {
+        bwData = await base44.entities.BlockWard.filter({ student_email: user.email }, '-created_date');
+      } else if (userProfile.user_type === 'teacher') {
+        bwData = await base44.entities.BlockWard.filter({ issuer_email: user.email }, '-created_date');
+      } else {
+        // Admin
+        bwData = schoolId
+          ? await base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date')
+          : await base44.entities.BlockWard.list('-created_date');
       }
+      setBlockWards(bwData || []);
     } catch (error) {
-      console.error('Error loading BlockWards:', error);
-      setBlockWards([]);
       toast.error('Failed to load BlockWards');
     } finally {
       setLoading(false);
-    }
-  };
-
-
-
-  const handleMintBlockWard = async () => {
-    if (!newBlockWard.student_email || !newBlockWard.title || !newBlockWard.category) return;
-    
-    setMinting(true);
-    try {
-      const studentProfile = students.find(s => s.user_email === newBlockWard.student_email);
-      
-      if (!studentProfile) {
-        toast.error('Student not found');
-        setMinting(false);
-        return;
-      }
-
-      const user = await base44.auth.me();
-
-      await base44.entities.BlockWard.create({
-        school_id: profile?.school_id,
-        student_email: studentProfile.user_email,
-        student_name: `${studentProfile.first_name} ${studentProfile.last_name}`,
-        student_wallet: studentProfile.wallet_address || 'system',
-        issuer_email: user.email,
-        issuer_name: `${profile?.first_name} ${profile?.last_name}`,
-        issuer_wallet: 'system',
-        title: newBlockWard.title,
-        description: newBlockWard.description,
-        category: newBlockWard.category,
-        minted_at: new Date().toISOString(),
-        status: 'active',
-      });
-
-      setShowMintDialog(false);
-      setNewBlockWard({ student_email: '', title: '', description: '', category: '' });
-      await loadData();
-      toast.success('BlockWard issued successfully!');
-    } catch (error) {
-      console.error('Error issuing BlockWard:', error);
-      toast.error(error.message || 'Failed to issue BlockWard');
-    } finally {
-      setMinting(false);
     }
   };
 
@@ -191,28 +73,26 @@ export default function BlockWards() {
         revoked_by: user.email,
         revoked_at: new Date().toISOString()
       });
-      loadData();
       setSelectedBlockWard(null);
+      loadData();
       toast.success('BlockWard revoked');
     } catch (error) {
       toast.error('Failed to revoke BlockWard');
     }
   };
 
-  const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || categories[5];
-
-  const filteredBlockWards = blockWards.filter(bw => 
+  const filteredBlockWards = blockWards.filter(bw =>
     bw.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     bw.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Only teachers with explicit permission can issue BlockWards. Admins manage records — they do NOT issue.
-  const canMint = profile?.user_type === 'teacher' && profile?.can_issue_blockwards === true;
+  // Only approved teachers can issue. Admins use the stepped workflow via IssueBlockWard page.
+  const canIssue = profile?.user_type === 'teacher' && profile?.can_issue_blockwards === true;
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
   }
@@ -222,16 +102,14 @@ export default function BlockWards() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
-          </div>
+          <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
           <p className="text-slate-500 mt-1">
-            {profile?.user_type === 'student' 
-              ? 'Your blockchain-verified achievements' 
+            {profile?.user_type === 'student'
+              ? 'Your blockchain-verified achievements'
               : 'Manage soulbound achievement tokens'}
           </p>
         </div>
-        {canMint && (
+        {canIssue && (
           <Button
             className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
             asChild
@@ -245,7 +123,7 @@ export default function BlockWards() {
         {profile?.user_type === 'teacher' && !profile?.can_issue_blockwards && (
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
             <AlertTriangle className="h-3 w-3 mr-1" />
-            Not authorized to mint
+            Not authorized to issue
           </Badge>
         )}
       </div>
@@ -369,7 +247,7 @@ export default function BlockWards() {
                 <div className="pt-2 border-t space-y-3">
                   <div>
                     <p className="text-sm text-slate-500 mb-1">Transaction Hash</p>
-                    <a 
+                    <a
                       href={`https://sepolia.etherscan.io/tx/${selectedBlockWard.transaction_hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -384,17 +262,17 @@ export default function BlockWards() {
                     <p className="font-mono text-xs text-slate-600">{selectedBlockWard.block_number?.toLocaleString()}</p>
                   </div>
                   {selectedBlockWard.transaction_hash && (
-                  <div>
-                    <p className="text-sm text-slate-500 mb-1">Network</p>
-                    <Badge variant="outline" className="text-xs">Sepolia Testnet</Badge>
-                  </div>
+                    <div>
+                      <p className="text-sm text-slate-500 mb-1">Network</p>
+                      <Badge variant="outline" className="text-xs">Sepolia Testnet</Badge>
+                    </div>
                   )}
                 </div>
               </div>
               {(profile?.user_type === 'admin' && selectedBlockWard.status === 'active') && (
                 <DialogFooter className="pt-4">
-                  <Button 
-                    variant="destructive" 
+                  <Button
+                    variant="destructive"
                     onClick={() => handleRevokeBlockWard(selectedBlockWard)}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
