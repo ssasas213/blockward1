@@ -87,6 +87,7 @@ export default function BlockWards() {
   );
 
   // Only approved teachers can issue. Admins use the stepped workflow via IssueBlockWard page.
+  // v3 — dialog removed, all issuance goes through IssueBlockWard multi-step flow
   const canIssue = profile?.user_type === 'teacher' && profile?.can_issue_blockwards === true;
 
   if (loading) {
