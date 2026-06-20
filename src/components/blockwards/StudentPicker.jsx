@@ -73,6 +73,10 @@ export default function StudentPicker({ students, classes = [], selectedStudent,
             <p>User ID: <span className="font-bold">{debugInfo.userId || 'N/A'}</span></p>
             <p>Teacher email: <span className="font-bold">{debugInfo.teacherEmail}</span></p>
             <p>School ID: <span className="font-bold">{debugInfo.schoolId || 'not set'}</span></p>
+            <p>Has StaffMembership: <span className="font-bold">{debugInfo.hasMembership ? 'YES' : 'NO'}</span></p>
+            {debugInfo.membershipClassIds?.length > 0 && (
+              <p>Membership class IDs: <span className="font-bold">{debugInfo.membershipClassIds.length}</span></p>
+            )}
             <p>Classes loaded: <span className="font-bold">{debugInfo.classCount}</span></p>
             {debugInfo.classIds && debugInfo.classIds.length > 0 && (
               <div className="mt-1 pl-2 border-l-2 border-amber-300">

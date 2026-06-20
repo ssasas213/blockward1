@@ -174,15 +174,30 @@ function IssueBlockWardContent() {
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      // FIXED: Use .list() to respect RLS rules (includes teacher_email OR co_teachers)
-      // This matches how ClassDetail works - RLS returns all classes user has access to
-      const allClasses = await base44.entities.Class.list();
-      setTeacherClasses(allClasses);
+      // EXACT COPY of Classes page logic (lines 75-87) - uses fallback chain
+      let classData = [];
+      
+      // Step 1: Try StaffMembership first (same as Classes page)
+      const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+      const membership = memberships[0];
+      
+      if (membership?.class_ids?.length > 0) {
+        // Load all classes and filter by membership.class_ids
+        const allClasses = sid
+          ? await base44.entities.Class.filter({ school_id: sid })
+          : await base44.entities.Class.list();
+        classData = allClasses.filter(c => membership.class_ids.includes(c.id));
+      } else {
+        // Step 2: Fall back to teacher_email filter (same as Classes page)
+        classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+      }
+      
+      setTeacherClasses(classData);
 
       // Collect all unique student emails from all classes
       const allStudentEmails = new Set();
       const emailToClassInfo = {};
-      for (const cls of allClasses) {
+      for (const cls of classData) {
         for (const email of (cls.student_emails || [])) {
           allStudentEmails.add(email);
           if (!emailToClassInfo[email]) {
@@ -213,8 +228,10 @@ function IssueBlockWardContent() {
         userId: currentUser.id,
         teacherEmail: currentUser.email,
         schoolId: sid,
-        classCount: allClasses.length,
-        classIds: allClasses.map(c => ({ id: c.id, name: c.name, teacher_email: c.teacher_email, co_teachers: c.co_teachers })),
+        hasMembership: !!membership,
+        membershipClassIds: membership?.class_ids || [],
+        classCount: classData.length,
+        classIds: classData.map(c => ({ id: c.id, name: c.name, teacher_email: c.teacher_email, co_teachers: c.co_teachers })),
         enrolledEmailCount: allEmailsArray.length,
         allProfilesCount: allProfiles.length,
         matchedProfilesCount: matchedProfiles.length,
