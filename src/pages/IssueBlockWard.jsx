@@ -174,15 +174,15 @@ function IssueBlockWardContent() {
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      // EXACT COPY of ClassDetail student loading logic (lines 66-72)
-      // Step 1: Load all classes assigned to this teacher
-      const teacherClasses = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-      setTeacherClasses(teacherClasses);
+      // FIXED: Use .list() to respect RLS rules (includes teacher_email OR co_teachers)
+      // This matches how ClassDetail works - RLS returns all classes user has access to
+      const allClasses = await base44.entities.Class.list();
+      setTeacherClasses(allClasses);
 
-      // Step 2: Collect all unique student emails from all classes
+      // Collect all unique student emails from all classes
       const allStudentEmails = new Set();
       const emailToClassInfo = {};
-      for (const cls of teacherClasses) {
+      for (const cls of allClasses) {
         for (const email of (cls.student_emails || [])) {
           allStudentEmails.add(email);
           if (!emailToClassInfo[email]) {
@@ -192,13 +192,13 @@ function IssueBlockWardContent() {
       }
       const allEmailsArray = Array.from(allStudentEmails);
 
-      // Step 3: Load ALL UserProfiles (exact same as ClassDetail line 68)
+      // Load ALL UserProfiles (exact same as ClassDetail line 68)
       const allProfiles = await base44.entities.UserProfile.list();
 
-      // Step 4: Filter client-side where user_email is in class student_emails (exact same as ClassDetail lines 69-71)
+      // Filter client-side where user_email is in class student_emails (exact same as ClassDetail lines 69-71)
       const matchedProfiles = allProfiles.filter(p => allEmailsArray.includes(p.user_email));
 
-      // Step 5: Map to student format for StudentPicker
+      // Map to student format for StudentPicker
       const studentList = matchedProfiles.map(sp => ({
         id: sp.id,
         name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
@@ -213,7 +213,8 @@ function IssueBlockWardContent() {
         userId: currentUser.id,
         teacherEmail: currentUser.email,
         schoolId: sid,
-        classCount: teacherClasses.length,
+        classCount: allClasses.length,
+        classIds: allClasses.map(c => ({ id: c.id, name: c.name, teacher_email: c.teacher_email, co_teachers: c.co_teachers })),
         enrolledEmailCount: allEmailsArray.length,
         allProfilesCount: allProfiles.length,
         matchedProfilesCount: matchedProfiles.length,

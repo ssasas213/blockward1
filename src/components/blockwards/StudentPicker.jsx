@@ -74,6 +74,20 @@ export default function StudentPicker({ students, classes = [], selectedStudent,
             <p>Teacher email: <span className="font-bold">{debugInfo.teacherEmail}</span></p>
             <p>School ID: <span className="font-bold">{debugInfo.schoolId || 'not set'}</span></p>
             <p>Classes loaded: <span className="font-bold">{debugInfo.classCount}</span></p>
+            {debugInfo.classIds && debugInfo.classIds.length > 0 && (
+              <div className="mt-1 pl-2 border-l-2 border-amber-300">
+                {debugInfo.classIds.map((c, i) => (
+                  <p key={c.id}>
+                    [{i + 1}] {c.name} (ID: {c.id?.slice(0, 8)}...)
+                    <br />
+                    <span className="text-[10px]">teacher: {c.teacher_email || 'none'}</span>
+                    {c.co_teachers?.length > 0 && (
+                      <span className="text-[10px]"> | co-teachers: {c.co_teachers.join(', ')}</span>
+                    )}
+                  </p>
+                ))}
+              </div>
+            )}
             <p>Enrolled emails: <span className="font-bold">{debugInfo.enrolledEmailCount}</span></p>
             <p>All UserProfiles in DB: <span className="font-bold">{debugInfo.allProfilesCount || 'N/A'}</span></p>
             <p>Matched profiles: <span className="font-bold">{debugInfo.matchedProfilesCount || 0}</span></p>
