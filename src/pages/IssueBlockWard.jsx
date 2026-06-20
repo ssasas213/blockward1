@@ -52,25 +52,58 @@ function Stepper({ currentStep }) {
 // ─── Award Picker ─────────────────────────────────────────────────────────────
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
 
-function AwardPicker({ awardTypes, selectedAward, onSelect }) {
+const CATEGORY_ICONS = { academic: '📚', sports: '🏅', arts: '🎨', leadership: '🌟', community: '🤝', special: '✨' };
+
+function AwardPicker({ awardTypes, selectedAward, onSelect, loadError }) {
   const [catFilter, setCatFilter] = useState('all');
-  const filtered = catFilter === 'all' ? awardTypes : awardTypes.filter(a => a.category === catFilter || !a.category);
+
+  // Strict filter: 'all' = everything, category = exact match only
+  const filtered = catFilter === 'all'
+    ? awardTypes
+    : awardTypes.filter(a => a.category === catFilter);
+
+  // Only show category tabs that actually have awards
+  const activeCats = CATEGORIES.filter(c => awardTypes.some(a => a.category === c));
+
+  if (loadError) {
+    return (
+      <div className="text-center py-10 bg-red-50 rounded-xl border border-red-200">
+        <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-2" />
+        <p className="text-red-700 font-semibold">Failed to load awards</p>
+        <p className="text-red-500 text-sm mt-1">{loadError}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {['all', ...CATEGORIES].map(c => (
+        <button type="button" onClick={() => setCatFilter('all')}
+          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
+            ${catFilter === 'all' ? 'bg-violet-600 text-white border-violet-600' : 'border-slate-200 text-slate-600 hover:border-violet-400'}`}>
+          All ({awardTypes.length})
+        </button>
+        {activeCats.map(c => (
           <button key={c} type="button" onClick={() => setCatFilter(c)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
               ${catFilter === c ? 'bg-violet-600 text-white border-violet-600' : 'border-slate-200 text-slate-600 hover:border-violet-400'}`}>
-            {c === 'all' ? 'All' : c.charAt(0).toUpperCase() + c.slice(1)}
+            {CATEGORY_ICONS[c]} {c.charAt(0).toUpperCase() + c.slice(1)}
           </button>
         ))}
       </div>
-      {filtered.length === 0 ? (
-        <p className="text-center text-slate-400 py-8">No award types found</p>
+
+      {awardTypes.length === 0 ? (
+        <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
+          <p className="text-slate-500 font-medium">No award types available</p>
+          <p className="text-slate-400 text-sm mt-1">Default awards are being created, please wait a moment and refresh.</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-200">
+          <p className="text-slate-500">No awards in the <strong>{catFilter}</strong> category</p>
+          <button type="button" onClick={() => setCatFilter('all')} className="text-violet-600 text-sm underline mt-2">Show all awards</button>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
           {filtered.map(award => {
             const isSelected = selectedAward?.id === award.id;
             return (
@@ -78,15 +111,18 @@ function AwardPicker({ awardTypes, selectedAward, onSelect }) {
                 className={`p-4 rounded-xl border-2 text-left transition-all
                   ${isSelected ? 'border-violet-500 bg-violet-50 shadow-md' : 'border-slate-200 hover:border-violet-300 hover:bg-slate-50'}`}>
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-semibold text-slate-900">{award.title}</p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">{CATEGORY_ICONS[award.category] || '🏆'}</span>
+                      <p className="font-semibold text-slate-900 truncate">{award.title}</p>
+                    </div>
                     {award.description && <p className="text-xs text-slate-500 mt-1 line-clamp-2">{award.description}</p>}
                   </div>
-                  {isSelected && <CheckCircle2 className="h-5 w-5 text-violet-500 flex-shrink-0" />}
+                  {isSelected && <CheckCircle2 className="h-5 w-5 text-violet-500 flex-shrink-0 mt-0.5" />}
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {award.category && <Badge variant="outline" className="text-xs">{award.category}</Badge>}
-                </div>
+                {award.category && (
+                  <Badge variant="outline" className="text-xs mt-2 capitalize">{award.category}</Badge>
+                )}
               </button>
             );
           })}
@@ -107,6 +143,7 @@ function IssueBlockWardContent() {
   const [schoolName, setSchoolName] = useState('');
   const [students, setStudents] = useState([]);
   const [awardTypes, setAwardTypes] = useState([]);
+  const [awardLoadError, setAwardLoadError] = useState(null);
   const [issuing, setIssuing] = useState(false);
   const [issueSuccess, setIssueSuccess] = useState(false);
 
@@ -165,10 +202,32 @@ function IssueBlockWardContent() {
         }
       }
 
-      const awards = await base44.entities.AwardTypes.filter({ is_active: true });
+      // Load awards — try active first, fall back to all, then seed defaults
+      setAwardLoadError(null);
+      let awards = await base44.entities.AwardTypes.filter({ is_active: true });
+      if (awards.length === 0) {
+        // Try fetching all (maybe is_active was never set)
+        awards = await base44.entities.AwardTypes.list();
+      }
+      if (awards.length === 0) {
+        // Seed default award types
+        const defaults = [
+          { code: 'ACADEMIC_EXCELLENCE', title: 'Academic Excellence', description: 'Awarded for outstanding academic performance and dedication to learning.', category: 'academic', is_active: true },
+          { code: 'SPORTS_ACHIEVEMENT', title: 'Sports Achievement', description: 'Awarded for exceptional performance and sportsmanship.', category: 'sports', is_active: true },
+          { code: 'ARTS_ACHIEVEMENT', title: 'Arts Achievement', description: 'Awarded for creative excellence in the arts.', category: 'arts', is_active: true },
+          { code: 'LEADERSHIP_AWARD', title: 'Leadership Award', description: 'Awarded for demonstrating strong leadership qualities.', category: 'leadership', is_active: true },
+          { code: 'COMMUNITY_CONTRIBUTION', title: 'Community Contribution', description: 'Awarded for making a positive impact on the school community.', category: 'community', is_active: true },
+          { code: 'SPECIAL_RECOGNITION', title: 'Special Recognition', description: 'Awarded for exceptional effort or achievement in any area.', category: 'special', is_active: true },
+        ];
+        awards = await base44.entities.AwardTypes.bulkCreate(defaults);
+        toast.success('Default award types created!');
+      }
       setAwardTypes(awards);
     } catch (e) {
-      toast.error('Failed to load data');
+      console.error('loadData error:', e);
+      const msg = e.message || 'Unknown error';
+      toast.error(`Failed to load data: ${msg}`);
+      setAwardLoadError(msg);
     } finally {
       setLoading(false);
     }
@@ -325,7 +384,7 @@ function IssueBlockWardContent() {
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Choose Award</h2>
                   <p className="text-sm text-slate-500">Select the achievement type for <strong className="text-slate-700">{selectedStudent?.name}</strong>.</p>
                 </div>
-                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={setSelectedAward} />
+                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={setSelectedAward} loadError={awardLoadError} />
               </div>
             )}
 
