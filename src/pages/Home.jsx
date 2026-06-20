@@ -156,9 +156,14 @@ export default function Home() {
                 Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button onClick={handleSignIn} className="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg shadow-violet-500/25">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <>
+                <Button variant="outline" onClick={handleSignIn} className="border-slate-300 text-slate-700 hover:bg-slate-50">
+                  Sign In
+                </Button>
+                <Button onClick={handleSignIn} className="bg-gradient-to-r from-violet-600 to-indigo-600 shadow-lg shadow-violet-500/25">
+                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </>
             )}
           </div>
         </div>

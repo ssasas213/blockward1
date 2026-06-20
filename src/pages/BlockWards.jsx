@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -230,143 +232,15 @@ export default function BlockWards() {
           </p>
         </div>
         {canMint && (
-          <Dialog open={showMintDialog} onOpenChange={setShowMintDialog}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
-                <Shield className="h-4 w-4 mr-2" />
-                Issue BlockWard
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <div>
-                  <DialogTitle>Issue BlockWard</DialogTitle>
-                  <DialogDescription>
-                    Award a blockchain-verified achievement to a student
-                  </DialogDescription>
-                </div>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                {/* Class selector — only shown for teachers who have assigned classes */}
-                {(profile?.user_type === 'teacher') && myClasses.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Class *</Label>
-                    <Select
-                      value={selectedClassId}
-                      onValueChange={async (classId) => {
-                        setSelectedClassId(classId);
-                        setNewBlockWard(prev => ({ ...prev, student_email: '' }));
-                        setLoadingClassStudents(true);
-                        try {
-                          const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
-                          let studentList = [];
-                          if (enrollments.length > 0) {
-                            const emails = enrollments.map(e => e.student_email);
-                            const allProfiles = await base44.entities.UserProfile.list();
-                            studentList = allProfiles.filter(p => emails.includes(p.user_email) && p.user_type === 'student');
-                          } else {
-                            const cls = myClasses.find(c => c.id === classId);
-                            if (cls?.student_emails?.length > 0) {
-                              const allProfiles = await base44.entities.UserProfile.list();
-                              studentList = allProfiles.filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student');
-                            }
-                          }
-                          setClassStudents(studentList);
-                        } finally {
-                          setLoadingClassStudents(false);
-                        }
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a class first" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {myClasses.map(cls => (
-                          <SelectItem key={cls.id} value={cls.id}>{cls.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Student *</Label>
-                  <Select
-                    value={newBlockWard.student_email}
-                    onValueChange={(value) => setNewBlockWard({ ...newBlockWard, student_email: value })}
-                    disabled={profile?.user_type === 'teacher' && !selectedClassId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={profile?.user_type === 'teacher' && !selectedClassId ? 'Select a class first' : 'Select a student'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(profile?.user_type === 'teacher' ? classStudents : students).map((s) => (
-                        <SelectItem key={s.id} value={s.user_email}>
-                          {s.first_name} {s.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Title *</Label>
-                  <Input
-                    value={newBlockWard.title}
-                    onChange={(e) => setNewBlockWard({ ...newBlockWard, title: e.target.value })}
-                    placeholder="e.g. Top in Mathematics - Term 1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Category *</Label>
-                  <Select
-                    value={newBlockWard.category}
-                    onValueChange={(value) => setNewBlockWard({ ...newBlockWard, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value}>
-                          {cat.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={newBlockWard.description}
-                    onChange={(e) => setNewBlockWard({ ...newBlockWard, description: e.target.value })}
-                    placeholder="Describe the achievement..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowMintDialog(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleMintBlockWard} 
-                  disabled={!newBlockWard.student_email || !newBlockWard.title || !newBlockWard.category || minting}
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600"
-                >
-                  {minting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Issuing...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="h-4 w-4 mr-2" />
-                      Issue BlockWard
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button
+            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+            asChild
+          >
+            <Link to={createPageUrl('IssueBlockWard')}>
+              <Shield className="h-4 w-4 mr-2" />
+              Issue BlockWard
+            </Link>
+          </Button>
         )}
         {profile?.user_type === 'teacher' && !profile?.can_issue_blockwards && (
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
