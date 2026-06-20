@@ -445,17 +445,17 @@ function AdminDashboardContent() {
               <Shield className="h-5 w-5 text-violet-600" />
             </div>
             <div>
-              <CardTitle className="text-base">BlockWard Management</CardTitle>
-              <p className="text-xs text-slate-500 mt-0.5">View NFT records, check status, reconcile failed transactions. <span className="font-medium text-violet-700">Teachers issue BlockWards — admins manage records.</span></p>
+              <CardTitle className="text-base">BlockWard NFT Records</CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">View minted NFT records and blockchain status. <span className="font-medium text-violet-700">Teachers create achievements — admins review and approve only.</span></p>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
             <Button variant="outline" size="sm" asChild>
-              <Link to={createPageUrl('BlockWards')}>
-                <Shield className="h-4 w-4 mr-2" />
-                View BlockWard Records
+              <Link to={createPageUrl('AdminRecords')}>
+                <FileText className="h-4 w-4 mr-2" />
+                Achievement Records
               </Link>
             </Button>
             <Button variant="outline" size="sm" asChild>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
-import { Shield, Search, ExternalLink, User, Loader2, XCircle, AlertTriangle, Lock } from 'lucide-react';
+import { Shield, Search, ExternalLink, User, Loader2, AlertTriangle, Lock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -82,8 +82,7 @@ export default function BlockWards() {
     bw.student_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Only approved teachers can issue. Admins use the stepped workflow via IssueBlockWard page.
-  // v3 — dialog removed, all issuance goes through IssueBlockWard multi-step flow
+  // ONLY approved teachers can create/submit achievements. Admins NEVER issue directly.
   const canIssue = profile?.user_type === 'teacher' && profile?.can_issue_blockwards === true;
 
   if (loading) {
@@ -104,24 +103,26 @@ export default function BlockWards() {
             <Lock className="h-3.5 w-3.5" />
             {profile?.user_type === 'student'
               ? 'Your blockchain-verified achievements'
-              : 'Manage soulbound achievement tokens — secure 3-step issuance required'}
+              : profile?.user_type === 'admin'
+                ? 'View minted achievement tokens — created via the approval workflow'
+                : 'Your issued achievement tokens — created via the approval workflow'}
           </p>
         </div>
-        {(canIssue || profile?.user_type === 'admin') && (
+        {canIssue && (
           <Button
             className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
             asChild
           >
             <Link to={createPageUrl('IssueBlockWard')}>
               <Shield className="h-4 w-4 mr-2" />
-              Submit For Approval
+              Create Achievement Record
             </Link>
           </Button>
         )}
         {profile?.user_type === 'teacher' && !profile?.can_issue_blockwards && (
           <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50">
             <AlertTriangle className="h-3 w-3 mr-1" />
-            Not authorized to issue
+            Pending approval to submit achievements
           </Badge>
         )}
       </div>
@@ -267,17 +268,7 @@ export default function BlockWards() {
                   )}
                 </div>
               </div>
-              {(profile?.user_type === 'admin' && selectedBlockWard.status === 'active') && (
-                <DialogFooter className="pt-4">
-                  <Button
-                    variant="destructive"
-                    onClick={() => handleRevokeBlockWard(selectedBlockWard)}
-                  >
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Revoke BlockWard
-                  </Button>
-                </DialogFooter>
-              )}
+              {/* Admins do not have direct revoke — managed via approval workflow */}
             </>
           )}
         </DialogContent>
