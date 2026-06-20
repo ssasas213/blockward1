@@ -88,6 +88,9 @@ export default function StudentPicker({ students, classes = [], selectedStudent,
                     {c.co_teachers?.length > 0 && (
                       <span className="text-[10px]"> | co-teachers: {c.co_teachers.join(', ')}</span>
                     )}
+                    {c.isCoTeacher && (
+                      <span className="text-[10px] text-green-600 font-bold"> ✓ YOU ARE CO-TEACHER</span>
+                    )}
                   </p>
                 ))}
               </div>
