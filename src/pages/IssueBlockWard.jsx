@@ -7,21 +7,24 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, CheckCircle2, Award, AlertTriangle, Shield, Check, Pencil } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ArrowLeft, Loader2, CheckCircle2, Award, AlertTriangle, Shield, Check, Pencil, Sparkles, SendHorizonal, FileText, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import StudentPicker from '@/components/blockwards/StudentPicker';
 import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
 import SignatureStep from '@/components/blockwards/SignatureStep';
+import CustomAwardForm from '@/components/blockwards/CustomAwardForm';
+import EvidenceUpload from '@/components/blockwards/EvidenceUpload';
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 const STEPS = [
   { id: 1, name: 'Select Student' },
   { id: 2, name: 'Choose Award' },
-  { id: 3, name: 'Teacher Signature' },
-  { id: 4, name: 'Review & Issue' },
+  { id: 3, name: 'Upload Evidence' },
+  { id: 4, name: 'Teacher Signature' },
+  { id: 5, name: 'Review & Submit' },
 ];
 
 function Stepper({ currentStep }) {
@@ -53,18 +56,11 @@ function Stepper({ currentStep }) {
 
 // ─── Award Picker ─────────────────────────────────────────────────────────────
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'special'];
-
 const CATEGORY_ICONS = { academic: '📚', sports: '🏅', arts: '🎨', leadership: '🌟', community: '🤝', special: '✨' };
 
-function AwardPicker({ awardTypes, selectedAward, onSelect, loadError }) {
+function AwardPicker({ awardTypes, selectedAward, onSelect, onCustom, loadError }) {
   const [catFilter, setCatFilter] = useState('all');
-
-  // Strict filter: 'all' = everything, category = exact match only
-  const filtered = catFilter === 'all'
-    ? awardTypes
-    : awardTypes.filter(a => a.category === catFilter);
-
-  // Only show category tabs that actually have awards
+  const filtered = catFilter === 'all' ? awardTypes : awardTypes.filter(a => a.category === catFilter);
   const activeCats = CATEGORIES.filter(c => awardTypes.some(a => a.category === c));
 
   if (loadError) {
@@ -79,6 +75,21 @@ function AwardPicker({ awardTypes, selectedAward, onSelect, loadError }) {
 
   return (
     <div className="space-y-4">
+      {/* Create Custom Award card */}
+      <button
+        type="button"
+        onClick={onCustom}
+        className="w-full p-4 rounded-xl border-2 border-dashed border-violet-400 bg-violet-50 hover:bg-violet-100 transition-all text-left flex items-center gap-3"
+      >
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          <Sparkles className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <p className="font-semibold text-violet-700">Create Custom Award</p>
+          <p className="text-xs text-violet-500">Design a unique award for this specific achievement</p>
+        </div>
+      </button>
+
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setCatFilter('all')}
           className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all
@@ -96,16 +107,11 @@ function AwardPicker({ awardTypes, selectedAward, onSelect, loadError }) {
 
       {awardTypes.length === 0 ? (
         <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-slate-500 font-medium">No award types available</p>
-          <p className="text-slate-400 text-sm mt-1">Default awards are being created, please wait a moment and refresh.</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-slate-500">No awards in the <strong>{catFilter}</strong> category</p>
-          <button type="button" onClick={() => setCatFilter('all')} className="text-violet-600 text-sm underline mt-2">Show all awards</button>
+          <p className="text-slate-500 font-medium">No award templates available</p>
+          <p className="text-slate-400 text-sm mt-1">Use "Create Custom Award" above to design your own.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
           {filtered.map(award => {
             const isSelected = selectedAward?.id === award.id;
             return (
@@ -141,6 +147,7 @@ function IssueBlockWardContent() {
   const [currentStep, setCurrentStep] = useState(1);
   const [profile, setProfile] = useState(null);
   const [user, setUser] = useState(null);
+  const [sigProfile, setSigProfile] = useState(null);
   const [schoolId, setSchoolId] = useState(null);
   const [schoolName, setSchoolName] = useState('');
   const [students, setStudents] = useState([]);
@@ -148,14 +155,24 @@ function IssueBlockWardContent() {
   const [debugInfo, setDebugInfo] = useState(null);
   const [awardTypes, setAwardTypes] = useState([]);
   const [awardLoadError, setAwardLoadError] = useState(null);
-  const [issuing, setIssuing] = useState(false);
-  const [issueSuccess, setIssueSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedAward, setSelectedAward] = useState(null);
+  const [isCustomAward, setIsCustomAward] = useState(false);
+  const [customAwardData, setCustomAwardData] = useState({
+    title: '', category: 'academic', description: '', points: 0, icon: '🏆', color: '#7c3aed', nftImageUrl: ''
+  });
   const [customTitle, setCustomTitle] = useState('');
   const [customDescription, setCustomDescription] = useState('');
-  const [teacherSignature, setTeacherSignature] = useState(null);   // base64 PNG
+  const [dateAchieved, setDateAchieved] = useState('');
+  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [evidenceType, setEvidenceType] = useState('');
+  const [certificateUrl, setCertificateUrl] = useState('');
+  const [certificateType, setCertificateType] = useState('');
+  const [teacherNotes, setTeacherNotes] = useState('');
+  const [teacherSignature, setTeacherSignature] = useState(null);
   const [teacherSignedAt, setTeacherSignedAt] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
 
@@ -173,24 +190,22 @@ function IssueBlockWardContent() {
       const sid = p?.school_id || null;
       setSchoolId(sid);
 
+      // Load signature profile for teacher
+      const sigProfiles = await base44.entities.SignatureProfile.filter({ user_email: currentUser.email });
+      setSigProfile(sigProfiles[0] || null);
+
       if (sid) {
         const schools = await base44.entities.School.filter({ id: sid });
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      // Use Class.list() — lets RLS do the filtering (matches teacher_email OR co_teachers)
-      // This is the same mechanism ClassDetail uses: fetch by teacher context, not school_id
       const allVisibleClasses = await base44.entities.Class.list();
-      // Client-side filter to only classes where this teacher is primary or co-teacher
       const classData = allVisibleClasses.filter(c =>
         c.teacher_email === currentUser.email ||
         c.co_teachers?.includes(currentUser.email)
       );
-      const membership = null; // kept for debug info compat
-      
       setTeacherClasses(classData);
 
-      // Collect all unique student emails from all classes
       const allStudentEmails = new Set();
       const emailToClassInfo = {};
       for (const cls of classData) {
@@ -202,14 +217,9 @@ function IssueBlockWardContent() {
         }
       }
       const allEmailsArray = Array.from(allStudentEmails);
-
-      // Load ALL UserProfiles (exact same as ClassDetail line 68)
       const allProfiles = await base44.entities.UserProfile.list();
-
-      // Filter client-side where user_email is in class student_emails (exact same as ClassDetail lines 69-71)
       const matchedProfiles = allProfiles.filter(p => allEmailsArray.includes(p.user_email));
 
-      // Map to student format for StudentPicker
       const studentList = matchedProfiles.map(sp => ({
         id: sp.id,
         name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
@@ -224,20 +234,13 @@ function IssueBlockWardContent() {
         userId: currentUser.id,
         teacherEmail: currentUser.email,
         schoolId: sid,
-        allVisibleClassCount: allVisibleClasses.length,
         classCount: classData.length,
-        classIds: classData.map(c => ({ id: c.id, name: c.name, teacher_email: c.teacher_email, co_teachers: c.co_teachers, isCoTeacher: c.co_teachers?.includes(currentUser.email) })),
-        enrolledEmailCount: allEmailsArray.length,
-        allProfilesCount: allProfiles.length,
-        matchedProfilesCount: matchedProfiles.length,
         studentCount: studentList.length,
       });
 
-      // Load awards — READ ONLY, teachers never create AwardTypes
       setAwardLoadError(null);
       let awards = await base44.entities.AwardTypes.filter({ is_active: true });
       if (awards.length === 0) {
-        // Try fetching all (maybe is_active was never set)
         awards = await base44.entities.AwardTypes.list();
       }
       setAwardTypes(awards);
@@ -253,45 +256,130 @@ function IssueBlockWardContent() {
 
   const handleNext = () => {
     if (currentStep === 1 && !selectedStudent) { toast.error('Please select a student'); return; }
-    if (currentStep === 2 && !selectedAward) { toast.error('Please select an award'); return; }
-    if (currentStep === 3 && !teacherSignature) { toast.error('Please draw your signature before continuing'); return; }
-    setCurrentStep(s => Math.min(s + 1, 4));
+    if (currentStep === 2) {
+      if (isCustomAward && !customAwardData.title) { toast.error('Please enter a custom award title'); return; }
+      if (!isCustomAward && !selectedAward) { toast.error('Please select an award'); return; }
+    }
+    if (currentStep === 3 && !evidenceUrl) { toast.error('Please upload at least one evidence file'); return; }
+    if (currentStep === 4 && !teacherSignature) { toast.error('Please draw your signature before continuing'); return; }
+    setCurrentStep(s => Math.min(s + 1, 5));
   };
 
   const handleBack = () => setCurrentStep(s => Math.max(s - 1, 1));
 
-  const handleIssue = async () => {
+  const handleSelectTemplate = (award) => {
+    setSelectedAward(award);
+    setIsCustomAward(false);
+    setCustomTitle(award.title);
+    setCustomDescription(award.description || '');
+  };
+
+  const handleStartCustom = () => {
+    setIsCustomAward(true);
+    setSelectedAward(null);
+    setCustomTitle('');
+    setCustomDescription('');
+  };
+
+  const handleCertificateUpload = async (file) => {
+    if (!file) return;
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setCertificateUrl(file_url);
+      setCertificateType(file.type.startsWith('image/') ? 'image' : 'file');
+      toast.success('Certificate uploaded');
+    } catch (e) {
+      toast.error('Failed to upload certificate');
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!confirmed) { toast.error('Please tick the confirmation checkbox'); return; }
     if (!teacherSignature) { toast.error('Teacher signature is required'); return; }
-    setIssuing(true);
+    if (!evidenceUrl) { toast.error('Evidence file is required'); return; }
+    if (!schoolId) { toast.error('School not found — cannot submit'); return; }
+
+    setSubmitting(true);
     try {
-      // Upload base64 signature as a file
+      // 1. Upload teacher signature as a file
       let signatureUrl = teacherSignature;
       try {
         const blob = await (await fetch(teacherSignature)).blob();
         const sigFile = new File([blob], 'teacher-signature.png', { type: 'image/png' });
         const { file_url } = await base44.integrations.Core.UploadFile({ file: sigFile });
         signatureUrl = file_url;
-      } catch (_) { /* fall back to base64 if upload fails */ }
+      } catch (_) { /* fall back to base64 */ }
 
-      await base44.functions.invoke('issueBlockward', {
-        studentEmail: selectedStudent.email,
-        awardTypeId: selectedAward.id,
-        customTitle: customTitle || selectedAward.title,
-        customDescription: customDescription || selectedAward.description || '',
-        teacherEmail: user.email,
-        teacherName: `${profile.first_name} ${profile.last_name}`,
-        teacherSignatureUrl: signatureUrl,
-        teacherSignedAt,
-        schoolId,
+      // 2. Determine award fields
+      const finalTitle = isCustomAward ? customAwardData.title : (customTitle || selectedAward?.title);
+      const finalCategory = isCustomAward ? customAwardData.category : (selectedAward?.category || 'special');
+      const finalDescription = isCustomAward ? customAwardData.description : (customDescription || selectedAward?.description || '');
+
+      // 3. Create StudentRecord with status "draft"
+      const recordData = {
+        school_id: schoolId,
+        student_email: selectedStudent.email,
+        student_name: selectedStudent.name,
+        student_id: selectedStudent.id,
+        class_id: selectedStudent.classId || null,
+        class_name: selectedStudent.className || null,
+        teacher_email: user.email,
+        teacher_name: `${profile.first_name} ${profile.last_name}`,
+        title: finalTitle,
+        category: finalCategory,
+        description: finalDescription,
+        date_achieved: dateAchieved || null,
+        file_url: evidenceUrl,
+        file_type: evidenceType,
+        certificate_url: certificateUrl || null,
+        teacher_notes: teacherNotes || null,
+        teacher_signature_url: signatureUrl,
+        status: 'draft',
+      };
+
+      // Add custom award fields
+      if (isCustomAward) {
+        recordData.is_custom_award = true;
+        recordData.custom_award_icon = customAwardData.icon;
+        recordData.custom_award_color = customAwardData.color;
+        recordData.points = customAwardData.points || 0;
+        recordData.custom_nft_image_url = customAwardData.nftImageUrl || null;
+      } else {
+        recordData.award_type_id = selectedAward?.id || null;
+        recordData.award_type_title = selectedAward?.title || null;
+        recordData.is_custom_award = false;
+      }
+
+      const record = await base44.entities.StudentRecord.create(recordData);
+
+      // 4. Teacher submits on behalf of student: draft → awaiting_teacher_signature
+      const submitRes = await base44.functions.invoke('recordWorkflow', {
+        action: 'teacherSubmitRecord',
+        recordId: record.id,
       });
+      if (!submitRes.data?.ok) throw new Error(submitRes.data?.error || 'Failed to submit record');
 
-      setIssueSuccess(true);
-      toast.success('BlockWard issued successfully!');
+      // 5. Teacher signs: awaiting_teacher_signature → awaiting_admin_signature
+      const sigDisplayName = sigProfile?.display_name || `${profile.first_name} ${profile.last_name}`;
+      const sigTitle = sigProfile?.title || '';
+      const signRes = await base44.functions.invoke('recordWorkflow', {
+        action: 'teacherSignRecord',
+        recordId: record.id,
+        signatureData: {
+          value: teacherSignature,
+          type: 'drawn',
+          display_name: sigDisplayName,
+          title: sigTitle,
+        },
+      });
+      if (!signRes.data?.ok) throw new Error(signRes.data?.error || 'Failed to sign record');
+
+      setSubmitSuccess(true);
+      toast.success('Achievement record submitted for admin approval!');
     } catch (error) {
-      toast.error(error.message || 'Failed to issue BlockWard');
+      toast.error(error.message || 'Failed to submit record');
     } finally {
-      setIssuing(false);
+      setSubmitting(false);
     }
   };
 
@@ -299,22 +387,28 @@ function IssueBlockWardContent() {
     setCurrentStep(1);
     setSelectedStudent(null);
     setSelectedAward(null);
+    setIsCustomAward(false);
+    setCustomAwardData({ title: '', category: 'academic', description: '', points: 0, icon: '🏆', color: '#7c3aed', nftImageUrl: '' });
     setCustomTitle('');
     setCustomDescription('');
+    setDateAchieved('');
+    setEvidenceUrl('');
+    setEvidenceType('');
+    setCertificateUrl('');
+    setCertificateType('');
+    setTeacherNotes('');
     setTeacherSignature(null);
     setTeacherSignedAt(null);
     setConfirmed(false);
-    setIssueSuccess(false);
+    setSubmitSuccess(false);
   };
 
-  // ── Loading ──
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
     </div>
   );
 
-  // ── Access guard ──
   if (profile && profile.user_type !== 'teacher') {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
@@ -322,30 +416,29 @@ function IssueBlockWardContent() {
           <AlertTriangle className="h-10 w-10 text-red-500" />
         </div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-500">Only teachers can issue BlockWards.</p>
+        <p className="text-slate-500">Only teachers can create achievement records.</p>
       </div>
     );
   }
 
-  // ── Success ──
-  if (issueSuccess) return (
+  if (submitSuccess) return (
     <div className="max-w-2xl mx-auto py-12">
       <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
         <Card className="border-0 shadow-2xl">
           <CardContent className="p-12 text-center">
-            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center mx-auto mb-6 shadow-lg">
-              <CheckCircle2 className="h-12 w-12 text-white" />
+            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <SendHorizonal className="h-12 w-12 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">BlockWard Issued!</h2>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Submitted for Approval!</h2>
             <p className="text-slate-500 mb-8">
-              <strong className="text-slate-800">{selectedAward?.title}</strong> has been issued to{' '}
-              <strong className="text-slate-800">{selectedStudent?.name}</strong>.
+              Your achievement record has been signed and sent to the school administrator for final approval.
+              No NFT will be minted until the admin reviews and signs.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 gap-2" onClick={() => navigate(createPageUrl('TeacherBlockWards'))}>
-                <Award className="h-4 w-4" /> View All BlockWards
+              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 gap-2" onClick={() => navigate(createPageUrl('TeacherRecords'))}>
+                <Shield className="h-4 w-4" /> View My Submissions
               </Button>
-              <Button variant="outline" onClick={resetForm}>Issue Another</Button>
+              <Button variant="outline" onClick={resetForm}>Create Another</Button>
             </div>
           </CardContent>
         </Card>
@@ -353,19 +446,25 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  const blockWardPreview = selectedAward ? {
-    title: customTitle || selectedAward.title,
-    description: customDescription || selectedAward.description || '',
-    category: selectedAward.category || 'special',
+  // Preview data
+  const previewTitle = isCustomAward ? customAwardData.title : (customTitle || selectedAward?.title || '');
+  const previewCategory = isCustomAward ? customAwardData.category : (selectedAward?.category || 'special');
+  const previewDescription = isCustomAward ? customAwardData.description : (customDescription || selectedAward?.description || '');
+  const previewIcon = isCustomAward ? customAwardData.icon : (CATEGORY_ICONS[previewCategory] || '🏆');
+
+  const blockWardPreview = (previewTitle || selectedAward) ? {
+    title: previewTitle,
+    description: previewDescription,
+    category: previewCategory,
     rarity: 'Common',
-    icon: '🏆',
+    icon: previewIcon,
   } : null;
 
-  // ── Nav button logic ──
   const canGoNext =
     (currentStep === 1 && !!selectedStudent) ||
-    (currentStep === 2 && !!selectedAward) ||
-    (currentStep === 3 && !!teacherSignature);
+    (currentStep === 2 && (isCustomAward ? !!customAwardData.title : !!selectedAward)) ||
+    (currentStep === 3 && !!evidenceUrl) ||
+    (currentStep === 4 && !!teacherSignature);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
@@ -375,12 +474,11 @@ function IssueBlockWardContent() {
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Issue a BlockWard</h1>
-          <p className="text-slate-500 mt-0.5">Recognize student achievements</p>
+          <h1 className="text-3xl font-bold text-slate-900">Create Achievement Record</h1>
+          <p className="text-slate-500 mt-0.5">Recognize a student achievement for admin approval</p>
         </div>
       </div>
 
-      {/* Stepper */}
       <Stepper currentStep={currentStep} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -393,7 +491,7 @@ function IssueBlockWardContent() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Select Student</h2>
-                  <p className="text-sm text-slate-500">Choose the student to receive this BlockWard.</p>
+                  <p className="text-sm text-slate-500">Choose the student to receive this achievement.</p>
                 </div>
                 <StudentPicker
                   students={students}
@@ -410,37 +508,75 @@ function IssueBlockWardContent() {
               <div className="space-y-6">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Choose Award</h2>
-                  <p className="text-sm text-slate-500">Select the achievement type for <strong className="text-slate-700">{selectedStudent?.name}</strong>.</p>
+                  <p className="text-sm text-slate-500">Select a template or create a custom award for <strong className="text-slate-700">{selectedStudent?.name}</strong>.</p>
                 </div>
-                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={(award) => {
-                  setSelectedAward(award);
-                  setCustomTitle(award.title);
-                  setCustomDescription(award.description || '');
-                }} loadError={awardLoadError} />
 
-                {selectedAward && (
-                  <div className="mt-6 space-y-4 p-5 bg-violet-50 border border-violet-200 rounded-xl">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Pencil className="h-4 w-4 text-violet-600" />
-                      <p className="text-sm font-semibold text-violet-700">Personalise this Award</p>
-                    </div>
+                {isCustomAward ? (
+                  <div className="space-y-4">
+                    <CustomAwardForm data={customAwardData} onChange={setCustomAwardData} />
+                    <Button variant="outline" onClick={() => { setIsCustomAward(false); }} className="gap-2">
+                      <ArrowLeft className="h-4 w-4" /> Back to Templates
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <AwardPicker
+                      awardTypes={awardTypes}
+                      selectedAward={selectedAward}
+                      onSelect={handleSelectTemplate}
+                      onCustom={handleStartCustom}
+                      loadError={awardLoadError}
+                    />
+
+                    {selectedAward && (
+                      <div className="mt-6 space-y-4 p-5 bg-violet-50 border border-violet-200 rounded-xl">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Pencil className="h-4 w-4 text-violet-600" />
+                          <p className="text-sm font-semibold text-violet-700">Personalise this Award</p>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Title</label>
+                          <Input
+                            value={customTitle}
+                            onChange={e => setCustomTitle(e.target.value)}
+                            placeholder="e.g. Top in Mathematics — Year 9 Term 3"
+                            className="bg-white"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Description</label>
+                          <Textarea
+                            value={customDescription}
+                            onChange={e => setCustomDescription(e.target.value)}
+                            placeholder="Awarded for achieving the highest mark in Year 9 Mathematics."
+                            rows={3}
+                            className="bg-white resize-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Date Achieved</label>
+                          <Input
+                            type="date"
+                            value={dateAchieved}
+                            onChange={e => setDateAchieved(e.target.value)}
+                            className="bg-white max-w-48"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {/* Date achieved for custom awards */}
+                {isCustomAward && (
+                  <div className="p-5 bg-violet-50 border border-violet-200 rounded-xl space-y-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Title</label>
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Date Achieved</label>
                       <Input
-                        value={customTitle}
-                        onChange={e => setCustomTitle(e.target.value)}
-                        placeholder="e.g. Outstanding effort in Term 2 Maths"
-                        className="bg-white"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Message</label>
-                      <Textarea
-                        value={customDescription}
-                        onChange={e => setCustomDescription(e.target.value)}
-                        placeholder="Write a personal note to the student about this achievement..."
-                        rows={3}
-                        className="bg-white resize-none"
+                        type="date"
+                        value={dateAchieved}
+                        onChange={e => setDateAchieved(e.target.value)}
+                        className="bg-white max-w-48"
                       />
                     </div>
                   </div>
@@ -448,12 +584,66 @@ function IssueBlockWardContent() {
               </div>
             )}
 
-            {/* Step 3: Teacher Signature */}
+            {/* Step 3: Upload Evidence */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Upload Evidence</h2>
+                  <p className="text-sm text-slate-500">Upload at least one evidence file. This is required before signing.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Evidence File (Required) *</label>
+                  <EvidenceUpload
+                    evidenceUrl={evidenceUrl}
+                    evidenceType={evidenceType}
+                    onUpload={(url, type) => { setEvidenceUrl(url); setEvidenceType(type); }}
+                    onClear={() => { setEvidenceUrl(''); setEvidenceType(''); }}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Certificate / Supporting Document (Optional)</label>
+                  {certificateUrl ? (
+                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <FileText className="h-5 w-5 text-violet-600" />
+                      <a href={certificateUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline flex-1">View certificate</a>
+                      <Button variant="ghost" size="sm" onClick={() => { setCertificateUrl(''); setCertificateType(''); }} className="text-red-500">Remove</Button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 p-4 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
+                      <Upload className="h-4 w-4 text-slate-400" />
+                      <span className="text-sm text-slate-600">Upload certificate (PDF, image, or document)</span>
+                      <input
+                        type="file"
+                        accept="image/*,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={e => e.target.files?.[0] && handleCertificateUpload(e.target.files[0])}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Notes for Admin (Optional)</label>
+                  <Textarea
+                    value={teacherNotes}
+                    onChange={e => setTeacherNotes(e.target.value)}
+                    placeholder="Add any context or notes for the reviewing administrator..."
+                    rows={3}
+                    className="resize-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Teacher Signature */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div>
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Teacher Signature</h2>
-                  <p className="text-sm text-slate-500">Sign below to verify this BlockWard. Your signature will be permanently attached.</p>
+                  <p className="text-sm text-slate-500">Sign below to endorse this achievement. Your signature will be attached to the record sent for admin approval.</p>
                 </div>
                 <SignatureStep
                   profile={profile}
@@ -466,12 +656,12 @@ function IssueBlockWardContent() {
               </div>
             )}
 
-            {/* Step 4: Review & Issue */}
-            {currentStep === 4 && (
+            {/* Step 5: Review & Submit */}
+            {currentStep === 5 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Review & Issue</h2>
-                  <p className="text-sm text-slate-500">Confirm the details before permanently issuing</p>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Review & Submit</h2>
+                  <p className="text-sm text-slate-500">Confirm the details before submitting for admin approval. No NFT will be minted until the admin signs.</p>
                 </div>
 
                 <div className="border border-slate-200 rounded-xl divide-y divide-slate-100">
@@ -482,16 +672,46 @@ function IssueBlockWardContent() {
                   </div>
                   <div className="p-5">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Achievement</p>
-                    <p className="font-bold text-slate-900 text-lg">{customTitle || selectedAward?.title}</p>
-                    {(customDescription || selectedAward?.description) && <p className="text-sm text-slate-500">{customDescription || selectedAward?.description}</p>}
-                    {customTitle !== selectedAward?.title && (
-                      <p className="text-xs text-violet-500 mt-1">Based on: {selectedAward?.title}</p>
-                    )}
+                    <p className="font-bold text-slate-900 text-lg">{previewTitle}</p>
+                    {previewDescription && <p className="text-sm text-slate-500 mt-1">{previewDescription}</p>}
                     <div className="flex flex-wrap gap-1.5 mt-2">
-                      {selectedAward?.category && <Badge variant="outline" className="text-xs capitalize">{selectedAward.category}</Badge>}
+                      <Badge variant="outline" className="text-xs capitalize">{previewCategory}</Badge>
+                      {isCustomAward ? (
+                        <Badge className="text-xs bg-violet-100 text-violet-700">Custom Award</Badge>
+                      ) : (
+                        selectedAward && customTitle !== selectedAward.title && (
+                          <p className="text-xs text-violet-500 mt-1 w-full">Based on: {selectedAward?.title}</p>
+                        )
+                      )}
+                      {isCustomAward && customAwardData.points > 0 && (
+                        <Badge className="text-xs bg-amber-100 text-amber-700">{customAwardData.points} pts</Badge>
+                      )}
                     </div>
+                    {dateAchieved && (
+                      <p className="text-xs text-slate-500 mt-2">Date achieved: {dateAchieved}</p>
+                    )}
                   </div>
-                  {/* Signature preview */}
+                  <div className="p-5">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Evidence</p>
+                    {evidenceUrl && (
+                      evidenceType === 'image' || evidenceUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                        <img src={evidenceUrl} alt="Evidence" className="max-h-32 rounded-lg border border-slate-200" />
+                      ) : (
+                        <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-violet-600 hover:underline flex items-center gap-1">
+                          <FileText className="h-4 w-4" /> View evidence file
+                        </a>
+                      )
+                    )}
+                    {certificateUrl && (
+                      <p className="text-xs text-slate-500 mt-2">Certificate attached ✓</p>
+                    )}
+                  </div>
+                  {teacherNotes && (
+                    <div className="p-5">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Notes for Admin</p>
+                      <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{teacherNotes}</p>
+                    </div>
+                  )}
                   <div className="p-5">
                     <p className="text-xs font-semibold text-violet-600 uppercase tracking-wider mb-2">Teacher Signature</p>
                     {teacherSignature && (
@@ -502,11 +722,10 @@ function IssueBlockWardContent() {
                   </div>
                 </div>
 
-                {/* Confirm checkbox */}
                 <div className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-colors ${confirmed ? 'bg-violet-50 border-violet-300' : 'bg-slate-50 border-slate-200'}`}>
                   <Checkbox id="confirm" checked={confirmed} onCheckedChange={v => setConfirmed(v)} className="mt-0.5" />
                   <label htmlFor="confirm" className="text-sm text-slate-700 cursor-pointer leading-relaxed">
-                    I confirm this award is accurate and should be permanently issued to <strong>{selectedStudent?.name}</strong>
+                    I confirm this achievement record is accurate and should be submitted to the school administrator for approval. No NFT will be minted until approved.
                   </label>
                 </div>
               </div>
@@ -518,14 +737,12 @@ function IssueBlockWardContent() {
                 <ArrowLeft className="h-4 w-4" /> Back
               </Button>
 
-              {currentStep < 4 ? (
-                // On step 3, hide Next until signature is drawn (SignatureStep handles its own confirm)
-                currentStep !== 3 ? (
+              {currentStep < 5 ? (
+                currentStep !== 4 ? (
                   <Button onClick={handleNext} disabled={!canGoNext} className="gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-40">
                     Next <Award className="h-4 w-4" />
                   </Button>
                 ) : (
-                  // After signature confirmed, show Next
                   teacherSignature && (
                     <Button onClick={handleNext} className="gap-2 bg-violet-600 hover:bg-violet-700">
                       Next <Award className="h-4 w-4" />
@@ -534,11 +751,11 @@ function IssueBlockWardContent() {
                 )
               ) : (
                 <Button
-                  onClick={handleIssue}
-                  disabled={!confirmed || !teacherSignature || issuing}
+                  onClick={handleSubmit}
+                  disabled={!confirmed || !teacherSignature || !evidenceUrl || submitting}
                   className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg disabled:opacity-40"
                 >
-                  {issuing ? <><Loader2 className="h-4 w-4 animate-spin" /> Issuing...</> : <><Shield className="h-4 w-4" /> Issue BlockWard</>}
+                  {submitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Submitting...</> : <><SendHorizonal className="h-4 w-4" /> Submit For Approval</>}
                 </Button>
               )}
             </div>
@@ -566,6 +783,14 @@ function IssueBlockWardContent() {
                     <p className="text-xs text-slate-500">{selectedStudent.className}</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+          {currentStep >= 3 && evidenceUrl && (
+            <Card className="border border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">Evidence Uploaded</p>
+                <p className="text-sm text-slate-600">Required evidence attached ✓</p>
               </CardContent>
             </Card>
           )}

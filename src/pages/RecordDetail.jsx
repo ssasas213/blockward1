@@ -343,10 +343,55 @@ export default function RecordDetail() {
                   </div>
                 )}
               </div>
+              {/* Award type info for admin review */}
+              {record.is_custom_award && (
+                <div className="flex items-center gap-2 p-3 bg-violet-50 rounded-lg border border-violet-200">
+                  <Sparkles className="h-4 w-4 text-violet-600" />
+                  <div>
+                    <p className="text-sm font-semibold text-violet-700">Custom Award</p>
+                    <p className="text-xs text-violet-500">Created by teacher for this record — not a school-wide template</p>
+                  </div>
+                  {record.custom_award_icon && <span className="text-2xl ml-auto">{record.custom_award_icon}</span>}
+                </div>
+              )}
+              {!record.is_custom_award && record.award_type_title && (
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Original Award Template</p>
+                  <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-slate-400" />
+                    {record.award_type_title}
+                    {record.title !== record.award_type_title && (
+                      <Badge className="ml-auto bg-violet-100 text-violet-700 border-0 text-xs">Customised</Badge>
+                    )}
+                  </p>
+                </div>
+              )}
+              {record.points > 0 && (
+                <div>
+                  <p className="text-sm text-slate-500">Points</p>
+                  <p className="font-medium">{record.points} pts</p>
+                </div>
+              )}
+              {record.teacher_notes && (
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Teacher Notes for Admin</p>
+                  <p className="text-sm text-slate-700 bg-amber-50 rounded-lg p-3 border border-amber-200">{record.teacher_notes}</p>
+                </div>
+              )}
               {record.description && (
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Description</p>
                   <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{record.description}</p>
+                </div>
+              )}
+              {record.certificate_url && (
+                <div>
+                  <p className="text-sm text-slate-500 mb-2">Certificate / Supporting Document</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={record.certificate_url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4 mr-2" /> View Certificate
+                    </a>
+                  </Button>
                 </div>
               )}
               {record.file_url && (

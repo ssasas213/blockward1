@@ -74,12 +74,50 @@
       "format": "date",
       "description": "When the achievement occurred"
     },
+    "award_type_id": {
+      "type": "string",
+      "description": "Reference to AwardTypes template (null if custom award)"
+    },
+    "award_type_title": {
+      "type": "string",
+      "description": "Original template title (for admin review)"
+    },
+    "is_custom_award": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if teacher created a custom award (not from template)"
+    },
+    "custom_award_icon": {
+      "type": "string",
+      "description": "Emoji icon for custom awards"
+    },
+    "custom_award_color": {
+      "type": "string",
+      "description": "Hex color for custom awards"
+    },
+    "points": {
+      "type": "number",
+      "default": 0,
+      "description": "Points/value associated with this achievement"
+    },
+    "teacher_notes": {
+      "type": "string",
+      "description": "Notes from teacher to admin during approval review"
+    },
     "file_url": {
       "type": "string",
-      "description": "Student-uploaded evidence image or file"
+      "description": "Student-uploaded evidence image or file (required)"
     },
     "file_type": {
       "type": "string"
+    },
+    "certificate_url": {
+      "type": "string",
+      "description": "Optional certificate or supporting document upload"
+    },
+    "custom_nft_image_url": {
+      "type": "string",
+      "description": "Optional custom NFT image uploaded by teacher for custom awards"
     },
     "status": {
       "type": "string",
