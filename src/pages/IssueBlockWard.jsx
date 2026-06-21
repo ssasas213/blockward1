@@ -7,7 +7,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, CheckCircle2, Award, AlertTriangle, Shield, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, CheckCircle2, Award, AlertTriangle, Shield, Check, Pencil } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import StudentPicker from '@/components/blockwards/StudentPicker';
@@ -151,6 +153,8 @@ function IssueBlockWardContent() {
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedAward, setSelectedAward] = useState(null);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
   const [teacherSignature, setTeacherSignature] = useState(null);   // base64 PNG
   const [teacherSignedAt, setTeacherSignedAt] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -273,6 +277,8 @@ function IssueBlockWardContent() {
       await base44.functions.invoke('issueBlockward', {
         studentEmail: selectedStudent.email,
         awardTypeId: selectedAward.id,
+        customTitle: customTitle || selectedAward.title,
+        customDescription: customDescription || selectedAward.description || '',
         teacherEmail: user.email,
         teacherName: `${profile.first_name} ${profile.last_name}`,
         teacherSignatureUrl: signatureUrl,
@@ -293,6 +299,8 @@ function IssueBlockWardContent() {
     setCurrentStep(1);
     setSelectedStudent(null);
     setSelectedAward(null);
+    setCustomTitle('');
+    setCustomDescription('');
     setTeacherSignature(null);
     setTeacherSignedAt(null);
     setConfirmed(false);
@@ -346,8 +354,8 @@ function IssueBlockWardContent() {
   );
 
   const blockWardPreview = selectedAward ? {
-    title: selectedAward.title,
-    description: selectedAward.description || '',
+    title: customTitle || selectedAward.title,
+    description: customDescription || selectedAward.description || '',
     category: selectedAward.category || 'special',
     rarity: 'Common',
     icon: '🏆',
@@ -404,7 +412,39 @@ function IssueBlockWardContent() {
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Choose Award</h2>
                   <p className="text-sm text-slate-500">Select the achievement type for <strong className="text-slate-700">{selectedStudent?.name}</strong>.</p>
                 </div>
-                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={setSelectedAward} loadError={awardLoadError} />
+                <AwardPicker awardTypes={awardTypes} selectedAward={selectedAward} onSelect={(award) => {
+                  setSelectedAward(award);
+                  setCustomTitle(award.title);
+                  setCustomDescription(award.description || '');
+                }} loadError={awardLoadError} />
+
+                {selectedAward && (
+                  <div className="mt-6 space-y-4 p-5 bg-violet-50 border border-violet-200 rounded-xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Pencil className="h-4 w-4 text-violet-600" />
+                      <p className="text-sm font-semibold text-violet-700">Personalise this Award</p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Title</label>
+                      <Input
+                        value={customTitle}
+                        onChange={e => setCustomTitle(e.target.value)}
+                        placeholder="e.g. Outstanding effort in Term 2 Maths"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Custom Message</label>
+                      <Textarea
+                        value={customDescription}
+                        onChange={e => setCustomDescription(e.target.value)}
+                        placeholder="Write a personal note to the student about this achievement..."
+                        rows={3}
+                        className="bg-white resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -442,8 +482,11 @@ function IssueBlockWardContent() {
                   </div>
                   <div className="p-5">
                     <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Achievement</p>
-                    <p className="font-bold text-slate-900 text-lg">{selectedAward?.title}</p>
-                    {selectedAward?.description && <p className="text-sm text-slate-500">{selectedAward.description}</p>}
+                    <p className="font-bold text-slate-900 text-lg">{customTitle || selectedAward?.title}</p>
+                    {(customDescription || selectedAward?.description) && <p className="text-sm text-slate-500">{customDescription || selectedAward?.description}</p>}
+                    {customTitle !== selectedAward?.title && (
+                      <p className="text-xs text-violet-500 mt-1">Based on: {selectedAward?.title}</p>
+                    )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {selectedAward?.category && <Badge variant="outline" className="text-xs capitalize">{selectedAward.category}</Badge>}
                     </div>
