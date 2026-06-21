@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 // Explicit imports for pages that must always be routable (not relying on pagesConfig loop)
+import Login from './pages/Login';
 import RecordDetail from './pages/RecordDetail';
 import AdminApprovalQueue from './pages/AdminApprovalQueue';
 import AdminRecords from './pages/AdminRecords';
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
         />
       ))}
       {/* Explicit routes for critical pages — guaranteed to resolve regardless of pagesConfig loop */}
+      <Route path="/Login" element={<Login />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><RecordDetail /></LayoutWrapper>} />
       <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><AdminApprovalQueue /></LayoutWrapper>} />
       <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><AdminRecords /></LayoutWrapper>} />
