@@ -54,7 +54,7 @@ export default function RecordDetail() {
   useEffect(() => { loadAll(); }, [recordId]);
 
   const loadAll = async () => {
-    if (!recordId) return;
+    if (!recordId) { setLoading(false); return; }
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
@@ -202,7 +202,11 @@ export default function RecordDetail() {
     </div>
   );
 
-  if (!record) return <div className="p-8 text-center text-slate-500">Record not found.</div>;
+  if (!record) return (
+    <div className="p-8 text-center text-slate-500">
+      {recordId ? 'Record not found.' : 'No record ID provided. Please open this page from a valid link.'}
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

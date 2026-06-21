@@ -23,6 +23,7 @@ import StudentMyRecords from './pages/StudentMyRecords';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
 import CustodianDashboard from './pages/CustodianDashboard';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -79,14 +80,14 @@ const AuthenticatedApp = () => {
       <Route path="/Signup" element={<Signup />} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><RecordDetail /></LayoutWrapper>} />
-      <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><AdminApprovalQueue /></LayoutWrapper>} />
-      <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><AdminRecords /></LayoutWrapper>} />
-      <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><TeacherRecords /></LayoutWrapper>} />
-      <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><StudentMyRecords /></LayoutWrapper>} />
-      <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><StudentPortfolioVault /></LayoutWrapper>} />
+      <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><ProtectedRoute><RecordDetail /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><ProtectedRoute><AdminApprovalQueue /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><ProtectedRoute><AdminRecords /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><ProtectedRoute><StudentMyRecords /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
-      <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><CustodianDashboard /></LayoutWrapper>} />
+      <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>

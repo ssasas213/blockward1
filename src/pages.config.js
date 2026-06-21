@@ -81,16 +81,7 @@ import TeacherBlockWards from './pages/TeacherBlockWards';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
-import DemoSandbox from './pages/DemoSandbox';
-import AdminRecords from './pages/AdminRecords';
-import TeacherRecords from './pages/TeacherRecords';
-import StudentMyRecords from './pages/StudentMyRecords';
-import RecordDetail from './pages/RecordDetail';
-import RouteDebug from './pages/RouteDebug';
 import Verify from './pages/Verify';
-import StudentPortfolioVault from './pages/StudentPortfolioVault';
-import AdminApprovalQueue from './pages/AdminApprovalQueue';
-import CustodianDashboard from './pages/CustodianDashboard';
 import __Layout from './Layout.jsx';
 
 
@@ -129,16 +120,7 @@ export const PAGES = {
     "TeacherDashboard": TeacherDashboard,
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,
-    "DemoSandbox": DemoSandbox,
-    "AdminRecords": AdminRecords,
-    "TeacherRecords": TeacherRecords,
-    "StudentMyRecords": StudentMyRecords,
-    "RecordDetail": RecordDetail,
-    "RouteDebug": RouteDebug,
     "Verify": Verify,
-    "StudentPortfolioVault": StudentPortfolioVault,
-    "AdminApprovalQueue": AdminApprovalQueue,
-    "CustodianDashboard": CustodianDashboard,
 }
 
 export const pagesConfig = {
