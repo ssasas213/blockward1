@@ -127,6 +127,11 @@ export const AuthProvider = ({ children }) => {
     window.location.href = '/Login';
   };
 
+  // Keep for any legacy callers — still routes to our custom login
+  const redirectToLogin = (next) => {
+    window.location.href = '/Login';
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
