@@ -229,25 +229,12 @@ function IssueBlockWardContent() {
         studentCount: studentList.length,
       });
 
-      // Load awards — try active first, fall back to all, then seed defaults
+      // Load awards — READ ONLY, teachers never create AwardTypes
       setAwardLoadError(null);
       let awards = await base44.entities.AwardTypes.filter({ is_active: true });
       if (awards.length === 0) {
         // Try fetching all (maybe is_active was never set)
         awards = await base44.entities.AwardTypes.list();
-      }
-      if (awards.length === 0) {
-        // Seed default award types
-        const defaults = [
-          { code: 'ACADEMIC_EXCELLENCE', title: 'Academic Excellence', description: 'Awarded for outstanding academic performance and dedication to learning.', category: 'academic', is_active: true },
-          { code: 'SPORTS_ACHIEVEMENT', title: 'Sports Achievement', description: 'Awarded for exceptional performance and sportsmanship.', category: 'sports', is_active: true },
-          { code: 'ARTS_ACHIEVEMENT', title: 'Arts Achievement', description: 'Awarded for creative excellence in the arts.', category: 'arts', is_active: true },
-          { code: 'LEADERSHIP_AWARD', title: 'Leadership Award', description: 'Awarded for demonstrating strong leadership qualities.', category: 'leadership', is_active: true },
-          { code: 'COMMUNITY_CONTRIBUTION', title: 'Community Contribution', description: 'Awarded for making a positive impact on the school community.', category: 'community', is_active: true },
-          { code: 'SPECIAL_RECOGNITION', title: 'Special Recognition', description: 'Awarded for exceptional effort or achievement in any area.', category: 'special', is_active: true },
-        ];
-        awards = await base44.entities.AwardTypes.bulkCreate(defaults);
-        toast.success('Default award types created!');
       }
       setAwardTypes(awards);
     } catch (e) {

@@ -2,6 +2,9 @@
   "name": "AwardTypes",
   "type": "object",
   "properties": {
+    "school_id": {
+      "type": "string"
+    },
     "code": {
       "type": "string",
       "description": "Unique code like TOP_HELPER"
@@ -12,6 +15,17 @@
     },
     "description": {
       "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "special"
+      ]
     },
     "is_active": {
       "type": "boolean",
