@@ -14,6 +14,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
 import AdminApprovalQueue from './pages/AdminApprovalQueue';
 import AdminRecords from './pages/AdminRecords';
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
       <Route path="/Login" element={<Login />} />
       <Route path="/Signup" element={<Signup />} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><RecordDetail /></LayoutWrapper>} />
       <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><AdminApprovalQueue /></LayoutWrapper>} />
       <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><AdminRecords /></LayoutWrapper>} />
