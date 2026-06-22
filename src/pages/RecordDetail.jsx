@@ -324,8 +324,9 @@ export default function RecordDetail() {
                 </div>
                 {record.teacher_name && (
                   <div>
-                    <p className="text-slate-500">Reviewing Teacher</p>
+                    <p className="text-slate-500">Sent to Teacher for Validation</p>
                     <p className="font-medium">{record.teacher_name}</p>
+                    <p className="text-xs text-slate-400">{record.teacher_email}</p>
                   </div>
                 )}
                 {record.admin_name && (
@@ -486,9 +487,9 @@ export default function RecordDetail() {
             <CardHeader><CardTitle className="text-base">Approval Flow</CardTitle></CardHeader>
             <CardContent>
               {[
-                { key: 'draft', label: 'Student Submits' },
-                { key: 'awaiting_teacher_signature', label: 'Teacher Signs' },
-                { key: 'awaiting_admin_signature', label: 'Admin Signs' },
+                { key: 'draft', label: 'Student Sends to Teacher' },
+                { key: 'awaiting_teacher_signature', label: 'Teacher Validates & Signs' },
+                { key: 'awaiting_admin_signature', label: 'Admin Authorises' },
                 { key: 'approved', label: 'VERIFIED — Ready to Archive' },
                 { key: 'minted', label: 'ARCHIVED to Drive' },
               ].map((step, i, arr) => {

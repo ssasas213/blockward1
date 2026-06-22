@@ -33,10 +33,11 @@ export default function StudentMyRecords() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showSubmit, setShowSubmit] = useState(false);
-  const [form, setForm] = useState({ title: '', category: 'academic', description: '', date_achieved: '' });
+  const [form, setForm] = useState({ title: '', category: 'academic', description: '', date_achieved: '', teacher_email: '' });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [teachers, setTeachers] = useState([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -52,6 +53,16 @@ export default function StudentMyRecords() {
         school_id: p?.school_id
       }, '-created_date');
       setRecords(recs);
+
+      // Fetch available teachers in the school for validation
+      if (p?.school_id) {
+        const schoolTeachers = await base44.entities.UserProfile.filter({
+          school_id: p.school_id,
+          user_type: 'teacher',
+          status: 'active'
+        });
+        setTeachers(schoolTeachers);
+      }
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -64,6 +75,10 @@ export default function StudentMyRecords() {
       toast.error('Please fill in title and category');
       return;
     }
+    if (!form.teacher_email) {
+      toast.error('Please select a teacher to validate your achievement');
+      return;
+    }
     setSaving(true);
     try {
       let fileUrl = null;
@@ -73,6 +88,9 @@ export default function StudentMyRecords() {
         fileUrl = result.file_url;
         setUploading(false);
       }
+
+      const selectedTeacher = teachers.find(t => t.user_email === form.teacher_email);
+      const teacherName = selectedTeacher ? `${selectedTeacher.first_name} ${selectedTeacher.last_name}` : '';
 
       const now = new Date().toISOString();
       const record = await base44.entities.StudentRecord.create({
@@ -85,6 +103,8 @@ export default function StudentMyRecords() {
         description: form.description,
         date_achieved: form.date_achieved || null,
         file_url: fileUrl,
+        teacher_email: form.teacher_email,
+        teacher_name: teacherName,
         status: 'awaiting_teacher_signature',
         submitted_at: now
       });
@@ -98,12 +118,13 @@ export default function StudentMyRecords() {
         action: 'submitted',
         old_status: 'draft',
         new_status: 'awaiting_teacher_signature',
+        notes: `Sent to teacher ${teacherName} for validation`,
         timestamp: now
       });
 
-      toast.success('Achievement submitted for teacher review!');
+      toast.success('Achievement sent to teacher for validation!');
       setShowSubmit(false);
-      setForm({ title: '', category: 'academic', description: '', date_achieved: '' });
+      setForm({ title: '', category: 'academic', description: '', date_achieved: '', teacher_email: '' });
       setFile(null);
       loadData();
     } catch (e) {
@@ -246,6 +267,22 @@ export default function StudentMyRecords() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map(c => <SelectItem key={c} value={c} className="capitalize">{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Send to Teacher for Validation *</Label>
+              <p className="text-xs text-slate-500">Choose which teacher should review and endorse your achievement</p>
+              <Select value={form.teacher_email} onValueChange={v => setForm({ ...form, teacher_email: v })}>
+                <SelectTrigger><SelectValue placeholder="Select a teacher..." /></SelectTrigger>
+                <SelectContent>
+                  {teachers.length === 0 ? (
+                    <SelectItem value="_none" disabled>No teachers available</SelectItem>
+                  ) : teachers.map(t => (
+                    <SelectItem key={t.user_email} value={t.user_email}>
+                      {t.first_name} {t.last_name}{t.department ? ` — ${t.department}` : ''}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -18,7 +18,7 @@ export default function TeacherRecords() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('awaiting_teacher_signature');
 
   useEffect(() => { loadData(); }, []);
 
@@ -30,7 +30,7 @@ export default function TeacherRecords() {
       setProfile(p);
       if (!p?.school_id) return;
 
-      // Teachers only see records from students in their assigned classes
+      // Teachers see records specifically sent to them OR from students in their assigned classes
       const classes = await base44.entities.Class.filter({ teacher_email: user.email });
       const assignedStudentEmails = new Set();
       classes.forEach(cls => (cls.student_emails || []).forEach(e => assignedStudentEmails.add(e)));
@@ -57,6 +57,7 @@ export default function TeacherRecords() {
   });
 
   const pendingReview = records.filter(r => r.status === 'awaiting_teacher_signature').length;
+  const sentToMe = records.filter(r => r.teacher_email === profile?.user_email && r.status === 'awaiting_teacher_signature').length;
   const myApproved = records.filter(r => r.teacher_email === profile?.user_email && r.teacher_signed).length;
   const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
 
@@ -74,13 +75,14 @@ export default function TeacherRecords() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Awaiting My Review', value: pendingReview, color: 'text-amber-600', alert: pendingReview > 0 },
+          { label: 'Sent to Me', value: sentToMe, color: 'text-violet-600', alert: sentToMe > 0 },
+          { label: 'Awaiting Review', value: pendingReview, color: 'text-amber-600' },
           { label: 'I\'ve Approved', value: myApproved, color: 'text-emerald-600' },
           { label: 'Minted as NFTs', value: minted, color: 'text-violet-600' },
         ].map(s => (
-          <Card key={s.label} className={`border-0 shadow-md ${s.alert ? 'ring-2 ring-amber-400' : ''}`}>
+          <Card key={s.label} className={`border-0 shadow-md ${s.alert ? 'ring-2 ring-violet-400' : ''}`}>
             <CardContent className="p-4 text-center">
               <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
               <p className="text-xs text-slate-500 mt-1">{s.label}</p>
@@ -90,14 +92,14 @@ export default function TeacherRecords() {
       </div>
 
       {/* Pending review alert */}
-      {pendingReview > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
-          <PenLine className="h-5 w-5 text-amber-600 flex-shrink-0" />
+      {sentToMe > 0 && (
+        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 flex items-center gap-3">
+          <PenLine className="h-5 w-5 text-violet-600 flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-semibold text-amber-800">{pendingReview} achievement{pendingReview > 1 ? 's' : ''} awaiting your review</p>
-            <p className="text-sm text-amber-600">Review student submissions and sign to forward to admin for final approval.</p>
+            <p className="font-semibold text-violet-800">{sentToMe} achievement{sentToMe > 1 ? 's' : ''} sent directly to you for validation</p>
+            <p className="text-sm text-violet-600">Review student submissions and sign to forward to admin for final authorisation.</p>
           </div>
-          <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white"
+          <Button size="sm" className="bg-violet-600 hover:bg-violet-700 text-white"
             onClick={() => setStatusFilter('awaiting_teacher_signature')}>
             Review Now
           </Button>
