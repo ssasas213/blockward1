@@ -49,7 +49,9 @@
     "signature_value"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "{{user.profile.school_id}}"
+    },
     "read": {
       "data.school_id": "{{user.profile.school_id}}",
       "$or": [
