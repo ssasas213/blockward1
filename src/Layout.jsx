@@ -273,7 +273,7 @@ function SidebarContent({ navItems, currentPageName, profile, user, userType, ro
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-1 overflow-y-auto min-h-0">
         {navItems.map((item) => {
           const isActive = currentPageName === item.page;
           return (
