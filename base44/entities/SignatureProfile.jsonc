@@ -49,18 +49,7 @@
     "signature_value"
   ],
   "rls": {
-    "create": {
-      "user_condition": {
-        "role": {
-          "$in": [
-            "admin",
-            "teacher"
-          ]
-        }
-      },
-      "data.user_email": "{{user.email}}",
-      "data.school_id": "{{user.profile.school_id}}"
-    },
+    "create": {},
     "read": {
       "data.school_id": "{{user.profile.school_id}}",
       "$or": [
