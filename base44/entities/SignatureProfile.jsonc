@@ -50,7 +50,7 @@
   ],
   "rls": {
     "create": {
-      "data.user_email": "{{user.email}}"
+      "data.school_id": "{{user.profile.school_id}}"
     },
     "read": {
       "data.school_id": "{{user.profile.school_id}}",
