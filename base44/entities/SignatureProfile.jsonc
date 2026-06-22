@@ -51,6 +51,7 @@
   "rls": {
     "create": {
       "data.school_id": "{{user.profile.school_id}}",
+      "data.user_email": "{{user.email}}",
       "$or": [
         {
           "user_condition": {
