@@ -17,11 +17,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { getRoleLabel } from '@/lib/orgTypes';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
   
   // Public pages that don't need sidebar
@@ -40,7 +42,15 @@ export default function Layout({ children, currentPageName }) {
       if (currentUser) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
-          setProfile(profiles[0]);
+          const p = profiles[0];
+          setProfile(p);
+          // Load school/org to get role labels and org type
+          if (p.school_id) {
+            try {
+              const schools = await base44.entities.School.filter({ id: p.school_id });
+              if (schools.length > 0) setSchool(schools[0]);
+            } catch (e) { /* ignore */ }
+          }
         }
       }
     } catch (error) {
@@ -166,10 +176,12 @@ export default function Layout({ children, currentPageName }) {
     student: 'from-blue-500 to-cyan-500'
   };
 
+  const orgType = school?.org_type || 'school';
+  const orgRoleLabels = school?.settings?.role_labels;
   const roleLabels = {
-    admin: 'Administrator',
-    teacher: 'Teacher',
-    student: 'Student'
+    admin: orgRoleLabels?.admin || getRoleLabel(orgType, 'admin'),
+    teacher: orgRoleLabels?.teacher || getRoleLabel(orgType, 'teacher'),
+    student: orgRoleLabels?.student || getRoleLabel(orgType, 'student'),
   };
 
   return (

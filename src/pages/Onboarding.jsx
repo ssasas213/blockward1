@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Shield, GraduationCap, Users, BookOpen, ArrowRight, Loader2 } from 'lucide-react';
+import { Shield, GraduationCap, Users, BookOpen, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ORG_TYPES, getOrgTypeConfig } from '@/lib/orgTypes';
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function Onboarding() {
     last_name: '',
     school_name: '',
     school_code: '',
+    org_type: 'school',
     student_id: '',
     grade_level: '',
     parent_name: '',
@@ -127,13 +129,19 @@ export default function Onboarding() {
       
       let school = null;
       
-      // If admin, create school
+      // If admin, create school (organization)
       if (formData.user_type === 'admin') {
         const schoolCode = formData.school_code || `SCH${Date.now().toString(36).toUpperCase()}`;
+        const orgConfig = getOrgTypeConfig(formData.org_type);
         school = await base44.entities.School.create({
           name: formData.school_name,
           code: schoolCode,
-          admin_email: user.email
+          org_type: formData.org_type,
+          admin_email: user.email,
+          settings: {
+            role_labels: orgConfig.roleLabels,
+            credential_label: orgConfig.credentialLabel
+          }
         });
       }
 
@@ -314,14 +322,37 @@ export default function Onboarding() {
                 </div>
 
                 {formData.user_type === 'admin' && (
-                  <div className="space-y-2">
-                    <Label>School Name</Label>
-                    <Input
-                      value={formData.school_name}
-                      onChange={(e) => setFormData({ ...formData, school_name: e.target.value })}
-                      placeholder="Springfield High School"
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label>Organization Type</Label>
+                      <p className="text-xs text-slate-500 mb-2">BlockWard supports schools, sports clubs, martial arts academies, chess clubs, and more.</p>
+                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
+                        {ORG_TYPES.map((org) => (
+                          <button
+                            key={org.value}
+                            type="button"
+                            onClick={() => setFormData({ ...formData, org_type: org.value })}
+                            className={`text-left p-3 rounded-lg border-2 transition-all ${
+                              formData.org_type === org.value
+                                ? 'border-violet-600 bg-violet-50'
+                                : 'border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <p className="font-medium text-sm text-slate-900">{org.label}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{org.description}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Organization Name</Label>
+                      <Input
+                        value={formData.school_name}
+                        onChange={(e) => setFormData({ ...formData, school_name: e.target.value })}
+                        placeholder="e.g. Springfield High School, Dubai BJJ Academy, Elite Chess Club"
+                      />
+                    </div>
+                  </>
                 )}
 
                 {formData.user_type === 'teacher' && (

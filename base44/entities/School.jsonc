@@ -4,19 +4,37 @@
   "properties": {
     "name": {
       "type": "string",
-      "description": "School name"
+      "description": "Organization name"
     },
     "code": {
       "type": "string",
-      "description": "Unique school code"
+      "description": "Unique organization code"
+    },
+    "org_type": {
+      "type": "string",
+      "enum": [
+        "school",
+        "sports_club",
+        "martial_arts_academy",
+        "chess_club",
+        "competition_organizer",
+        "training_provider",
+        "music_academy",
+        "debate_organization",
+        "stem_competition",
+        "corporate_training",
+        "other"
+      ],
+      "default": "school",
+      "description": "Type of organization \u2014 determines role labels, credential templates, and workflow terminology"
     },
     "student_join_code": {
       "type": "string",
-      "description": "Code for students to join the school"
+      "description": "Code for participants to join the organization"
     },
     "teacher_join_code": {
       "type": "string",
-      "description": "Code for teachers to join the school"
+      "description": "Code for verifiers to join the organization"
     },
     "address": {
       "type": "string"
@@ -30,7 +48,46 @@
     },
     "settings": {
       "type": "object",
-      "description": "School-specific settings"
+      "description": "Organization-specific settings including role labels, credential templates, branding, and verification process",
+      "properties": {
+        "role_labels": {
+          "type": "object",
+          "description": "Custom display labels for each role in this organization",
+          "properties": {
+            "student": {
+              "type": "string",
+              "description": "Label for participant role (e.g., Student, Athlete, Player, Delegate)"
+            },
+            "teacher": {
+              "type": "string",
+              "description": "Label for verifier role (e.g., Teacher, Coach, Instructor, Judge)"
+            },
+            "admin": {
+              "type": "string",
+              "description": "Label for approver role (e.g., Administrator, Head Instructor, Tournament Director)"
+            }
+          }
+        },
+        "credential_label": {
+          "type": "string",
+          "description": "What credentials are called in this org (e.g., Achievement, Belt, Title, Certification)"
+        },
+        "branding": {
+          "type": "object",
+          "properties": {
+            "primary_color": {
+              "type": "string"
+            },
+            "secondary_color": {
+              "type": "string"
+            }
+          }
+        },
+        "verification_process": {
+          "type": "object",
+          "description": "Custom verification workflow settings"
+        }
+      }
     }
   },
   "required": [

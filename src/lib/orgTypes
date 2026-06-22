@@ -1,0 +1,112 @@
+/**
+ * Organization types and role label presets for BlockWard.
+ * BlockWard is a universal achievement verification & digital credential platform.
+ * Schools are one use case; this config supports sports, martial arts, chess, music, etc.
+ */
+
+export const ORG_TYPES = [
+  {
+    value: 'school',
+    label: 'School',
+    icon: 'GraduationCap',
+    description: 'Academic achievements, attendance awards, leadership awards, graduation records',
+    roleLabels: { student: 'Student', teacher: 'Teacher', admin: 'Administrator' },
+    credentialLabel: 'Achievement',
+  },
+  {
+    value: 'martial_arts_academy',
+    label: 'Martial Arts Academy',
+    icon: 'Medal',
+    description: 'Belt promotions, gradings, competition medals (BJJ, Judo, Karate, Taekwondo)',
+    roleLabels: { student: 'Athlete', teacher: 'Coach', admin: 'Head Instructor' },
+    credentialLabel: 'Belt / Rank',
+  },
+  {
+    value: 'chess_club',
+    label: 'Chess Club / Federation',
+    icon: 'Crown',
+    description: 'Tournament champion, regional champion, club champion, rating milestones',
+    roleLabels: { student: 'Player', teacher: 'Coach', admin: 'Tournament Director' },
+    credentialLabel: 'Title',
+  },
+  {
+    value: 'sports_club',
+    label: 'Sports Club',
+    icon: 'Trophy',
+    description: 'MVP awards, team captain appointments, league winners, coaching certifications',
+    roleLabels: { student: 'Player', teacher: 'Coach', admin: 'Club Manager' },
+    credentialLabel: 'Award',
+  },
+  {
+    value: 'music_academy',
+    label: 'Music Academy',
+    icon: 'Music',
+    description: 'Grade exams, music competition winners, performance certifications',
+    roleLabels: { student: 'Student', teacher: 'Instructor', admin: 'Academy Director' },
+    credentialLabel: 'Certification',
+  },
+  {
+    value: 'debate_organization',
+    label: 'Debate & MUN Organization',
+    icon: 'MessageSquare',
+    description: 'Best delegate, outstanding delegate, chair recognition',
+    roleLabels: { student: 'Delegate', teacher: 'Advisor', admin: 'Organizer' },
+    credentialLabel: 'Recognition',
+  },
+  {
+    value: 'stem_competition',
+    label: 'STEM & Robotics Competition',
+    icon: 'Cpu',
+    description: 'Robotics champion, coding competition winner, innovation awards',
+    roleLabels: { student: 'Competitor', teacher: 'Mentor', admin: 'Competition Organizer' },
+    credentialLabel: 'Award',
+  },
+  {
+    value: 'corporate_training',
+    label: 'Corporate Training',
+    icon: 'Briefcase',
+    description: 'Leadership certification, safety training completion, employee recognition',
+    roleLabels: { student: 'Employee', teacher: 'Trainer', admin: 'HR Manager' },
+    credentialLabel: 'Certification',
+  },
+  {
+    value: 'training_provider',
+    label: 'Training Provider',
+    icon: 'Award',
+    description: 'Professional certifications, course completions, skill verifications',
+    roleLabels: { student: 'Learner', teacher: 'Instructor', admin: 'Program Director' },
+    credentialLabel: 'Certification',
+  },
+  {
+    value: 'competition_organizer',
+    label: 'Competition Organizer',
+    icon: 'Flag',
+    description: 'General competition management — awards, rankings, participation records',
+    roleLabels: { student: 'Competitor', teacher: 'Judge', admin: 'Organizer' },
+    credentialLabel: 'Award',
+  },
+  {
+    value: 'other',
+    label: 'Other Organization',
+    icon: 'Building2',
+    description: 'Custom organization type with configurable roles and credentials',
+    roleLabels: { student: 'Participant', teacher: 'Verifier', admin: 'Organization Admin' },
+    credentialLabel: 'Credential',
+  },
+];
+
+export const DEFAULT_ORG_TYPE = 'school';
+
+export function getOrgTypeConfig(orgType) {
+  return ORG_TYPES.find(t => t.value === orgType) || ORG_TYPES.find(t => t.value === DEFAULT_ORG_TYPE);
+}
+
+export function getRoleLabel(orgType, role) {
+  const config = getOrgTypeConfig(orgType);
+  return config?.roleLabels?.[role] || ORG_TYPES[0].roleLabels[role] || role;
+}
+
+export function getCredentialLabel(orgType) {
+  const config = getOrgTypeConfig(orgType);
+  return config?.credentialLabel || 'Credential';
+}

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Shield, Award, CheckCircle2, Sparkles, ArrowRight, GraduationCap, 
   Loader2, Brain, Users, Bell, BookOpen, BarChart3, Lock, Star,
-  ChevronRight, Zap, Globe, TrendingUp
+  ChevronRight, Zap, Globe, TrendingUp, Trophy, Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DemoModal from '@/components/home/DemoModal';
@@ -61,43 +61,38 @@ export default function Home() {
 
   const stats = [
     { value: "100%", label: "Tamper-Proof Records" },
-    { value: "4", label: "User Roles Supported" },
+    { value: "11+", label: "Organization Types" },
     { value: "AI", label: "Powered Automation" },
-    { value: "K–12", label: "Target Schools" },
+    { value: "∞", label: "Credential Categories" },
   ];
 
   const roles = [
     {
       icon: Shield,
-      role: "Administrators",
+      role: "Approvers / Org Admins",
+      tag: "School Admin · Head Instructor · Tournament Director",
       color: "from-rose-500 to-orange-500",
       bg: "bg-rose-50 border-rose-200",
       textColor: "text-rose-700",
-      description: "Manage school operations, analyze performance data, control user permissions, and configure system-wide settings — all from one dashboard."
+      description: "Give final authorization, manage organization settings, control user permissions, and oversee the entire credential issuance process."
     },
     {
       icon: BookOpen,
-      role: "Teachers",
+      role: "Verifiers",
+      tag: "Teacher · Coach · Instructor · Judge",
       color: "from-violet-500 to-purple-500",
       bg: "bg-violet-50 border-violet-200",
       textColor: "text-violet-700",
-      description: "Organize classes, reward students instantly, distribute resources, automate scheduling, and communicate with parents — without the paperwork."
+      description: "Review evidence, validate achievements, and digitally sign credentials to forward them for final approval — the trusted first link in the chain."
     },
     {
       icon: GraduationCap,
-      role: "Students",
+      role: "Participants",
+      tag: "Student · Athlete · Player · Delegate",
       color: "from-blue-500 to-cyan-500",
       bg: "bg-blue-50 border-blue-200",
       textColor: "text-blue-700",
-      description: "Collect BlockWards, monitor progress, access assignments, check timetables, and receive school updates — all in one place."
-    },
-    {
-      icon: Users,
-      role: "Parents",
-      color: "from-green-500 to-teal-500",
-      bg: "bg-green-50 border-green-200",
-      textColor: "text-green-700",
-      description: "Track your child's achievements and receive important school communications — no more endless phone calls or missed emails."
+      description: "Submit achievements for validation, collect verified digital credentials, and build a portable portfolio that travels across organizations."
     }
   ];
 
@@ -186,18 +181,18 @@ export default function Home() {
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 border border-violet-500/30 text-violet-300 text-sm font-medium mb-8">
               <Sparkles className="h-4 w-4" />
-              EdTech · Blockchain · AI
+              Digital Credentials · Blockchain · AI
             </div>
 
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-tight">
-              Where School Achievement
+              Universal Achievement
               <span className="block mt-2 bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">
-                Lives Forever on the Blockchain
+                Verification & Credentials
               </span>
             </h1>
 
             <p className="text-xl text-slate-300 mb-10 max-w-3xl mx-auto leading-relaxed">
-              BlockWard AI is the all-in-one school management platform that rewards students with blockchain-secured digital credentials — permanent, tamper-proof, and built for university applications.
+              BlockWard verifies achievements through trusted organizations and permanently stores them as digital credentials. Schools, sports clubs, martial arts academies, chess federations, and more — one platform, infinite credential types.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
@@ -252,15 +247,15 @@ export default function Home() {
                 The Problem
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
-                Student achievements are being lost, forged, or forgotten
+                Achievements are being lost, forged, or forgotten
               </h2>
               <div className="space-y-4">
                 {[
                   "Paper certificates get lost and are easy to fake",
-                  "Students have no portable, verified record of their accomplishments",
-                  "Teachers waste hours on admin instead of teaching",
-                  "Parents are out of the loop on their child's progress",
-                  "Schools lack data-driven tools to recognize and motivate students"
+                  "No portable, verified record of accomplishments across organizations",
+                  "Verifiers waste hours on admin instead of coaching and teaching",
+                  "Organizations lack tools to issue trusted digital credentials",
+                  "Universities and employers can't easily verify achievements"
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -282,15 +277,15 @@ export default function Home() {
                 Our Solution
               </div>
               <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
-                BlockWard AI — A complete school ecosystem
+                BlockWard — Universal credential verification
               </h2>
               <div className="space-y-4">
                 {[
-                  "Blockchain-secured BlockWards that can never be altered or erased",
-                  "Students build a verified achievement portfolio for university applications",
-                  "AI assistants automate scheduling, announcements, and admin tasks",
-                  "Parents receive real-time updates on achievements and communications",
-                  "Powerful analytics give schools insight into engagement and performance"
+                  "Blockchain-secured credentials that can never be altered or erased",
+                  "Participants build a verified portfolio across any organization type",
+                  "Verifiers and approvers sign digitally — evidence, signatures, audit trail",
+                  "Works for schools, sports clubs, martial arts, chess, music, and more",
+                  "Universities and employers verify credentials instantly via verification ID"
                 ].map((item, i) => (
                   <div key={i} className="flex items-start gap-3">
                     <div className="h-5 w-5 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -314,10 +309,10 @@ export default function Home() {
               Our Unique Selling Proposition
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              The first school platform where achievements are permanent
+              The first platform where achievements are permanent
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Every BlockWard issued is recorded on-chain — creating an immutable, verifiable record that students own forever and can share with universities.
+              Every credential issued is recorded on-chain — creating an immutable, verifiable record that participants own forever and can share with universities and employers.
             </p>
           </div>
 
@@ -419,6 +414,63 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Organization Types Showcase */}
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-violet-50 to-indigo-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-100 text-violet-700 text-sm font-medium mb-4">
+              <Globe className="h-4 w-4" />
+              One Platform, Infinite Organizations
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+              Not just schools. Any organization that verifies achievements.
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              BlockWard adapts to your organization type — with custom roles, credential types, and approval workflows for each.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: GraduationCap, title: "Schools", desc: "Academic achievements, attendance, leadership, graduation records", roles: "Student → Teacher → Admin", color: "from-blue-500 to-indigo-500" },
+              { icon: Award, title: "Martial Arts Academies", desc: "Belt promotions, gradings, competition medals (BJJ, Judo, Karate)", roles: "Athlete → Coach → Head Instructor", color: "from-red-500 to-orange-500" },
+              { icon: Star, title: "Chess Clubs & Federations", desc: "Tournament champion, regional champion, rating milestones", roles: "Player → Coach → Tournament Director", color: "from-amber-500 to-yellow-500" },
+              { icon: Trophy, title: "Sports Clubs", desc: "MVP awards, team captain, league winners, coaching certifications", roles: "Player → Coach → Club Manager", color: "from-green-500 to-emerald-500" },
+              { icon: Zap, title: "Music Academies", desc: "Grade exams, competition winners, performance certifications", roles: "Student → Instructor → Academy Director", color: "from-pink-500 to-rose-500" },
+              { icon: Brain, title: "STEM & Robotics", desc: "Robotics champion, coding competition winner, innovation awards", roles: "Competitor → Mentor → Organizer", color: "from-cyan-500 to-blue-500" },
+              { icon: Users, title: "Debate & MUN", desc: "Best delegate, outstanding delegate, chair recognition", roles: "Delegate → Advisor → Organizer", color: "from-purple-500 to-violet-500" },
+              { icon: Briefcase, title: "Corporate Training", desc: "Leadership certification, safety training, employee recognition", roles: "Employee → Trainer → HR Manager", color: "from-slate-600 to-slate-800" },
+              { icon: Shield, title: "Training Providers", desc: "Professional certifications, course completions, skill verifications", roles: "Learner → Instructor → Program Director", color: "from-teal-500 to-cyan-500" },
+            ].map((org, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: i * 0.05 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
+              >
+                <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${org.color} flex items-center justify-center mb-4`}>
+                  <org.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="font-bold text-slate-900 mb-1">{org.title}</h3>
+                <p className="text-sm text-slate-500 mb-3">{org.desc}</p>
+                <div className="flex items-center gap-1.5 text-xs text-violet-600 font-medium bg-violet-50 rounded-lg px-3 py-1.5">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {org.roles}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <div className="text-center mt-12">
+            <p className="text-sm text-slate-500">
+              Every credential includes evidence, verifier signature, approver signature, audit trail, and a public verification ID.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Target Users */}
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-slate-50">
         <div className="max-w-7xl mx-auto">
@@ -428,10 +480,10 @@ export default function Home() {
               Who It's For
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Built for every person in the school
+              Built for every role in the verification chain
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              BlockWard AI serves K–12 schools and educational institutions — designed around the needs of four key user groups.
+              BlockWard serves any organization that issues credentials — designed around three key roles: Participant, Verifier, and Approver.
             </p>
           </div>
 
@@ -448,7 +500,8 @@ export default function Home() {
                 <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${role.color} flex items-center justify-center mb-5 shadow-lg`}>
                   <role.icon className="h-7 w-7 text-white" />
                 </div>
-                <h3 className={`text-xl font-bold mb-3 ${role.textColor}`}>{role.role}</h3>
+                <h3 className={`text-xl font-bold mb-1 ${role.textColor}`}>{role.role}</h3>
+                {role.tag && <p className="text-xs text-slate-400 mb-3 font-medium">{role.tag}</p>}
                 <p className="text-slate-600 leading-relaxed">{role.description}</p>
               </motion.div>
             ))}
@@ -461,10 +514,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Everything a modern school needs
+              Everything a modern organization needs
             </h2>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              One platform. Zero compromise. From blockchain credentials to AI-powered administration.
+              One platform. Zero compromise. From blockchain credentials to AI-powered verification workflows.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -8,7 +8,7 @@
     },
     "school_id": {
       "type": "string",
-      "description": "School this user belongs to"
+      "description": "Organization this user belongs to"
     },
     "user_type": {
       "type": "string",
@@ -17,7 +17,11 @@
         "teacher",
         "student"
       ],
-      "description": "Role in the system"
+      "description": "Core role: admin=Approver/Org Admin, teacher=Verifier, student=Participant"
+    },
+    "role_label": {
+      "type": "string",
+      "description": "Custom display label for this user's role (e.g., 'Coach', 'Athlete', 'Tournament Director'). Falls back to org-level role_labels."
     },
     "admin_level": {
       "type": "string",
