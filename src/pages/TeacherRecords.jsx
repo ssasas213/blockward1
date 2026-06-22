@@ -18,7 +18,7 @@ export default function TeacherRecords() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('awaiting_teacher_signature');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => { loadData(); }, []);
 
