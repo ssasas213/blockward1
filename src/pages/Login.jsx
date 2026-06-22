@@ -41,7 +41,7 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      await base44.auth.login({ email: email.trim(), password });
+      await base44.auth.loginViaEmailPassword(email.trim(), password);
       const result = await handlePostLoginRedirect();
       if (result === 'suspended') {
         setAccountStatus('suspended');

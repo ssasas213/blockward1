@@ -45,7 +45,7 @@ export default function Signup() {
       await base44.auth.register({ email: email.trim(), password });
 
       // After registration, log them in to get the session
-      await base44.auth.login({ email: email.trim(), password });
+      await base44.auth.loginViaEmailPassword(email.trim(), password);
       const user = await base44.auth.me();
 
       // Determine initial status — students are active, teachers/admins need approval
