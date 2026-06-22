@@ -50,7 +50,19 @@
   ],
   "rls": {
     "create": {
-      "data.school_id": "{{user.profile.school_id}}"
+      "data.school_id": "{{user.profile.school_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "teacher"
+          }
+        }
+      ]
     },
     "read": {
       "data.school_id": "{{user.profile.school_id}}",
