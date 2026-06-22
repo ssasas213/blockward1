@@ -1,12 +1,14 @@
 /**
- * saveToStudentDrive — Saves NFT certificate, metadata, and evidence to the STUDENT'S OWN Google Drive.
- * Uses per-user OAuth via App User Connector (BlockWard Student Drive, id: 6a2967c08ac8557a7b3a1b2e).
+ * saveToStudentDrive — Called by the STUDENT from their Portfolio Vault page.
+ * 
+ * Uses the student's OWN per-user OAuth connection (app-user connector)
+ * to archive the certificate + metadata to the student's personal Google Drive.
  * 
  * Security:
- * - Admin must be authenticated and belong to same school as the record
- * - Record must be in 'approved' status with both signatures
- * - Only the student's own Drive token is used — teachers/admins cannot access it
- * - DriveVault entry is created to store the URL (teachers/admins can see URL but NOT browse Drive)
+ * - Student must be authenticated and own the record (student_email === user.email)
+ * - Record must be 'approved' or 'pending_student_drive' with both signatures
+ * - Only the student's own Drive token is used
+ * - DriveVault stores connected_google_email + drive_owner_user_id for audit
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -29,18 +31,11 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
 
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-  const profile = profiles[0];
-  if (!profile) return Response.json({ ok: false, error: 'Profile not found' }, { status: 403, headers: CORS });
-  if (profile.user_type !== 'admin') return Response.json({ ok: false, error: 'Admin only' }, { status: 403, headers: CORS });
-  if (profile.status === 'inactive' || profile.status === 'suspended') {
-    return Response.json({ ok: false, error: 'Account inactive' }, { status: 403, headers: CORS });
-  }
-
   const body = await req.json();
   const { recordId } = body;
   if (!recordId) return Response.json({ ok: false, error: 'Missing recordId' }, { headers: CORS });
 
+  // Fetch record
   let record;
   try {
     const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
@@ -50,34 +45,29 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, error: 'Record not found' }, { status: 404, headers: CORS });
   }
 
-  if (profile.school_id !== record.school_id) {
-    return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });
+  // Student must own this record
+  if (record.student_email !== user.email) {
+    return Response.json({ ok: false, error: 'Only the student can archive to their own Drive' }, { status: 403, headers: CORS });
   }
-  if (record.status !== 'approved') {
-    return Response.json({ ok: false, error: `Record must be 'approved'. Current: '${record.status}'` }, { status: 409, headers: CORS });
+
+  // Record must be approved or pending_student_drive
+  if (!['approved', 'pending_student_drive'].includes(record.status)) {
+    return Response.json({ ok: false, error: `Record must be 'approved' or 'pending_student_drive'. Current: '${record.status}'` }, { status: 409, headers: CORS });
   }
+
   if (!record.admin_signed || !record.teacher_signed) {
     return Response.json({ ok: false, error: 'Both teacher and admin signatures required' }, { status: 409, headers: CORS });
   }
 
-  // Get the student's own Drive token (per-user OAuth)
-  // We need to use the student's user ID to get their connection
-  // The getCurrentAppUserConnection needs to be called as the student
-  // We'll get the student profile to find their Base44 user info
-  const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
-  if (!studentProfiles.length) {
-    return Response.json({ ok: false, error: 'Student profile not found' }, { headers: CORS });
-  }
-
+  // Get the STUDENT'S OWN Drive token (per-user OAuth)
   let accessToken;
   try {
-    // Get student's Drive connection — uses the student's stored OAuth token
-    const conn = await base44.asServiceRole.connectors.getAppUserConnection(STUDENT_DRIVE_CONNECTOR_ID, record.student_email);
+    const conn = await base44.asServiceRole.connectors.getCurrentAppUserConnection(STUDENT_DRIVE_CONNECTOR_ID);
     accessToken = conn.accessToken;
   } catch (e) {
-    return Response.json({ 
-      ok: false, 
-      error: 'Student has not connected their Google Drive. Ask the student to connect via My Portfolio Vault page.',
+    return Response.json({
+      ok: false,
+      error: 'You have not connected your Google Drive. Please connect it from the Portfolio Vault page.',
       needs_student_drive: true
     }, { status: 200, headers: CORS });
   }
@@ -114,16 +104,18 @@ Deno.serve(async (req) => {
     ],
     teacher_signature: {
       signer: teacherSig?.signer_name || record.teacher_name,
-      title: teacherSig?.title || '',
+      title: teacherSig?.signer_title || '',
       signed_at: teacherSig?.signed_at || record.teacher_signed_at,
     },
     admin_signature: {
       signer: adminSig?.signer_name || record.admin_name,
-      title: adminSig?.title || '',
+      title: adminSig?.signer_title || '',
       signed_at: adminSig?.signed_at || record.admin_signed_at,
     },
     verification_url: `${Deno.env.get('APP_URL') || 'https://blockward.app'}/Verify?id=${verifyId}`,
     record_id: recordId,
+    archived_to: 'student_drive',
+    drive_owner_email: user.email,
   };
 
   // Build signed HTML certificate
@@ -165,7 +157,7 @@ Deno.serve(async (req) => {
   <div style="font-size:20px;font-weight:bold;">${record.title}</div>
   <div style="font-size:14px;opacity:0.85;margin-top:4px;">${schoolName} · ${dateStr}</div>
 </div>
-<div class="verified">✅ VERIFIED — Signed by teacher and admin.</div>
+<div class="verified">✅ VERIFIED — Signed by teacher and admin. Archived to student's Google Drive.</div>
 <h2>Achievement Details</h2>
 <div class="grid">
   <div class="field"><label>Student</label><span>${studentName}</span></div>
@@ -179,7 +171,7 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
   <label style="font-size:12px;color:#64748b;font-weight:600;">📚 Teacher Endorsement</label>
   <div style="margin-top:8px;">${sigDisplay(teacherSig)}</div>
   <p style="font-size:12px;color:#64748b;margin-top:6px;">
-    ${teacherSig?.signer_name || record.teacher_name || 'N/A'} — ${teacherSig?.title || ''}<br/>
+    ${teacherSig?.signer_name || record.teacher_name || 'N/A'} — ${teacherSig?.signer_title || ''}<br/>
     Signed: ${teacherSig?.signed_at ? new Date(teacherSig.signed_at).toLocaleString() : 'N/A'}
   </p>
 </div>
@@ -187,7 +179,7 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
   <label style="font-size:12px;color:#64748b;font-weight:600;">🛡️ Admin Approval</label>
   <div style="margin-top:8px;">${sigDisplay(adminSig)}</div>
   <p style="font-size:12px;color:#64748b;margin-top:6px;">
-    ${adminSig?.signer_name || record.admin_name || 'N/A'} — ${adminSig?.title || ''}<br/>
+    ${adminSig?.signer_name || record.admin_name || 'N/A'} — ${adminSig?.signer_title || ''}<br/>
     Signed: ${adminSig?.signed_at ? new Date(adminSig.signed_at).toLocaleString() : 'N/A'}
   </p>
 </div>
@@ -198,6 +190,7 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
 </table>
 <div class="footer">
   <p>Generated by BlockWard on ${now.toISOString()} | Record ID: ${recordId}</p>
+  <p>Archived to: ${user.email}'s Google Drive</p>
   <p>Verify at: ${nftMetadata.verification_url}</p>
 </div>
 </body></html>`;
@@ -205,24 +198,16 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
   const authHeader = { Authorization: `Bearer ${accessToken}` };
 
   async function findOrCreateFolder(name, parentId) {
-    // Check if folder already exists
     const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parentId ? ` and '${parentId}' in parents` : ''}`;
-    const searchRes = await fetch(`${DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, {
-      headers: authHeader
-    });
+    const searchRes = await fetch(`${DRIVE_API}/files?q=${encodeURIComponent(query)}&fields=files(id,name)`, { headers: authHeader });
     if (searchRes.ok) {
       const { files } = await searchRes.json();
       if (files && files.length > 0) return files[0].id;
     }
-    // Create it
     const res = await fetch(`${DRIVE_API}/files`, {
       method: 'POST',
       headers: { ...authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        mimeType: 'application/vnd.google-apps.folder',
-        ...(parentId ? { parents: [parentId] } : {})
-      })
+      body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', ...(parentId ? { parents: [parentId] } : {}) })
     });
     if (!res.ok) throw new Error(`Folder create failed '${name}': ${await res.text()}`);
     return (await res.json()).id;
@@ -250,15 +235,11 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
 
     const safeName = record.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 40) + `_${dateStr}`;
 
-    // Upload metadata JSON
     const metaFile = await uploadTextFile(`${safeName}_Metadata.json`, 'application/json', JSON.stringify(nftMetadata, null, 2), nftFolderId);
-    // Upload HTML certificate
     const certFile = await uploadTextFile(`${safeName}_Certificate.html`, 'text/html', htmlDoc, nftFolderId);
 
     const driveUrl = certFile.webViewLink || `https://drive.google.com/file/d/${certFile.id}/view`;
     const folderPath = `BlockWard / ${schoolName} / ${studentName} / Awards and Records / ${record.title}`;
-
-    const actorName = `${profile.first_name} ${profile.last_name}`;
 
     // Update StudentRecord
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
@@ -268,9 +249,11 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
       drive_file_url: driveUrl,
       drive_file_id: certFile.id,
       drive_folder_path: folderPath,
+      drive_archive_destination: 'student_drive',
+      drive_connected_email: user.email,
     });
 
-    // Create DriveVault entry
+    // Create DriveVault entry with ownership info
     await base44.asServiceRole.entities.DriveVault.create({
       student_email: record.student_email,
       record_id: recordId,
@@ -281,7 +264,10 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
       metadata_file_id: metaFile.id,
       certificate_file_id: certFile.id,
       saved_at: now.toISOString(),
-      status: 'saved'
+      status: 'saved',
+      connected_google_email: user.email,
+      drive_owner_user_id: user.id,
+      archive_destination: 'student_drive',
     });
 
     // Audit
@@ -289,16 +275,16 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
       record_id: recordId,
       school_id: record.school_id,
       actor_email: user.email,
-      actor_name: actorName,
-      actor_role: 'admin',
+      actor_name: studentName,
+      actor_role: 'student',
       action: 'drive_saved',
-      old_status: 'approved',
+      old_status: record.status,
       new_status: 'archived',
-      notes: `NFT archived to student's Google Drive: ${folderPath}`,
+      notes: `NFT archived to student's own Google Drive (${user.email}): ${folderPath}`,
       timestamp: now.toISOString()
     });
 
-    return Response.json({ ok: true, driveUrl, folderPath, certFileId: certFile.id }, { headers: CORS });
+    return Response.json({ ok: true, driveUrl, folderPath, certFileId: certFile.id, connectedEmail: user.email }, { headers: CORS });
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500, headers: CORS });
   }

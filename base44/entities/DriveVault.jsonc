@@ -39,6 +39,24 @@
         "failed"
       ],
       "default": "saved"
+    },
+    "connected_google_email": {
+      "type": "string",
+      "description": "The Gmail account that owns the Drive where the file was saved"
+    },
+    "drive_owner_user_id": {
+      "type": "string",
+      "description": "Base44 user ID of the Drive owner (student or admin)"
+    },
+    "archive_destination": {
+      "type": "string",
+      "enum": [
+        "student_drive",
+        "school_drive",
+        "admin_override"
+      ],
+      "default": "student_drive",
+      "description": "Which Google Drive was used for this archive"
     }
   },
   "required": [

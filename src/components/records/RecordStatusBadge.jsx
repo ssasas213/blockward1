@@ -7,6 +7,7 @@ const STATUS_CONFIG = {
   awaiting_teacher_signature:   { label: 'Awaiting Teacher Review',   icon: PenLine,       class: 'bg-amber-100 text-amber-700' },
   awaiting_admin_signature:     { label: 'Awaiting Admin Approval',   icon: PenLine,       class: 'bg-orange-100 text-orange-700' },
   approved:                     { label: 'Approved — Ready to Mint',  icon: CheckCircle2,  class: 'bg-green-100 text-green-700' },
+  pending_student_drive:        { label: 'Pending Student Drive',     icon: HardDrive,     class: 'bg-amber-100 text-amber-700' },
   minted:                       { label: 'NFT Minted',                icon: Sparkles,      class: 'bg-violet-100 text-violet-700' },
   archived:                     { label: 'Archived to Drive',         icon: Archive,       class: 'bg-emerald-100 text-emerald-700' },
   rejected:                     { label: 'Rejected',                  icon: XCircle,       class: 'bg-red-100 text-red-700' },

@@ -25,6 +25,8 @@ export default function StudentPortfolioVault() {
   const [connecting, setConnecting] = useState(false);
   const [vaultEntries, setVaultEntries] = useState([]);
   const [records, setRecords] = useState([]);
+  const [pendingRecords, setPendingRecords] = useState([]);
+  const [archiving, setArchiving] = useState({});
 
   useEffect(() => { init(); }, []);
 
@@ -50,12 +52,14 @@ export default function StudentPortfolioVault() {
       setConnected(false);
     }
     try {
-      const [vault, recs] = await Promise.all([
+      const [vault, recs, pending] = await Promise.all([
         base44.entities.DriveVault.filter({ student_email: targetEmail }),
-        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'archived' })
+        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'archived' }),
+        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'pending_student_drive' })
       ]);
       setVaultEntries(vault.sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)));
       setRecords(recs);
+      setPendingRecords(pending);
     } catch {
       setVaultEntries([]);
       setRecords([]);
@@ -87,6 +91,26 @@ export default function StudentPortfolioVault() {
     setConnected(false);
     setVaultEntries([]);
     toast.success('Google Drive disconnected');
+  };
+
+  // Student archives a pending record to their own Google Drive
+  const handleArchiveToMyDrive = async (recordId) => {
+    setArchiving({ ...archiving, [recordId]: true });
+    try {
+      const res = await base44.functions.invoke('saveToStudentDrive', { recordId });
+      if (res.data?.ok) {
+        toast.success('Achievement archived to your Google Drive!');
+        loadVaultData();
+      } else if (res.data?.needs_student_drive) {
+        toast.error('Please connect your Google Drive first.');
+      } else {
+        toast.error(res.data?.error || 'Archive failed');
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setArchiving({ ...archiving, [recordId]: false });
+    }
   };
 
   if (loading) return (
@@ -163,6 +187,44 @@ export default function StudentPortfolioVault() {
         </Card>
       )}
 
+      {/* Pending Student Drive Archive — records approved but waiting for student to archive */}
+      {pendingRecords.length > 0 && (
+        <Card className="border-0 shadow-lg border-l-4 border-l-amber-400">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-500" /> Pending Archive ({pendingRecords.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-600 bg-amber-50 rounded-lg p-3 border border-amber-200">
+              These achievements are approved and ready to archive. {connected ? 'Click "Save to My Drive" to archive each one to your personal Google Drive.' : 'Connect your Google Drive above first, then click "Save to My Drive" to archive them.'}
+            </p>
+            {pendingRecords.map(rec => (
+              <div key={rec.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                    <Trophy className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-slate-800">{rec.title}</p>
+                    <p className="text-xs text-slate-400 capitalize">{rec.category} · Approved {rec.approved_at ? format(new Date(rec.approved_at), 'MMM d, yyyy') : ''}</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleArchiveToMyDrive(rec.id)}
+                  disabled={!connected || archiving[rec.id]}
+                  size="sm"
+                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                >
+                  {archiving[rec.id] ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
+                  {archiving[rec.id] ? 'Saving...' : 'Save to My Drive'}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats — always visible when there are entries */}
       {vaultEntries.length > 0 && (
         <div className="grid grid-cols-3 gap-4">
@@ -210,6 +272,14 @@ export default function StudentPortfolioVault() {
                         <p className="text-xs text-slate-400">
                           {entry.drive_folder_path} · {entry.saved_at ? format(new Date(entry.saved_at), 'MMM d, yyyy') : ''}
                         </p>
+                        {entry.connected_google_email && (
+                          <p className="text-xs mt-0.5">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${entry.archive_destination === 'student_drive' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                              <HardDrive className="h-3 w-3" />
+                              {entry.archive_destination === 'student_drive' ? 'Your Drive' : 'School Drive'}: {entry.connected_google_email}
+                            </span>
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="flex gap-2">

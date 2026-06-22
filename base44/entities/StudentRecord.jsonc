@@ -127,6 +127,7 @@
         "awaiting_teacher_signature",
         "awaiting_admin_signature",
         "approved",
+        "pending_student_drive",
         "minted",
         "archived",
         "rejected"
@@ -185,6 +186,23 @@
     },
     "drive_folder_path": {
       "type": "string"
+    },
+    "drive_archive_destination": {
+      "type": "string",
+      "enum": [
+        "student_drive",
+        "school_drive",
+        "admin_override"
+      ],
+      "description": "Which Drive was used for this archive"
+    },
+    "drive_connected_email": {
+      "type": "string",
+      "description": "Gmail account that owns the Drive where this was archived"
+    },
+    "override_reason": {
+      "type": "string",
+      "description": "Admin's reason for overriding to school Drive"
     },
     "submitted_at": {
       "type": "string",

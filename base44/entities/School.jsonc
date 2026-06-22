@@ -86,6 +86,16 @@
         "verification_process": {
           "type": "object",
           "description": "Custom verification workflow settings"
+        },
+        "archive_destination": {
+          "type": "string",
+          "enum": [
+            "student_drive",
+            "school_drive",
+            "selected_drive"
+          ],
+          "default": "student_drive",
+          "description": "Default Drive destination for archiving records. student_drive = student's own Google Drive (default), school_drive = admin's shared Drive, selected_drive = specific school Drive account"
         }
       }
     }
