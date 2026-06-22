@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
       ok: false, 
       error: 'Student has not connected their Google Drive. Ask the student to connect via My Portfolio Vault page.',
       needs_student_drive: true
-    }, { status: 422, headers: CORS });
+    }, { status: 200, headers: CORS });
   }
 
   const [signatures, auditLogs, schools] = await Promise.all([
