@@ -50,6 +50,14 @@
   ],
   "rls": {
     "create": {
+      "user_condition": {
+        "role": {
+          "$in": [
+            "admin",
+            "teacher"
+          ]
+        }
+      },
       "data.user_email": "{{user.email}}",
       "data.school_id": "{{user.profile.school_id}}"
     },
@@ -67,10 +75,26 @@
       ]
     },
     "update": {
+      "user_condition": {
+        "role": {
+          "$in": [
+            "admin",
+            "teacher"
+          ]
+        }
+      },
       "data.user_email": "{{user.email}}",
       "data.school_id": "{{user.profile.school_id}}"
     },
     "delete": {
+      "user_condition": {
+        "role": {
+          "$in": [
+            "admin",
+            "teacher"
+          ]
+        }
+      },
       "data.user_email": "{{user.email}}",
       "data.school_id": "{{user.profile.school_id}}"
     }
