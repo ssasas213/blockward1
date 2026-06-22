@@ -42,8 +42,8 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
-    // Authenticated but no profile and profile is required - redirect to onboarding
-    if (requireProfile && !profile) {
+    // Authenticated but no profile, or profile without school (non-admins) - redirect to onboarding
+    if (requireProfile && (!profile || (profile.user_type !== 'admin' && !profile.school_id))) {
       window.location.href = createPageUrl('Onboarding');
       return;
     }
@@ -73,8 +73,8 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     return null;
   }
 
-  // Profile required but not found
-  if (requireProfile && !profile) {
+  // Profile required but not found, or no school linked yet for non-admins
+  if (requireProfile && (!profile || (profile.user_type !== 'admin' && !profile.school_id))) {
     return null;
   }
 

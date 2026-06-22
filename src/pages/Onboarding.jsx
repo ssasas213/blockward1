@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Shield, GraduationCap, Users, BookOpen, ArrowRight, Loader2, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { ORG_TYPES, getOrgTypeConfig } from '@/lib/orgTypes';
 
 export default function Onboarding() {
@@ -77,6 +78,18 @@ export default function Onboarding() {
   }, []);
 
   useEffect(() => {
+    if (profile) {
+      setFormData(prev => ({
+        ...prev,
+        first_name: profile.first_name || prev.first_name,
+        last_name: profile.last_name || prev.last_name,
+        user_type: profile.user_type || prev.user_type,
+        department: profile.department || prev.department,
+      }));
+    }
+  }, [profile]);
+
+  useEffect(() => {
     if (!initialized || authLoading) return;
 
     // Not logged in - redirect to home
@@ -85,8 +98,8 @@ export default function Onboarding() {
       return;
     }
 
-    // Already has profile - redirect to dashboard immediately
-    if (profile) {
+    // Already has profile with school - redirect to dashboard immediately
+    if (profile && profile.school_id) {
       redirectToDashboard(profile.user_type);
       return;
     }
@@ -125,11 +138,8 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const walletAddress = generateWallet();
-      
       let school = null;
-      
-      // If admin, create school (organization)
+
       if (formData.user_type === 'admin') {
         const schoolCode = formData.school_code || `SCH${Date.now().toString(36).toUpperCase()}`;
         const orgConfig = getOrgTypeConfig(formData.org_type);
@@ -143,39 +153,66 @@ export default function Onboarding() {
             credential_label: orgConfig.credentialLabel
           }
         });
+      } else if (formData.join_code) {
+        // Teacher or student joining an existing school via join code
+        const codeField = formData.user_type === 'teacher' ? 'teacher_join_code' : 'student_join_code';
+        const schools = await base44.entities.School.filter({ [codeField]: formData.join_code });
+        if (!schools || schools.length === 0) {
+          toast.error('Invalid join code. Please check with your administrator.');
+          setSubmitting(false);
+          return;
+        }
+        school = schools[0];
       }
 
-      // Create user profile
-      const profileData = {
-        user_email: user.email,
-        user_type: formData.user_type,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        wallet_address: walletAddress,
-        blockchain_role: formData.user_type.toUpperCase(),
-        status: 'active'
-      };
+      if (profile) {
+        // Update existing profile (e.g. from Signup) with school link
+        const updateData = { school_id: school.id, status: 'active' };
+        if (formData.user_type === 'teacher') {
+          updateData.department = formData.department;
+          updateData.can_issue_blockwards = true;
+        }
+        if (formData.user_type === 'student') {
+          updateData.student_id = formData.student_id;
+          updateData.grade_level = formData.grade_level;
+          updateData.parent_name = formData.parent_name;
+          updateData.parent_email = formData.parent_email;
+          updateData.parent_phone = formData.parent_phone;
+        }
+        await base44.entities.UserProfile.update(profile.id, updateData);
+      } else {
+        const walletAddress = generateWallet();
+        const profileData = {
+          user_email: user.email,
+          user_type: formData.user_type,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          wallet_address: walletAddress,
+          blockchain_role: formData.user_type.toUpperCase(),
+          status: 'active'
+        };
 
-      if (school) {
-        profileData.school_id = school.id;
+        if (school) {
+          profileData.school_id = school.id;
+        }
+
+        if (formData.user_type === 'student') {
+          profileData.student_id = formData.student_id;
+          profileData.grade_level = formData.grade_level;
+          profileData.parent_name = formData.parent_name;
+          profileData.parent_email = formData.parent_email;
+          profileData.parent_phone = formData.parent_phone;
+          profileData.total_achievement_points = 0;
+          profileData.total_behaviour_points = 0;
+        }
+
+        if (formData.user_type === 'teacher') {
+          profileData.department = formData.department;
+          profileData.can_issue_blockwards = true;
+        }
+
+        await base44.entities.UserProfile.create(profileData);
       }
-
-      if (formData.user_type === 'student') {
-        profileData.student_id = formData.student_id;
-        profileData.grade_level = formData.grade_level;
-        profileData.parent_name = formData.parent_name;
-        profileData.parent_email = formData.parent_email;
-        profileData.parent_phone = formData.parent_phone;
-        profileData.total_achievement_points = 0;
-        profileData.total_behaviour_points = 0;
-      }
-
-      if (formData.user_type === 'teacher') {
-        profileData.department = formData.department;
-        profileData.can_issue_blockwards = true;
-      }
-
-      await base44.entities.UserProfile.create(profileData);
 
       // Generate initial school codes for admin
       if (formData.user_type === 'admin' && school) {
@@ -197,6 +234,7 @@ export default function Onboarding() {
       redirectToDashboard(formData.user_type);
     } catch (error) {
       console.error('Error creating profile:', error);
+      toast.error(error.message || 'Failed to set up profile');
       setSubmitting(false);
     }
   };
@@ -321,6 +359,18 @@ export default function Onboarding() {
                   </div>
                 </div>
 
+                {formData.user_type !== 'admin' && (
+                  <div className="space-y-2">
+                    <Label>School Join Code</Label>
+                    <Input
+                      value={formData.join_code}
+                      onChange={(e) => setFormData({ ...formData, join_code: e.target.value.toUpperCase() })}
+                      placeholder="TCH-XXXXXX or STU-XXXXXX"
+                    />
+                    <p className="text-xs text-slate-500">Enter the code from your administrator to join their school.</p>
+                  </div>
+                )}
+
                 {formData.user_type === 'admin' && (
                   <>
                     <div className="space-y-2">
@@ -423,7 +473,8 @@ export default function Onboarding() {
                   <Button
                     onClick={handleSubmit}
                     disabled={!formData.first_name || !formData.last_name || submitting || 
-                      (formData.user_type === 'admin' && !formData.school_name)}
+                      (formData.user_type === 'admin' && !formData.school_name) ||
+                      (formData.user_type !== 'admin' && !formData.join_code)}
                     className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
                   >
                     {submitting ? (
