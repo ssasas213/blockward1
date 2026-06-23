@@ -74,13 +74,16 @@ export default function StudentPortfolioVault() {
   const loadPortfolio = async (email) => {
     const targetEmail = email || user?.email;
     try {
-      const [archived, minted] = await Promise.all([
-        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'archived' }),
-        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'minted' }),
-      ]);
-      const all = [...archived, ...minted].sort((a, b) =>
-        new Date(b.approved_at || b.created_date) - new Date(a.approved_at || a.created_date)
-      );
+      // Fetch ALL the student's records, then keep only verified ones
+      // (teacher + admin both signed). This covers every post-approval
+      // status — archived, approved, minted, pending_student_drive — so
+      // nothing verified is hidden by a status-fragmentation bug.
+      const allRecords = await base44.entities.StudentRecord.filter({ student_email: targetEmail });
+      const all = allRecords
+        .filter(r => r.teacher_signed && r.admin_signed)
+        .sort((a, b) =>
+          new Date(b.approved_at || b.created_date) - new Date(a.approved_at || a.created_date)
+        );
       setRecords(all);
       const sigMap = {};
       await Promise.all(all.map(async (rec) => {
