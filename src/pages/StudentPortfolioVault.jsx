@@ -11,12 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { jsPDF } from 'jspdf';
 import {
   HardDrive, Loader2, Trophy, Shield, CheckCircle2,
-  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Sparkles, PenLine
+  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Sparkles, PenLine, Award
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import BlockWardCard from '@/components/blockwards/BlockWardCard';
+import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 
 const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
@@ -53,6 +55,8 @@ export default function StudentPortfolioVault() {
   const [driveConnected, setDriveConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [blockWards, setBlockWards] = useState([]);
+  const [selectedBlockWard, setSelectedBlockWard] = useState(null);
 
   useEffect(() => { init(); }, []);
 
@@ -101,6 +105,17 @@ export default function StudentPortfolioVault() {
       setSignatures(sigMap);
     } catch {
       setRecords([]);
+    }
+    // Load the student's minted BlockWard NFT badges
+    try {
+      const bwData = await base44.entities.BlockWard.filter({
+        student_email: targetEmail,
+        school_id: schoolId,
+        status: 'active',
+      });
+      setBlockWards(bwData);
+    } catch {
+      setBlockWards([]);
     }
   };
 
@@ -372,6 +387,22 @@ export default function StudentPortfolioVault() {
         ))}
       </div>
 
+      {/* My BlockWards — minted NFT badges */}
+      {blockWards.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Award className="h-5 w-5 text-violet-600" />
+            <h2 className="text-lg font-semibold text-slate-900">My BlockWards</h2>
+            <Badge className="bg-violet-100 text-violet-700 border-0">{blockWards.length}</Badge>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {blockWards.map(bw => (
+              <BlockWardCard key={bw.id} blockWard={bw} onClick={() => setSelectedBlockWard(bw)} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Export Bar — students only */}
       {profile?.user_type === 'student' && (
       <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50">
@@ -540,6 +571,13 @@ export default function StudentPortfolioVault() {
           </div>
         </CardContent>
       </Card>
+
+      {/* BlockWard detail modal */}
+      <BlockWardDetailModal
+        blockWard={selectedBlockWard}
+        open={!!selectedBlockWard}
+        onClose={() => setSelectedBlockWard(null)}
+      />
     </div>
   );
 }
