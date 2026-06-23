@@ -12,7 +12,6 @@ import HowItWorks from '@/components/home/HowItWorks';
 import IndustriesSection from '@/components/home/IndustriesSection';
 import FeaturesSection from '@/components/home/FeaturesSection';
 import InteractiveDemo from '@/components/home/InteractiveDemo';
-import StatisticsSection from '@/components/home/StatisticsSection';
 import SocialProof from '@/components/home/SocialProof';
 import SiteFooter from '@/components/home/SiteFooter';
 
@@ -83,8 +82,6 @@ export default function Home() {
       <FeaturesSection />
 
       <InteractiveDemo />
-
-      <StatisticsSection />
 
       <SocialProof />
 
