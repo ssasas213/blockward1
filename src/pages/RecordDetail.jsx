@@ -127,7 +127,7 @@ export default function RecordDetail() {
       const action = profile.user_type === 'admin' ? 'adminSignRecord' : 'teacherSignRecord';
       await callWorkflow(action, { signatureData: sigData });
       setShowSignDialog(false);
-      toast.success(profile.user_type === 'admin' ? 'Approved! Achievement is now ready to mint.' : 'Signed! Forwarded to admin for final approval.');
+      toast.success(profile.user_type === 'admin' ? 'Approved! Achievement archived to Portfolio Vault.' : 'Signed! Forwarded to admin for final approval.');
       loadAll();
     } catch (e) {
       toast.error(e.message);
@@ -275,22 +275,7 @@ export default function RecordDetail() {
         </div>
       )}
 
-      {/* Pending Student Drive Connection banner */}
-      {record.status === 'pending_student_drive' && (
-        <div className="rounded-xl p-4 bg-amber-50 border border-amber-300">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800 mb-1">Pending Student Drive Connection</p>
-              <p className="text-sm text-amber-700">
-                {profile?.user_type === 'student'
-                  ? 'This record is approved but cannot be archived until you connect your Google Drive. Go to the Portfolio Vault page to connect and archive.'
-                  : `This record is approved but cannot be archived until the student (${record.student_email}) connects their Google Drive. The student can archive it from their Portfolio Vault page. You can also override and archive to the school Drive.`}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* NFT Card — show when minted */}
       {(record.status === 'minted' || record.status === 'archived') && (
@@ -359,24 +344,7 @@ export default function RecordDetail() {
             <X className="h-4 w-4 mr-2" /> Reject
           </Button>
         )}
-        {canMint && (
-          <Button onClick={handleMintAndArchive} disabled={minting} className="bg-gradient-to-r from-emerald-600 to-violet-600 hover:from-emerald-700 hover:to-violet-700">
-            {minting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-            {minting ? 'Sending to Student...' : 'Archive to Student Drive'}
-          </Button>
-        )}
-        {canOverride && (
-          <Button variant="outline" onClick={() => setShowOverrideDialog(true)} className="border-amber-300 text-amber-700 hover:bg-amber-50">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            Override: Use School Drive
-          </Button>
-        )}
-        {canStudentArchive && (
-          <Button onClick={handleStudentArchive} disabled={studentArchiving} className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700">
-            {studentArchiving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-            {studentArchiving ? 'Saving to My Drive...' : 'Save to My Google Drive'}
-          </Button>
-        )}
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -561,11 +529,9 @@ export default function RecordDetail() {
                 { key: 'draft', label: 'Student Sends to Teacher' },
                 { key: 'awaiting_teacher_signature', label: 'Teacher Validates & Signs' },
                 { key: 'awaiting_admin_signature', label: 'Admin Authorises' },
-                { key: 'approved', label: 'VERIFIED — Ready to Archive' },
-                { key: 'pending_student_drive', label: 'Student Connects Drive & Archives' },
-                { key: 'minted', label: 'ARCHIVED to Drive' },
+                { key: 'archived', label: 'ARCHIVED to Portfolio Vault' },
               ].map((step, i, arr) => {
-                const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'approved', 'pending_student_drive', 'minted', 'archived'];
+                const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'archived'];
                 const current = ORDER.indexOf(record.status === 'archived' ? 'archived' : record.status);
                 const stepIdx = ORDER.indexOf(step.key);
                 const done = current > stepIdx;
@@ -684,36 +650,7 @@ export default function RecordDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Admin Override Dialog */}
-      <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Override: Archive to School Drive</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Admin Override</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  By default, records are archived to the <strong>student's own Google Drive</strong>. Overriding will archive to the <strong>school's shared Drive</strong> instead. A reason is required and will be permanently recorded in the audit trail.
-                </p>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-700 mb-2">Reason for override</p>
-              <Textarea value={overrideReason} onChange={e => setOverrideReason(e.target.value)} rows={3} placeholder="e.g., Student account deactivated, student unable to connect Drive, school policy requires central storage..." />
-            </div>
-          </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowOverrideDialog(false)}>Cancel</Button>
-            <Button onClick={handleOverrideArchive} disabled={overriding || !overrideReason.trim()} className="bg-amber-600 hover:bg-amber-700 text-white">
-              {overriding && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Archive to School Drive
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

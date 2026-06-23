@@ -187,27 +187,19 @@ Deno.serve(async (req) => {
       admin_id: profile.id,
       admin_email: user.email,
       admin_name: sigDisplayName,
-      status: 'approved',
+      status: 'archived',
       approved_at: now,
       verify_id: verifyId
     });
-    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'approved', `Admin approved and signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}`);
+    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'archived', `Admin approved and signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}. Record archived to Portfolio Vault.`);
 
-    // Auto-transition: approved → pending_student_drive
-    // The student will see this in their Portfolio Vault and can archive to their own Drive.
-    // If their Drive is already connected, the vault page auto-archives on visit.
-    await base44.asServiceRole.entities.StudentRecord.update(recordId, {
-      status: 'pending_student_drive',
-    });
-    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'status_changed', 'approved', 'pending_student_drive', 'Record ready for student to archive to their Google Drive');
-
-    // Notify the student
+    // Notify the student — record is auto-archived to their native Portfolio Vault
     try {
       await base44.asServiceRole.entities.Notification.create({
         user_email: record.student_email,
         school_id: record.school_id,
-        title: 'Achievement Approved!',
-        body: `Your achievement "${record.title}" has been approved and signed. Visit your Portfolio Vault to archive it to your Google Drive.`,
+        title: 'Achievement Archived to Your Portfolio!',
+        body: `Your achievement "${record.title}" has been approved and archived to your Portfolio Vault. View it anytime — no action required.`,
         type: 'announcement_important',
         priority: 'important',
         related_id: recordId,
@@ -215,7 +207,7 @@ Deno.serve(async (req) => {
       });
     } catch (e) { /* notification is best-effort */ }
 
-    return Response.json({ ok: true, newStatus: 'pending_student_drive', signatureId: sigRecord.id, verifyId }, { headers: CORS });
+    return Response.json({ ok: true, newStatus: 'archived', signatureId: sigRecord.id, verifyId }, { headers: CORS });
   }
 
   // --- adminRejectRecord ---

@@ -1,60 +1,60 @@
 /**
- * StudentPortfolioVault — Student's personal Google Drive vault.
- * Students connect their own Google Drive here.
- * Shows all archived achievements saved to their Drive.
- * Connector ID: 6a2967c08ac8557a7b3a1b2e (BlockWard Student Drive)
+ * StudentPortfolioVault — Native BlockWard Portfolio Vault.
+ * Every student automatically has a portfolio. No Google Drive required.
+ * Google Drive is an OPTIONAL sync/backup destination.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { HardDrive, ExternalLink, CheckCircle2, AlertCircle, Loader2, Link2, FolderOpen, Trophy, Zap } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import {
+  HardDrive, Loader2, Trophy, Shield, CheckCircle2,
+  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Sparkles, PenLine
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import DriveStatusBadge from '@/components/records/DriveStatusBadge';
 
 const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
+
+const CATEGORIES = [
+  { key: 'all', label: 'All' },
+  { key: 'academic', label: 'Academic' },
+  { key: 'sports', label: 'Sports' },
+  { key: 'leadership', label: 'Leadership' },
+  { key: 'community', label: 'Community Service' },
+  { key: 'arts', label: 'Arts & Music' },
+  { key: 'special', label: 'Other' },
+];
+
+const CATEGORY_STYLE = {
+  academic: { gradient: 'from-blue-500 to-indigo-500', badge: 'bg-blue-100 text-blue-700' },
+  sports: { gradient: 'from-green-500 to-emerald-500', badge: 'bg-green-100 text-green-700' },
+  arts: { gradient: 'from-pink-500 to-rose-500', badge: 'bg-pink-100 text-pink-700' },
+  leadership: { gradient: 'from-purple-500 to-violet-500', badge: 'bg-purple-100 text-purple-700' },
+  community: { gradient: 'from-amber-500 to-orange-500', badge: 'bg-amber-100 text-amber-700' },
+  behaviour: { gradient: 'from-red-500 to-rose-500', badge: 'bg-red-100 text-red-700' },
+  special: { gradient: 'from-indigo-500 to-purple-500', badge: 'bg-indigo-100 text-indigo-700' },
+};
+
+const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, community: 5, special: 9, behaviour: 9 };
 
 export default function StudentPortfolioVault() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [vaultEntries, setVaultEntries] = useState([]);
   const [records, setRecords] = useState([]);
-  const [pendingRecords, setPendingRecords] = useState([]);
-  const [archiving, setArchiving] = useState({});
-  const [autoArchiving, setAutoArchiving] = useState(false);
+  const [signatures, setSignatures] = useState({});
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [exporting, setExporting] = useState(false);
+  const [driveConnected, setDriveConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => { init(); }, []);
-
-  // Auto-archive: when Drive is connected and there are pending records, archive them automatically
-  useEffect(() => {
-    if (connected && pendingRecords.length > 0 && !autoArchiving) {
-      autoArchivePending();
-    }
-  }, [connected, pendingRecords.length]);
-
-  const autoArchivePending = async () => {
-    setAutoArchiving(true);
-    let successCount = 0;
-    for (const rec of pendingRecords) {
-      try {
-        const res = await base44.functions.invoke('saveToStudentDrive', { recordId: rec.id });
-        if (res.data?.ok) successCount++;
-        else if (res.data?.needs_student_drive) { setAutoArchiving(false); return; }
-      } catch (e) { /* continue to next */ }
-    }
-    if (successCount > 0) {
-      toast.success(`${successCount} achievement${successCount !== 1 ? 's' : ''} auto-archived to your Google Drive!`);
-      loadVaultData();
-    }
-    setAutoArchiving(false);
-  };
 
   const init = async () => {
     const authed = await base44.auth.isAuthenticated();
@@ -63,37 +63,208 @@ export default function StudentPortfolioVault() {
     setUser(me);
     const profiles = await base44.entities.UserProfile.filter({ user_email: me.email });
     setProfile(profiles[0] || null);
-    await loadVaultData(me.email);
+    await loadPortfolio(me.email);
+    try {
+      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
+      setDriveConnected(!!connStatus?.connected);
+    } catch { setDriveConnected(false); }
     setLoading(false);
   };
 
-  // Rule 2: check actual Drive connection status + load data
-  const loadVaultData = async (email) => {
+  const loadPortfolio = async (email) => {
     const targetEmail = email || user?.email;
     try {
-      // Check if student has an active OAuth token for their Drive
-      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
-      setConnected(!!connStatus?.connected);
-    } catch {
-      setConnected(false);
-    }
-    try {
-      const [vault, recs, pending] = await Promise.all([
-        base44.entities.DriveVault.filter({ student_email: targetEmail }),
+      const [archived, minted] = await Promise.all([
         base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'archived' }),
-        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'pending_student_drive' })
+        base44.entities.StudentRecord.filter({ student_email: targetEmail, status: 'minted' }),
       ]);
-      setVaultEntries(vault.sort((a, b) => new Date(b.saved_at) - new Date(a.saved_at)));
-      setRecords(recs);
-      setPendingRecords(pending);
+      const all = [...archived, ...minted].sort((a, b) =>
+        new Date(b.approved_at || b.created_date) - new Date(a.approved_at || a.created_date)
+      );
+      setRecords(all);
+      const sigMap = {};
+      await Promise.all(all.map(async (rec) => {
+        try {
+          const sigs = await base44.entities.DigitalSignature.filter({ record_id: rec.id });
+          sigMap[rec.id] = {
+            teacher: sigs.find(s => s.signer_role === 'teacher') || null,
+            admin: sigs.find(s => s.signer_role === 'admin') || null,
+          };
+        } catch { sigMap[rec.id] = { teacher: null, admin: null }; }
+      }));
+      setSignatures(sigMap);
     } catch {
-      setVaultEntries([]);
       setRecords([]);
     }
   };
 
-  // Rule 3: OAuth popup with polling
-  const handleConnect = async () => {
+  const filteredRecords = useMemo(() => {
+    if (activeCategory === 'all') return records;
+    return records.filter(r => r.category === activeCategory);
+  }, [records, activeCategory]);
+
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    records.forEach(r => { counts[r.category] = (counts[r.category] || 0) + 1; });
+    return counts;
+  }, [records]);
+
+  // ---- PDF Export ----
+  const buildPDF = (type) => {
+    const doc = new jsPDF();
+    const studentName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
+    const left = 14;
+    let y = 20;
+
+    doc.setFontSize(20);
+    doc.setTextColor(91, 33, 182);
+    doc.text('BlockWard Portfolio', left, y);
+    y += 8;
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    const subtitle = type === 'university' ? 'University Application Portfolio'
+      : type === 'cv' ? 'CV Achievement Summary'
+      : 'Complete Achievement Portfolio';
+    doc.text(subtitle, left, y);
+    y += 6;
+    doc.text(`Student: ${studentName}`, left, y);
+    if (profile?.grade_level) { y += 5; doc.text(`Grade: ${profile.grade_level}`, left, y); }
+    y += 5;
+    doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy')}`, left, y);
+    y += 4;
+    doc.setDrawColor(91, 33, 182);
+    doc.line(left, y, 196, y);
+    y += 8;
+
+    const list = type === 'university'
+      ? [...records].sort((a, b) => (CATEGORY_WEIGHT[a.category] || 9) - (CATEGORY_WEIGHT[b.category] || 9))
+      : records;
+
+    if (list.length === 0) {
+      doc.setFontSize(12);
+      doc.setTextColor(150);
+      doc.text('No achievements to display.', left, y);
+    }
+
+    list.forEach((rec, idx) => {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFontSize(13);
+      doc.setTextColor(30);
+      doc.text(`${idx + 1}. ${rec.title}`, left, y);
+      y += 6;
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      const meta = [
+        rec.category ? `Category: ${rec.category}` : '',
+        rec.date_achieved ? `Date: ${format(new Date(rec.date_achieved), 'MMM d, yyyy')}` : '',
+        rec.points ? `Points: ${rec.points}` : '',
+        rec.verify_id ? `Verify ID: ${rec.verify_id}` : '',
+      ].filter(Boolean).join('  |  ');
+      doc.text(meta, left, y);
+      y += 5;
+      if (type !== 'cv' && rec.description) {
+        const desc = doc.splitTextToSize(rec.description, 180);
+        doc.setTextColor(90);
+        doc.text(desc, left, y);
+        y += desc.length * 5;
+      }
+      if (rec.teacher_name || rec.admin_name) {
+        doc.setTextColor(110);
+        const sig = [
+          rec.teacher_name ? `Teacher: ${rec.teacher_name}` : '',
+          rec.admin_name ? `Admin: ${rec.admin_name}` : '',
+        ].filter(Boolean).join('  |  ');
+        doc.text(sig, left, y);
+        y += 5;
+      }
+      y += 4;
+    });
+
+    const pages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`BlockWard — Verified Digital Portfolio  |  Page ${i} of ${pages}`, left, 290);
+    }
+
+    const fileName = `BlockWard_${type === 'university' ? 'University' : type === 'cv' ? 'CV' : 'Portfolio'}_${studentName.replace(/\s+/g, '_')}.pdf`;
+    doc.save(fileName);
+  };
+
+  const handleExport = (type) => {
+    if (records.length === 0) { toast.error('No achievements to export yet'); return; }
+    setExporting(true);
+    try {
+      buildPDF(type);
+      toast.success('Portfolio exported as PDF');
+    } catch (e) {
+      toast.error('Export failed: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const downloadCertificate = (rec) => {
+    const doc = new jsPDF();
+    const studentName = profile ? `${profile.first_name} ${profile.last_name}` : rec.student_name;
+    doc.setFillColor(91, 33, 182);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255);
+    doc.setFontSize(22);
+    doc.text('BlockWard Verified Achievement', 105, 25, { align: 'center' });
+
+    doc.setTextColor(30);
+    doc.setFontSize(18);
+    let y = 60;
+    doc.text(rec.title, 105, y, { align: 'center' });
+    y += 10;
+    doc.setFontSize(12);
+    doc.setTextColor(100);
+    doc.text(`Awarded to ${studentName}`, 105, y, { align: 'center' });
+    y += 14;
+    doc.setDrawColor(91, 33, 182);
+    doc.line(60, y, 150, y);
+    y += 12;
+
+    doc.setFontSize(11);
+    const rows = [
+      ['Category', rec.category || '—'],
+      ['Date Achieved', rec.date_achieved ? format(new Date(rec.date_achieved), 'MMM d, yyyy') : '—'],
+      ['Points', rec.points ? String(rec.points) : '—'],
+      ['Teacher', rec.teacher_name || '—'],
+      ['Admin', rec.admin_name || '—'],
+      ['Verification ID', rec.verify_id || '—'],
+      ['Status', 'Verified & Archived'],
+    ];
+    rows.forEach(([k, v]) => {
+      doc.setTextColor(120);
+      doc.text(`${k}:`, 50, y);
+      doc.setTextColor(40);
+      doc.text(String(v), 90, y);
+      y += 8;
+    });
+
+    if (rec.description) {
+      y += 4;
+      doc.setTextColor(120);
+      doc.text('Description:', 50, y);
+      y += 6;
+      const desc = doc.splitTextToSize(rec.description, 120);
+      doc.setTextColor(50);
+      doc.text(desc, 50, y);
+    }
+
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text(`Verify at: ${window.location.origin}/Verify?id=${rec.verify_id || rec.id}`, 105, 285, { align: 'center' });
+    doc.text(`Generated by BlockWard on ${format(new Date(), 'MMM d, yyyy')}`, 105, 290, { align: 'center' });
+
+    doc.save(`BlockWard_Certificate_${rec.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.pdf`);
+  };
+
+  // ---- Optional Google Drive sync ----
+  const handleConnectDrive = async () => {
     setConnecting(true);
     try {
       const url = await base44.connectors.connectAppUser(CONNECTOR_ID);
@@ -102,17 +273,16 @@ export default function StudentPortfolioVault() {
         if (!popup || popup.closed) {
           clearInterval(timer);
           setConnecting(false);
-          // Store connected email in profile
-          if (profile?.id && user?.email) {
+          if (profile?.id) {
             try {
               base44.entities.UserProfile.update(profile.id, {
                 connected_google_email: user.email,
                 drive_connected_at: new Date().toISOString(),
               });
-            } catch (e) { /* best-effort */ }
+            } catch { /* best-effort */ }
           }
-          loadVaultData();
-          toast.success('Google Drive connected! Your vault is ready.');
+          checkDriveStatus();
+          toast.success('Google Drive connected. Optional sync enabled.');
         }
       }, 500);
     } catch (e) {
@@ -121,30 +291,34 @@ export default function StudentPortfolioVault() {
     }
   };
 
-  const handleDisconnect = async () => {
+  const handleDisconnectDrive = async () => {
     await base44.connectors.disconnectAppUser(CONNECTOR_ID);
-    setConnected(false);
-    setVaultEntries([]);
-    toast.success('Google Drive disconnected');
+    setDriveConnected(false);
+    toast.success('Google Drive sync disabled');
   };
 
-  // Student archives a pending record to their own Google Drive
-  const handleArchiveToMyDrive = async (recordId) => {
-    setArchiving({ ...archiving, [recordId]: true });
+  const checkDriveStatus = async () => {
     try {
-      const res = await base44.functions.invoke('saveToStudentDrive', { recordId });
-      if (res.data?.ok) {
-        toast.success('Achievement archived to your Google Drive!');
-        loadVaultData();
-      } else if (res.data?.needs_student_drive) {
-        toast.error('Please connect your Google Drive first.');
-      } else {
-        toast.error(res.data?.error || 'Archive failed');
+      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
+      setDriveConnected(!!connStatus?.connected);
+    } catch { setDriveConnected(false); }
+  };
+
+  const handleSyncToDrive = async () => {
+    setSyncing(true);
+    try {
+      let count = 0;
+      for (const rec of records) {
+        try {
+          const res = await base44.functions.invoke('saveToStudentDrive', { recordId: rec.id });
+          if (res.data?.ok) count++;
+        } catch { /* continue */ }
       }
+      toast.success(`${count} achievement${count !== 1 ? 's' : ''} synced to Google Drive`);
     } catch (e) {
-      toast.error(e.message);
+      toast.error('Sync failed: ' + e.message);
     } finally {
-      setArchiving({ ...archiving, [recordId]: false });
+      setSyncing(false);
     }
   };
 
@@ -154,193 +328,208 @@ export default function StudentPortfolioVault() {
     </div>
   );
 
+  const stats = [
+    { label: 'Total Achievements', value: records.length, icon: Trophy, color: 'from-violet-500 to-indigo-500' },
+    { label: 'Categories', value: Object.keys(categoryCounts).length, icon: FolderArchive, color: 'from-blue-500 to-cyan-500' },
+    { label: 'Verified', value: records.filter(r => r.teacher_signed && r.admin_signed).length, icon: Shield, color: 'from-emerald-500 to-green-500' },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">My Portfolio Vault</h1>
-        <p className="text-slate-500 mt-1">Your verified achievements and NFT certificates saved to your personal Google Drive</p>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">My Portfolio Vault</h1>
+          <p className="text-slate-500 mt-1">Your permanent digital achievement portfolio — automatically maintained by BlockWard.</p>
+        </div>
+        <Button variant="outline" asChild>
+          <Link to={createPageUrl('StudentMyRecords')}>
+            <FileText className="h-4 w-4 mr-2" /> My Records
+          </Link>
+        </Button>
       </div>
 
-      {/* Drive Connection Status */}
-      <Card className={`border-0 shadow-lg ${connected ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-amber-400'}`}>
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${connected ? 'bg-emerald-100' : 'bg-amber-100'}`}>
-                <HardDrive className={`h-6 w-6 ${connected ? 'text-emerald-600' : 'text-amber-600'}`} />
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        {stats.map(s => (
+          <Card key={s.label} className="border-0 shadow-md">
+            <CardContent className="p-5 flex items-center gap-3">
+              <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center`}>
+                <s.icon className="h-6 w-6 text-white" />
               </div>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-slate-800">Google Drive</p>
-                  <DriveStatusBadge connected={connected} hasEmail={!!profile?.connected_google_email} email={profile?.connected_google_email} />
-                </div>
-                <p className="text-sm text-slate-500">
-                  {connected
-                    ? `${vaultEntries.length} certificate${vaultEntries.length !== 1 ? 's' : ''} saved to your Drive`
-                    : profile?.connected_google_email
-                      ? 'Your Drive connection has expired. Reconnect to continue archiving.'
-                      : 'Connect your Google Drive to receive verified achievement certificates'}
-                </p>
+                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
+                <p className="text-xs text-slate-500">{s.label}</p>
               </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Export Bar */}
+      <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Download className="h-4 w-4 text-violet-600" /> Export Your Portfolio</h3>
+              <p className="text-sm text-slate-500 mt-0.5">Download your verified achievements for university, CV, or personal records.</p>
             </div>
-            <div className="flex gap-2">
-              {connected ? (
-                <Button variant="outline" size="sm" onClick={handleDisconnect} className="border-red-200 text-red-600 hover:bg-red-50">
-                  Disconnect
-                </Button>
-              ) : (
-                <Button onClick={handleConnect} disabled={connecting}
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
-                  {connecting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-                  {connecting ? 'Connecting...' : 'Connect Google Drive'}
-                </Button>
-              )}
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => handleExport('full')} disabled={exporting} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+                <FileText className="h-4 w-4 mr-1" /> PDF Portfolio
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleExport('university')} disabled={exporting}>
+                <GraduationCap className="h-4 w-4 mr-1" /> University
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleExport('cv')} disabled={exporting}>
+                <Briefcase className="h-4 w-4 mr-1" /> CV
+              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {!connected && (
-        <Card className="border-0 shadow-md bg-gradient-to-br from-violet-50 to-indigo-50">
-          <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-start">
-              <FolderOpen className="h-10 w-10 text-violet-400 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-semibold text-slate-800 mb-1">Connect your Drive to receive future certificates</h3>
-                <p className="text-sm text-slate-600 mb-3">
-                  When you connect Google Drive, your verified NFT certificates will be saved directly to your personal Drive folder: <strong>BlockWard / School / Your Name / Awards and Records</strong>.
-                </p>
-                {vaultEntries.length > 0 && (
-                  <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    ✅ Your school has already archived <strong>{vaultEntries.length}</strong> certificate{vaultEntries.length !== 1 ? 's' : ''} to the school Drive. Connect your personal Drive to receive future ones directly.
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Category Filter */}
+      <div className="flex flex-wrap gap-2">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat.key}
+            onClick={() => setActiveCategory(cat.key)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+              activeCategory === cat.key
+                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            {cat.label}
+            {cat.key !== 'all' && categoryCounts[cat.key] ? (
+              <span className={`ml-1.5 text-xs ${activeCategory === cat.key ? 'text-white/80' : 'text-slate-400'}`}>{categoryCounts[cat.key]}</span>
+            ) : null}
+          </button>
+        ))}
+      </div>
 
-      {/* Pending Student Drive Archive — records approved but waiting for student to archive */}
-      {pendingRecords.length > 0 && (
-        <Card className="border-0 shadow-lg border-l-4 border-l-amber-400">
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-500" /> Pending Archive ({pendingRecords.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-slate-600 bg-amber-50 rounded-lg p-3 border border-amber-200">
-              {connected
-                ? autoArchiving
-                  ? 'Auto-archiving your achievements to Google Drive...'
-                  : 'These achievements are approved. They will be auto-archived to your Google Drive. You can also archive manually.'
-                : 'Connect your Google Drive above — your approved achievements will be auto-archived instantly.'}
+      {/* Records */}
+      {filteredRecords.length === 0 ? (
+        <Card className="border-0 shadow-md">
+          <CardContent className="py-16 text-center">
+            <Trophy className="h-14 w-14 mx-auto mb-3 text-slate-300" />
+            <p className="font-medium text-slate-500">{records.length === 0 ? 'Your portfolio is ready and waiting' : 'No achievements in this category yet'}</p>
+            <p className="text-sm text-slate-400 mt-1">
+              {records.length === 0 ? 'Verified achievements will appear here automatically once your teacher and admin sign them.' : 'Try a different category filter.'}
             </p>
-            {pendingRecords.map(rec => (
-              <div key={rec.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Trophy className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-800">{rec.title}</p>
-                    <p className="text-xs text-slate-400 capitalize">{rec.category} · Approved {rec.approved_at ? format(new Date(rec.approved_at), 'MMM d, yyyy') : ''}</p>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => handleArchiveToMyDrive(rec.id)}
-                  disabled={!connected || archiving[rec.id] || autoArchiving}
-                  size="sm"
-                  className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
-                >
-                  {archiving[rec.id] || autoArchiving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-                  {archiving[rec.id] || autoArchiving ? 'Archiving...' : 'Save to My Drive'}
-                </Button>
-              </div>
-            ))}
           </CardContent>
         </Card>
-      )}
-
-      {/* Stats — always visible when there are entries */}
-      {vaultEntries.length > 0 && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Certificates Saved', value: vaultEntries.length, color: 'text-emerald-600 bg-emerald-50' },
-            { label: 'Minted Records', value: records.length, color: 'text-violet-600 bg-violet-50' },
-            { label: 'Drive Connected', value: connected ? '✓' : '✗', color: connected ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50' },
-          ].map(s => (
-            <Card key={s.label} className="border-0 shadow-sm">
-              <CardContent className={`p-4 text-center rounded-xl ${s.color.split(' ')[1]}`}>
-                <p className={`text-3xl font-bold ${s.color.split(' ')[0]}`}>{s.value}</p>
-                <p className="text-xs text-slate-500 mt-1">{s.label}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Vault Entries — visible regardless of Drive connection status */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <HardDrive className="h-4 w-4" /> Archived Certificates
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {vaultEntries.length === 0 ? (
-            <div className="text-center py-12 text-slate-400">
-              <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
-              <p className="font-medium">No certificates archived yet</p>
-              <p className="text-sm mt-1">Your verified achievements will appear here once an admin approves and archives them.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {vaultEntries.map(entry => {
-                const rec = records.find(r => r.id === entry.record_id);
-                return (
-                  <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredRecords.map(rec => {
+            const style = CATEGORY_STYLE[rec.category] || CATEGORY_STYLE.special;
+            return (
+              <Card key={rec.id} className="border-0 shadow-md overflow-hidden">
+                <div className={`h-1.5 bg-gradient-to-r ${style.gradient}`} />
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
+                      <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${style.gradient} flex items-center justify-center flex-shrink-0`}>
                         <Trophy className="h-5 w-5 text-white" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-800">{rec?.title || 'Achievement'}</p>
-                        <p className="text-xs text-slate-400">
-                          {entry.drive_folder_path} · {entry.saved_at ? format(new Date(entry.saved_at), 'MMM d, yyyy') : ''}
-                        </p>
-                        {entry.connected_google_email && (
-                          <p className="text-xs mt-0.5">
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${entry.archive_destination === 'student_drive' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                              <HardDrive className="h-3 w-3" />
-                              {entry.archive_destination === 'student_drive' ? 'Your Drive' : 'School Drive'}: {entry.connected_google_email}
-                            </span>
-                          </p>
-                        )}
+                        <h3 className="font-semibold text-slate-900 leading-tight">{rec.title}</h3>
+                        <p className="text-xs text-slate-400 capitalize">{rec.category}</p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      {entry.drive_url && (
-                        <Button variant="outline" size="sm" asChild>
-                          <a href={entry.drive_url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open in Drive
-                          </a>
-                        </Button>
-                      )}
-                      {rec && (
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link to={createPageUrl(`RecordDetail?id=${rec.id}`)}>
-                            <Link2 className="h-3.5 w-3.5" />
-                          </Link>
-                        </Button>
-                      )}
+                    {rec.verify_id && (
+                      <Badge className={`${style.badge} border-0`}>
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Verified
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-3">
+                    <div><span className="text-slate-400">Date:</span> {rec.date_achieved ? format(new Date(rec.date_achieved), 'MMM d, yyyy') : '—'}</div>
+                    {rec.points > 0 && <div><span className="text-slate-400">Points:</span> {rec.points}</div>}
+                    <div className="col-span-2"><span className="text-slate-400">Verify ID:</span> <span className="font-mono">{rec.verify_id || '—'}</span></div>
+                  </div>
+
+                  {rec.file_url && rec.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                    <img src={rec.file_url} alt="Evidence" className="w-full h-32 object-cover rounded-lg mb-3" />
+                  )}
+
+                  <div className="flex items-center gap-4 mb-3 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <PenLine className={`h-3.5 w-3.5 ${rec.teacher_signed ? 'text-amber-500' : 'text-slate-300'}`} />
+                      <span className={rec.teacher_signed ? 'text-slate-600' : 'text-slate-400'}>{rec.teacher_name || 'Teacher'}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Shield className={`h-3.5 w-3.5 ${rec.admin_signed ? 'text-violet-600' : 'text-slate-300'}`} />
+                      <span className={rec.admin_signed ? 'text-slate-600' : 'text-slate-400'}>{rec.admin_name || 'Admin'}</span>
                     </div>
                   </div>
-                );
-              })}
+
+                  {rec.nft_token_id && (
+                    <div className="flex items-center gap-1.5 mb-3 text-xs text-violet-600 bg-violet-50 rounded-lg px-2 py-1.5">
+                      <Sparkles className="h-3.5 w-3.5" /> NFT Minted · Token #{rec.nft_token_id}
+                    </div>
+                  )}
+
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                    <Button size="sm" variant="outline" onClick={() => downloadCertificate(rec)}>
+                      <Download className="h-3.5 w-3.5 mr-1" /> Certificate
+                    </Button>
+                    <Button size="sm" variant="ghost" asChild>
+                      <Link to={createPageUrl(`RecordDetail?id=${rec.id}`)}>
+                        <Link2 className="h-3.5 w-3.5" /> Details
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Optional Google Drive Sync */}
+      <Card className="border-0 shadow-md">
+        <CardContent className="p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${driveConnected ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                <HardDrive className={`h-5 w-5 ${driveConnected ? 'text-emerald-600' : 'text-slate-400'}`} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-slate-800">Google Drive (Optional)</p>
+                  <Badge className={driveConnected ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-slate-100 text-slate-500 border-0'}>
+                    {driveConnected ? 'Connected' : 'Not connected'}
+                  </Badge>
+                </div>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {driveConnected
+                    ? 'Your portfolio is stored safely in BlockWard. Optionally sync a backup copy to your Google Drive.'
+                    : 'Optional backup. Your portfolio is fully stored in BlockWard — no Drive connection needed.'}
+                </p>
+              </div>
             </div>
-          )}
+            <div className="flex gap-2 flex-shrink-0">
+              {driveConnected ? (
+                <>
+                  <Button size="sm" variant="outline" onClick={handleSyncToDrive} disabled={syncing}>
+                    {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <HardDrive className="h-4 w-4 mr-1" />}
+                    {syncing ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={handleDisconnectDrive} className="text-red-600 hover:bg-red-50">
+                    Disconnect
+                  </Button>
+                </>
+              ) : (
+                <Button size="sm" variant="outline" onClick={handleConnectDrive} disabled={connecting}>
+                  {connecting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <HardDrive className="h-4 w-4 mr-1" />}
+                  {connecting ? 'Connecting...' : 'Connect Drive'}
+                </Button>
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

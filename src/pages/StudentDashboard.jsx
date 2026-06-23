@@ -9,13 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Award, Shield, Calendar, BookOpen,
-  ChevronRight, TrendingUp, Star, Clock, FileText, PenLine, HardDrive
+  ChevronRight, TrendingUp, Star, Clock, FileText, PenLine
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ParentContactSection from '@/components/student/ParentContactSection';
-import DriveStatusBadge from '@/components/records/DriveStatusBadge';
-
-const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -29,8 +26,6 @@ function StudentDashboardContent() {
     achievementPoints: 0,
     behaviourPoints: 0
   });
-  const [driveConnected, setDriveConnected] = useState(false);
-
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -45,12 +40,6 @@ function StudentDashboardContent() {
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const profile = profiles.length > 0 ? profiles[0] : null;
       setUserProfile(profile);
-
-      // Check Drive connection
-      try {
-        const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
-        setDriveConnected(!!connStatus?.connected);
-      } catch { setDriveConnected(false); }
 
         // Get classes where student is enrolled
         const allClasses = await base44.entities.Class.list();
@@ -138,44 +127,23 @@ function StudentDashboardContent() {
         </div>
       </div>
 
-      {/* Drive Status Banner */}
-      {!driveConnected && (
-        <Card className="border-0 shadow-md bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-l-amber-400">
-          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                <HardDrive className="h-5 w-5 text-amber-600" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-800">Google Drive</p>
-                  <DriveStatusBadge connected={driveConnected} hasEmail={!!userProfile?.connected_google_email} />
-                </div>
-                <p className="text-sm text-slate-600">Connect your Drive to auto-archive approved achievements to your personal Google account.</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" asChild className="shrink-0">
-              <Link to={createPageUrl('StudentPortfolioVault')}>Connect Drive</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-      {driveConnected && (
-        <Card className="border-0 shadow-md bg-gradient-to-r from-emerald-50 to-green-50 border-l-4 border-l-emerald-400">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-              <HardDrive className="h-5 w-5 text-emerald-600" />
+      {/* Portfolio Vault Quick Access */}
+      <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50 border-l-4 border-l-violet-400">
+        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center">
+              <Shield className="h-5 w-5 text-violet-600" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-slate-800">Google Drive</p>
-                <DriveStatusBadge connected={driveConnected} hasEmail={!!userProfile?.connected_google_email} email={userProfile?.connected_google_email} />
-              </div>
-              <p className="text-sm text-slate-600">Your approved achievements will be auto-archived to your Google Drive.</p>
+              <p className="font-semibold text-slate-800">Portfolio Vault</p>
+              <p className="text-sm text-slate-600">Your permanent digital achievement portfolio — automatically maintained.</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+          <Button size="sm" asChild className="shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+            <Link to={createPageUrl('StudentPortfolioVault')}>Open Vault</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Points Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -380,7 +348,7 @@ function StudentDashboardContent() {
             </div>
             <div>
               <p className="font-semibold text-slate-900">My Digital Records</p>
-              <p className="text-sm text-slate-500">View your awards, sign pending records, access Drive files</p>
+              <p className="text-sm text-slate-500">View your awards and sign pending records</p>
             </div>
           </div>
           <Button className="bg-orange-500 hover:bg-orange-600 text-white shrink-0" asChild>
