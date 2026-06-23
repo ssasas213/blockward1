@@ -372,7 +372,8 @@ export default function StudentPortfolioVault() {
         ))}
       </div>
 
-      {/* Export Bar */}
+      {/* Export Bar — students only */}
+      {profile?.user_type === 'student' && (
       <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50">
         <CardContent className="p-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -394,6 +395,7 @@ export default function StudentPortfolioVault() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Category Filter */}
       <div className="flex flex-wrap gap-2">
