@@ -23,7 +23,9 @@ import StudentMyRecords from './pages/StudentMyRecords';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
 import CustodianDashboard from './pages/CustodianDashboard';
+import ChoosePlatform from './pages/ChoosePlatform';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { PlatformProvider } from '@/lib/PlatformContext';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -88,6 +90,7 @@ const AuthenticatedApp = () => {
       <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -100,12 +103,14 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-        <VisualEditAgent />
+        <PlatformProvider>
+          <Router>
+            <NavigationTracker />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+          <VisualEditAgent />
+        </PlatformProvider>
       </QueryClientProvider>
     </AuthProvider>
   )

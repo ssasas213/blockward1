@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { 
   Shield, Award, CheckCircle2, Sparkles, ArrowRight, GraduationCap, 
   Loader2, Brain, Users, Bell, BookOpen, BarChart3, Lock, Star,
-  ChevronRight, Zap, Globe, TrendingUp, Trophy, Briefcase
+  ChevronRight, Zap, Globe, TrendingUp, Trophy, Briefcase, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DemoModal from '@/components/home/DemoModal';
+import { PLATFORM_LIST } from '@/lib/platformConfig';
 
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -195,6 +196,16 @@ export default function Home() {
               BlockWard verifies achievements through trusted organizations and permanently stores them as digital credentials. Schools, sports clubs, martial arts academies, chess federations, and more — one platform, infinite credential types.
             </p>
 
+            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
+              <Button
+                size="lg"
+                onClick={() => window.location.href = createPageUrl('ChoosePlatform')}
+                className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-lg px-10 py-6 shadow-2xl shadow-orange-500/30 border-0"
+              >
+                <Layers className="mr-2 h-5 w-5" />
+                Choose Your BlockWard
+              </Button>
+            </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
               <Button
                 size="lg"
@@ -230,6 +241,63 @@ export default function Home() {
               ))}
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* Choose Your Platform */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-100 text-amber-700 text-sm font-medium mb-4">
+              <Layers className="h-4 w-4" />
+              Two Platforms · One Engine
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
+              Choose the platform built for your organisation.
+            </h2>
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+              BlockWard serves both schools and non-school organisations — each with its own
+              roles, terminology, and dashboards, powered by the same blockchain verification engine.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {PLATFORM_LIST.map((platform) => {
+              const PlatformIcon = platform.id === 'schools' ? GraduationCap : Trophy;
+              return (
+                <div
+                  key={platform.id}
+                  className="group relative rounded-3xl border-2 border-slate-100 bg-white p-8 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 overflow-hidden"
+                >
+                  <div className={`h-2 -mx-8 -mt-8 mb-6 bg-gradient-to-r ${platform.gradient}`} />
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${platform.gradient} flex items-center justify-center shadow-lg`}>
+                      <PlatformIcon className="h-7 w-7 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-900">{platform.name}</h3>
+                      <p className="text-sm text-slate-500">{platform.tagline}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {platform.roles.slice(0, 4).map((role) => (
+                      <span key={role} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${platform.chip}`}>
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={() => window.location.href = createPageUrl('ChoosePlatform')}
+                    size="lg"
+                    className={`w-full bg-gradient-to-r ${platform.buttonGradient} hover:opacity-90 border-0`}
+                  >
+                    {platform.cta}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </section>
 
