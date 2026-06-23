@@ -12,7 +12,6 @@ import HowItWorks from '@/components/home/HowItWorks';
 import IndustriesSection from '@/components/home/IndustriesSection';
 import FeaturesSection from '@/components/home/FeaturesSection';
 import InteractiveDemo from '@/components/home/InteractiveDemo';
-import SocialProof from '@/components/home/SocialProof';
 import SiteFooter from '@/components/home/SiteFooter';
 
 export default function Home() {
@@ -82,8 +81,6 @@ export default function Home() {
       <FeaturesSection />
 
       <InteractiveDemo />
-
-      <SocialProof />
 
       {/* Final CTA */}
       <section className="relative py-28 px-4 sm:px-6 lg:px-8 bg-slate-950 border-t border-white/5 overflow-hidden">
