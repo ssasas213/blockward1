@@ -17,7 +17,6 @@ import {
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
-import MascotGreeting from '@/components/mascot/MascotGreeting';
 
 function AdminDashboardContent() {
   const [userProfile, setUserProfile] = useState(null);
@@ -189,7 +188,6 @@ function AdminDashboardContent() {
 
   return (
     <div className="space-y-8">
-      <MascotGreeting name={userProfile?.first_name} role="admin" />
 
       {/* Header */}
       <div>

@@ -170,11 +170,6 @@
       ],
       "default": "active"
     },
-    "onboarding_completed": {
-      "type": "boolean",
-      "default": false,
-      "description": "Whether the user has completed the first-login guided onboarding tour"
-    },
     "connected_google_email": {
       "type": "string",
       "description": "The Gmail account the student connected for Google Drive archival"

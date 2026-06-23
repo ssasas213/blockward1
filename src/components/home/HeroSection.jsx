@@ -4,7 +4,6 @@ import { Sparkles, ArrowRight, Layers, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
 import Hero3DBackground from './Hero3DBackground';
-import Wardy from '@/components/mascot/Wardy';
 
 export default function HeroSection({ onSignIn, onWatchDemo }) {
   return (
@@ -16,14 +15,6 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(2,6,23,0.7)_100%)] pointer-events-none" />
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-20 pb-16">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, delay: 0.05 }}
-          className="flex justify-center mb-6"
-        >
-          <Wardy size={88} />
-        </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

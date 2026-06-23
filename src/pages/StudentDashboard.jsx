@@ -14,7 +14,6 @@ import {
 import { motion } from 'framer-motion';
 import ParentContactSection from '@/components/student/ParentContactSection';
 import DriveStatusBadge from '@/components/records/DriveStatusBadge';
-import MascotGreeting from '@/components/mascot/MascotGreeting';
 
 const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
@@ -113,8 +112,6 @@ function StudentDashboardContent() {
 
   return (
     <div className="space-y-8">
-      <MascotGreeting name={userProfile?.first_name} role="student" />
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>

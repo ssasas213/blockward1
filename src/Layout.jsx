@@ -18,8 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { getRoleLabel } from '@/lib/orgTypes';
-import OnboardingTour from '@/components/mascot/OnboardingTour';
-import PageTransition from '@/components/ui/PageTransition';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -27,7 +25,6 @@ export default function Layout({ children, currentPageName }) {
   const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [onboardingDone, setOnboardingDone] = useState(false);
   
   // Public pages that don't need sidebar
   const publicPages = ['Home', 'Login'];
@@ -244,10 +241,6 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </aside>
 
-      {profile && !profile.onboarding_completed && !onboardingDone && (
-        <OnboardingTour profile={profile} onComplete={() => setOnboardingDone(true)} />
-      )}
-
       {/* Floating AI Button - always visible except on BlockWardAI page */}
       {currentPageName !== 'BlockWardAI' && (
         <Link
@@ -263,9 +256,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className="lg:pl-72 pt-16 lg:pt-0 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
-          <PageTransition pageKey={currentPageName}>
-            {children}
-          </PageTransition>
+          {children}
         </div>
       </main>
       </div>
