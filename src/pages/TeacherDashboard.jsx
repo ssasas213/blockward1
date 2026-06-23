@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
 import { motion } from 'framer-motion';
+import MascotGreeting from '@/components/mascot/MascotGreeting';
 
 function TeacherDashboardContent() {
   const [user, setUser] = useState(null);
@@ -98,6 +99,8 @@ function TeacherDashboardContent() {
 
   return (
     <div className="space-y-8">
+      <MascotGreeting name={userProfile?.first_name} role="teacher" />
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
