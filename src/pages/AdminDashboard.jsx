@@ -12,7 +12,7 @@ import {
   Users, BookOpen, Award, Shield, TrendingUp,
   ArrowUpRight, ChevronRight, Activity, RefreshCw, Loader2,
   Settings, BarChart3, FileText, HeartPulse, Download,
-  CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink, Info, PenLine
+  CheckCircle2, XCircle, Clock, AlertTriangle, ExternalLink, Info, PenLine, HardDrive, AlertCircle
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
@@ -81,7 +81,10 @@ function AdminDashboardContent() {
         totalBlockWards: blockWards.length,
         recentPoints: points.slice(0, 5),
         recentBlockWards: blockWards.slice(0, 5),
-        pointsByCategory: Object.values(categoryTotals)
+        pointsByCategory: Object.values(categoryTotals),
+        driveConnected: driveConnectedCount,
+        driveNotConnected: students.length - driveConnectedCount,
+        recordsPendingArchive: pendingArchive.length,
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -171,6 +174,8 @@ function AdminDashboardContent() {
     { title: 'Total Teachers', value: stats.totalTeachers, icon: Users, color: 'from-violet-500 to-purple-500' },
     { title: 'Active Classes', value: stats.totalClasses, icon: BookOpen, color: 'from-emerald-500 to-green-500' },
     { title: 'BlockWards Issued', value: stats.totalBlockWards, icon: Shield, color: 'from-amber-500 to-orange-500' },
+    { title: 'Drive Connected', value: stats.driveConnected, icon: HardDrive, color: 'from-teal-500 to-emerald-500' },
+    { title: 'Pending Archive', value: stats.recordsPendingArchive, icon: AlertCircle, color: 'from-orange-500 to-red-500' },
   ];
 
   if (loading) {
@@ -201,7 +206,7 @@ function AdminDashboardContent() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {statCards.map((stat, index) => (
           <motion.div
             key={stat.title}
