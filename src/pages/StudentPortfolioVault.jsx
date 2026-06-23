@@ -62,8 +62,9 @@ export default function StudentPortfolioVault() {
     const me = await base44.auth.me();
     setUser(me);
     const profiles = await base44.entities.UserProfile.filter({ user_email: me.email });
-    setProfile(profiles[0] || null);
-    await loadPortfolio(me.email);
+    const p = profiles[0] || null;
+    setProfile(p);
+    await loadPortfolio(me.email, p?.school_id);
     try {
       const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
       setDriveConnected(!!connStatus?.connected);
@@ -71,14 +72,16 @@ export default function StudentPortfolioVault() {
     setLoading(false);
   };
 
-  const loadPortfolio = async (email) => {
+  const loadPortfolio = async (email, schoolId) => {
     const targetEmail = email || user?.email;
     try {
       // Fetch ALL the student's records, then keep only verified ones
-      // (teacher + admin both signed). This covers every post-approval
-      // status — archived, approved, minted, pending_student_drive — so
-      // nothing verified is hidden by a status-fragmentation bug.
-      const allRecords = await base44.entities.StudentRecord.filter({ student_email: targetEmail });
+      // (teacher + admin both signed). school_id is passed explicitly so
+      // the RLS school_id check resolves correctly.
+      const allRecords = await base44.entities.StudentRecord.filter({
+        student_email: targetEmail,
+        school_id: schoolId,
+      });
       const all = allRecords
         .filter(r => r.teacher_signed && r.admin_signed)
         .sort((a, b) =>
