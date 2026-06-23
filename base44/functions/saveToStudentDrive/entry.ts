@@ -225,21 +225,64 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
     return await res.json();
   }
 
+  // Upload a binary file (evidence) to Drive by fetching from URL
+  async function uploadBinaryFile(name, mimeType, contentBytes, parentId) {
+    const boundary = 'BlockWardBoundary';
+    const metadata = JSON.stringify({ name, mimeType, parents: [parentId] });
+    const body = `--${boundary}\r\nContent-Type: application/json\r\n\r\n${metadata}\r\n--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`;
+    const bodyBytes = new Uint8Array(body.length + contentBytes.length + `\r\n--${boundary}--`.length);
+    bodyBytes.set(new TextEncoder().encode(body), 0);
+    bodyBytes.set(contentBytes, body.length);
+    bodyBytes.set(new TextEncoder().encode(`\r\n--${boundary}--`), body.length + contentBytes.length);
+    const res = await fetch(`${DRIVE_UPLOAD_API}/files?uploadType=multipart&fields=id,webViewLink`, {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': `multipart/related; boundary="${boundary}"` },
+      body: bodyBytes
+    });
+    if (!res.ok) throw new Error(`Evidence upload failed '${name}': ${await res.text()}`);
+    return await res.json();
+  }
+
+  // Category → Drive folder name mapping
+  const CATEGORY_FOLDERS = {
+    academic: 'Academic Achievements',
+    sports: 'Sports Achievements',
+    arts: 'Arts & Music',
+    leadership: 'Leadership',
+    community: 'Community Service',
+    behaviour: 'Other Achievements',
+    special: 'Other Achievements',
+  };
+
   try {
-    // Create folder structure in STUDENT'S Drive
+    // Create folder structure: BlockWard / {Category} / {Record Title}
     const rootId = await findOrCreateFolder('BlockWard', null);
-    const schoolFolderId = await findOrCreateFolder(schoolName, rootId);
-    const studentFolderId = await findOrCreateFolder(studentName, schoolFolderId);
-    const awardsFolderId = await findOrCreateFolder('Awards and Records', studentFolderId);
-    const nftFolderId = await findOrCreateFolder(record.title.slice(0, 50), awardsFolderId);
+    const categoryName = CATEGORY_FOLDERS[record.category] || 'Other Achievements';
+    const categoryFolderId = await findOrCreateFolder(categoryName, rootId);
+    const safeTitle = record.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 50);
+    const recordFolderId = await findOrCreateFolder(`${safeTitle}_${dateStr}`, categoryFolderId);
 
-    const safeName = record.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_').slice(0, 40) + `_${dateStr}`;
+    const safeName = safeTitle + `_${dateStr}`;
 
-    const metaFile = await uploadTextFile(`${safeName}_Metadata.json`, 'application/json', JSON.stringify(nftMetadata, null, 2), nftFolderId);
-    const certFile = await uploadTextFile(`${safeName}_Certificate.html`, 'text/html', htmlDoc, nftFolderId);
+    const metaFile = await uploadTextFile(`${safeName}_Metadata.json`, 'application/json', JSON.stringify(nftMetadata, null, 2), recordFolderId);
+    const certFile = await uploadTextFile(`${safeName}_Certificate.html`, 'text/html', htmlDoc, recordFolderId);
+
+    // Upload evidence file if it exists
+    let evidenceFile = null;
+    if (record.file_url) {
+      try {
+        const evidenceRes = await fetch(record.file_url);
+        if (evidenceRes.ok) {
+          const evidenceBytes = new Uint8Array(await evidenceRes.arrayBuffer());
+          const evidenceMime = evidenceRes.headers.get('content-type') || 'application/octet-stream';
+          const ext = record.file_type || (evidenceMime.includes('image') ? 'img' : 'file');
+          evidenceFile = await uploadBinaryFile(`${safeName}_Evidence.${ext}`, evidenceMime, evidenceBytes, recordFolderId);
+        }
+      } catch (e) { /* evidence upload is best-effort */ }
+    }
 
     const driveUrl = certFile.webViewLink || `https://drive.google.com/file/d/${certFile.id}/view`;
-    const folderPath = `BlockWard / ${schoolName} / ${studentName} / Awards and Records / ${record.title}`;
+    const folderPath = `BlockWard / ${categoryName} / ${safeTitle}_${dateStr}`;
 
     // Update StudentRecord
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
@@ -270,6 +313,15 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
       archive_destination: 'student_drive',
     });
 
+    // Update student profile with connected Google email
+    const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
+    if (studentProfiles.length > 0) {
+      await base44.asServiceRole.entities.UserProfile.update(studentProfiles[0].id, {
+        connected_google_email: user.email,
+        drive_connected_at: now.toISOString(),
+      });
+    }
+
     // Audit
     await base44.asServiceRole.entities.AuditLog.create({
       record_id: recordId,
@@ -280,11 +332,11 @@ ${record.description ? `<div class="field" style="margin-top:12px;"><label>Descr
       action: 'drive_saved',
       old_status: record.status,
       new_status: 'archived',
-      notes: `NFT archived to student's own Google Drive (${user.email}): ${folderPath}`,
+      notes: `NFT archived to student's own Google Drive (${user.email}): ${folderPath}${evidenceFile ? ' (evidence included)' : ''}`,
       timestamp: now.toISOString()
     });
 
-    return Response.json({ ok: true, driveUrl, folderPath, certFileId: certFile.id, connectedEmail: user.email }, { headers: CORS });
+    return Response.json({ ok: true, driveUrl, folderPath, certFileId: certFile.id, evidenceFileId: evidenceFile?.id, connectedEmail: user.email }, { headers: CORS });
   } catch (e) {
     return Response.json({ ok: false, error: e.message }, { status: 500, headers: CORS });
   }

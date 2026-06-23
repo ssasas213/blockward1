@@ -9,11 +9,12 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { HardDrive, ExternalLink, CheckCircle2, AlertCircle, Loader2, Link2, FolderOpen, Trophy } from 'lucide-react';
+import { HardDrive, ExternalLink, CheckCircle2, AlertCircle, Loader2, Link2, FolderOpen, Trophy, Zap } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import DriveStatusBadge from '@/components/records/DriveStatusBadge';
 
 const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
@@ -27,8 +28,33 @@ export default function StudentPortfolioVault() {
   const [records, setRecords] = useState([]);
   const [pendingRecords, setPendingRecords] = useState([]);
   const [archiving, setArchiving] = useState({});
+  const [autoArchiving, setAutoArchiving] = useState(false);
 
   useEffect(() => { init(); }, []);
+
+  // Auto-archive: when Drive is connected and there are pending records, archive them automatically
+  useEffect(() => {
+    if (connected && pendingRecords.length > 0 && !autoArchiving) {
+      autoArchivePending();
+    }
+  }, [connected, pendingRecords.length]);
+
+  const autoArchivePending = async () => {
+    setAutoArchiving(true);
+    let successCount = 0;
+    for (const rec of pendingRecords) {
+      try {
+        const res = await base44.functions.invoke('saveToStudentDrive', { recordId: rec.id });
+        if (res.data?.ok) successCount++;
+        else if (res.data?.needs_student_drive) { setAutoArchiving(false); return; }
+      } catch (e) { /* continue to next */ }
+    }
+    if (successCount > 0) {
+      toast.success(`${successCount} achievement${successCount !== 1 ? 's' : ''} auto-archived to your Google Drive!`);
+      loadVaultData();
+    }
+    setAutoArchiving(false);
+  };
 
   const init = async () => {
     const authed = await base44.auth.isAuthenticated();
@@ -76,6 +102,15 @@ export default function StudentPortfolioVault() {
         if (!popup || popup.closed) {
           clearInterval(timer);
           setConnecting(false);
+          // Store connected email in profile
+          if (profile?.id && user?.email) {
+            try {
+              base44.entities.UserProfile.update(profile.id, {
+                connected_google_email: user.email,
+                drive_connected_at: new Date().toISOString(),
+              });
+            } catch (e) { /* best-effort */ }
+          }
           loadVaultData();
           toast.success('Google Drive connected! Your vault is ready.');
         }
@@ -135,17 +170,16 @@ export default function StudentPortfolioVault() {
                 <HardDrive className={`h-6 w-6 ${connected ? 'text-emerald-600' : 'text-amber-600'}`} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-slate-800">Google Drive</p>
-                  {connected
-                    ? <Badge className="bg-emerald-100 text-emerald-700 border-0 gap-1 text-xs"><CheckCircle2 className="h-3 w-3" /> Connected</Badge>
-                    : <Badge className="bg-amber-100 text-amber-700 border-0 gap-1 text-xs"><AlertCircle className="h-3 w-3" /> Not Connected</Badge>
-                  }
+                  <DriveStatusBadge connected={connected} hasEmail={!!profile?.connected_google_email} email={profile?.connected_google_email} />
                 </div>
                 <p className="text-sm text-slate-500">
                   {connected
                     ? `${vaultEntries.length} certificate${vaultEntries.length !== 1 ? 's' : ''} saved to your Drive`
-                    : 'Connect your Google Drive to receive verified achievement certificates'}
+                    : profile?.connected_google_email
+                      ? 'Your Drive connection has expired. Reconnect to continue archiving.'
+                      : 'Connect your Google Drive to receive verified achievement certificates'}
                 </p>
               </div>
             </div>
@@ -197,7 +231,11 @@ export default function StudentPortfolioVault() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-slate-600 bg-amber-50 rounded-lg p-3 border border-amber-200">
-              These achievements are approved and ready to archive. {connected ? 'Click "Save to My Drive" to archive each one to your personal Google Drive.' : 'Connect your Google Drive above first, then click "Save to My Drive" to archive them.'}
+              {connected
+                ? autoArchiving
+                  ? 'Auto-archiving your achievements to Google Drive...'
+                  : 'These achievements are approved. They will be auto-archived to your Google Drive. You can also archive manually.'
+                : 'Connect your Google Drive above — your approved achievements will be auto-archived instantly.'}
             </p>
             {pendingRecords.map(rec => (
               <div key={rec.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
@@ -212,12 +250,12 @@ export default function StudentPortfolioVault() {
                 </div>
                 <Button
                   onClick={() => handleArchiveToMyDrive(rec.id)}
-                  disabled={!connected || archiving[rec.id]}
+                  disabled={!connected || archiving[rec.id] || autoArchiving}
                   size="sm"
                   className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
                 >
-                  {archiving[rec.id] ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
-                  {archiving[rec.id] ? 'Saving...' : 'Save to My Drive'}
+                  {archiving[rec.id] || autoArchiving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <HardDrive className="h-4 w-4 mr-2" />}
+                  {archiving[rec.id] || autoArchiving ? 'Archiving...' : 'Save to My Drive'}
                 </Button>
               </div>
             ))}

@@ -10,11 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronRight, Plus, Upload, FileText, Sparkles, Trophy, Loader2 } from 'lucide-react';
+import { ChevronRight, Plus, Upload, FileText, Sparkles, Trophy, Loader2, HardDrive } from 'lucide-react';
 import { format } from 'date-fns';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
+import DriveStatusBadge from '@/components/records/DriveStatusBadge';
 import { toast } from 'sonner';
 
+const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'behaviour', 'special'];
 
 const CATEGORY_COLORS = {
@@ -38,6 +40,7 @@ export default function StudentMyRecords() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [teachers, setTeachers] = useState([]);
+  const [driveConnected, setDriveConnected] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -48,6 +51,12 @@ export default function StudentMyRecords() {
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const p = profiles[0];
       setProfile(p);
+
+      // Check Drive connection status
+      try {
+        const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
+        setDriveConnected(!!connStatus?.connected);
+      } catch { setDriveConnected(false); }
       const recs = await base44.entities.StudentRecord.filter({
         student_email: currentUser.email,
         school_id: p?.school_id
@@ -153,6 +162,27 @@ export default function StudentMyRecords() {
         </div>
         <Button onClick={() => setShowSubmit(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
           <Plus className="h-4 w-4 mr-2" /> Submit Achievement
+        </Button>
+      </div>
+
+      {/* Drive Status Banner */}
+      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <HardDrive className={`h-5 w-5 ${driveConnected ? 'text-emerald-600' : 'text-red-500'}`} />
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-slate-700">Google Drive Archive</span>
+            <DriveStatusBadge connected={driveConnected} hasEmail={!!profile?.connected_google_email} email={profile?.connected_google_email} />
+          </div>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {driveConnected
+              ? 'Your approved achievements will be auto-archived to your Google Drive.'
+              : profile?.connected_google_email
+                ? 'Your Drive connection has expired. Reconnect from your Portfolio Vault.'
+                : 'Connect your Google Drive from the Portfolio Vault page to auto-archive approved achievements.'}
+          </p>
+        </div>
+        <Button variant="outline" size="sm" asChild>
+          <Link to={createPageUrl('StudentPortfolioVault')}>Go to Vault</Link>
         </Button>
       </div>
 

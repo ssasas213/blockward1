@@ -169,6 +169,15 @@
         "suspended"
       ],
       "default": "active"
+    },
+    "connected_google_email": {
+      "type": "string",
+      "description": "The Gmail account the student connected for Google Drive archival"
+    },
+    "drive_connected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the student connected their Google Drive"
     }
   },
   "required": [

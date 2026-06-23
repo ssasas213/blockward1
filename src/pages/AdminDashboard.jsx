@@ -33,7 +33,10 @@ function AdminDashboardContent() {
     totalBlockWards: 0,
     recentPoints: [],
     recentBlockWards: [],
-    pointsByCategory: []
+    pointsByCategory: [],
+    driveConnected: 0,
+    driveNotConnected: 0,
+    recordsPendingArchive: 0,
   });
 
   useEffect(() => {
@@ -56,13 +59,15 @@ function AdminDashboardContent() {
         const schools = await base44.entities.School.filter({ id: schoolId });
         if (schools.length > 0) setSchool(schools[0]);
       }
-      const [students, teachers, classes, blockWards, points] = await Promise.all([
+      const [students, teachers, classes, blockWards, points, pendingArchive] = await Promise.all([
         schoolId ? base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'student' }),
         schoolId ? base44.entities.UserProfile.filter({ user_type: 'teacher', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'teacher' }),
         schoolId ? base44.entities.Class.filter({ school_id: schoolId }) : base44.entities.Class.list(),
         schoolId ? base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date') : base44.entities.BlockWard.list('-created_date', 20),
-        schoolId ? base44.entities.PointEntry.filter({ school_id: schoolId }, '-created_date') : base44.entities.PointEntry.list('-created_date', 20)
+        schoolId ? base44.entities.PointEntry.filter({ school_id: schoolId }, '-created_date') : base44.entities.PointEntry.list('-created_date', 20),
+        schoolId ? base44.entities.StudentRecord.filter({ school_id: schoolId, status: 'pending_student_drive' }) : base44.entities.StudentRecord.filter({ status: 'pending_student_drive' })
       ]);
+      const driveConnectedCount = students.filter(s => s.connected_google_email).length;
       const categoryTotals = {};
       points.forEach(p => {
         const key = p.category_name || 'Other';
