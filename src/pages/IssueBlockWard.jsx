@@ -366,7 +366,7 @@ function IssueBlockWardContent() {
         action: 'teacherSignRecord',
         recordId: record.id,
         signatureData: {
-          value: teacherSignature,
+          value: signatureUrl,
           type: 'drawn',
           display_name: sigDisplayName,
           title: sigTitle,
