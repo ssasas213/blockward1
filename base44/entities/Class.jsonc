@@ -70,9 +70,6 @@
           }
         },
         {
-          "user_condition": {
-            "role": "teacher"
-          },
           "data.teacher_email": "{{user.email}}"
         }
       ]
@@ -86,26 +83,16 @@
           }
         },
         {
-          "user_condition": {
-            "role": "teacher"
-          },
-          "$or": [
-            {
-              "data.teacher_email": "{{user.email}}"
-            },
-            {
-              "data.co_teachers": {
-                "$in": [
-                  "{{user.email}}"
-                ]
-              }
-            }
-          ]
+          "data.teacher_email": "{{user.email}}"
         },
         {
-          "user_condition": {
-            "role": "student"
-          },
+          "data.co_teachers": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
           "data.student_emails": {
             "$in": [
               "{{user.email}}"
@@ -123,9 +110,6 @@
           }
         },
         {
-          "user_condition": {
-            "role": "teacher"
-          },
           "data.teacher_email": "{{user.email}}"
         }
       ]
