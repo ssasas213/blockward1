@@ -37,6 +37,15 @@ export default function Onboarding() {
     join_code: ''
   });
 
+  // Auto-suggest a school code from the school name (e.g. "Indian High School" → "IHS-2026")
+  const suggestSchoolCode = (name) => {
+    if (!name) return '';
+    const words = name.trim().split(/\s+/).filter(w => w.length > 0);
+    const initials = words.map(w => w[0].toUpperCase()).join('').slice(0, 4);
+    const year = new Date().getFullYear();
+    return `${initials}-${year}`;
+  };
+
   useEffect(() => {
     loadAuth();
   }, []);
@@ -139,13 +148,16 @@ export default function Onboarding() {
     setSubmitting(true);
     try {
       let school = null;
+      let joinedClass = null;
 
       if (formData.user_type === 'admin') {
-        const schoolCode = formData.school_code || `SCH${Date.now().toString(36).toUpperCase()}`;
+        // Admin creates the school + the single hierarchy school_code
+        const schoolCode = (formData.school_code || suggestSchoolCode(formData.school_name)).toUpperCase();
         const orgConfig = getOrgTypeConfig(formData.org_type);
         school = await base44.entities.School.create({
           name: formData.school_name,
           code: schoolCode,
+          school_code: schoolCode,
           org_type: formData.org_type,
           admin_email: user.email,
           settings: {
@@ -153,32 +165,54 @@ export default function Onboarding() {
             credential_label: orgConfig.credentialLabel
           }
         });
-      } else if (formData.join_code) {
-        // Teacher or student joining an existing school via join code
-        const codeField = formData.user_type === 'teacher' ? 'teacher_join_code' : 'student_join_code';
-        const schools = await base44.entities.School.filter({ [codeField]: formData.join_code });
+      } else if (formData.user_type === 'teacher' && formData.school_code) {
+        // Teacher joins using the school's hierarchy code
+        const schools = await base44.entities.School.filter({ school_code: formData.school_code.toUpperCase() });
         if (!schools || schools.length === 0) {
-          toast.error('Invalid join code. Please check with your administrator.');
+          toast.error('Invalid school code. Please check with your administrator.');
           setSubmitting(false);
           return;
         }
         school = schools[0];
+      } else if (formData.user_type === 'student' && formData.join_code) {
+        // Student joins via a teacher's class code — inherits school_id, teacher, admin
+        const byCode = await base44.entities.Class.filter({ join_code: formData.join_code.toUpperCase() });
+        joinedClass = byCode.length > 0 ? byCode[0] : null;
+        if (!joinedClass) {
+          toast.error('Invalid class code. Ask your teacher for the class join code.');
+          setSubmitting(false);
+          return;
+        }
+        // Inherit school from the class
+        if (joinedClass.school_id) {
+          const schools = await base44.entities.School.filter({ id: joinedClass.school_id });
+          school = schools.length > 0 ? schools[0] : null;
+        }
+      }
+
+      // --- Update or create the UserProfile with inherited hierarchy ---
+      const updateData = { status: 'active' };
+      if (school) {
+        updateData.school_id = school.id;
+        updateData.admin_email = school.admin_email || null;
+      }
+      if (formData.user_type === 'teacher') {
+        updateData.department = formData.department;
+        updateData.can_issue_blockwards = true;
+      }
+      if (formData.user_type === 'student') {
+        updateData.student_id = formData.student_id;
+        updateData.grade_level = formData.grade_level;
+        updateData.parent_name = formData.parent_name;
+        updateData.parent_email = formData.parent_email;
+        updateData.parent_phone = formData.parent_phone;
+        // Inherit primary teacher from the class joined
+        if (joinedClass?.teacher_email) {
+          updateData.primary_teacher_email = joinedClass.teacher_email;
+        }
       }
 
       if (profile) {
-        // Update existing profile (e.g. from Signup) with school link
-        const updateData = { school_id: school.id, status: 'active' };
-        if (formData.user_type === 'teacher') {
-          updateData.department = formData.department;
-          updateData.can_issue_blockwards = true;
-        }
-        if (formData.user_type === 'student') {
-          updateData.student_id = formData.student_id;
-          updateData.grade_level = formData.grade_level;
-          updateData.parent_name = formData.parent_name;
-          updateData.parent_email = formData.parent_email;
-          updateData.parent_phone = formData.parent_phone;
-        }
         await base44.entities.UserProfile.update(profile.id, updateData);
       } else {
         const walletAddress = generateWallet();
@@ -189,46 +223,33 @@ export default function Onboarding() {
           last_name: formData.last_name,
           wallet_address: walletAddress,
           blockchain_role: formData.user_type.toUpperCase(),
-          status: 'active'
+          ...updateData,
         };
-
-        if (school) {
-          profileData.school_id = school.id;
-        }
-
         if (formData.user_type === 'student') {
-          profileData.student_id = formData.student_id;
-          profileData.grade_level = formData.grade_level;
-          profileData.parent_name = formData.parent_name;
-          profileData.parent_email = formData.parent_email;
-          profileData.parent_phone = formData.parent_phone;
           profileData.total_achievement_points = 0;
           profileData.total_behaviour_points = 0;
         }
-
-        if (formData.user_type === 'teacher') {
-          profileData.department = formData.department;
-          profileData.can_issue_blockwards = true;
-        }
-
         await base44.entities.UserProfile.create(profileData);
       }
 
-      // Generate initial school codes for admin
-      if (formData.user_type === 'admin' && school) {
-        const generateCode = (prefix) => {
-          const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-          let code = prefix;
-          for (let i = 0; i < 6; i++) {
-            code += chars[Math.floor(Math.random() * chars.length)];
-          }
-          return code;
-        };
-
-        await base44.entities.School.update(school.id, {
-          student_join_code: generateCode('STU-'),
-          teacher_join_code: generateCode('TCH-')
-        });
+      // --- If student joined a class, enroll them and inherit hierarchy ---
+      if (joinedClass) {
+        const currentUser = user;
+        if (!joinedClass.student_emails?.includes(currentUser.email)) {
+          const updatedStudents = [...(joinedClass.student_emails || []), currentUser.email];
+          await base44.entities.Class.update(joinedClass.id, { student_emails: updatedStudents });
+        }
+        const existingEnrollments = await base44.entities.Enrollment.filter({ class_id: joinedClass.id, student_email: currentUser.email });
+        if (existingEnrollments.length === 0) {
+          await base44.entities.Enrollment.create({
+            school_id: joinedClass.school_id || school?.id || null,
+            class_id: joinedClass.id,
+            class_name: joinedClass.name,
+            student_email: currentUser.email,
+            student_name: `${formData.first_name} ${formData.last_name}`,
+            status: 'active'
+          });
+        }
       }
 
       redirectToDashboard(formData.user_type);
@@ -359,15 +380,27 @@ export default function Onboarding() {
                   </div>
                 </div>
 
-                {formData.user_type !== 'admin' && (
+                {formData.user_type === 'teacher' && (
                   <div className="space-y-2">
-                    <Label>School Join Code</Label>
+                    <Label>School Code</Label>
+                    <Input
+                      value={formData.school_code}
+                      onChange={(e) => setFormData({ ...formData, school_code: e.target.value.toUpperCase() })}
+                      placeholder="e.g. IHS-DUBAI-2026"
+                    />
+                    <p className="text-xs text-slate-500">Enter the school code from your administrator to join their school.</p>
+                  </div>
+                )}
+
+                {formData.user_type === 'student' && (
+                  <div className="space-y-2">
+                    <Label>Class Join Code</Label>
                     <Input
                       value={formData.join_code}
                       onChange={(e) => setFormData({ ...formData, join_code: e.target.value.toUpperCase() })}
-                      placeholder="TCH-XXXXXX or STU-XXXXXX"
+                      placeholder="Ask your teacher for the class code"
                     />
-                    <p className="text-xs text-slate-500">Enter the code from your administrator to join their school.</p>
+                    <p className="text-xs text-slate-500">Enter the class code from your teacher. You'll automatically join their school.</p>
                   </div>
                 )}
 
@@ -398,9 +431,18 @@ export default function Onboarding() {
                       <Label>Organization Name</Label>
                       <Input
                         value={formData.school_name}
-                        onChange={(e) => setFormData({ ...formData, school_name: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, school_name: e.target.value, school_code: formData.school_code || suggestSchoolCode(e.target.value) })}
                         placeholder="e.g. Springfield High School, Dubai BJJ Academy, Elite Chess Club"
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>School Code</Label>
+                      <Input
+                        value={formData.school_code}
+                        onChange={(e) => setFormData({ ...formData, school_code: e.target.value.toUpperCase() })}
+                        placeholder="Auto-generated from name, or customize"
+                      />
+                      <p className="text-xs text-slate-500">Teachers will use this code to join your school. e.g. IHS-DUBAI-2026</p>
                     </div>
                   </>
                 )}
@@ -474,7 +516,8 @@ export default function Onboarding() {
                     onClick={handleSubmit}
                     disabled={!formData.first_name || !formData.last_name || submitting || 
                       (formData.user_type === 'admin' && !formData.school_name) ||
-                      (formData.user_type !== 'admin' && !formData.join_code)}
+                      (formData.user_type === 'teacher' && !formData.school_code) ||
+                      (formData.user_type === 'student' && !formData.join_code)}
                     className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
                   >
                     {submitting ? (

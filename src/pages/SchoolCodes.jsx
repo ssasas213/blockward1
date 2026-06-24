@@ -50,12 +50,11 @@ export default function SchoolCodes() {
   };
 
   const regenerateCode = async (type) => {
+    if (type === 'school') return; // School code is meaningful, not randomly regenerated
     setRegenerating({ ...regenerating, [type]: true });
     try {
-      const newCode = generateCode(type === 'student' ? 'STU-' : 'TCH-');
-      const updateData = type === 'student' 
-        ? { student_join_code: newCode }
-        : { teacher_join_code: newCode };
+      const newCode = generateCode('STU-');
+      const updateData = { student_join_code: newCode };
       
       await base44.entities.School.update(school.id, updateData);
       setSchool({ ...school, ...updateData });
@@ -94,22 +93,22 @@ export default function SchoolCodes() {
 
   const codes = [
     {
+      type: 'school',
+      title: 'School Code',
+      description: 'Share this code with teachers to join your school',
+      code: school?.school_code || school?.code || 'Not generated',
+      icon: Shield,
+      color: 'from-violet-600 to-indigo-600',
+      bgColor: 'bg-violet-50'
+    },
+    {
       type: 'student',
-      title: 'Student Join Code',
-      description: 'Share this code with students to join your school',
+      title: 'Student Join Code (Legacy)',
+      description: 'Students now join via teacher class codes — this legacy code is deprecated',
       code: school?.student_join_code || 'Not generated',
       icon: GraduationCap,
       color: 'from-blue-500 to-cyan-500',
       bgColor: 'bg-blue-50'
-    },
-    {
-      type: 'teacher',
-      title: 'Teacher Join Code',
-      description: 'Share this code with teachers to join your school',
-      code: school?.teacher_join_code || 'Not generated',
-      icon: Users,
-      color: 'from-violet-500 to-purple-500',
-      bgColor: 'bg-violet-50'
     }
   ];
 
@@ -156,29 +155,35 @@ export default function SchoolCodes() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => regenerateCode(item.type)}
-                  disabled={regenerating[item.type]}
-                  className="flex-1"
-                >
-                  {regenerating[item.type] ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Regenerate Code
-                    </>
-                  )}
-                </Button>
-              </div>
+              {item.type !== 'school' && (
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => regenerateCode(item.type)}
+                    disabled={regenerating[item.type]}
+                    className="flex-1"
+                  >
+                    {regenerating[item.type] ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Regenerate Code
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
 
               <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg">
-                <strong>How to use:</strong> {item.type === 'student' ? 'Students' : 'Teachers'} can enter this code during signup or in their profile settings to join {school?.name}.
+                {item.type === 'school' ? (
+                  <><strong>How to use:</strong> Teachers enter this code during signup to join {school?.name}. Students join via teacher class codes — they automatically inherit your school.</>
+                ) : (
+                  <><strong>Legacy:</strong> Students now join via teacher class codes. This legacy code is kept for backward compatibility.</>
+                )}
               </div>
             </CardContent>
           </Card>

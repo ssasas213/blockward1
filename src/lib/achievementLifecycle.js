@@ -61,6 +61,10 @@ export async function loadEarnedAchievements(studentEmail, schoolId) {
       record_id: rec.id,
       blockward_id: bw?.id || null,
       school_id: rec.school_id,
+      // Permanent ownership (survives teacher/admin departure)
+      owner_student_id: rec.owner_student_id || rec.student_id || null,
+      owner_student_email: rec.owner_student_email || rec.student_email,
+      owner_school_id: rec.owner_school_id || rec.school_id,
       // Student
       student_email: rec.student_email,
       student_name: rec.student_name,

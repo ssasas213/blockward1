@@ -208,7 +208,30 @@ function ClassesContent() {
           status: 'active'
         });
       }
-      
+
+      // Inherit hierarchy: student automatically gets school_id, primary_teacher_email, admin_email
+      if (profile) {
+        const hierarchyUpdate = {};
+        if (!profile.school_id && classToJoin.school_id) {
+          hierarchyUpdate.school_id = classToJoin.school_id;
+        }
+        if (!profile.primary_teacher_email && classToJoin.teacher_email) {
+          hierarchyUpdate.primary_teacher_email = classToJoin.teacher_email;
+        }
+        // Inherit admin_email from the school
+        if (!profile.admin_email && classToJoin.school_id) {
+          try {
+            const schools = await base44.entities.School.filter({ id: classToJoin.school_id });
+            if (schools.length > 0 && schools[0].admin_email) {
+              hierarchyUpdate.admin_email = schools[0].admin_email;
+            }
+          } catch { /* best-effort */ }
+        }
+        if (Object.keys(hierarchyUpdate).length > 0) {
+          await base44.entities.UserProfile.update(profile.id, hierarchyUpdate);
+        }
+      }
+
       setShowJoinDialog(false);
       setJoinCode('');
       await loadData();

@@ -50,6 +50,18 @@
     "student_name": {
       "type": "string"
     },
+    "owner_student_id": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 UserProfile.id of the student. Survives teacher/admin departure."
+    },
+    "owner_student_email": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 student email. The student always owns this achievement."
+    },
+    "owner_school_id": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 school_id at time of creation. Immutable ownership anchor."
+    },
     "title": {
       "type": "string"
     },

@@ -194,6 +194,9 @@ Deno.serve(async (req) => {
         record_id: recordId,
         student_email: record.student_email,
         student_name: record.student_name || null,
+        owner_student_id: record.owner_student_id || record.student_id || null,
+        owner_student_email: record.owner_student_email || record.student_email,
+        owner_school_id: record.owner_school_id || record.school_id,
         issuer_email: user.email,
         issuer_name: sigDisplayName,
         title: record.title,
@@ -232,6 +235,10 @@ Deno.serve(async (req) => {
         approved_at: now,
         verify_id: verifyId,
         nft_image_url: blockWard.image_url || record.nft_image_url || null,
+        // Ensure permanent ownership is anchored at approval time
+        owner_student_id: record.owner_student_id || record.student_id || null,
+        owner_student_email: record.owner_student_email || record.student_email,
+        owner_school_id: record.owner_school_id || record.school_id,
       });
     } catch (e) {
       // Rollback steps 1-3

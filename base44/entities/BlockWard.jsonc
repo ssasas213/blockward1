@@ -23,6 +23,18 @@
       "type": "string",
       "description": "Student's custodial wallet address"
     },
+    "owner_student_id": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 UserProfile.id of the student. Survives teacher/admin departure."
+    },
+    "owner_student_email": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 student email. The student always owns this BlockWard."
+    },
+    "owner_school_id": {
+      "type": "string",
+      "description": "PERMANENT OWNER \u2014 school_id. Immutable ownership anchor."
+    },
     "issuer_email": {
       "type": "string"
     },

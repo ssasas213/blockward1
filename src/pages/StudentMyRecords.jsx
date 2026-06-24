@@ -107,6 +107,10 @@ export default function StudentMyRecords() {
         student_id: profile.id,
         student_email: user.email,
         student_name: `${profile.first_name} ${profile.last_name}`,
+        // Permanent ownership — the student owns this achievement forever
+        owner_student_id: profile.id,
+        owner_student_email: user.email,
+        owner_school_id: profile.school_id,
         title: form.title,
         category: form.category,
         description: form.description,

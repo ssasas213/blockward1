@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Unique organization code"
     },
+    "school_code": {
+      "type": "string",
+      "description": "Single hierarchy code teachers use to join this school (e.g. IHS-DUBAI-2026). Admin sets this when creating the school."
+    },
     "org_type": {
       "type": "string",
       "enum": [
@@ -30,11 +34,11 @@
     },
     "student_join_code": {
       "type": "string",
-      "description": "Code for participants to join the organization"
+      "description": "Legacy code for participants to join the organization (deprecated \u2014 students now join via class codes)"
     },
     "teacher_join_code": {
       "type": "string",
-      "description": "Code for verifiers to join the organization"
+      "description": "Legacy code for verifiers to join the organization (deprecated \u2014 teachers now join via school_code)"
     },
     "address": {
       "type": "string"

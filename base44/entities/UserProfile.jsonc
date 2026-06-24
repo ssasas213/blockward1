@@ -104,6 +104,14 @@
       },
       "description": "Subjects taught (for teachers)"
     },
+    "admin_email": {
+      "type": "string",
+      "description": "School admin email \u2014 inherited by teachers and students when they join the school hierarchy"
+    },
+    "primary_teacher_email": {
+      "type": "string",
+      "description": "Primary teacher email \u2014 inherited by students when they join a teacher's class"
+    },
     "parent_name": {
       "type": "string",
       "description": "Parent/Guardian name (for students)"
