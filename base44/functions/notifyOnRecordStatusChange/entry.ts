@@ -76,8 +76,8 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, notified: 'admins', count: adminProfiles.length });
   }
 
-  // --- Parent notification on ARCHIVED (verified + archived) ---
-  if (newStatus === 'archived' && data.student_email) {
+  // --- Parent notification on delivery to student vault (verified + delivered) ---
+  if ((newStatus === 'delivered_to_vault' || newStatus === 'archived') && data.student_email) {
     // Fetch the student's profile to get parent contact
     const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({
       user_email: data.student_email

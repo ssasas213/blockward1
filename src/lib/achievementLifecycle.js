@@ -93,6 +93,7 @@ export async function loadEarnedAchievements(studentEmail, schoolId) {
       date_achieved: rec.date_achieved,
       is_custom_award: rec.is_custom_award || false,
       custom_award_icon: rec.custom_award_icon || null,
+      points: rec.points || 0,
     };
   });
 }

@@ -77,7 +77,7 @@ export default function CustodianDashboard() {
     awaiting_teacher: records.filter(r => r.status === 'awaiting_teacher_signature').length,
     awaiting_admin: records.filter(r => r.status === 'awaiting_admin_signature').length,
     approved: records.filter(r => r.status === 'approved').length,
-    archived: records.filter(r => r.status === 'archived' || r.status === 'minted').length,
+    archived: records.filter(r => r.status === 'delivered_to_vault' || r.status === 'archived' || r.status === 'minted').length,
     rejected: records.filter(r => r.status === 'rejected').length,
   };
 
@@ -87,7 +87,7 @@ export default function CustodianDashboard() {
   const withEvidence = records.filter(r => r.file_url).length;
 
   const recentArchived = records
-    .filter(r => r.status === 'archived' || r.status === 'minted')
+    .filter(r => r.status === 'delivered_to_vault' || r.status === 'archived' || r.status === 'minted')
     .slice(0, 6);
 
   const pendingUrgent = byStatus.awaiting_admin + byStatus.awaiting_teacher + byStatus.approved;
