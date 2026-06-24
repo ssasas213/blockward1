@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   ArrowLeft, PenLine, Check, X, HardDrive, ExternalLink, Loader2,
-  Trophy, Shield, User, SendHorizonal, Sparkles, Copy, Link2, AlertCircle, Info
+  Trophy, Shield, User, SendHorizonal, Sparkles, Copy, Link2, AlertCircle, Info, CheckCircle2
 } from 'lucide-react';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import SignatureCapture from '@/components/records/SignatureCapture';
@@ -49,6 +49,7 @@ export default function RecordDetail() {
   const [rejecting, setRejecting] = useState(false);
   const [sigProfile, setSigProfile] = useState(null);
   const [showSigSetup, setShowSigSetup] = useState(false);
+  const [sendingVault, setSendingVault] = useState(false);
 
   useEffect(() => { loadAll(); }, [recordId]);
 
@@ -145,6 +146,16 @@ export default function RecordDetail() {
     finally { setRejecting(false); }
   };
 
+  const handleSendToVault = async () => {
+    setSendingVault(true);
+    try {
+      await callWorkflow('sendToVault');
+      toast.success('Achievement delivered to student vault!');
+      loadAll();
+    } catch (e) { toast.error(e.message); }
+    finally { setSendingVault(false); }
+  };
+
   const copyVerifyLink = () => {
     const link = `${window.location.origin}/Verify?id=${record.verify_id}`;
     navigator.clipboard.writeText(link);
@@ -163,6 +174,15 @@ export default function RecordDetail() {
     && profile?.user_type === 'admin';
 
   const canReject = (canTeacherSign || canAdminSign);
+
+  const canSendToVault = record?.status === 'approved' && profile?.user_type === 'admin';
+
+  const vaultBlockReason = (() => {
+    if (!record?.teacher_signed) return 'Cannot send to vault: teacher signature missing.';
+    if (!record?.admin_signed) return 'Cannot send to vault: admin signature missing.';
+    if (!record?.file_url) return 'Cannot send to vault: evidence missing.';
+    return null;
+  })();
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -201,10 +221,44 @@ export default function RecordDetail() {
         </div>
       )}
 
+      {/* Approved — ready for vault delivery banner (admin only) */}
+      {canSendToVault && (
+        <div className="rounded-xl p-4 bg-green-50 border border-green-200">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-700">Approved — Ready for Vault Delivery</p>
+              <p className="text-sm text-green-600 mt-1">
+                This achievement is approved. Click "Send to Student Vault" to deliver it to the student's BlockWard Vault.
+              </p>
+              {vaultBlockReason && (
+                <p className="text-sm text-red-600 mt-2 font-medium">{vaultBlockReason}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivered to vault banner */}
+      {record.status === 'delivered_to_vault' && (
+        <div className="rounded-xl p-4 bg-emerald-50 border border-emerald-200">
+          <div className="flex items-start gap-3">
+            <Shield className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-700">Delivered to Student Vault</p>
+              <p className="text-sm text-emerald-600 mt-1">
+                This achievement has been delivered to the student's BlockWard Vault.
+                {record.vault_delivered_at && ` Delivered on ${format(new Date(record.vault_delivered_at), 'MMM d, yyyy HH:mm')}.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
 
-      {/* NFT Card — show when archived (approved + BlockWard minted) */}
-      {record.status === 'archived' && (
+
+      {/* NFT Card — show when delivered to vault (or legacy archived) */}
+      {(record.status === 'delivered_to_vault' || record.status === 'archived') && (
         <div className={`rounded-2xl bg-gradient-to-br ${CATEGORY_COLORS[record.category] || 'from-violet-500 to-indigo-500'} p-1`}>
           <div className="bg-white rounded-xl p-6">
             <div className="flex flex-col md:flex-row gap-6 items-start">
@@ -268,6 +322,16 @@ export default function RecordDetail() {
         {canReject && (
           <Button variant="outline" onClick={() => setShowRejectDialog(true)} className="border-red-200 text-red-600 hover:bg-red-50">
             <X className="h-4 w-4 mr-2" /> Reject
+          </Button>
+        )}
+        {canSendToVault && (
+          <Button
+            onClick={handleSendToVault}
+            disabled={sendingVault || !!vaultBlockReason}
+            className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
+          >
+            {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
+            Send to Student Vault
           </Button>
         )}
 
@@ -455,10 +519,12 @@ export default function RecordDetail() {
                 { key: 'draft', label: 'Student Sends to Teacher' },
                 { key: 'awaiting_teacher_signature', label: 'Teacher Validates & Signs' },
                 { key: 'awaiting_admin_signature', label: 'Admin Authorises' },
-                { key: 'archived', label: 'ARCHIVED to Portfolio Vault' },
+                { key: 'approved', label: 'Approved — Ready to Deliver' },
+                { key: 'delivered_to_vault', label: 'Delivered to Student Vault' },
               ].map((step, i, arr) => {
-                const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'archived'];
-                const current = ORDER.indexOf(record.status === 'archived' ? 'archived' : record.status);
+                const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'approved', 'delivered_to_vault'];
+                const effectiveStatus = record.status === 'archived' ? 'delivered_to_vault' : record.status;
+                const current = ORDER.indexOf(effectiveStatus);
                 const stepIdx = ORDER.indexOf(step.key);
                 const done = current > stepIdx;
                 const active = current === stepIdx;

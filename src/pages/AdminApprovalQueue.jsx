@@ -18,7 +18,8 @@ const STATUS_CONFIG = {
   submitted: { label: 'Submitted', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: FileText },
   awaiting_teacher_signature: { label: 'Awaiting Teacher', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
   awaiting_admin_signature: { label: 'Awaiting Your Signature', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: PenLine },
-  approved: { label: 'Admin Approved', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
+  approved: { label: 'Ready to Deliver', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2 },
+  delivered_to_vault: { label: 'Delivered to Vault', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: Shield },
   minted: { label: 'Minted', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Award },
   archived: { label: 'Archived', color: 'bg-slate-100 text-slate-600 border-slate-200', icon: Shield },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
@@ -75,10 +76,14 @@ function AdminApprovalQueueContent() {
   // Metrics — 'archived' is the single approved state (teacher + admin signed, BlockWard minted)
   const awaitingAdmin = records.filter(r => r.status === 'awaiting_admin_signature').length;
   const awaitingTeacher = records.filter(r => r.status === 'awaiting_teacher_signature').length;
+  const approvedReady = records.filter(r => r.status === 'approved').length;
+  const delivered = records.filter(r => r.status === 'delivered_to_vault').length;
   const archived = records.filter(r => r.status === 'archived').length;
 
   const filterTabs = [
     { key: 'awaiting_admin_signature', label: 'Needs My Signature', count: awaitingAdmin },
+    { key: 'approved', label: 'Ready to Deliver', count: approvedReady },
+    { key: 'delivered_to_vault', label: 'Delivered', count: delivered },
     { key: 'awaiting_teacher_signature', label: 'With Teacher', count: awaitingTeacher },
     { key: 'archived', label: 'Archived', count: archived },
     { key: 'all', label: 'All Records', count: records.length },

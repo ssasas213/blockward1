@@ -88,7 +88,7 @@ export default function StudentPortfolioVault() {
         school_id: schoolId,
       });
       const all = allRecords
-        .filter(r => r.teacher_signed && r.admin_signed)
+        .filter(r => r.teacher_signed && r.admin_signed && (r.status === 'delivered_to_vault' || r.status === 'archived'))
         .sort((a, b) =>
           new Date(b.approved_at || b.created_date) - new Date(a.approved_at || a.created_date)
         );

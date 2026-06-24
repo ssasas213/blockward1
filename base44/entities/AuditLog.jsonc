@@ -21,7 +21,8 @@
         "admin",
         "teacher",
         "student"
-      ]
+      ],
+      "description": "Who signed"
     },
     "action": {
       "type": "string",
@@ -35,7 +36,8 @@
         "student_signed",
         "drive_saved",
         "status_changed",
-        "viewed"
+        "viewed",
+        "sent_to_student_vault"
       ],
       "description": "What happened"
     },

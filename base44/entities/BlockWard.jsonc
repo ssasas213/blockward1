@@ -9,6 +9,10 @@
       "type": "string",
       "description": "Foreign key to StudentRecord.id \u2014 links the BlockWard to its source-of-truth achievement record"
     },
+    "student_record_id": {
+      "type": "string",
+      "description": "Foreign key to StudentRecord.id (explicit vault delivery link)"
+    },
     "token_id": {
       "type": "string",
       "description": "On-chain token ID from smart contract"
@@ -44,6 +48,14 @@
     "issuer_wallet": {
       "type": "string",
       "description": "Always 'system' - teachers don't have wallets"
+    },
+    "teacher_id": {
+      "type": "string",
+      "description": "UserProfile.id of the endorsing teacher"
+    },
+    "admin_id": {
+      "type": "string",
+      "description": "UserProfile.id of the approving admin"
     },
     "title": {
       "type": "string",
@@ -101,6 +113,14 @@
     },
     "revoke_reason": {
       "type": "string"
+    },
+    "vault_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "delivered"
+      ],
+      "default": "delivered"
     }
   },
   "required": [

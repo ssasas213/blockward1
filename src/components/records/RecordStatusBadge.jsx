@@ -1,12 +1,13 @@
 import { Badge } from '@/components/ui/badge';
-import { Clock, PenLine, CheckCircle2, XCircle, HardDrive, Sparkles, Archive, FileCheck } from 'lucide-react';
+import { Clock, PenLine, CheckCircle2, XCircle, HardDrive, Sparkles, Archive, FileCheck, Shield } from 'lucide-react';
 
 const STATUS_CONFIG = {
   draft:                        { label: 'Draft',                      icon: Clock,         class: 'bg-slate-100 text-slate-600' },
   submitted:                    { label: 'Submitted',                  icon: Clock,         class: 'bg-blue-100 text-blue-700' },
   awaiting_teacher_signature:   { label: 'Awaiting Teacher Review',   icon: PenLine,       class: 'bg-amber-100 text-amber-700' },
   awaiting_admin_signature:     { label: 'Awaiting Admin Approval',   icon: PenLine,       class: 'bg-orange-100 text-orange-700' },
-  approved:                     { label: 'Approved — Ready to Mint',  icon: CheckCircle2,  class: 'bg-green-100 text-green-700' },
+  approved:                     { label: 'Approved — Ready to Deliver', icon: CheckCircle2,  class: 'bg-green-100 text-green-700' },
+  delivered_to_vault:           { label: 'Delivered to Vault',         icon: Shield,        class: 'bg-emerald-100 text-emerald-700' },
   pending_student_drive:        { label: 'Pending Student Drive',     icon: HardDrive,     class: 'bg-amber-100 text-amber-700' },
   minted:                       { label: 'NFT Minted',                icon: Sparkles,      class: 'bg-violet-100 text-violet-700' },
   archived:                     { label: 'Archived to Drive',         icon: Archive,       class: 'bg-emerald-100 text-emerald-700' },

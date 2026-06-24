@@ -142,6 +142,7 @@
         "pending_student_drive",
         "minted",
         "archived",
+        "delivered_to_vault",
         "rejected"
       ],
       "default": "draft",
@@ -230,6 +231,28 @@
     "verify_id": {
       "type": "string",
       "description": "Public verification ID for /verify/{verify_id}"
+    },
+    "vault_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "delivered"
+      ],
+      "default": "pending",
+      "description": "Whether this record has been delivered to the student vault"
+    },
+    "vault_delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the record was delivered to the student vault"
+    },
+    "vault_delivered_by": {
+      "type": "string",
+      "description": "Admin email who delivered to vault"
+    },
+    "blockward_id": {
+      "type": "string",
+      "description": "BlockWard.id created when delivered to vault"
     }
   },
   "required": [

@@ -141,8 +141,8 @@ export default function StudentMyRecords() {
     }
   };
 
-  // 'archived' is the single approved state (teacher + admin signed, BlockWard minted)
-  const mintedRecords = records.filter(r => r.status === 'archived');
+  // 'delivered_to_vault' is the delivered state; 'archived' is legacy
+  const mintedRecords = records.filter(r => r.status === 'delivered_to_vault' || r.status === 'archived');
   const pendingRecords = records.filter(r => !['archived', 'rejected'].includes(r.status));
 
   if (loading) return (

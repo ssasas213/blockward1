@@ -26,10 +26,11 @@ import { base44 } from '@/api/base44Client';
 export async function loadEarnedAchievements(studentEmail, schoolId) {
   if (!studentEmail) return [];
 
-  // Source of truth: StudentRecord with status 'archived'
-  const filter = { student_email: studentEmail, status: 'archived' };
+  // Source of truth: StudentRecord with status 'delivered_to_vault' or 'archived' (legacy)
+  const filter = { student_email: studentEmail };
   if (schoolId) filter.school_id = schoolId;
-  const records = await base44.entities.StudentRecord.filter(filter);
+  const allRecords = await base44.entities.StudentRecord.filter(filter);
+  const records = allRecords.filter(r => r.status === 'delivered_to_vault' || r.status === 'archived');
 
   // Sort by approved_at descending (fall back to updated_date/created_date)
   records.sort(

@@ -50,7 +50,8 @@ export default function AdminRecords() {
 
   const pendingAdmin = records.filter(r => r.status === 'awaiting_admin_signature').length;
   const approved = records.filter(r => r.status === 'approved').length;
-  const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
+  const delivered = records.filter(r => r.status === 'delivered_to_vault').length;
+  const minted = records.filter(r => r.status === 'minted' || r.status === 'archived' || r.status === 'delivered_to_vault').length;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
