@@ -35,18 +35,22 @@ function StudentBlockWardsContent() {
       const user = await base44.auth.me();
       if (!user) return;
 
-      // Single source of truth: StudentRecord (status: 'archived') via shared lifecycle loader.
-      // BlockWard NFT data is joined by record_id inside the loader.
-      const achievements = await loadEarnedAchievements(user.email);
+      // Load profile FIRST so we can pass school_id to the loader.
+      // This ensures RLS has the correct school_id context for the query.
+      const userProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+      const profile = userProfiles[0] || null;
+
+      // Single source of truth: StudentRecord (status: 'delivered_to_vault' or 'archived')
+      // via shared lifecycle loader. BlockWard NFT data is joined by record_id inside.
+      const achievements = await loadEarnedAchievements(user.email, profile?.school_id);
       setBlockWards(achievements);
 
-      const userProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      if (userProfiles.length > 0) {
+      if (profile) {
         setVault({
-          studentId: userProfiles[0].id,
+          studentId: profile.id,
           status: 'active',
-          publicAddress: userProfiles[0].wallet_address,
-          createdAt: userProfiles[0].created_date
+          publicAddress: profile.wallet_address,
+          createdAt: profile.created_date
         });
       }
     } catch (error) {

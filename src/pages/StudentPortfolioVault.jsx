@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { jsPDF } from 'jspdf';
 import {
-  HardDrive, Loader2, Trophy, Shield, CheckCircle2,
+  Loader2, Trophy, Shield, CheckCircle2,
   Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Sparkles, PenLine, Award
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -20,8 +20,6 @@ import { createPageUrl } from '@/utils';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
-
-const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
@@ -53,9 +51,6 @@ export default function StudentPortfolioVault() {
   const [signatures, setSignatures] = useState({});
   const [activeCategory, setActiveCategory] = useState('all');
   const [exporting, setExporting] = useState(false);
-  const [driveConnected, setDriveConnected] = useState(false);
-  const [connecting, setConnecting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [blockWards, setBlockWards] = useState([]);
   const [selectedBlockWard, setSelectedBlockWard] = useState(null);
 
@@ -70,10 +65,6 @@ export default function StudentPortfolioVault() {
     const p = profiles[0] || null;
     setProfile(p);
     await loadPortfolio(me.email, p?.school_id);
-    try {
-      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
-      setDriveConnected(!!connStatus?.connected);
-    } catch { setDriveConnected(false); }
     setLoading(false);
   };
 
@@ -282,65 +273,6 @@ export default function StudentPortfolioVault() {
     doc.save(`BlockWard_Certificate_${rec.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.pdf`);
   };
 
-  // ---- Optional Google Drive sync ----
-  const handleConnectDrive = async () => {
-    setConnecting(true);
-    try {
-      const url = await base44.connectors.connectAppUser(CONNECTOR_ID);
-      const popup = window.open(url, '_blank', 'width=500,height=600');
-      const timer = setInterval(() => {
-        if (!popup || popup.closed) {
-          clearInterval(timer);
-          setConnecting(false);
-          if (profile?.id) {
-            try {
-              base44.entities.UserProfile.update(profile.id, {
-                connected_google_email: user.email,
-                drive_connected_at: new Date().toISOString(),
-              });
-            } catch { /* best-effort */ }
-          }
-          checkDriveStatus();
-          toast.success('Google Drive connected. Optional sync enabled.');
-        }
-      }, 500);
-    } catch (e) {
-      setConnecting(false);
-      toast.error('Failed to start connection: ' + e.message);
-    }
-  };
-
-  const handleDisconnectDrive = async () => {
-    await base44.connectors.disconnectAppUser(CONNECTOR_ID);
-    setDriveConnected(false);
-    toast.success('Google Drive sync disabled');
-  };
-
-  const checkDriveStatus = async () => {
-    try {
-      const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
-      setDriveConnected(!!connStatus?.connected);
-    } catch { setDriveConnected(false); }
-  };
-
-  const handleSyncToDrive = async () => {
-    setSyncing(true);
-    try {
-      let count = 0;
-      for (const rec of records) {
-        try {
-          const res = await base44.functions.invoke('saveToStudentDrive', { recordId: rec.id });
-          if (res.data?.ok) count++;
-        } catch { /* continue */ }
-      }
-      toast.success(`${count} achievement${count !== 1 ? 's' : ''} synced to Google Drive`);
-    } catch (e) {
-      toast.error('Sync failed: ' + e.message);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
@@ -525,50 +457,6 @@ export default function StudentPortfolioVault() {
           })}
         </div>
       )}
-
-      {/* Optional Google Drive Sync */}
-      <Card className="border-0 shadow-md">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${driveConnected ? 'bg-emerald-100' : 'bg-slate-100'}`}>
-                <HardDrive className={`h-5 w-5 ${driveConnected ? 'text-emerald-600' : 'text-slate-400'}`} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-800">Google Drive (Optional)</p>
-                  <Badge className={driveConnected ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-slate-100 text-slate-500 border-0'}>
-                    {driveConnected ? 'Connected' : 'Not connected'}
-                  </Badge>
-                </div>
-                <p className="text-sm text-slate-500 mt-0.5">
-                  {driveConnected
-                    ? 'Your portfolio is stored safely in BlockWard. Optionally sync a backup copy to your Google Drive.'
-                    : 'Optional backup. Your portfolio is fully stored in BlockWard — no Drive connection needed.'}
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              {driveConnected ? (
-                <>
-                  <Button size="sm" variant="outline" onClick={handleSyncToDrive} disabled={syncing}>
-                    {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <HardDrive className="h-4 w-4 mr-1" />}
-                    {syncing ? 'Syncing...' : 'Sync Now'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={handleDisconnectDrive} className="text-red-600 hover:bg-red-50">
-                    Disconnect
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" variant="outline" onClick={handleConnectDrive} disabled={connecting}>
-                  {connecting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <HardDrive className="h-4 w-4 mr-1" />}
-                  {connecting ? 'Connecting...' : 'Connect Drive'}
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* BlockWard detail modal */}
       <BlockWardDetailModal
