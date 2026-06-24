@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ParentContactSection from '@/components/student/ParentContactSection';
+import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -54,10 +55,10 @@ function StudentDashboardContent() {
         const allSchedules = await base44.entities.TimetableEntry.filter({ day_of_week: dayIndex });
         const todaySchedule = allSchedules.filter(s => classIds.includes(s.class_id));
 
-        // Get points and BlockWards
+        // Get points and earned achievements (single source of truth: StudentRecord)
         const [points, blockWards] = await Promise.all([
           base44.entities.PointEntry.filter({ student_email: currentUser.email }, '-created_date', 10),
-          base44.entities.BlockWard.filter({ student_email: currentUser.email, status: 'active' })
+          loadEarnedAchievements(currentUser.email, profile?.school_id)
         ]);
 
         // Calculate totals

@@ -44,16 +44,11 @@ export default function RecordDetail() {
   const [showSignDialog, setShowSignDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [minting, setMinting] = useState(false);
   const [signing, setSigning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [sigProfile, setSigProfile] = useState(null);
   const [showSigSetup, setShowSigSetup] = useState(false);
-  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
-  const [overrideReason, setOverrideReason] = useState('');
-  const [overriding, setOverriding] = useState(false);
-  const [studentArchiving, setStudentArchiving] = useState(false);
 
   useEffect(() => { loadAll(); }, [recordId]);
 
@@ -150,65 +145,6 @@ export default function RecordDetail() {
     finally { setRejecting(false); }
   };
 
-  // Admin: set record to pending_student_drive (student must archive from their vault)
-  const handleMintAndArchive = async () => {
-    setMinting(true);
-    try {
-      const res = await base44.functions.invoke('requestStudentArchive', { recordId });
-      if (res.data?.ok) {
-        toast.success('Record sent to student — they can now archive it to their Google Drive from the Portfolio Vault page.');
-        loadAll();
-      } else {
-        toast.error(res.data?.error || 'Failed to request student archive');
-      }
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setMinting(false);
-    }
-  };
-
-  // Admin override: archive to school Drive with reason
-  const handleOverrideArchive = async () => {
-    if (!overrideReason.trim()) { toast.error('A reason is required for admin override'); return; }
-    setOverriding(true);
-    try {
-      const res = await base44.functions.invoke('mintAndArchive', { recordId, override_reason: overrideReason.trim() });
-      if (res.data?.ok) {
-        toast.success('NFT archived to school Google Drive (admin override)');
-        setShowOverrideDialog(false);
-        setOverrideReason('');
-        loadAll();
-      } else {
-        toast.error(res.data?.error || 'Override archive failed');
-      }
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setOverriding(false);
-    }
-  };
-
-  // Student: archive to their own Google Drive
-  const handleStudentArchive = async () => {
-    setStudentArchiving(true);
-    try {
-      const res = await base44.functions.invoke('saveToStudentDrive', { recordId });
-      if (res.data?.ok) {
-        toast.success('NFT archived to your Google Drive!');
-        loadAll();
-      } else if (res.data?.needs_student_drive) {
-        toast.error('Please connect your Google Drive from the Portfolio Vault page first.');
-      } else {
-        toast.error(res.data?.error || 'Archive failed');
-      }
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setStudentArchiving(false);
-    }
-  };
-
   const copyVerifyLink = () => {
     const link = `${window.location.origin}/Verify?id=${record.verify_id}`;
     navigator.clipboard.writeText(link);
@@ -227,16 +163,6 @@ export default function RecordDetail() {
     && profile?.user_type === 'admin';
 
   const canReject = (canTeacherSign || canAdminSign);
-
-  const canMint = record?.status === 'approved'
-    && profile?.user_type === 'admin';
-
-  const canOverride = record?.status === 'approved'
-    && profile?.user_type === 'admin';
-
-  const canStudentArchive = record?.status === 'pending_student_drive'
-    && profile?.user_type === 'student'
-    && record?.student_email === user?.email;
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -277,8 +203,8 @@ export default function RecordDetail() {
 
 
 
-      {/* NFT Card — show when minted */}
-      {(record.status === 'minted' || record.status === 'archived') && (
+      {/* NFT Card — show when archived (approved + BlockWard minted) */}
+      {record.status === 'archived' && (
         <div className={`rounded-2xl bg-gradient-to-br ${CATEGORY_COLORS[record.category] || 'from-violet-500 to-indigo-500'} p-1`}>
           <div className="bg-white rounded-xl p-6">
             <div className="flex flex-col md:flex-row gap-6 items-start">

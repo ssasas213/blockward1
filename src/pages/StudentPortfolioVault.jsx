@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
+import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 
 const CONNECTOR_ID = '6a2967c08ac8557a7b3a1b2e';
 
@@ -106,14 +107,11 @@ export default function StudentPortfolioVault() {
     } catch {
       setRecords([]);
     }
-    // Load the student's minted BlockWard NFT badges
+    // Load earned achievements from the single source of truth (StudentRecord)
+    // BlockWard NFT data is joined by record_id inside the loader.
     try {
-      const bwData = await base44.entities.BlockWard.filter({
-        student_email: targetEmail,
-        school_id: schoolId,
-        status: 'active',
-      });
-      setBlockWards(bwData);
+      const achievements = await loadEarnedAchievements(targetEmail, schoolId);
+      setBlockWards(achievements);
     } catch {
       setBlockWards([]);
     }

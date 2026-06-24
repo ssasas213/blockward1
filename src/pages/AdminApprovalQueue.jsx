@@ -63,8 +63,7 @@ function AdminApprovalQueueContent() {
 
   const filtered = records.filter(r => {
     const matchesStatus = filterStatus === 'all'
-      || r.status === filterStatus
-      || (filterStatus === 'archived' && (r.status === 'archived' || r.status === 'minted'));
+      || r.status === filterStatus;
     const q = search.toLowerCase();
     const matchesSearch = !q ||
       r.student_name?.toLowerCase().includes(q) ||
@@ -73,18 +72,14 @@ function AdminApprovalQueueContent() {
     return matchesStatus && matchesSearch;
   });
 
-  // Metrics
+  // Metrics — 'archived' is the single approved state (teacher + admin signed, BlockWard minted)
   const awaitingAdmin = records.filter(r => r.status === 'awaiting_admin_signature').length;
   const awaitingTeacher = records.filter(r => r.status === 'awaiting_teacher_signature').length;
-  const approved = records.filter(r => r.status === 'approved').length;
-  const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
-
-  const archived = records.filter(r => r.status === 'archived' || r.status === 'minted').length;
+  const archived = records.filter(r => r.status === 'archived').length;
 
   const filterTabs = [
     { key: 'awaiting_admin_signature', label: 'Needs My Signature', count: awaitingAdmin },
     { key: 'awaiting_teacher_signature', label: 'With Teacher', count: awaitingTeacher },
-    { key: 'approved', label: 'Approved', count: approved },
     { key: 'archived', label: 'Archived', count: archived },
     { key: 'all', label: 'All Records', count: records.length },
   ];
@@ -110,8 +105,8 @@ function AdminApprovalQueueContent() {
         {[
           { label: 'Needs My Signature', value: awaitingAdmin, color: 'from-orange-500 to-amber-500', icon: PenLine, urgent: awaitingAdmin > 0 },
           { label: 'With Teacher', value: awaitingTeacher, color: 'from-amber-400 to-yellow-500', icon: Clock },
-          { label: 'Admin Approved', value: approved, color: 'from-green-500 to-emerald-500', icon: CheckCircle2 },
-          { label: 'Total Minted', value: minted, color: 'from-violet-500 to-indigo-500', icon: Award },
+          { label: 'Archived', value: archived, color: 'from-green-500 to-emerald-500', icon: CheckCircle2 },
+          { label: 'Total Records', value: records.length, color: 'from-violet-500 to-indigo-500', icon: Award },
         ].map((m, i) => (
           <Card key={i} className={`border-0 shadow-md ${m.urgent ? 'ring-2 ring-orange-400' : ''}`}>
             <CardContent className="p-5">

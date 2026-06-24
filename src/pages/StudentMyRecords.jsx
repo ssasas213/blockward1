@@ -101,7 +101,7 @@ export default function StudentMyRecords() {
       const selectedTeacher = teachers.find(t => t.user_email === form.teacher_email);
       const teacherName = selectedTeacher ? `${selectedTeacher.first_name} ${selectedTeacher.last_name}` : '';
 
-      const now = new Date().toISOString();
+      // Create as draft, then route through the workflow (server-side audit log + status transition)
       const record = await base44.entities.StudentRecord.create({
         school_id: profile.school_id,
         student_id: profile.id,
@@ -114,22 +114,15 @@ export default function StudentMyRecords() {
         file_url: fileUrl,
         teacher_email: form.teacher_email,
         teacher_name: teacherName,
-        status: 'awaiting_teacher_signature',
-        submitted_at: now
+        status: 'draft',
       });
 
-      await base44.entities.AuditLog.create({
-        record_id: record.id,
-        school_id: profile.school_id,
-        actor_email: user.email,
-        actor_name: `${profile.first_name} ${profile.last_name}`,
-        actor_role: 'student',
-        action: 'submitted',
-        old_status: 'draft',
-        new_status: 'awaiting_teacher_signature',
-        notes: `Sent to teacher ${teacherName} for validation`,
-        timestamp: now
+      // Submit through the workflow — creates the audit log server-side, no client-side audit
+      const submitRes = await base44.functions.invoke('recordWorkflow', {
+        action: 'submitRecord',
+        recordId: record.id,
       });
+      if (!submitRes.data?.ok) throw new Error(submitRes.data?.error || 'Failed to submit record');
 
       toast.success('Achievement sent to teacher for validation!');
       setShowSubmit(false);
@@ -144,8 +137,9 @@ export default function StudentMyRecords() {
     }
   };
 
-  const mintedRecords = records.filter(r => r.status === 'minted' || r.status === 'archived');
-  const pendingRecords = records.filter(r => !['minted', 'archived', 'rejected'].includes(r.status));
+  // 'archived' is the single approved state (teacher + admin signed, BlockWard minted)
+  const mintedRecords = records.filter(r => r.status === 'archived');
+  const pendingRecords = records.filter(r => !['archived', 'rejected'].includes(r.status));
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

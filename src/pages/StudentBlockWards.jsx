@@ -14,6 +14,7 @@ import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
 import { base44 } from '@/api/base44Client';
+import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 import { Shield, Award, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -34,9 +35,11 @@ function StudentBlockWardsContent() {
       const user = await base44.auth.me();
       if (!user) return;
 
-      const bwData = await base44.entities.BlockWard.filter({ student_email: user.email, status: 'active' });
-      setBlockWards(bwData);
-      
+      // Single source of truth: StudentRecord (status: 'archived') via shared lifecycle loader.
+      // BlockWard NFT data is joined by record_id inside the loader.
+      const achievements = await loadEarnedAchievements(user.email);
+      setBlockWards(achievements);
+
       const userProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       if (userProfiles.length > 0) {
         setVault({

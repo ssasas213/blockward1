@@ -157,46 +157,41 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, newStatus: 'rejected' }, { headers: CORS });
   }
 
-  // --- adminSignRecord: admin gives final approval ---
+  // --- adminSignRecord: admin gives final approval (ATOMIC) ---
+  // All critical steps must succeed or none commit. If any fails, the record
+  // stays in 'awaiting_admin_signature' and the admin sees the error to retry.
   if (action === 'adminSignRecord') {
     if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { status: 400, headers: CORS });
     if (record.admin_signed) return Response.json({ ok: false, error: 'Record already has an admin signature' }, { status: 409, headers: CORS });
 
-    // Resolve display identity: use SignatureProfile if provided, fallback to profile name
     const sigDisplayName = signatureData.display_name || actorName;
     const sigTitle = signatureData.title || '';
-
-    const sigRecord = await base44.asServiceRole.entities.DigitalSignature.create({
-      record_id: recordId,
-      school_id: record.school_id,
-      signer_email: user.email,
-      signer_name: sigDisplayName,
-      signer_title: sigTitle,
-      signer_role: 'admin',
-      signature_type: signatureData.type || 'typed',
-      signature_value: signatureData.value,
-      signed_at: now
-    });
-
     const verifyId = `${recordId.slice(-8)}-${Date.now().toString(36)}`;
 
-    await base44.asServiceRole.entities.StudentRecord.update(recordId, {
-      admin_signed: true,
-      admin_signature_id: sigRecord.id,
-      admin_signed_at: now,
-      admin_id: profile.id,
-      admin_email: user.email,
-      admin_name: sigDisplayName,
-      status: 'archived',
-      approved_at: now,
-      verify_id: verifyId
-    });
-    await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'archived', `Admin approved and signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}. Record archived to Portfolio Vault.`);
-
-    // Create the BlockWard (NFT badge) so it appears in the student's "My BlockWards" collection
+    // STEP 1: Create admin digital signature
+    let sigRecord;
     try {
-      await base44.asServiceRole.entities.BlockWard.create({
+      sigRecord = await base44.asServiceRole.entities.DigitalSignature.create({
+        record_id: recordId,
         school_id: record.school_id,
+        signer_email: user.email,
+        signer_name: sigDisplayName,
+        signer_title: sigTitle,
+        signer_role: 'admin',
+        signature_type: signatureData.type || 'typed',
+        signature_value: signatureData.value,
+        signed_at: now
+      });
+    } catch (e) {
+      return Response.json({ ok: false, error: 'Failed to create admin signature: ' + e.message }, { status: 500, headers: CORS });
+    }
+
+    // STEP 2: Create BlockWard (NFT badge) linked to the record
+    let blockWard;
+    try {
+      blockWard = await base44.asServiceRole.entities.BlockWard.create({
+        school_id: record.school_id,
+        record_id: recordId,
         student_email: record.student_email,
         student_name: record.student_name || null,
         issuer_email: user.email,
@@ -208,23 +203,72 @@ Deno.serve(async (req) => {
         minted_at: now,
         status: 'active',
       });
-    } catch (e) { /* BlockWard creation is best-effort; don't block approval */ }
+    } catch (e) {
+      // Rollback step 1
+      try { await base44.asServiceRole.entities.DigitalSignature.delete(sigRecord.id); } catch (_) {}
+      return Response.json({ ok: false, error: 'Failed to mint BlockWard: ' + e.message }, { status: 500, headers: CORS });
+    }
 
-    // Notify the student — record is auto-archived to their native Portfolio Vault
+    // STEP 3: Write audit log
+    try {
+      await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'archived', `Admin approved: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}. BlockWard minted, record archived to Portfolio Vault.`);
+    } catch (e) {
+      // Rollback steps 1-2
+      try { await base44.asServiceRole.entities.BlockWard.delete(blockWard.id); } catch (_) {}
+      try { await base44.asServiceRole.entities.DigitalSignature.delete(sigRecord.id); } catch (_) {}
+      return Response.json({ ok: false, error: 'Failed to write audit log: ' + e.message }, { status: 500, headers: CORS });
+    }
+
+    // STEP 4: Update StudentRecord → 'archived' (THE source of truth — final critical step)
+    try {
+      await base44.asServiceRole.entities.StudentRecord.update(recordId, {
+        admin_signed: true,
+        admin_signature_id: sigRecord.id,
+        admin_signed_at: now,
+        admin_id: profile.id,
+        admin_email: user.email,
+        admin_name: sigDisplayName,
+        status: 'archived',
+        approved_at: now,
+        verify_id: verifyId,
+        nft_image_url: blockWard.image_url || record.nft_image_url || null,
+      });
+    } catch (e) {
+      // Rollback steps 1-3
+      try { await base44.asServiceRole.entities.BlockWard.delete(blockWard.id); } catch (_) {}
+      try { await base44.asServiceRole.entities.DigitalSignature.delete(sigRecord.id); } catch (_) {}
+      return Response.json({ ok: false, error: 'Failed to archive record: ' + e.message }, { status: 500, headers: CORS });
+    }
+
+    // STEP 5: Notify the student (best-effort — must not block a successful approval)
     try {
       await base44.asServiceRole.entities.Notification.create({
         user_email: record.student_email,
         school_id: record.school_id,
-        title: 'Achievement Archived to Your Portfolio!',
+        title: 'Achievement Approved & Archived!',
         body: `Your achievement "${record.title}" has been approved and archived to your Portfolio Vault. View it anytime — no action required.`,
         type: 'announcement_important',
         priority: 'important',
         related_id: recordId,
         read: false,
       });
-    } catch (e) { /* notification is best-effort */ }
+    } catch (e) { /* best-effort: approval already committed */ }
 
-    return Response.json({ ok: true, newStatus: 'archived', signatureId: sigRecord.id, verifyId }, { headers: CORS });
+    // STEP 6: Update student statistics (best-effort)
+    if (record.points && record.points > 0) {
+      try {
+        const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
+        if (studentProfiles.length > 0) {
+          const sp = studentProfiles[0];
+          const current = sp.total_achievement_points || 0;
+          await base44.asServiceRole.entities.UserProfile.update(sp.id, {
+            total_achievement_points: current + record.points,
+          });
+        }
+      } catch (e) { /* best-effort: stats update */ }
+    }
+
+    return Response.json({ ok: true, newStatus: 'archived', signatureId: sigRecord.id, verifyId, blockWardId: blockWard.id }, { headers: CORS });
   }
 
   // --- adminRejectRecord ---

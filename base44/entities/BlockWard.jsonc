@@ -5,6 +5,10 @@
     "school_id": {
       "type": "string"
     },
+    "record_id": {
+      "type": "string",
+      "description": "Foreign key to StudentRecord.id \u2014 links the BlockWard to its source-of-truth achievement record"
+    },
     "token_id": {
       "type": "string",
       "description": "On-chain token ID from smart contract"
