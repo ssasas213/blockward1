@@ -65,17 +65,7 @@
   "rls": {
     "create": {},
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "data.actor_email": "{{user.email}}"
-        }
-      ]
+      "data.school_id": "{{user.profile.school_id}}"
     },
     "update": {
       "user_condition": {
