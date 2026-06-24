@@ -81,12 +81,12 @@ export default function StudentPortfolioVault() {
     const targetEmail = email || user?.email;
     try {
       // Fetch ALL the student's records, then keep only verified ones
-      // (teacher + admin both signed). school_id is passed explicitly so
-      // the RLS school_id check resolves correctly.
-      const allRecords = await base44.entities.StudentRecord.filter({
-        student_email: targetEmail,
-        school_id: schoolId,
-      });
+      // (teacher + admin both signed). Only pass school_id when it is
+      // actually defined — passing school_id: undefined filters out ALL
+      // records (no record has school_id === undefined).
+      const recordFilter = { student_email: targetEmail };
+      if (schoolId) recordFilter.school_id = schoolId;
+      const allRecords = await base44.entities.StudentRecord.filter(recordFilter);
       const all = allRecords
         .filter(r => r.teacher_signed && r.admin_signed && (r.status === 'delivered_to_vault' || r.status === 'archived'))
         .sort((a, b) =>

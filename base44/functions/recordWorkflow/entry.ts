@@ -216,19 +216,10 @@ Deno.serve(async (req) => {
       await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'approved', `Admin approved: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}. Ready for vault delivery.`);
     } catch (e) { /* best-effort */ }
 
-    // STEP 4: Notify the student (best-effort)
-    try {
-      await base44.asServiceRole.entities.Notification.create({
-        user_email: record.student_email,
-        school_id: record.school_id,
-        title: 'Achievement Approved!',
-        body: `Your achievement "${record.title}" has been approved. It will be delivered to your vault shortly.`,
-        type: 'announcement_important',
-        priority: 'important',
-        related_id: recordId,
-        read: false,
-      });
-    } catch (e) { /* best-effort */ }
+    // NOTE: No student notification at this stage.
+    // The achievement is 'approved' but NOT yet in the student vault.
+    // The student will be notified when the admin delivers it to the vault
+    // (sendToVault action), at which point the data is verified to exist.
 
     return Response.json({ ok: true, newStatus: 'approved', signatureId: sigRecord.id, verifyId }, { headers: CORS });
   }
@@ -304,6 +295,27 @@ Deno.serve(async (req) => {
     try {
       await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'sent_to_student_vault', 'approved', 'delivered_to_vault', `Admin delivered achievement to student vault. BlockWard ID: ${blockWard.id}`);
     } catch (e) { /* best-effort */ }
+
+    // ── VERIFICATION: Confirm the data actually exists before notifying ──
+    // The notification must be the LAST step. If the data is not readable
+    // back (RLS, timing, or write failure), do NOT send the notification.
+    let verified = false;
+    try {
+      const [verifyRecords, verifyBlockWards] = await Promise.all([
+        base44.asServiceRole.entities.StudentRecord.filter({ id: recordId }),
+        base44.asServiceRole.entities.BlockWard.filter({ record_id: recordId, status: 'active' }),
+      ]);
+      const vr = verifyRecords[0];
+      verified = !!vr
+        && vr.status === 'delivered_to_vault'
+        && vr.vault_status === 'delivered'
+        && vr.blockward_id === blockWard.id
+        && verifyBlockWards.length > 0;
+    } catch (e) { /* verification failed — do not notify */ }
+
+    if (!verified) {
+      return Response.json({ ok: false, error: 'Vault delivery verification failed. Data not found after save. Notification NOT sent.' }, { status: 500, headers: CORS });
+    }
 
     // Notify the student: "A new BlockWard has been added to your Vault."
     try {

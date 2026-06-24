@@ -57,10 +57,9 @@ export default function StudentMyRecords() {
         const connStatus = await base44.connectors.getAppUserConnectionStatus(CONNECTOR_ID);
         setDriveConnected(!!connStatus?.connected);
       } catch { setDriveConnected(false); }
-      const recs = await base44.entities.StudentRecord.filter({
-        student_email: currentUser.email,
-        school_id: p?.school_id
-      }, '-created_date');
+      const recordFilter = { student_email: currentUser.email };
+      if (p?.school_id) recordFilter.school_id = p.school_id;
+      const recs = await base44.entities.StudentRecord.filter(recordFilter, '-created_date');
       setRecords(recs);
 
       // Fetch available teachers in the school for validation
