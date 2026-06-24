@@ -1,7 +1,6 @@
 /**
  * StudentPortfolioVault — Native BlockWard Portfolio Vault.
- * Every student automatically has a portfolio. No Google Drive required.
- * Google Drive is an OPTIONAL sync/backup destination.
+ * Every student automatically has a portfolio. BlockWard Vault is the sole source of truth.
  */
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
@@ -245,7 +244,7 @@ export default function StudentPortfolioVault() {
       ['Teacher', rec.teacher_name || '—'],
       ['Admin', rec.admin_name || '—'],
       ['Verification ID', rec.verify_id || '—'],
-      ['Status', 'Verified & Archived'],
+      ['Status', 'Delivered to BlockWard Vault'],
     ];
     rows.forEach(([k, v]) => {
       doc.setTextColor(120);

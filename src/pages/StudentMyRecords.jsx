@@ -134,7 +134,7 @@ export default function StudentMyRecords() {
 
   // 'delivered_to_vault' is the delivered state; 'archived' is legacy
   const mintedRecords = records.filter(r => r.status === 'delivered_to_vault' || r.status === 'archived');
-  const pendingRecords = records.filter(r => !['archived', 'rejected'].includes(r.status));
+  const pendingRecords = records.filter(r => !['delivered_to_vault', 'archived', 'rejected'].includes(r.status));
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">

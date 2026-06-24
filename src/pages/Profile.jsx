@@ -9,10 +9,8 @@ import NotificationPreferences from '@/components/notifications/NotificationPref
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import EditProfileForm from '@/components/profile/EditProfileForm';
 import ProfileStats from '@/components/profile/ProfileStats';
-import GoogleIntegrationStatus from '@/components/profile/GoogleIntegrationStatus';
 import SecuritySection from '@/components/profile/SecuritySection';
 import SignatureProfileSection from '@/components/profile/SignatureProfileSection';
-import DriveVaultSection from '@/components/profile/DriveVaultSection';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 
 function ProfileContent() {
@@ -139,10 +137,6 @@ function ProfileContent() {
 
       {/* SECTION 2 — Digital Signature Profile (teacher/admin only) */}
       <SignatureProfileSection userEmail={user?.email} userRole={profile?.user_type} />
-
-      {/* SECTION 3 — Google Drive Connection */}
-      <GoogleIntegrationStatus />
-      <DriveVaultSection userEmail={user?.email} userType={profile?.user_type} />
 
       {/* Blockchain Wallet */}
       {profile?.wallet_address && (

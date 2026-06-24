@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
-  ArrowLeft, PenLine, Check, X, HardDrive, ExternalLink, Loader2,
+  ArrowLeft, PenLine, Check, X, ExternalLink, Loader2,
   Trophy, Shield, User, SendHorizonal, Sparkles, Copy, Link2, AlertCircle, Info, CheckCircle2
 } from 'lucide-react';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
@@ -282,13 +282,7 @@ export default function RecordDetail() {
                       <Link2 className="h-3.5 w-3.5" /> Copy Verify Link
                     </Button>
                   )}
-                  {record.drive_file_url && (
-                    <Button size="sm" variant="outline" asChild>
-                      <a href={record.drive_file_url} target="_blank" rel="noopener noreferrer">
-                        <HardDrive className="h-3.5 w-3.5 mr-1" /> View in Drive
-                      </a>
-                    </Button>
-                  )}
+
                 </div>
               </div>
             </div>
@@ -495,16 +489,7 @@ export default function RecordDetail() {
                 )}
               </div>
 
-              {/* Drive/NFT info */}
-              {record.drive_folder_path && (
-                <div className="rounded-xl p-4 border border-emerald-200 bg-emerald-50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <HardDrive className="h-4 w-4 text-emerald-600" />
-                    <span className="font-medium text-sm text-emerald-800">Archived to Google Drive</span>
-                  </div>
-                  <p className="text-xs text-emerald-600">{record.drive_folder_path}</p>
-                </div>
-              )}
+
             </CardContent>
           </Card>
         </div>
