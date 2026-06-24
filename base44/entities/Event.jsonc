@@ -12,17 +12,14 @@
     },
     "start_time": {
       "type": "string",
-      "format": "date-time",
-      "description": "Event start datetime"
+      "format": "date-time"
     },
     "end_time": {
       "type": "string",
-      "format": "date-time",
-      "description": "Event end datetime"
+      "format": "date-time"
     },
     "location": {
-      "type": "string",
-      "description": "Location (optional)"
+      "type": "string"
     },
     "audience": {
       "type": "string",
@@ -36,27 +33,22 @@
         "staff_only",
         "custom"
       ],
-      "default": "whole_school",
-      "description": "Target audience"
+      "default": "whole_school"
     },
     "audience_class_id": {
-      "type": "string",
-      "description": "Class ID if audience is a specific class"
+      "type": "string"
     },
     "tags": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Tags e.g. assembly, sports_day, parents_evening"
+      }
     },
     "notes": {
-      "type": "string",
-      "description": "Additional notes"
+      "type": "string"
     },
     "created_by": {
-      "type": "string",
-      "description": "Teacher/admin user email"
+      "type": "string"
     }
   },
   "required": [
@@ -66,39 +58,10 @@
   ],
   "rls": {
     "create": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "user_condition": {
-        "role": {
-          "$in": [
-            "admin",
-            "teacher"
-          ]
-        }
-      }
+      "data.school_id": "{{user.profile.school_id}}"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "teacher"
-          }
-        },
-        {
-          "data.audience": "whole_school"
-        },
-        {
-          "user_condition": {
-            "role": "student"
-          },
-          "data.audience": "whole_school"
-        }
-      ]
+      "data.school_id": "{{user.profile.school_id}}"
     },
     "update": {
       "data.school_id": "{{user.profile.school_id}}",
