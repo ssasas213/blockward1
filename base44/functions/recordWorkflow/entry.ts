@@ -193,6 +193,23 @@ Deno.serve(async (req) => {
     });
     await audit(base44, recordId, record.school_id, user.email, sigDisplayName, 'admin', 'admin_signed', 'awaiting_admin_signature', 'archived', `Admin approved and signed: ${sigDisplayName}${sigTitle ? ` (${sigTitle})` : ''}. Record archived to Portfolio Vault.`);
 
+    // Create the BlockWard (NFT badge) so it appears in the student's "My BlockWards" collection
+    try {
+      await base44.asServiceRole.entities.BlockWard.create({
+        school_id: record.school_id,
+        student_email: record.student_email,
+        student_name: record.student_name || null,
+        issuer_email: user.email,
+        issuer_name: sigDisplayName,
+        title: record.title,
+        description: record.description || null,
+        category: record.category || 'special',
+        image_url: record.nft_image_url || record.custom_nft_image_url || null,
+        minted_at: now,
+        status: 'active',
+      });
+    } catch (e) { /* BlockWard creation is best-effort; don't block approval */ }
+
     // Notify the student — record is auto-archived to their native Portfolio Vault
     try {
       await base44.asServiceRole.entities.Notification.create({
