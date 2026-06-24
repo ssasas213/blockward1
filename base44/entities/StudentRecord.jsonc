@@ -238,11 +238,6 @@
       "data.school_id": "{{user.profile.school_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
           "data.student_email": "{{user.email}}"
         },
         {
