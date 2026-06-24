@@ -1,0 +1,204 @@
+{
+  "name": "BlockWardVerificationRegistry",
+  "type": "object",
+  "properties": {
+    "verification_id": {
+      "type": "string",
+      "description": "Permanent public verification ID (format: BW-2026-ABCD1234). Powers /verify/{verification_id}."
+    },
+    "public_slug": {
+      "type": "string",
+      "description": "Human-readable URL slug for the verification page"
+    },
+    "blockward_id": {
+      "type": "string",
+      "description": "Foreign key to BlockWard.id"
+    },
+    "student_record_id": {
+      "type": "string",
+      "description": "Foreign key to StudentRecord.id \u2014 the source-of-truth achievement"
+    },
+    "organisation_id": {
+      "type": "string",
+      "description": "ID of the issuing organisation (School.id for schools)"
+    },
+    "organisation_type": {
+      "type": "string",
+      "enum": [
+        "school",
+        "university",
+        "sports_club",
+        "martial_arts_academy",
+        "chess_organisation",
+        "esports_organisation",
+        "music_academy",
+        "training_centre",
+        "corporate_organisation",
+        "community_organisation",
+        "other"
+      ],
+      "default": "school",
+      "description": "Type of issuing organisation"
+    },
+    "organisation_name": {
+      "type": "string",
+      "description": "Display name of the issuing organisation"
+    },
+    "school_id": {
+      "type": "string",
+      "description": "School ID if organisation type is school"
+    },
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the student (permanent owner)"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Display name of the student (public)"
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Student email (PRIVATE \u2014 never exposed on public page)"
+    },
+    "achievement_title": {
+      "type": "string"
+    },
+    "achievement_category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "behaviour",
+        "special"
+      ],
+      "default": "academic"
+    },
+    "achievement_description": {
+      "type": "string"
+    },
+    "achievement_image": {
+      "type": "string",
+      "description": "NFT badge image or custom award image URL"
+    },
+    "evidence_file_url": {
+      "type": "string",
+      "description": "Student-uploaded evidence file URL (shown only if is_public)"
+    },
+    "date_achieved": {
+      "type": "string",
+      "format": "date"
+    },
+    "date_approved": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "date_delivered": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "teacher_id": {
+      "type": "string"
+    },
+    "teacher_name": {
+      "type": "string",
+      "description": "Teacher/verifier display name (public)"
+    },
+    "teacher_signature_id": {
+      "type": "string",
+      "description": "Foreign key to DigitalSignature.id"
+    },
+    "admin_id": {
+      "type": "string"
+    },
+    "admin_name": {
+      "type": "string",
+      "description": "Admin/authoriser display name (public)"
+    },
+    "admin_signature_id": {
+      "type": "string",
+      "description": "Foreign key to DigitalSignature.id"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "revoked"
+      ],
+      "default": "approved"
+    },
+    "vault_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "delivered"
+      ],
+      "default": "delivered"
+    },
+    "nft_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "minted",
+        "failed"
+      ],
+      "default": "pending"
+    },
+    "blockchain_network": {
+      "type": "string",
+      "description": "e.g. sepolia, amoy, polygon"
+    },
+    "contract_address": {
+      "type": "string"
+    },
+    "token_id": {
+      "type": "string"
+    },
+    "transaction_hash": {
+      "type": "string"
+    },
+    "certificate_url": {
+      "type": "string",
+      "description": "Optional certificate download URL (public)"
+    },
+    "metadata_url": {
+      "type": "string",
+      "description": "IPFS metadata URI for NFT"
+    },
+    "public_verification_url": {
+      "type": "string",
+      "description": "Full public verification URL (https://blockward.me/verify/{verification_id})"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this record is visible on the public verification page"
+    }
+  },
+  "required": [
+    "verification_id",
+    "student_record_id",
+    "achievement_title",
+    "achievement_category"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {},
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -90,6 +90,7 @@ const AuthenticatedApp = () => {
       <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><ProtectedRoute><StudentMyRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
+      <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
 

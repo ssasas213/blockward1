@@ -296,21 +296,82 @@ Deno.serve(async (req) => {
       await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'sent_to_student_vault', 'approved', 'delivered_to_vault', `Admin delivered achievement to student vault. BlockWard ID: ${blockWard.id}`);
     } catch (e) { /* best-effort */ }
 
+    // ── CREATE VERIFICATION REGISTRY RECORD ──
+    // Permanent public verification record — powers /verify/{verification_id}
+    let registryRecord = null;
+    try {
+      const schools = await base44.asServiceRole.entities.School.filter({ id: record.school_id });
+      const school = schools[0] || null;
+      const year = new Date().getFullYear();
+      const rand = Math.random().toString(36).substring(2, 10).toUpperCase();
+      const verificationId = `BW-${year}-${rand}`;
+      const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      const publicSlug = `${slugify(record.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`;
+      const publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
+
+      const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: recordId });
+      if (existingReg.length > 0) {
+        registryRecord = existingReg[0];
+      } else {
+        registryRecord = await base44.asServiceRole.entities.BlockWardVerificationRegistry.create({
+          verification_id: verificationId,
+          public_slug: publicSlug,
+          blockward_id: blockWard.id,
+          student_record_id: recordId,
+          organisation_id: record.school_id,
+          organisation_type: school?.org_type || 'school',
+          organisation_name: school?.name || null,
+          school_id: record.school_id,
+          student_id: record.owner_student_id || record.student_id || null,
+          student_name: record.student_name || null,
+          student_email: record.student_email,
+          achievement_title: record.title,
+          achievement_category: record.category || 'special',
+          achievement_description: record.description || null,
+          achievement_image: record.nft_image_url || record.custom_nft_image_url || null,
+          evidence_file_url: record.file_url || null,
+          date_achieved: record.date_achieved || null,
+          date_approved: record.approved_at || null,
+          date_delivered: now,
+          teacher_id: record.teacher_id || null,
+          teacher_name: record.teacher_name || null,
+          teacher_signature_id: record.teacher_signature_id || null,
+          admin_id: record.admin_id || profile.id,
+          admin_name: record.admin_name || actorName,
+          admin_signature_id: record.admin_signature_id || null,
+          approval_status: 'approved',
+          vault_status: 'delivered',
+          nft_status: record.nft_token_id ? 'minted' : 'pending',
+          blockchain_network: record.nft_token_id ? (Deno.env.get('NETWORK') || 'sepolia') : null,
+          contract_address: record.nft_token_id ? (Deno.env.get('CONTRACT_ADDRESS') || null) : null,
+          token_id: record.nft_token_id || null,
+          transaction_hash: record.nft_transaction_hash || null,
+          certificate_url: record.certificate_url || null,
+          metadata_url: null,
+          public_verification_url: publicVerificationUrl,
+          is_public: true,
+        });
+        await base44.asServiceRole.entities.StudentRecord.update(recordId, { verify_id: verificationId });
+      }
+    } catch (e) { /* best-effort */ }
+
     // ── VERIFICATION: Confirm the data actually exists before notifying ──
     // The notification must be the LAST step. If the data is not readable
     // back (RLS, timing, or write failure), do NOT send the notification.
     let verified = false;
     try {
-      const [verifyRecords, verifyBlockWards] = await Promise.all([
+      const [verifyRecords, verifyBlockWards, verifyRegistry] = await Promise.all([
         base44.asServiceRole.entities.StudentRecord.filter({ id: recordId }),
         base44.asServiceRole.entities.BlockWard.filter({ record_id: recordId, status: 'active' }),
+        base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: recordId }),
       ]);
       const vr = verifyRecords[0];
       verified = !!vr
         && vr.status === 'delivered_to_vault'
         && vr.vault_status === 'delivered'
         && vr.blockward_id === blockWard.id
-        && verifyBlockWards.length > 0;
+        && verifyBlockWards.length > 0
+        && verifyRegistry.length > 0;
     } catch (e) { /* verification failed — do not notify */ }
 
     if (!verified) {
@@ -345,7 +406,7 @@ Deno.serve(async (req) => {
       } catch (e) { /* best-effort */ }
     }
 
-    return Response.json({ ok: true, newStatus: 'delivered_to_vault', blockWardId: blockWard.id, deliveredAt: now }, { headers: CORS });
+    return Response.json({ ok: true, newStatus: 'delivered_to_vault', blockWardId: blockWard.id, deliveredAt: now, verificationId: registryRecord?.verification_id || null, publicVerificationUrl: registryRecord?.public_verification_url || null }, { headers: CORS });
   }
 
   // --- adminRejectRecord ---
