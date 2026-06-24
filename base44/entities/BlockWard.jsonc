@@ -140,15 +140,9 @@
           }
         },
         {
-          "user_condition": {
-            "role": "teacher"
-          },
           "data.issuer_email": "{{user.email}}"
         },
         {
-          "user_condition": {
-            "role": "student"
-          },
           "data.student_email": "{{user.email}}"
         }
       ]
