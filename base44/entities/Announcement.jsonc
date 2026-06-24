@@ -26,7 +26,7 @@
         "urgent"
       ],
       "default": "normal",
-      "description": "Urgency level - urgent/important trigger notifications"
+      "description": "Urgency level"
     },
     "scope_type": {
       "type": "string",
@@ -41,38 +41,31 @@
       "description": "Who this announcement targets"
     },
     "year_group_id": {
-      "type": "string",
-      "description": "Year group ID if scope is YEAR_GROUP"
+      "type": "string"
     },
     "year_group_name": {
-      "type": "string",
-      "description": "Year group display name"
+      "type": "string"
     },
     "class_id": {
-      "type": "string",
-      "description": "Class ID if scope is CLASS"
+      "type": "string"
     },
     "class_name": {
-      "type": "string",
-      "description": "Class display name"
+      "type": "string"
     },
     "team_name": {
-      "type": "string",
-      "description": "Team/Department name if scope is TEAM"
+      "type": "string"
     },
     "student_emails": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Specific student emails if scope is STUDENTS"
+      }
     },
     "student_names": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Display names of targeted students"
+      }
     },
     "status": {
       "type": "string",
@@ -81,22 +74,18 @@
         "scheduled",
         "sent"
       ],
-      "default": "draft",
-      "description": "Announcement status"
+      "default": "draft"
     },
     "created_by": {
-      "type": "string",
-      "description": "Teacher/admin user email"
+      "type": "string"
     },
     "sent_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When the announcement was sent"
+      "format": "date-time"
     },
     "scheduled_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When to auto-send the announcement"
+      "format": "date-time"
     }
   },
   "required": [
@@ -106,14 +95,6 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "role": {
-          "$in": [
-            "admin",
-            "teacher"
-          ]
-        }
-      },
       "data.school_id": "{{user.profile.school_id}}"
     },
     "read": {
@@ -125,34 +106,17 @@
           }
         },
         {
-          "user_condition": {
-            "role": "teacher"
-          },
-          "$or": [
-            {
-              "data.scope_type": "SCHOOL"
-            },
-            {
-              "created_by_id": "{{user.id}}"
-            }
-          ]
+          "data.scope_type": "SCHOOL"
         },
         {
-          "user_condition": {
-            "role": "student"
-          },
-          "$or": [
-            {
-              "data.scope_type": "SCHOOL"
-            },
-            {
-              "data.student_emails": {
-                "$in": [
-                  "{{user.email}}"
-                ]
-              }
-            }
-          ]
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.student_emails": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
         }
       ]
     },
