@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
   // Only act on meaningful status transitions
   if (newStatus === oldStatus) return Response.json({ ok: true, skipped: 'no change' });
 
-  const appUrl = Deno.env.get('APP_URL') || 'https://blockward.app';
+  const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
   const recordUrl = `${appUrl}/RecordDetail?id=${data.id || event?.entity_id}`;
 
   // --- Teacher notification ---
@@ -76,48 +76,11 @@ Deno.serve(async (req) => {
     return Response.json({ ok: true, notified: 'admins', count: adminProfiles.length });
   }
 
-  // --- Parent notification on delivery to student vault (verified + delivered) ---
-  if ((newStatus === 'delivered_to_vault' || newStatus === 'archived') && data.student_email) {
-    // Fetch the student's profile to get parent contact
-    const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({
-      user_email: data.student_email
-    });
-    const studentProfile = studentProfiles[0];
-
-    if (studentProfile?.parent_email) {
-      const appUrl = Deno.env.get('APP_URL') || 'https://blockward.app';
-      const verifyUrl = data.verify_id
-        ? `${appUrl}/Verify?id=${data.verify_id}`
-        : recordUrl;
-
-      await base44.asServiceRole.integrations.Core.SendEmail({
-        to: studentProfile.parent_email,
-        subject: `🎓 ${data.student_name || 'Your child'} has received a verified achievement certificate`,
-        body: `
-<p>Dear ${studentProfile.parent_name || 'Parent/Guardian'},</p>
-<p>We are pleased to inform you that <strong>${data.student_name || 'your child'}</strong> has received a verified digital achievement certificate from ${data.teacher_name ? `${data.teacher_name} and the admin team` : 'the school'}.</p>
-<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:20px 0;">
-  <h3 style="color:#5b21b6;margin:0 0 12px;">${data.title}</h3>
-  ${data.description ? `<p style="color:#475569;margin:0 0 8px;">${data.description}</p>` : ''}
-  <p style="color:#64748b;font-size:13px;margin:0;"><strong>Category:</strong> ${data.category || 'Achievement'}</p>
-  ${data.date_achieved ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Date:</strong> ${data.date_achieved}</p>` : ''}
-  ${data.verify_id ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Verification ID:</strong> ${data.verify_id}</p>` : ''}
-</div>
-<p>This achievement has been reviewed and digitally signed by both the teacher and school administration. It is permanently archived and can be verified at any time.</p>
-<p>
-  <a href="${verifyUrl}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">
-    View & Verify Certificate →
-  </a>
-</p>
-${data.drive_file_url ? `<p><a href="${data.drive_file_url}" style="color:#7c3aed;">View Certificate in Google Drive</a></p>` : ''}
-<p style="color:#94a3b8;font-size:12px;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
-  This certificate was issued by BlockWard — the school's digital custodian platform for verified student achievements.
-</p>
-        `.trim()
-      });
-      return Response.json({ ok: true, notified: 'parent', email: studentProfile.parent_email });
-    }
-  }
+  // NOTE: Parent notification on delivery to vault is now handled by the
+  // recordWorkflow sendToVault action itself, AFTER the verification registry
+  // is created and all data is confirmed to exist. This prevents sending
+  // emails with broken verification links.
+  // The entity automation should NOT send parent emails for delivered_to_vault.
 
   // --- Student notification on rejection ---
   if (newStatus === 'rejected' && data.student_email) {

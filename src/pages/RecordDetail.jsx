@@ -53,49 +53,33 @@ export default function RecordDetail() {
 
   useEffect(() => { loadAll(); }, [recordId]);
 
+  const [errorType, setErrorType] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+
   const loadAll = async () => {
     if (!recordId) { setLoading(false); return; }
     try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      const p = profiles[0];
-      setProfile(p);
-
-      if (p?.status === 'inactive' || p?.status === 'suspended') {
-        toast.error('Your account is inactive.');
-        navigate(-1);
+      // Use the backend function to fetch the record — bypasses RLS issues
+      // and provides structured error messages (not_found, access_denied, wrong_school)
+      const res = await base44.functions.invoke('getRecordDetail', { recordId });
+      const data = res.data;
+      if (!data?.ok) {
+        setErrorType(data?.error || 'unknown');
+        setErrorMessage(data?.message || 'Record not found');
+        setLoading(false);
         return;
       }
 
-      const records = await base44.entities.StudentRecord.filter({ id: recordId });
-      if (!records.length) { toast.error('Record not found'); return; }
-      const rec = records[0];
-
-      // Load signature profile for teacher/admin
-      if (p?.user_type === 'teacher' || p?.user_type === 'admin') {
-        const sigProfiles = await base44.entities.SignatureProfile.filter({ user_email: currentUser.email });
-        setSigProfile(sigProfiles[0] || null);
-      }
-
-      if (p?.school_id && rec.school_id && p.school_id !== rec.school_id) {
-        toast.error('Access denied'); navigate(-1); return;
-      }
-      if (p?.user_type === 'student' && rec.student_email !== currentUser.email) {
-        toast.error('Access denied'); navigate(-1); return;
-      }
-
-      setRecord(rec);
-
-      const [logs, sigs] = await Promise.all([
-        base44.entities.AuditLog.filter({ record_id: recordId }),
-        base44.entities.DigitalSignature.filter({ record_id: recordId })
-      ]);
-      setAuditLogs(logs.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)));
-      setTeacherSig(sigs.find(s => s.signer_role === 'teacher') || null);
-      setAdminSig(sigs.find(s => s.signer_role === 'admin') || null);
+      setUser(data.user);
+      setProfile(data.profile);
+      setRecord(data.record);
+      setAuditLogs(data.auditLogs || []);
+      setTeacherSig(data.teacherSig || null);
+      setAdminSig(data.adminSig || null);
+      setSigProfile(data.sigProfile || null);
     } catch (e) {
-      toast.error(e.message);
+      setErrorType('fetch_error');
+      setErrorMessage(e.message);
     } finally {
       setLoading(false);
     }
@@ -157,7 +141,7 @@ export default function RecordDetail() {
   };
 
   const copyVerifyLink = () => {
-    const link = `${window.location.origin}/Verify?id=${record.verify_id}`;
+    const link = `${window.location.origin}/verify/${record.verify_id}`;
     navigator.clipboard.writeText(link);
     toast.success('Verification link copied!');
   };
@@ -191,8 +175,33 @@ export default function RecordDetail() {
   );
 
   if (!record) return (
-    <div className="p-8 text-center text-slate-500">
-      {recordId ? 'Record not found.' : 'No record ID provided. Please open this page from a valid link.'}
+    <div className="max-w-md mx-auto mt-20">
+      <Card className="border-0 shadow-xl text-center">
+        <CardContent className="py-12">
+          <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
+            errorType === 'not_found' ? 'bg-slate-100' :
+            errorType === 'access_denied' || errorType === 'wrong_school' ? 'bg-amber-100' :
+            'bg-red-100'
+          }`}>
+            {errorType === 'not_found' ? <Trophy className="h-8 w-8 text-slate-400" /> :
+             <AlertCircle className={`h-8 w-8 ${
+               errorType === 'access_denied' || errorType === 'wrong_school' ? 'text-amber-500' : 'text-red-500'
+             }`} />}
+          </div>
+          <h1 className="text-xl font-bold text-slate-900 mb-2">
+            {errorType === 'not_found' ? 'Achievement Not Found' :
+             errorType === 'access_denied' ? 'Access Denied' :
+             errorType === 'wrong_school' ? 'Wrong Organisation' :
+             'Unable to Load Record'}
+          </h1>
+          <p className="text-slate-500 mb-4">
+            {errorMessage || (recordId ? 'This record could not be found.' : 'No record ID provided. Please open this page from a valid link.')}
+          </p>
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 

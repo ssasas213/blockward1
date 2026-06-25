@@ -14,7 +14,6 @@ import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
 import { base44 } from '@/api/base44Client';
-import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 import { Shield, Award, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -35,15 +34,17 @@ function StudentBlockWardsContent() {
       const user = await base44.auth.me();
       if (!user) return;
 
-      // Load profile FIRST so we can pass school_id to the loader.
-      // This ensures RLS has the correct school_id context for the query.
+      // Use the backend function to fetch earned achievements — bypasses RLS
+      // and guarantees the student sees their BlockWards immediately after delivery.
+      const res = await base44.functions.invoke('getStudentVault', {});
+      const data = res.data;
+      if (data?.ok) {
+        setBlockWards(data.achievements || []);
+      }
+
+      // Load profile for vault display
       const userProfiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       const profile = userProfiles[0] || null;
-
-      // Single source of truth: StudentRecord (status: 'delivered_to_vault' or 'archived')
-      // via shared lifecycle loader. BlockWard NFT data is joined by record_id inside.
-      const achievements = await loadEarnedAchievements(user.email, profile?.school_id);
-      setBlockWards(achievements);
 
       if (profile) {
         setVault({

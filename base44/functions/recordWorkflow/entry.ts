@@ -296,22 +296,27 @@ Deno.serve(async (req) => {
       await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'sent_to_student_vault', 'approved', 'delivered_to_vault', `Admin delivered achievement to student vault. BlockWard ID: ${blockWard.id}`);
     } catch (e) { /* best-effort */ }
 
-    // ── CREATE VERIFICATION REGISTRY RECORD ──
+    // ── CREATE VERIFICATION REGISTRY RECORD (REQUIRED — not best-effort) ──
     // Permanent public verification record — powers /verify/{verification_id}
+    // If this fails, the entire vault delivery fails (rollback).
     let registryRecord = null;
+    let verificationId = null;
+    let publicVerificationUrl = null;
     try {
       const schools = await base44.asServiceRole.entities.School.filter({ id: record.school_id });
       const school = schools[0] || null;
       const year = new Date().getFullYear();
       const rand = Math.random().toString(36).substring(2, 10).toUpperCase();
-      const verificationId = `BW-${year}-${rand}`;
+      verificationId = `BW-${year}-${rand}`;
       const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
       const publicSlug = `${slugify(record.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`;
-      const publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
+      publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
 
       const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: recordId });
       if (existingReg.length > 0) {
         registryRecord = existingReg[0];
+        verificationId = registryRecord.verification_id;
+        publicVerificationUrl = registryRecord.public_verification_url;
       } else {
         registryRecord = await base44.asServiceRole.entities.BlockWardVerificationRegistry.create({
           verification_id: verificationId,
@@ -353,11 +358,25 @@ Deno.serve(async (req) => {
         });
         await base44.asServiceRole.entities.StudentRecord.update(recordId, { verify_id: verificationId });
       }
-    } catch (e) { /* best-effort */ }
+    } catch (e) {
+      // Registry creation FAILED — this is a critical error.
+      // Rollback: delete the BlockWard if it was newly created, and revert the record status.
+      if (!existingBlockWard) {
+        try { await base44.asServiceRole.entities.BlockWard.delete(blockWard.id); } catch (_) {}
+      }
+      try {
+        await base44.asServiceRole.entities.StudentRecord.update(recordId, {
+          status: 'approved',
+          vault_status: 'pending',
+          vault_delivered_at: null,
+          blockward_id: null,
+        });
+      } catch (_) {}
+      return Response.json({ ok: false, error: 'Failed to create verification registry: ' + e.message + '. Vault delivery rolled back.' }, { status: 500, headers: CORS });
+    }
 
-    // ── VERIFICATION: Confirm the data actually exists before notifying ──
-    // The notification must be the LAST step. If the data is not readable
-    // back (RLS, timing, or write failure), do NOT send the notification.
+    // ── VERIFICATION: Confirm ALL data exists before notifying ──
+    // The notification must be the LAST step. If any data is missing, do NOT notify.
     let verified = false;
     try {
       const [verifyRecords, verifyBlockWards, verifyRegistry] = await Promise.all([
@@ -378,7 +397,9 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'Vault delivery verification failed. Data not found after save. Notification NOT sent.' }, { status: 500, headers: CORS });
     }
 
-    // Notify the student: "A new BlockWard has been added to your Vault."
+    // ── NOTIFICATIONS (FINAL STEP — only after all data is verified) ──
+
+    // 1. In-app notification to the student
     try {
       await base44.asServiceRole.entities.Notification.create({
         user_email: record.student_email,
@@ -392,7 +413,43 @@ Deno.serve(async (req) => {
       });
     } catch (e) { /* best-effort */ }
 
-    // Update student statistics (best-effort)
+    // 2. Parent/guardian email notification (if parent email exists)
+    try {
+      const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
+      const studentProfile = studentProfiles[0];
+      if (studentProfile?.parent_email) {
+        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
+        const verifyUrl = `${appUrl}/verify/${verificationId}`;
+        const recordUrl = `${appUrl}/RecordDetail?id=${recordId}`;
+
+        await base44.asServiceRole.integrations.Core.SendEmail({
+          to: studentProfile.parent_email,
+          subject: `🎓 ${record.student_name || 'Your child'} has received a verified achievement certificate`,
+          body: `
+<p>Dear ${studentProfile.parent_name || 'Parent/Guardian'},</p>
+<p>We are pleased to inform you that <strong>${record.student_name || 'your child'}</strong> has received a verified digital achievement certificate from ${record.teacher_name ? `${record.teacher_name} and the admin team` : 'the school'}.</p>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:20px 0;">
+  <h3 style="color:#5b21b6;margin:0 0 12px;">${record.title}</h3>
+  ${record.description ? `<p style="color:#475569;margin:0 0 8px;">${record.description}</p>` : ''}
+  <p style="color:#64748b;font-size:13px;margin:0;"><strong>Category:</strong> ${record.category || 'Achievement'}</p>
+  ${record.date_achieved ? `<p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Date:</strong> ${record.date_achieved}</p>` : ''}
+  <p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Verification ID:</strong> ${verificationId}</p>
+</div>
+<p>This achievement has been reviewed and digitally signed by both the teacher and school administration. It is permanently archived and can be verified at any time.</p>
+<p>
+  <a href="${verifyUrl}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">
+    View & Verify Certificate →
+  </a>
+</p>
+<p style="color:#94a3b8;font-size:12px;margin-top:24px;border-top:1px solid #e2e8f0;padding-top:16px;">
+  This certificate was issued by BlockWard — the school's digital custodian platform for verified student achievements.
+</p>
+          `.trim()
+        });
+      }
+    } catch (e) { /* best-effort */ }
+
+    // 3. Update student statistics (best-effort)
     if (record.points && record.points > 0) {
       try {
         const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
@@ -406,7 +463,7 @@ Deno.serve(async (req) => {
       } catch (e) { /* best-effort */ }
     }
 
-    return Response.json({ ok: true, newStatus: 'delivered_to_vault', blockWardId: blockWard.id, deliveredAt: now, verificationId: registryRecord?.verification_id || null, publicVerificationUrl: registryRecord?.public_verification_url || null }, { headers: CORS });
+    return Response.json({ ok: true, newStatus: 'delivered_to_vault', blockWardId: blockWard.id, deliveredAt: now, verificationId, publicVerificationUrl }, { headers: CORS });
   }
 
   // --- adminRejectRecord ---
