@@ -40,7 +40,7 @@ export default function Home() {
   };
 
   const handleSignIn = () => {
-    window.location.href = '/Login';
+    window.location.href = '/ChoosePlatform';
   };
 
   const handleGoToDashboard = () => {

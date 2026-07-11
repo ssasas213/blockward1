@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { PLATFORM_LIST, VERIFICATION_FLOW, getPlatformConfig } from '@/lib/platformConfig';
 import { usePlatform } from '@/lib/PlatformContext';
+import { handlePostLoginRedirect } from '@/lib/authHelpers';
 
 const ICONS = {
   GraduationCap, Trophy, Users, Calendar, BookOpen, Award, Megaphone,
@@ -26,28 +27,22 @@ export default function ChoosePlatform() {
     setEntering(platformId);
     selectPlatform(platformId);
 
-    // If the user is already authenticated, send them to their dashboard.
-    // Otherwise route to login/signup to continue onboarding under the chosen platform.
+    const config = getPlatformConfig(platformId);
+
+    // If the user is already authenticated, redirect to their dashboard.
     try {
       const user = await base44.auth.me();
       if (user) {
-        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-        if (profiles.length > 0) {
-          const p = profiles[0];
-          const dashboardMap = {
-            admin: 'AdminDashboard',
-            teacher: 'TeacherDashboard',
-            student: 'StudentDashboard',
-          };
-          navigate(createPageUrl(dashboardMap[p.user_type] || 'StudentDashboard'));
-          return;
-        }
+        // Use platform-aware redirect
+        await handlePostLoginRedirect(platformId);
+        return;
       }
     } catch {
       /* not authenticated */
     }
 
-    navigate(createPageUrl('Login'));
+    // Route to the platform-specific login page
+    navigate(config.loginPath);
   };
 
   return (

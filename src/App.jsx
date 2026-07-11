@@ -6,7 +6,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import VisualEditAgent from '@/lib/VisualEditAgent'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -27,6 +27,12 @@ import CustodianDashboard from './pages/CustodianDashboard';
 import ChoosePlatform from './pages/ChoosePlatform';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
+import OrgsLayout from '@/components/layouts/OrgsLayout';
+import SchoolsLogin from './pages/schools/Login';
+import SchoolsSignup from './pages/schools/Signup';
+import OrgsLogin from './pages/organisations/Login';
+import OrgsSignup from './pages/organisations/Signup';
+import OrgDashboard from './pages/organisations/Dashboard';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -93,6 +99,18 @@ const AuthenticatedApp = () => {
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
+
+      {/* Platform-specific login/signup routes */}
+      <Route path="/schools/login" element={<SchoolsLogin />} />
+      <Route path="/schools/signup" element={<SchoolsSignup />} />
+      <Route path="/organisations/login" element={<OrgsLogin />} />
+      <Route path="/organisations/signup" element={<OrgsSignup />} />
+
+      {/* Organisations platform — scoped routes with org layout */}
+      <Route path="/organisations" element={<ProtectedRoute><OrgsLayout /></ProtectedRoute>}>
+        <Route index element={<Navigate to="/organisations/dashboard" replace />} />
+        <Route path="dashboard" element={<OrgDashboard />} />
+      </Route>
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>

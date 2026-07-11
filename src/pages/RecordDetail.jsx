@@ -107,7 +107,7 @@ export default function RecordDetail() {
       const action = profile.user_type === 'admin' ? 'adminSignRecord' : 'teacherSignRecord';
       await callWorkflow(action, { signatureData: sigData });
       setShowSignDialog(false);
-      toast.success(profile.user_type === 'admin' ? 'Approved! Achievement archived to Portfolio Vault.' : 'Signed! Forwarded to admin for final approval.');
+      toast.success(profile.user_type === 'admin' ? 'Approved! Ready for vault delivery.' : 'Signed! Forwarded to admin for final approval.');
       loadAll();
     } catch (e) {
       toast.error(e.message);
@@ -133,7 +133,8 @@ export default function RecordDetail() {
   const handleSendToVault = async () => {
     setSendingVault(true);
     try {
-      await callWorkflow('sendToVault');
+      const res = await base44.functions.invoke('sendToStudentVault', { record_id: recordId });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Delivery failed');
       toast.success('Achievement delivered to student vault!');
       loadAll();
     } catch (e) { toast.error(e.message); }

@@ -147,6 +147,11 @@
       "default": "draft",
       "description": "Workflow status"
     },
+    "delivered_to_student_vault": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only after the achievement has been delivered to the student vault AND verified by re-query"
+    },
     "teacher_signed": {
       "type": "boolean",
       "default": false

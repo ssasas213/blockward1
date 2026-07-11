@@ -38,6 +38,7 @@ export default function StudentMyRecords() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [teachers, setTeachers] = useState([]);
+  const [deliveredAchievements, setDeliveredAchievements] = useState([]);
 
   useEffect(() => { loadData(); }, []);
 
@@ -49,10 +50,21 @@ export default function StudentMyRecords() {
       const p = profiles[0];
       setProfile(p);
 
+      // Fetch all student records (direct, for showing pending/in-progress submissions)
       const recordFilter = { student_email: currentUser.email };
       if (p?.school_id) recordFilter.school_id = p.school_id;
       const recs = await base44.entities.StudentRecord.filter(recordFilter, '-created_date');
       setRecords(recs);
+
+      // Fetch DELIVERED achievements via the shared vault loader — same source as
+      // Dashboard, My BlockWards, and Portfolio Vault. This guarantees the
+      // "Minted NFTs" count matches every other page.
+      try {
+        const vaultRes = await base44.functions.invoke('getStudentVault', {});
+        if (vaultRes.data?.ok) {
+          setDeliveredAchievements(vaultRes.data.achievements || []);
+        }
+      } catch (e) { /* shared loader error — counts will show 0 */ }
 
       // Fetch available teachers in the school for validation
       if (p?.school_id) {
@@ -132,8 +144,9 @@ export default function StudentMyRecords() {
     }
   };
 
-  // 'delivered_to_vault' is the delivered state; 'archived' is legacy
-  const mintedRecords = records.filter(r => r.status === 'delivered_to_vault' || r.status === 'archived');
+  // Use the shared vault loader for delivered achievements — same count as Dashboard,
+  // My BlockWards, and Portfolio Vault.
+  const mintedRecords = deliveredAchievements;
   const pendingRecords = records.filter(r => !['delivered_to_vault', 'archived', 'rejected'].includes(r.status));
 
   if (loading) return (
