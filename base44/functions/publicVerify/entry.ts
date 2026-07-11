@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     }
 
     const record = records[0];
-    const verifiedStatuses = ['delivered_to_vault', 'minted', 'archived'];
+    const verifiedStatuses = ['delivered_to_vault', 'archived'];
     if (!verifiedStatuses.includes(record.status)) {
       return Response.json({
         ok: true,

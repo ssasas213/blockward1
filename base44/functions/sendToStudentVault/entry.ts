@@ -51,8 +51,13 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
 
     // ── Auth: admin only ──
-    const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
-    const profile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizeEmail(user.email));
+    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    let profile = profiles[0] || null;
+    // Fallback: case-insensitive match
+    if (!profile) {
+      const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
+      profile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizeEmail(user.email)) || null;
+    }
 
     if (!profile) return Response.json({ ok: false, error: 'User profile not found' }, { status: 403, headers: CORS });
     if (profile.status === 'inactive' || profile.status === 'suspended') {
@@ -112,7 +117,7 @@ Deno.serve(async (req) => {
     // ── STEP 3: Create or update linked BlockWard ──
     let blockWard = null;
     const existingBlockWards = await base44.asServiceRole.entities.BlockWard.filter({ record_id: record_id, status: 'active' });
-    // Also check by student_record_id
+    // Also check by student_record_id (deterministic — one BlockWard per StudentRecord)
     const existingByStudentRecord = await base44.asServiceRole.entities.BlockWard.filter({ student_record_id: record_id, status: 'active' });
 
     if (existingBlockWards.length > 0) {
@@ -268,17 +273,17 @@ Deno.serve(async (req) => {
       timestamp: now,
     });
 
-    // ── STEP 7: Re-query student vault using the SAME loader logic ──
+    // ── STEP 7: Re-query using the SAME filter criteria as getStudentVault ──
     // This confirms the delivered record is retrievable by the student-facing pages.
     let verified = false;
     let verifyError = null;
     try {
       // Query by student_id (same as getStudentVault)
       const verifyRecords = await base44.asServiceRole.entities.StudentRecord.filter({ student_id: canonicalStudentId });
-      // Also query by email as fallback
+      // Also query by email as fallback (same as getStudentVault)
       const verifyRecordsByEmail = await base44.asServiceRole.entities.StudentRecord.filter({ student_email: record.student_email });
 
-      // Merge and deduplicate
+      // Merge and deduplicate (same logic as getStudentVault)
       const seenIds = new Set();
       const allVerifyRecords = [];
       for (const r of verifyRecords) {
@@ -288,17 +293,22 @@ Deno.serve(async (req) => {
         if (!seenIds.has(r.id)) { seenIds.add(r.id); allVerifyRecords.push(r); }
       }
 
+      // Use the SAME filter criteria as getStudentVault:
+      //   status === 'delivered_to_vault' || 'archived'
+      //   vault_status === 'delivered'
+      //   delivered_to_student_vault === true (or undefined)
       const deliveredRecord = allVerifyRecords.find(r =>
         r.id === record_id &&
+        (r.status === 'delivered_to_vault' || r.status === 'archived') &&
         r.vault_status === 'delivered' &&
-        r.delivered_to_student_vault === true &&
+        (r.delivered_to_student_vault === true || r.delivered_to_student_vault === undefined) &&
         r.blockward_id === blockWard.id
       );
 
       if (deliveredRecord) {
         verified = true;
       } else {
-        verifyError = 'Record not found in student vault query after delivery';
+        verifyError = 'Record not found in student vault query after delivery (status/vault_status/delivered_flag mismatch)';
       }
     } catch (e) {
       verifyError = e.message;

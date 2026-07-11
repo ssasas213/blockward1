@@ -48,9 +48,15 @@ Deno.serve(async (req) => {
     const targetEmail = normalizeEmail(body.student_email || user.email);
 
     // ── STEP 1: Resolve the canonical student identity ──
-    // Look up UserProfile by email (case-insensitive matching)
-    const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
-    const profile = allProfiles.find(p => normalizeEmail(p.user_email) === targetEmail);
+    // Look up UserProfile by email (direct filter, with case-insensitive fallback)
+    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    let profile = profiles[0] || null;
+
+    // Fallback: case-insensitive match if exact filter didn't find it
+    if (!profile) {
+      const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
+      profile = allProfiles.find(p => normalizeEmail(p.user_email) === targetEmail) || null;
+    }
 
     if (!profile) {
       return Response.json({
@@ -100,7 +106,9 @@ Deno.serve(async (req) => {
     //   - (status === 'delivered_to_vault' OR status === 'approved' OR status === 'archived')
     //   - delivered_to_student_vault === true (if the field exists)
     const earned = records.filter(r => {
-      const isDeliveredStatus = r.status === 'delivered_to_vault' || r.status === 'approved' || r.status === 'archived';
+      // Only 'delivered_to_vault' and legacy 'archived' count as delivered.
+      // 'approved' alone is NOT delivered — the admin must explicitly send to vault.
+      const isDeliveredStatus = r.status === 'delivered_to_vault' || r.status === 'archived';
       const isVaultDelivered = r.vault_status === 'delivered';
       const hasDeliveredFlag = r.delivered_to_student_vault === true || r.delivered_to_student_vault === undefined;
       return isDeliveredStatus && isVaultDelivered && hasDeliveredFlag;
@@ -113,7 +121,11 @@ Deno.serve(async (req) => {
     );
 
     // ── STEP 4: Join linked BlockWard data ──
-    const blockWards = await base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' });
+    // Query by both student_email and owner_student_email to catch all BlockWards
+    // regardless of how the email was stored at creation time.
+    const blockWardsByEmail = await base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' });
+    const blockWardsByOwnerId = await base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email), status: 'active' });
+    const blockWards = [...blockWardsByEmail, ...blockWardsByOwnerId];
     const bwByRecordId = {};
     blockWards.forEach(bw => {
       const key = bw.student_record_id || bw.record_id;
@@ -177,7 +189,7 @@ Deno.serve(async (req) => {
         method: 'student_id + student_email merge',
         student_id: canonicalStudentId,
         student_email: profile.user_email,
-        filter_criteria: 'vault_status === delivered AND status IN (delivered_to_vault, approved, archived)',
+        filter_criteria: 'vault_status === delivered AND status IN (delivered_to_vault, archived)',
       },
     }, { headers: CORS });
 
