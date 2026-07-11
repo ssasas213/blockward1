@@ -4,14 +4,12 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertCircle, Lock, Loader2, ArrowLeft, LogIn } from 'lucide-react';
-import RecordDetail from '@/pages/RecordDetail';
 
 export default function AdminApprovalPage() {
   const { recordId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null); // 'not_admin' | 'wrong_school' | 'not_found' | 'auth_required'
-  const [record, setRecord] = useState(null);
 
   useEffect(() => {
     checkAccess();
@@ -52,9 +50,9 @@ export default function AdminApprovalPage() {
         return;
       }
 
-      // All checks passed — render RecordDetail
-      setRecord(data.record);
-      setLoading(false);
+      // All security checks passed — redirect to RecordDetail with query param
+      // RecordDetail reads id from ?id= search params and renders the admin approval UI
+      navigate(`/RecordDetail?id=${recordId}`, { replace: true });
     } catch (e) {
       setError('not_found');
       setLoading(false);
@@ -140,6 +138,7 @@ export default function AdminApprovalPage() {
     );
   }
 
-  // All checks passed — render the existing RecordDetail which handles admin approval UI
-  return <RecordDetail />;
+  // Should never reach here — navigate() happens on success.
+  // This is a fallback for edge cases.
+  return null;
 }
