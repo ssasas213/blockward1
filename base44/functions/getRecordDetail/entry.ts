@@ -43,7 +43,13 @@ Deno.serve(async (req) => {
     if (!recordId) return Response.json({ ok: false, error: 'Missing recordId' }, { status: 400, headers: CORS });
 
     // Fetch record using service role (bypasses RLS)
-    const records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
+    let records;
+    try {
+      records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
+    } catch (e) {
+      // Invalid ID format or other query error — treat as not found
+      return Response.json({ ok: false, error: 'not_found', message: 'This achievement record does not exist. It may have been deleted.' }, { status: 404, headers: CORS });
+    }
     if (!records.length) {
       return Response.json({ ok: false, error: 'not_found', message: 'This achievement record does not exist. It may have been deleted.' }, { status: 404, headers: CORS });
     }

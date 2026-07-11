@@ -426,7 +426,7 @@ export default function StudentPortfolioVault() {
                       <Download className="h-3.5 w-3.5 mr-1" /> Certificate
                     </Button>
                     <Button size="sm" variant="ghost" asChild>
-                      <Link to={createPageUrl(`RecordDetail?id=${rec.id}`)}>
+                      <Link to={createPageUrl(`RecordDetail?id=${rec.record_id || rec.id}`)}>
                         <Link2 className="h-3.5 w-3.5" /> Details
                       </Link>
                     </Button>

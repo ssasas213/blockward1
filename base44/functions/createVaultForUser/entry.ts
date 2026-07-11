@@ -1,21 +1,32 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+/**
+ * createVaultForUser — Creates a custodial blockchain wallet (vault) for a user.
+ *
+ * IMPORTANT: Admins do NOT get personal vaults. Their role is only to review,
+ * authorize, and send approved BlockWards to the student's vault. Only students
+ * (and teachers who can issue BlockWards) get vaults.
+ */
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { generatePrivateKey, privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
-import { createPublicClient, http } from 'npm:viem@2.7.0';
-import { sepolia } from 'npm:viem@2.7.0/chains';
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { userId } = await req.json();
+    if (!userId) return Response.json({ error: 'userId required' }, { status: 400 });
 
-    if (!userId) {
-      return Response.json({ error: 'userId required' }, { status: 400 });
+    // Fetch the target user's profile to check their role
+    const targetProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: userId });
+    const targetProfile = targetProfiles[0];
+
+    // Admins do NOT get personal vaults
+    if (targetProfile?.user_type === 'admin') {
+      return Response.json({
+        success: false,
+        error: 'Administrators do not receive personal vaults. Their role is to review and authorize achievements only.'
+      }, { status: 403 });
     }
 
     // Check if vault already exists
@@ -33,7 +44,7 @@ Deno.serve(async (req) => {
     const account = privateKeyToAccount(privateKey);
     const address = account.address;
 
-    // Encrypt private key (basic encryption - use proper encryption in production)
+    // Encrypt private key
     const encoder = new TextEncoder();
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
@@ -42,7 +53,7 @@ Deno.serve(async (req) => {
       false,
       ['encrypt']
     );
-    
+
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const encrypted = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
@@ -56,7 +67,6 @@ Deno.serve(async (req) => {
       .map(b => b.toString(16).padStart(2, '0')).join('');
     const encryptedKey = `${ivHex}:${encryptedHex}`;
 
-    // Create vault record
     await base44.asServiceRole.entities.Vaults.create({
       user_id: userId,
       address,
@@ -65,15 +75,16 @@ Deno.serve(async (req) => {
       private_key_encrypted: encryptedKey
     });
 
-    return Response.json({
-      success: true,
-      vaultAddress: address
-    });
+    // Also update the user profile with the wallet address
+    if (targetProfile) {
+      await base44.asServiceRole.entities.UserProfile.update(targetProfile.id, {
+        wallet_address: address
+      });
+    }
+
+    return Response.json({ success: true, vaultAddress: address });
 
   } catch (error) {
-    return Response.json({ 
-      error: error.message,
-      success: false
-    }, { status: 500 });
+    return Response.json({ error: error.message, success: false }, { status: 500 });
   }
 });

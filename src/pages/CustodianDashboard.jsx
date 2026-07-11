@@ -35,7 +35,7 @@ export default function CustodianDashboard() {
   const [profile, setProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [records, setRecords] = useState([]);
-  const [driveVaults, setDriveVaults] = useState([]);
+  const [blockWards, setBlockWards] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => { loadData(); }, []);
@@ -48,15 +48,15 @@ export default function CustodianDashboard() {
       setProfile(p);
       if (!p?.school_id) { setLoading(false); return; }
 
-      const [recs, schools, vaults] = await Promise.all([
+      const [recs, schools, bws] = await Promise.all([
         base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date'),
         base44.entities.School.filter({ id: p.school_id }),
-        base44.entities.DriveVault.filter({ school_id: p.school_id }),
+        base44.entities.BlockWard.filter({ school_id: p.school_id, status: 'active' }),
       ]);
 
       setRecords(recs);
       setSchool(schools[0] || null);
-      setDriveVaults(vaults);
+      setBlockWards(bws);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -81,7 +81,7 @@ export default function CustodianDashboard() {
     rejected: records.filter(r => r.status === 'rejected').length,
   };
 
-  const driveConnectedStudents = new Set(driveVaults.map(v => v.student_email)).size;
+  const vaultDeliveredCount = records.filter(r => r.vault_status === 'delivered').length;
   const verifiedCount = records.filter(r => r.verify_id).length;
   const withBothSigs = records.filter(r => r.teacher_signed && r.admin_signed).length;
   const withEvidence = records.filter(r => r.file_url).length;
@@ -220,7 +220,7 @@ export default function CustodianDashboard() {
                 { label: 'With Evidence', value: withEvidence, total, color: 'bg-blue-500' },
                 { label: 'Dual Signed', value: withBothSigs, total, color: 'bg-violet-500' },
                 { label: 'Verified (ID issued)', value: verifiedCount, total, color: 'bg-green-500' },
-                { label: 'Drive Saved', value: driveVaults.length, total, color: 'bg-emerald-500' },
+                { label: 'Vault Delivered', value: vaultDeliveredCount, total, color: 'bg-emerald-500' },
               ].map(s => (
                 <div key={s.label}>
                   <div className="flex justify-between text-xs mb-1">
@@ -241,14 +241,14 @@ export default function CustodianDashboard() {
           <Card className="border-0 shadow-md">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <HardDrive className="h-8 w-8 text-violet-500" />
+                <Shield className="h-8 w-8 text-violet-500" />
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{driveVaults.length}</p>
-                  <p className="text-xs text-slate-500">Files saved to Drive</p>
+                  <p className="text-2xl font-bold text-slate-900">{blockWards.length}</p>
+                  <p className="text-xs text-slate-500">BlockWards in Vaults</p>
                 </div>
               </div>
               <div className="mt-2 text-xs text-slate-500">
-                {driveConnectedStudents} student{driveConnectedStudents !== 1 ? 's' : ''} with Drive archives
+                {vaultDeliveredCount} record{vaultDeliveredCount !== 1 ? 's' : ''} delivered to student vaults
               </div>
             </CardContent>
           </Card>
@@ -307,10 +307,10 @@ export default function CustodianDashboard() {
                     {r.verify_id && (
                       <span className="text-xs font-mono text-slate-400 hidden md:block">{r.verify_id}</span>
                     )}
-                    {r.drive_file_url && (
-                      <a href={r.drive_file_url} target="_blank" rel="noopener noreferrer"
-                        className="text-emerald-600 hover:text-emerald-700">
-                        <HardDrive className="h-4 w-4" />
+                    {r.verify_id && (
+                      <a href={`${window.location.origin}/verify/${r.verify_id}`} target="_blank" rel="noopener noreferrer"
+                        className="text-violet-600 hover:text-violet-700">
+                        <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
                     <Link to={createPageUrl(`RecordDetail?id=${r.id}`)}>
@@ -350,10 +350,10 @@ export default function CustodianDashboard() {
                   ['Teacher sign', '❌', '✅', '❌'],
                   ['Reject record', '❌', '✅', '✅'],
                   ['Admin sign & verify', '❌', '❌', '✅'],
-                  ['Mint & Archive to Drive', '❌', '❌', '✅'],
+                  ['Send to Student Vault', '❌', '❌', '✅'],
                   ['View own records', '✅', '❌', '❌'],
                   ['View all school records', '❌', '✅ (classes)', '✅'],
-                  ['Connect Google Drive', '✅', '❌', '❌'],
+                  ['View Portfolio Vault', '✅', '❌', '❌'],
                   ['Manage users', '❌', '❌', '✅'],
                   ['View portfolio vault', '✅', '❌', '❌'],
                 ].map(([action, student, teacher, admin]) => (
