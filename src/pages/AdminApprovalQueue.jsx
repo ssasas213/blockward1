@@ -235,7 +235,7 @@ function AdminApprovalQueueContent() {
                         </div>
                       </div>
                       <Link
-                        to={createPageUrl(`RecordDetail?id=${record.id}`)}
+                        to={needsAction ? `/admin/approve/${record.id}` : createPageUrl(`RecordDetail?id=${record.id}`)}
                         className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all flex-shrink-0 ${
                           needsAction
                             ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'

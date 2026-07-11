@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
 
   const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
   const recordUrl = `${appUrl}/RecordDetail?id=${data.id || event?.entity_id}`;
+  // Admin approval links use a dedicated, secure route that validates role + school
+  const adminApprovalUrl = `${appUrl}/admin/approve/${data.id || event?.entity_id}`;
 
   // --- Teacher notification ---
   if (newStatus === 'awaiting_teacher_signature' && data.teacher_email) {
@@ -66,7 +68,7 @@ Deno.serve(async (req) => {
   <li><strong>Category:</strong> ${data.category}</li>
 </ul>
 <p>Sign in to BlockWard to approve and authorise NFT minting:</p>
-<p><a href="${recordUrl}" style="background:#7c3aed;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Approve Achievement →</a></p>
+<p><a href="${adminApprovalUrl}" style="background:#7c3aed;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Approve Achievement →</a></p>
 <p style="color:#64748b;font-size:12px;">You received this as an admin at your school.</p>
         `.trim()
       })

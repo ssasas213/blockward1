@@ -18,6 +18,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
 import AdminApprovalQueue from './pages/AdminApprovalQueue';
+import AdminApprovalPage from './pages/AdminApprovalPage';
 import AdminRecords from './pages/AdminRecords';
 import TeacherRecords from './pages/TeacherRecords';
 import StudentMyRecords from './pages/StudentMyRecords';
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><ProtectedRoute><RecordDetail /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><ProtectedRoute><AdminApprovalQueue /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/admin/approve/:recordId" element={<LayoutWrapper currentPageName="AdminApprovalPage"><ProtectedRoute><AdminApprovalPage /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><ProtectedRoute><AdminRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><ProtectedRoute><StudentMyRecords /></ProtectedRoute></LayoutWrapper>} />
