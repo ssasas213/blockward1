@@ -95,6 +95,21 @@ export default function SchoolSetup() {
       const code = `${form.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8)}-${Date.now().toString().slice(-4)}`;
       const schoolCode = `${form.name.replace(/[^a-zA-Z0-9]/g, '-').toUpperCase().slice(0, 12)}-${new Date().getFullYear()}`;
 
+      // 0. Ensure a UserProfile exists — create one if missing
+      let currentProfile = profile;
+      if (!currentProfile) {
+        const nameParts = (user.full_name || user.email || 'Admin').split(' ');
+        currentProfile = await base44.entities.UserProfile.create({
+          user_email: user.email,
+          user_type: 'admin',
+          first_name: nameParts[0] || 'Admin',
+          last_name: nameParts.slice(1).join(' ') || '',
+          admin_level: 'super_admin',
+          status: 'active',
+        });
+        setProfile(currentProfile);
+      }
+
       // 1. Create the School
       const school = await base44.entities.School.create({
         name: form.name.trim(),
@@ -112,9 +127,9 @@ export default function SchoolSetup() {
 
       // 2. Create AdminSchoolMembership (owner role)
       await base44.entities.AdminSchoolMembership.create({
-        admin_user_id: profile.id,
+        admin_user_id: currentProfile.id,
         admin_email: user.email,
-        admin_name: `${profile.first_name} ${profile.last_name}`,
+        admin_name: `${currentProfile.first_name} ${currentProfile.last_name}`,
         school_id: school.id,
         school_name: school.name,
         role: 'owner',
@@ -124,10 +139,10 @@ export default function SchoolSetup() {
       });
 
       // 3. Update UserProfile with the new school_id
-      await base44.entities.UserProfile.update(profile.id, {
+      await base44.entities.UserProfile.update(currentProfile.id, {
         school_id: school.id,
         active_school_id: school.id,
-        admin_level: profile.admin_level || 'super_admin',
+        admin_level: currentProfile.admin_level || 'super_admin',
       });
 
       toast.success(`${school.name} created successfully`);
@@ -161,11 +176,25 @@ export default function SchoolSetup() {
   const handleRequestAccess = async (school) => {
     setSubmitting(true);
     try {
+      // Ensure a UserProfile exists
+      let currentProfile = profile;
+      if (!currentProfile) {
+        const nameParts = (user.full_name || user.email || 'Admin').split(' ');
+        currentProfile = await base44.entities.UserProfile.create({
+          user_email: user.email,
+          user_type: 'admin',
+          first_name: nameParts[0] || 'Admin',
+          last_name: nameParts.slice(1).join(' ') || '',
+          admin_level: 'super_admin',
+          status: 'active',
+        });
+        setProfile(currentProfile);
+      }
       // Create a pending membership request
       await base44.entities.AdminSchoolMembership.create({
-        admin_user_id: profile.id,
+        admin_user_id: currentProfile.id,
         admin_email: user.email,
-        admin_name: `${profile.first_name} ${profile.last_name}`,
+        admin_name: `${currentProfile.first_name} ${currentProfile.last_name}`,
         school_id: school.id,
         school_name: school.name,
         role: 'admin',
