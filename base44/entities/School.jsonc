@@ -12,7 +12,7 @@
     },
     "school_code": {
       "type": "string",
-      "description": "Single hierarchy code teachers use to join this school (e.g. IHS-DUBAI-2026). Admin sets this when creating the school."
+      "description": "Single hierarchy code teachers use to join this school. Admin sets this when creating the school."
     },
     "org_type": {
       "type": "string",
@@ -30,15 +30,27 @@
         "other"
       ],
       "default": "school",
-      "description": "Type of organization \u2014 determines role labels, credential templates, and workflow terminology"
+      "description": "Type of organization"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country where the organization is located"
+    },
+    "city": {
+      "type": "string",
+      "description": "City where the organization is located"
+    },
+    "website": {
+      "type": "string",
+      "description": "Organization website (optional)"
     },
     "student_join_code": {
       "type": "string",
-      "description": "Legacy code for participants to join the organization (deprecated \u2014 students now join via class codes)"
+      "description": "Legacy code (deprecated)"
     },
     "teacher_join_code": {
       "type": "string",
-      "description": "Legacy code for verifiers to join the organization (deprecated \u2014 teachers now join via school_code)"
+      "description": "Legacy code (deprecated)"
     },
     "address": {
       "type": "string"
@@ -48,33 +60,32 @@
     },
     "admin_email": {
       "type": "string",
-      "description": "Primary admin email"
+      "description": "Primary admin email \u2014 owner of this school"
+    },
+    "admin_title": {
+      "type": "string",
+      "description": "Title of the administrator (e.g., Principal, Headmaster, Director)"
     },
     "settings": {
       "type": "object",
-      "description": "Organization-specific settings including role labels, credential templates, branding, and verification process",
+      "description": "Organization-specific settings",
       "properties": {
         "role_labels": {
           "type": "object",
-          "description": "Custom display labels for each role in this organization",
           "properties": {
             "student": {
-              "type": "string",
-              "description": "Label for participant role (e.g., Student, Athlete, Player, Delegate)"
+              "type": "string"
             },
             "teacher": {
-              "type": "string",
-              "description": "Label for verifier role (e.g., Teacher, Coach, Instructor, Judge)"
+              "type": "string"
             },
             "admin": {
-              "type": "string",
-              "description": "Label for approver role (e.g., Administrator, Head Instructor, Tournament Director)"
+              "type": "string"
             }
           }
         },
         "credential_label": {
-          "type": "string",
-          "description": "What credentials are called in this org (e.g., Achievement, Belt, Title, Certification)"
+          "type": "string"
         },
         "branding": {
           "type": "object",
@@ -88,8 +99,7 @@
           }
         },
         "verification_process": {
-          "type": "object",
-          "description": "Custom verification workflow settings"
+          "type": "object"
         },
         "archive_destination": {
           "type": "string",
@@ -98,8 +108,7 @@
             "school_drive",
             "selected_drive"
           ],
-          "default": "student_drive",
-          "description": "Default Drive destination for archiving records. student_drive = student's own Google Drive (default), school_drive = admin's shared Drive, selected_drive = specific school Drive account"
+          "default": "student_drive"
         }
       }
     }
@@ -110,28 +119,62 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "role": "admin"
-      },
-      "data.admin_email": "{{user.email}}"
-    },
-    "read": {
-      "data.id": "{{user.profile.school_id}}"
-    },
-    "update": {
-      "data.id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
           "user_condition": {
             "role": "admin"
-          },
-          "data.admin_email": "{{user.email}}"
+          }
         },
         {
-          "user_condition": {
-            "role": "admin",
-            "admin_level": "super_admin"
-          }
+          "data.admin_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.id": "{{user.profile.school_id}}"
+        },
+        {
+          "$and": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.admin_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "data.id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "$and": [
+                {
+                  "user_condition": {
+                    "role": "admin"
+                  }
+                },
+                {
+                  "data.admin_email": "{{user.email}}"
+                }
+              ]
+            },
+            {
+              "user_condition": {
+                "role": "admin",
+                "admin_level": "super_admin"
+              }
+            }
+          ]
         }
       ]
     },
