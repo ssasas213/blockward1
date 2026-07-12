@@ -223,3 +223,25 @@ img, video {
     border-color: hsl(263 70% 52% / 0.5);
   }
 }
+
+/* ===== Hero background animations — elegant, slow, no bouncing ===== */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(-16px) translateX(5px); }
+}
+
+@keyframes hero-float-alt {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  50% { transform: translateY(13px) translateX(-4px); }
+}
+
+@keyframes hero-particle-drift {
+  0%, 100% { transform: translate(0, 0); opacity: 0; }
+  20%, 80% { opacity: 0.25; }
+  50% { transform: translate(12px, -22px); }
+}
+
+@keyframes hero-glow-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.65; }
+}

@@ -2,10 +2,12 @@ import React from 'react';
 import { ArrowRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
+import HeroBackground from '@/components/home/HeroBackground';
 
 export default function HeroSection({ onSignIn, onWatchDemo }) {
   return (
-    <section id="top" className="relative min-h-screen flex items-center justify-center overflow-hidden hero-glow">
+    <section id="top" className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <HeroBackground />
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-5 leading-[1.1] tracking-tight">
           Where achievements become permanent.
