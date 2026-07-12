@@ -119,70 +119,21 @@
   ],
   "rls": {
     "create": {
-      "$and": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "data.admin_email": "{{user.email}}"
-        }
-      ]
+      "data.admin_email": "{{user.email}}"
     },
-    "read": {
+    "read": {},
+    "update": {
       "$or": [
         {
-          "data.id": "{{user.profile.school_id}}"
+          "data.admin_email": "{{user.email}}"
         },
         {
-          "$and": [
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "data.admin_email": "{{user.email}}"
-            }
-          ]
-        }
-      ]
-    },
-    "update": {
-      "$and": [
-        {
           "data.id": "{{user.profile.school_id}}"
-        },
-        {
-          "$or": [
-            {
-              "$and": [
-                {
-                  "user_condition": {
-                    "role": "admin"
-                  }
-                },
-                {
-                  "data.admin_email": "{{user.email}}"
-                }
-              ]
-            },
-            {
-              "user_condition": {
-                "role": "admin",
-                "admin_level": "super_admin"
-              }
-            }
-          ]
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin",
-        "admin_level": "super_admin"
-      }
+      "data.admin_email": "{{user.email}}"
     }
   }
 }
