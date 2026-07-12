@@ -1,33 +1,43 @@
 import { base44 } from '@/api/base44Client';
-import { platformForOrgType } from '@/lib/platformConfig';
 
-// Schools dashboard routes (existing flat routes)
 const SCHOOLS_DASHBOARD_MAP = {
   admin: '/AdminDashboard',
   teacher: '/TeacherDashboard',
   student: '/StudentDashboard',
 };
 
-// Organisations dashboard routes (new platform-scoped routes)
 const ORGS_DASHBOARD_MAP = {
   admin: '/organisations/dashboard',
   teacher: '/organisations/dashboard',
   student: '/organisations/dashboard',
 };
 
+function normalizeEmail(email) {
+  return (email || '').trim().toLowerCase();
+}
+
 /**
- * After a successful login, load the user's profile and redirect to the
- * correct platform dashboard. If a platformId is provided (from the login
- * page), it overrides the org_type detection — the user explicitly chose
- * which platform to enter.
+ * After a successful Google login, load the user's profile and redirect to the
+ * correct dashboard.
  *
- * Returns an error string if the account has a problem (suspended).
+ * Returns:
+ *   - null if a redirect was issued (to dashboard or onboarding)
+ *   - 'suspended' if the account is suspended/inactive
+ *   - 'pending' if the account is pending admin approval
  */
-export async function handlePostLoginRedirect(platformId = null) {
+export async function handlePostLoginRedirect() {
   const user = await base44.auth.me();
   if (!user) throw new Error('Not authenticated');
 
-  const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+  const normalizedEmail = normalizeEmail(user.email);
+
+  // Search by exact email first
+  let profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
+
+  // Fallback: try normalized (lowercase) email
+  if (profiles.length === 0) {
+    profiles = await base44.entities.UserProfile.filter({ user_email: normalizedEmail });
+  }
 
   if (profiles.length === 0) {
     // Authenticated but no BlockWard profile — send to onboarding
@@ -41,33 +51,38 @@ export async function handlePostLoginRedirect(platformId = null) {
     return 'suspended';
   }
 
+  if (profile.status === 'pending_approval') {
+    return 'pending';
+  }
+
   const role = profile.user_type; // admin | teacher | student
 
   // Determine which platform the user belongs to
-  let platform = platformId;
+  // Check role_label first (set during onboarding for org users)
+  const roleLabel = (profile.role_label || '').toLowerCase();
+  let platform = roleLabel.includes('organisation') || roleLabel.includes('org')
+    ? 'organisations'
+    : 'schools';
 
-  // If no explicit platform chosen, detect from the user's org_type
-  if (!platform && profile.school_id) {
+  // If school_id exists, check the school's org_type
+  if (platform === 'schools' && profile.school_id) {
     try {
       const schools = await base44.entities.School.filter({ id: profile.school_id });
       if (schools.length > 0) {
         const orgType = schools[0].org_type || 'school';
-        platform = platformForOrgType(orgType);
+        if (orgType !== 'school') {
+          platform = 'organisations';
+        }
       }
     } catch {
       /* ignore — default to schools */
     }
   }
 
-  // Default to schools
-  platform = platform || 'schools';
-
   if (platform === 'organisations') {
-    const dest = ORGS_DASHBOARD_MAP[role] || '/organisations/dashboard';
-    window.location.href = dest;
+    window.location.href = ORGS_DASHBOARD_MAP[role] || '/organisations/dashboard';
   } else {
-    const dest = SCHOOLS_DASHBOARD_MAP[role] || '/StudentDashboard';
-    window.location.href = dest;
+    window.location.href = SCHOOLS_DASHBOARD_MAP[role] || '/StudentDashboard';
   }
   return null;
 }

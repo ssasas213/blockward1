@@ -21,7 +21,7 @@
     },
     "role_label": {
       "type": "string",
-      "description": "Custom display label for this user's role (e.g., 'Coach', 'Athlete', 'Tournament Director'). Falls back to org-level role_labels."
+      "description": "Custom display label for this user's role (e.g., 'Coach', 'Athlete', 'Tournament Director', 'Organisation Member', 'Organisation Admin'). Falls back to org-level role_labels."
     },
     "admin_level": {
       "type": "string",
@@ -174,9 +174,11 @@
       "enum": [
         "active",
         "inactive",
-        "suspended"
+        "suspended",
+        "pending_approval"
       ],
-      "default": "active"
+      "default": "active",
+      "description": "Account status. pending_approval = new user awaiting admin approval before gaining access."
     }
   },
   "required": [

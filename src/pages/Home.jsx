@@ -40,7 +40,7 @@ export default function Home() {
   };
 
   const handleSignIn = () => {
-    window.location.href = '/ChoosePlatform';
+    window.location.href = '/Login';
   };
 
   const handleGoToDashboard = () => {
@@ -109,11 +109,11 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
-                onClick={() => window.location.href = createPageUrl('ChoosePlatform')}
+                onClick={() => window.location.href = createPageUrl('Login')}
                 className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-base px-8 py-6 shadow-2xl shadow-violet-600/30 border-0"
               >
                 <Layers className="mr-2 h-5 w-5" />
-                Choose Your BlockWard
+                Get Started
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button

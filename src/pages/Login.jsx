@@ -2,56 +2,61 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
-import { Shield, Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, Clock, Ban } from 'lucide-react';
+import { Shield, Loader2, Clock, Ban, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+
+function GoogleIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
+  );
+}
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [accountStatus, setAccountStatus] = useState(null); // 'pending' | 'suspended'
   const [error, setError] = useState('');
-  const [accountStatus, setAccountStatus] = useState(null); // 'suspended' | 'pending' | 'no_profile'
 
   useEffect(() => {
-    // Redirect to platform choice — users must select Schools or Organisations first
-    window.location.href = '/ChoosePlatform';
+    (async () => {
+      try {
+        const user = await base44.auth.me();
+        if (user) {
+          const result = await handlePostLoginRedirect();
+          if (result === 'suspended') setAccountStatus('suspended');
+          else if (result === 'pending') setAccountStatus('pending');
+        }
+      } catch {
+        /* not authenticated — show Google button */
+      } finally {
+        setChecking(false);
+      }
+    })();
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setAccountStatus(null);
-    if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
+  const handleGoogleLogin = () => {
     setLoading(true);
+    setError('');
     try {
-      await base44.auth.loginViaEmailPassword(email.trim(), password);
-      const result = await handlePostLoginRedirect();
-      if (result === 'suspended') {
-        setAccountStatus('suspended');
-      }
+      base44.auth.loginWithProvider('google', window.location.origin + '/Login');
     } catch (err) {
-      const msg = err?.message || '';
-      if (msg.toLowerCase().includes('pending') || msg.toLowerCase().includes('approval')) {
-        setAccountStatus('pending');
-      } else if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('password') || msg.toLowerCase().includes('credentials')) {
-        setError('Invalid email or password. Please try again.');
-      } else {
-        setError(msg || 'Sign in failed. Please try again.');
-      }
-    } finally {
+      setError(err?.message || 'Google sign-in failed. Please try again.');
       setLoading(false);
     }
   };
 
+  const handleSignOut = () => {
+    base44.auth.logout(window.location.origin + '/Login');
+  };
+
   if (checking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 to-indigo-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-indigo-950 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
       </div>
     );
@@ -73,110 +78,80 @@ export default function Login() {
             </div>
             <span className="text-2xl font-extrabold text-white tracking-tight">BlockWard</span>
           </Link>
-          <p className="text-slate-400 text-sm mt-2">Sign in to your school achievement vault</p>
         </div>
 
         {/* Card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-bold text-slate-900 mb-1">Welcome back</h2>
-          <p className="text-sm text-slate-500 mb-6">Sign in to your BlockWard account.</p>
-
-          {/* Account status messages */}
-          {accountStatus === 'pending' && (
-            <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-5 text-sm text-amber-800">
-              <Clock className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <p>Your account is pending school approval. Please contact your school administrator.</p>
+          {accountStatus === 'pending' ? (
+            /* Pending approval state */
+            <div className="text-center">
+              <div className="mx-auto h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+                <Clock className="h-7 w-7 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Awaiting Approval</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Your account is pending administrator approval. You'll be able to access BlockWard
+                once an administrator approves your account.
+              </p>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="w-full"
+              >
+                Sign Out
+              </Button>
             </div>
+          ) : accountStatus === 'suspended' ? (
+            /* Suspended state */
+            <div className="text-center">
+              <div className="mx-auto h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mb-5">
+                <Ban className="h-7 w-7 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900 mb-2">Account Suspended</h2>
+              <p className="text-sm text-slate-500 mb-6">
+                Your account has been suspended. Please contact your administrator.
+              </p>
+              <Button
+                onClick={handleSignOut}
+                variant="outline"
+                className="w-full"
+              >
+                Sign Out
+              </Button>
+            </div>
+          ) : (
+            /* Default login state */
+            <>
+              <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Welcome to BlockWard</h2>
+              <p className="text-sm text-slate-500 mb-8 text-center">
+                Sign in with your Google account to continue.
+              </p>
+
+              {error && (
+                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mb-4">
+                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <Button
+                onClick={handleGoogleLogin}
+                disabled={loading}
+                className="w-full bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50 hover:border-slate-300 font-semibold py-3 shadow-sm"
+              >
+                {loading ? (
+                  <Loader2 className="h-5 w-5 animate-spin mr-2 text-slate-400" />
+                ) : (
+                  <GoogleIcon className="mr-3" />
+                )}
+                Continue with Google
+              </Button>
+            </>
           )}
-          {accountStatus === 'suspended' && (
-            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl mb-5 text-sm text-red-800">
-              <Ban className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <p>Your account has been suspended. Contact your school administrator.</p>
-            </div>
-          )}
-          {accountStatus === 'no_profile' && (
-            <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl mb-5 text-sm text-blue-800">
-              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <p>Your account exists but your BlockWard profile has not been set up yet. Contact your school administrator.</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type="email"
-                  placeholder="you@school.ac.uk"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="pl-9"
-                  autoComplete="email"
-                  disabled={loading}
-                />
-              </div>
-              <p className="text-xs text-slate-400">Use your school email or personal email.</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Password</label>
-                <Link to="/ForgotPassword" className="text-xs text-violet-600 hover:text-violet-800 font-medium">
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="pl-9 pr-10"
-                  autoComplete="current-password"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                {error}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-semibold py-2.5 shadow-lg shadow-violet-500/25"
-            >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Sign In
-            </Button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
-              Don't have an account?{' '}
-              <Link to="/Signup" className="text-violet-600 hover:text-violet-800 font-semibold">
-                Create Account
-              </Link>
-            </p>
-          </div>
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          © 2026 BlockWard · Blockchain-Secured Student Achievements
+          © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
       </div>
     </div>

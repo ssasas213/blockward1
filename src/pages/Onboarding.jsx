@@ -1,50 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Shield, GraduationCap, Users, BookOpen, ArrowRight, Loader2, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Shield, GraduationCap, Users, ArrowRight, Loader2,
+  Building2, Trophy, Clock,
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { ORG_TYPES, getOrgTypeConfig } from '@/lib/orgTypes';
+
+const ACCOUNT_TYPES = [
+  {
+    key: 'student',
+    roleLabel: null,
+    icon: GraduationCap,
+    title: 'Student',
+    description: 'Earn and track your achievements',
+  },
+  {
+    key: 'teacher',
+    roleLabel: null,
+    icon: Users,
+    title: 'Teacher',
+    description: 'Verify and issue achievements',
+  },
+  {
+    key: 'admin',
+    roleLabel: null,
+    icon: Shield,
+    title: 'Admin',
+    description: 'Manage school and approve records',
+  },
+  {
+    key: 'student',
+    roleLabel: 'Organisation Member',
+    icon: Trophy,
+    title: 'Organisation Member',
+    description: 'Member of a club or organisation',
+  },
+  {
+    key: 'admin',
+    roleLabel: 'Organisation Admin',
+    icon: Building2,
+    title: 'Organisation Admin',
+    description: 'Manage an organisation',
+  },
+];
 
 export default function Onboarding() {
-  const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
-  const [step, setStep] = useState(1);
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    user_type: localStorage.getItem('pendingUserRole') || '',
-    first_name: '',
-    last_name: '',
-    school_name: '',
-    school_code: '',
-    org_type: 'school',
-    student_id: '',
-    grade_level: '',
-    parent_name: '',
-    parent_email: '',
-    parent_phone: '',
-    department: '',
-    join_code: ''
-  });
-
-  // Auto-suggest a school code from the school name (e.g. "Indian High School" → "IHS-2026")
-  const suggestSchoolCode = (name) => {
-    if (!name) return '';
-    const words = name.trim().split(/\s+/).filter(w => w.length > 0);
-    const initials = words.map(w => w[0].toUpperCase()).join('').slice(0, 4);
-    const year = new Date().getFullYear();
-    return `${initials}-${year}`;
-  };
+  const [done, setDone] = useState(false);
+  const [selectedType, setSelectedType] = useState(null);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
 
   useEffect(() => {
     loadAuth();
@@ -57,13 +71,19 @@ export default function Onboarding() {
 
       if (currentUser) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-        if (profiles.length > 0) {
-          setProfile(profiles[0]);
+        if (profiles.length > 0 && profiles[0].status !== 'pending_approval') {
+          // Already has an active profile — redirect to login which will route to dashboard
+          window.location.href = '/Login';
+          return;
+        }
+        if (profiles.length > 0 && profiles[0].status === 'pending_approval') {
+          // Already pending — show pending state
+          setDone(true);
+          return;
         }
       }
-    } catch (error) {
+    } catch {
       setUser(null);
-      setProfile(null);
     } finally {
       setAuthLoading(false);
       setInitialized(true);
@@ -71,223 +91,79 @@ export default function Onboarding() {
   };
 
   useEffect(() => {
-    // Pre-fill name if available
-    const pendingName = localStorage.getItem('pendingUserName');
-    if (pendingName) {
-      const [firstName, ...lastNameParts] = pendingName.split(' ');
-      setFormData(prev => ({
-        ...prev,
-        first_name: firstName,
-        last_name: lastNameParts.join(' ')
-      }));
-      // Clear stored data
-      localStorage.removeItem('pendingUserName');
-      localStorage.removeItem('pendingUserRole');
-    }
-  }, []);
-
-  useEffect(() => {
-    if (profile) {
-      setFormData(prev => ({
-        ...prev,
-        first_name: profile.first_name || prev.first_name,
-        last_name: profile.last_name || prev.last_name,
-        user_type: profile.user_type || prev.user_type,
-        department: profile.department || prev.department,
-      }));
-    }
-  }, [profile]);
-
-  useEffect(() => {
     if (!initialized || authLoading) return;
 
-    // Not logged in - redirect to home
     if (!user) {
-      window.location.href = createPageUrl('Home');
-      return;
-    }
-
-    // Already has profile with school - redirect to dashboard immediately
-    if (profile && profile.school_id) {
-      redirectToDashboard(profile.user_type);
+      window.location.href = '/Login';
       return;
     }
 
     setChecking(false);
-  }, [user, profile, initialized, authLoading]);
-
-  const redirectToDashboard = (userType) => {
-    const dashboardUrl = userType === 'admin' 
-      ? createPageUrl('AdminDashboard')
-      : userType === 'teacher'
-      ? createPageUrl('TeacherDashboard')
-      : createPageUrl('StudentDashboard');
-    
-    window.location.href = dashboardUrl;
-  };
-
-  const generateWallet = () => {
-    // Simulate custodial wallet creation
-    // In production: POST /api/wallet/create
-    // Backend would:
-    // 1. Generate new Ethereum wallet
-    // 2. Encrypt private key with master encryption key
-    // 3. Store encrypted key in secure database
-    // 4. Return only the wallet address to frontend
-    // 5. Student never sees or handles private keys
-
-    const chars = '0123456789abcdef';
-    let address = '0x';
-    for (let i = 0; i < 40; i++) {
-      address += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return address;
-  };
+  }, [user, initialized, authLoading]);
 
   const handleSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim() || !selectedType) {
+      toast.error('Please fill in all fields.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      let school = null;
-      let joinedClass = null;
+      const accountType = ACCOUNT_TYPES[selectedType];
 
-      if (formData.user_type === 'admin') {
-        // Admin creates the school + the single hierarchy school_code
-        const schoolCode = (formData.school_code || suggestSchoolCode(formData.school_name)).toUpperCase();
-        const orgConfig = getOrgTypeConfig(formData.org_type);
-        school = await base44.entities.School.create({
-          name: formData.school_name,
-          code: schoolCode,
-          school_code: schoolCode,
-          org_type: formData.org_type,
-          admin_email: user.email,
-          settings: {
-            role_labels: orgConfig.roleLabels,
-            credential_label: orgConfig.credentialLabel
-          }
-        });
-      } else if (formData.user_type === 'teacher' && formData.school_code) {
-        // Teacher joins using the school's hierarchy code
-        const schools = await base44.entities.School.filter({ school_code: formData.school_code.toUpperCase() });
-        if (!schools || schools.length === 0) {
-          toast.error('Invalid school code. Please check with your administrator.');
-          setSubmitting(false);
-          return;
-        }
-        school = schools[0];
-      } else if (formData.user_type === 'student' && formData.join_code) {
-        // Student joins via a teacher's class code — inherits school_id, teacher, admin
-        const byCode = await base44.entities.Class.filter({ join_code: formData.join_code.toUpperCase() });
-        joinedClass = byCode.length > 0 ? byCode[0] : null;
-        if (!joinedClass) {
-          toast.error('Invalid class code. Ask your teacher for the class join code.');
-          setSubmitting(false);
-          return;
-        }
-        // Inherit school from the class
-        if (joinedClass.school_id) {
-          const schools = await base44.entities.School.filter({ id: joinedClass.school_id });
-          school = schools.length > 0 ? schools[0] : null;
-        }
-      }
+      await base44.entities.UserProfile.create({
+        user_email: user.email,
+        user_type: accountType.key,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        role_label: accountType.roleLabel || undefined,
+        status: 'pending_approval',
+        total_achievement_points: 0,
+        total_behaviour_points: 0,
+      });
 
-      // --- Update or create the UserProfile with inherited hierarchy ---
-      const updateData = { status: 'active' };
-      if (school) {
-        updateData.school_id = school.id;
-        updateData.admin_email = school.admin_email || null;
-      }
-      if (formData.user_type === 'teacher') {
-        updateData.department = formData.department;
-        updateData.can_issue_blockwards = true;
-      }
-      if (formData.user_type === 'student') {
-        updateData.student_id = formData.student_id;
-        updateData.grade_level = formData.grade_level;
-        updateData.parent_name = formData.parent_name;
-        updateData.parent_email = formData.parent_email;
-        updateData.parent_phone = formData.parent_phone;
-        // Inherit primary teacher from the class joined
-        if (joinedClass?.teacher_email) {
-          updateData.primary_teacher_email = joinedClass.teacher_email;
-        }
-      }
-
-      if (profile) {
-        await base44.entities.UserProfile.update(profile.id, updateData);
-      } else {
-        const walletAddress = generateWallet();
-        const profileData = {
-          user_email: user.email,
-          user_type: formData.user_type,
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          wallet_address: walletAddress,
-          blockchain_role: formData.user_type.toUpperCase(),
-          ...updateData,
-        };
-        if (formData.user_type === 'student') {
-          profileData.total_achievement_points = 0;
-          profileData.total_behaviour_points = 0;
-        }
-        await base44.entities.UserProfile.create(profileData);
-      }
-
-      // --- If student joined a class, enroll them and inherit hierarchy ---
-      if (joinedClass) {
-        const currentUser = user;
-        if (!joinedClass.student_emails?.includes(currentUser.email)) {
-          const updatedStudents = [...(joinedClass.student_emails || []), currentUser.email];
-          await base44.entities.Class.update(joinedClass.id, { student_emails: updatedStudents });
-        }
-        const existingEnrollments = await base44.entities.Enrollment.filter({ class_id: joinedClass.id, student_email: currentUser.email });
-        if (existingEnrollments.length === 0) {
-          await base44.entities.Enrollment.create({
-            school_id: joinedClass.school_id || school?.id || null,
-            class_id: joinedClass.id,
-            class_name: joinedClass.name,
-            student_email: currentUser.email,
-            student_name: `${formData.first_name} ${formData.last_name}`,
-            status: 'active'
-          });
-        }
-      }
-
-      redirectToDashboard(formData.user_type);
+      setDone(true);
     } catch (error) {
       console.error('Error creating profile:', error);
-      toast.error(error.message || 'Failed to set up profile');
+      toast.error(error.message || 'Failed to create account');
       setSubmitting(false);
     }
   };
 
   if (authLoading || checking) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
   }
 
-  const userTypes = [
-    {
-      value: 'admin',
-      icon: Shield,
-      title: 'Administrator',
-      description: 'Manage school, teachers, and students'
-    },
-    {
-      value: 'teacher',
-      icon: Users,
-      title: 'Teacher',
-      description: 'Create classes and issue BlockWards'
-    },
-    {
-      value: 'student',
-      icon: GraduationCap,
-      title: 'Student',
-      description: 'Join classes and earn achievements'
-    }
-  ];
+  if (done) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-xl border-0">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="mx-auto h-16 w-16 rounded-full bg-amber-100 flex items-center justify-center mb-5">
+              <Clock className="h-8 w-8 text-amber-600" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-900 mb-2">Account Created — Pending Approval</h2>
+            <p className="text-sm text-slate-500 mb-6">
+              Your BlockWard account has been created. An administrator needs to approve your
+              account before you can access the platform. This is a security measure to ensure
+              only authorized users gain access.
+            </p>
+            <Button
+              onClick={() => base44.auth.logout(window.location.origin + '/Login')}
+              variant="outline"
+              className="w-full"
+            >
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-violet-50 flex items-center justify-center p-4">
@@ -300,239 +176,85 @@ export default function Onboarding() {
           <CardDescription>Let's set up your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <AnimatePresence mode="wait">
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                <div>
-                  <Label className="text-base mb-4 block">I am a...</Label>
-                  <RadioGroup
-                    value={formData.user_type}
-                    onValueChange={(value) => setFormData({ ...formData, user_type: value })}
-                    className="space-y-3"
-                  >
-                    {userTypes.map((type) => (
-                      <Label
-                        key={type.value}
-                        htmlFor={type.value}
-                        className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          formData.user_type === type.value
-                            ? 'border-violet-600 bg-violet-50'
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                      >
-                        <RadioGroupItem value={type.value} id={type.value} className="sr-only" />
-                        <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-                          formData.user_type === type.value
-                            ? 'bg-violet-600 text-white'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          <type.icon className="h-6 w-6" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900">{type.title}</p>
-                          <p className="text-sm text-slate-500">{type.description}</p>
-                        </div>
-                      </Label>
-                    ))}
-                  </RadioGroup>
-                </div>
-                <Button
-                  onClick={() => setStep(2)}
-                  disabled={!formData.user_type}
-                  className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-                >
-                  Continue
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </motion.div>
-            )}
-
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-6"
-              >
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input
-                      value={formData.first_name}
-                      onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                      placeholder="John"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input
-                      value={formData.last_name}
-                      onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                      placeholder="Doe"
-                    />
-                  </div>
-                </div>
-
-                {formData.user_type === 'teacher' && (
-                  <div className="space-y-2">
-                    <Label>School Code</Label>
-                    <Input
-                      value={formData.school_code}
-                      onChange={(e) => setFormData({ ...formData, school_code: e.target.value.toUpperCase() })}
-                      placeholder="e.g. IHS-DUBAI-2026"
-                    />
-                    <p className="text-xs text-slate-500">Enter the school code from your administrator to join their school.</p>
-                  </div>
-                )}
-
-                {formData.user_type === 'student' && (
-                  <div className="space-y-2">
-                    <Label>Class Join Code</Label>
-                    <Input
-                      value={formData.join_code}
-                      onChange={(e) => setFormData({ ...formData, join_code: e.target.value.toUpperCase() })}
-                      placeholder="Ask your teacher for the class code"
-                    />
-                    <p className="text-xs text-slate-500">Enter the class code from your teacher. You'll automatically join their school.</p>
-                  </div>
-                )}
-
-                {formData.user_type === 'admin' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Organization Type</Label>
-                      <p className="text-xs text-slate-500 mb-2">BlockWard supports schools, sports clubs, martial arts academies, chess clubs, and more.</p>
-                      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
-                        {ORG_TYPES.map((org) => (
-                          <button
-                            key={org.value}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, org_type: org.value })}
-                            className={`text-left p-3 rounded-lg border-2 transition-all ${
-                              formData.org_type === org.value
-                                ? 'border-violet-600 bg-violet-50'
-                                : 'border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <p className="font-medium text-sm text-slate-900">{org.label}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">{org.description}</p>
-                          </button>
-                        ))}
+          <div className="space-y-6">
+            {/* Account type selection */}
+            <div>
+              <Label className="text-base mb-4 block">I am a...</Label>
+              <div className="space-y-2">
+                {ACCOUNT_TYPES.map((type, idx) => {
+                  const isSelected = selectedType === idx;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setSelectedType(idx)}
+                      className={`flex items-center gap-4 w-full p-3 rounded-xl border-2 cursor-pointer transition-all text-left ${
+                        isSelected
+                          ? 'border-violet-600 bg-violet-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        <type.icon className="h-5 w-5" />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Organization Name</Label>
-                      <Input
-                        value={formData.school_name}
-                        onChange={(e) => setFormData({ ...formData, school_name: e.target.value, school_code: formData.school_code || suggestSchoolCode(e.target.value) })}
-                        placeholder="e.g. Springfield High School, Dubai BJJ Academy, Elite Chess Club"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>School Code</Label>
-                      <Input
-                        value={formData.school_code}
-                        onChange={(e) => setFormData({ ...formData, school_code: e.target.value.toUpperCase() })}
-                        placeholder="Auto-generated from name, or customize"
-                      />
-                      <p className="text-xs text-slate-500">Teachers will use this code to join your school. e.g. IHS-DUBAI-2026</p>
-                    </div>
-                  </>
-                )}
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm text-slate-900">{type.title}</p>
+                        <p className="text-xs text-slate-500">{type.description}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                {formData.user_type === 'teacher' && (
-                  <div className="space-y-2">
-                    <Label>Department</Label>
-                    <Input
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      placeholder="Mathematics"
-                    />
+            {/* Name fields */}
+            <AnimatePresence>
+              {selectedType !== null && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>First Name</Label>
+                      <Input
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder="John"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Last Name</Label>
+                      <Input
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder="Doe"
+                      />
+                    </div>
                   </div>
-                )}
 
-                {formData.user_type === 'student' && (
-                  <>
-                    <div className="space-y-2">
-                      <Label>Student ID</Label>
-                      <Input
-                        value={formData.student_id}
-                        onChange={(e) => setFormData({ ...formData, student_id: e.target.value })}
-                        placeholder="STU001"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Grade/Year Level</Label>
-                      <Input
-                        value={formData.grade_level}
-                        onChange={(e) => setFormData({ ...formData, grade_level: e.target.value })}
-                        placeholder="Year 9"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Parent/Guardian Name</Label>
-                      <Input
-                        value={formData.parent_name}
-                        onChange={(e) => setFormData({ ...formData, parent_name: e.target.value })}
-                        placeholder="Jane Doe"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Parent/Guardian Email</Label>
-                      <Input
-                        type="email"
-                        value={formData.parent_email}
-                        onChange={(e) => setFormData({ ...formData, parent_email: e.target.value })}
-                        placeholder="parent@email.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Parent/Guardian Phone</Label>
-                      <Input
-                        value={formData.parent_phone}
-                        onChange={(e) => setFormData({ ...formData, parent_phone: e.target.value })}
-                        placeholder="+44 123 456 7890"
-                      />
-                    </div>
-                  </>
-                )}
-
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setStep(1)}
-                    className="flex-1"
-                  >
-                    Back
-                  </Button>
                   <Button
                     onClick={handleSubmit}
-                    disabled={!formData.first_name || !formData.last_name || submitting || 
-                      (formData.user_type === 'admin' && !formData.school_name) ||
-                      (formData.user_type === 'teacher' && !formData.school_code) ||
-                      (formData.user_type === 'student' && !formData.join_code)}
-                    className="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
+                    disabled={!firstName.trim() || !lastName.trim() || submitting}
+                    className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
                   >
                     {submitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        Complete Setup
+                        Create Account
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </>
                     )}
                   </Button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </CardContent>
       </Card>
     </div>

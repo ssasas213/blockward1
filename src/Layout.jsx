@@ -27,7 +27,7 @@ export default function Layout({ children, currentPageName }) {
   const [loading, setLoading] = useState(true);
   
   // Public pages that don't need sidebar
-  const publicPages = ['Home', 'Login'];
+  const publicPages = ['Home', 'Login', 'Onboarding', 'Signup', 'ChoosePlatform'];
   const isPublicPage = publicPages.includes(currentPageName);
 
   useEffect(() => {

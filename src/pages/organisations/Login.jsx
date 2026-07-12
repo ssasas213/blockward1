@@ -1,6 +1,8 @@
-import React from 'react';
-import PlatformLoginPage from '@/components/auth/PlatformLoginPage';
+import React, { useEffect } from 'react';
 
 export default function OrgsLogin() {
-  return <PlatformLoginPage platformId="organisations" />;
+  useEffect(() => {
+    window.location.href = '/Login';
+  }, []);
+  return null;
 }

@@ -36,15 +36,27 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
   useEffect(() => {
     if (!initialized || loading) return;
 
-    // Not authenticated - redirect to home
+    // Not authenticated - redirect to login
     if (!user) {
-      window.location.href = createPageUrl('Home');
+      window.location.href = '/Login';
       return;
     }
 
-    // Authenticated but no profile, or profile without school (non-admins) - redirect to onboarding
-    if (requireProfile && (!profile || (profile.user_type !== 'admin' && !profile.school_id))) {
+    // Authenticated but no profile - redirect to onboarding
+    if (requireProfile && !profile) {
       window.location.href = createPageUrl('Onboarding');
+      return;
+    }
+
+    // Profile pending approval - redirect to login (shows pending message)
+    if (requireProfile && profile && profile.status === 'pending_approval') {
+      window.location.href = '/Login';
+      return;
+    }
+
+    // Profile suspended - redirect to login (shows suspended message)
+    if (requireProfile && profile && (profile.status === 'suspended' || profile.status === 'inactive')) {
+      window.location.href = '/Login';
       return;
     }
   }, [user, profile, loading, initialized, requireProfile]);
@@ -73,8 +85,17 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     return null;
   }
 
-  // Profile required but not found, or no school linked yet for non-admins
-  if (requireProfile && (!profile || (profile.user_type !== 'admin' && !profile.school_id))) {
+  // Profile required but not found
+  if (requireProfile && !profile) {
+    return null;
+  }
+
+  // Pending or suspended — redirect in progress
+  if (requireProfile && profile && (
+    profile.status === 'pending_approval' ||
+    profile.status === 'suspended' ||
+    profile.status === 'inactive'
+  )) {
     return null;
   }
 
