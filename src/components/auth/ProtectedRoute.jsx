@@ -48,6 +48,12 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    // Admin with no school linked — redirect to school setup
+    if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
+      window.location.href = createPageUrl('SchoolSetup');
+      return;
+    }
+
     // Profile pending approval - redirect to login (shows pending message)
     if (requireProfile && profile && profile.status === 'pending_approval') {
       window.location.href = '/Login';
@@ -87,6 +93,11 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Profile required but not found
   if (requireProfile && !profile) {
+    return null;
+  }
+
+  // Admin with no school — redirect in progress
+  if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
     return null;
   }
 

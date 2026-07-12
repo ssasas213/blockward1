@@ -8,6 +8,8 @@ import {
   Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
+import { useSchool } from '@/lib/SchoolContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,42 +22,10 @@ import { getRoleLabel } from '@/lib/orgTypes';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [school, setSchool] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile, activeSchool: school, loading } = useSchool();
 
-  const publicPages = ['Home', 'Login', 'Onboarding', 'Signup', 'ChoosePlatform'];
+  const publicPages = ['Home', 'Login', 'Onboarding', 'Signup', 'ChoosePlatform', 'SchoolSetup'];
   const isPublicPage = publicPages.includes(currentPageName);
-
-  useEffect(() => {
-    loadAuth();
-  }, []);
-
-  const loadAuth = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      if (currentUser) {
-        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-        if (profiles.length > 0) {
-          const p = profiles[0];
-          setProfile(p);
-          if (p.school_id) {
-            try {
-              const schools = await base44.entities.School.filter({ id: p.school_id });
-              if (schools.length > 0) setSchool(schools[0]);
-            } catch (e) { /* ignore */ }
-          }
-        }
-      }
-    } catch (error) {
-      setUser(null);
-      setProfile(null);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const logout = () => {
     base44.auth.logout(createPageUrl('Home'));
@@ -290,17 +260,9 @@ export default function Layout({ children, currentPageName }) {
 function SidebarContent({ groups, currentPageName, profile, user, userType, roleLabel, school, onClose, onLogout }) {
   return (
     <div className="flex flex-col h-full">
-      {/* Logo + School Name */}
+      {/* Logo + School Switcher */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-border">
-        <Link to={createPageUrl('Home')} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-          <Shield className="h-5 w-5 text-primary flex-shrink-0" />
-          <div className="min-w-0">
-            <p className="font-semibold text-foreground text-sm leading-tight">BlockWard</p>
-            {school?.name && (
-              <p className="text-xs text-muted-foreground truncate leading-tight">{school.name}</p>
-            )}
-          </div>
-        </Link>
+        <SchoolSwitcher onClose={onClose} />
         {onClose && (
           <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-md lg:hidden" aria-label="Close menu">
             <X className="h-4 w-4 text-muted-foreground" />
