@@ -11,22 +11,23 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   ArrowLeft, PenLine, Check, X, ExternalLink, Loader2,
-  Trophy, Shield, User, SendHorizonal, Sparkles, Copy, Link2, AlertCircle, Info, CheckCircle2
+  Trophy, Shield, User, SendHorizonal, Copy, Link2, AlertCircle, CheckCircle2, ShieldCheck
 } from 'lucide-react';
-import RecordStatusBadge from '@/components/records/RecordStatusBadge';
+import StatusBadge from '@/components/ui/status-badge';
+import { Skeleton } from '@/components/ui/loading-skeleton';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
 import SignatureSetup from '@/components/records/SignatureSetup';
 import SignatureConfirmDialog from '@/components/records/SignatureConfirmDialog';
 
 const CATEGORY_COLORS = {
-  academic: 'from-blue-500 to-indigo-500',
-  sports: 'from-green-500 to-emerald-500',
-  arts: 'from-pink-500 to-rose-500',
-  leadership: 'from-purple-500 to-violet-500',
-  community: 'from-amber-500 to-orange-500',
-  behaviour: 'from-red-500 to-rose-500',
-  special: 'from-indigo-500 to-purple-500',
+  academic: 'bg-blue-50 text-blue-700',
+  sports: 'bg-green-50 text-green-700',
+  arts: 'bg-purple-50 text-purple-700',
+  leadership: 'bg-amber-50 text-amber-700',
+  community: 'bg-rose-50 text-rose-700',
+  behaviour: 'bg-red-50 text-red-700',
+  special: 'bg-indigo-50 text-indigo-700',
 };
 
 export default function RecordDetail() {
@@ -50,17 +51,14 @@ export default function RecordDetail() {
   const [sigProfile, setSigProfile] = useState(null);
   const [showSigSetup, setShowSigSetup] = useState(false);
   const [sendingVault, setSendingVault] = useState(false);
-
-  useEffect(() => { loadAll(); }, [recordId]);
-
   const [errorType, setErrorType] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+
+  useEffect(() => { loadAll(); }, [recordId]);
 
   const loadAll = async () => {
     if (!recordId) { setLoading(false); return; }
     try {
-      // Use the backend function to fetch the record — bypasses RLS issues
-      // and provides structured error messages (not_found, access_denied, wrong_school)
       const res = await base44.functions.invoke('getRecordDetail', { recordId });
       const data = res.data;
       if (!data?.ok) {
@@ -69,7 +67,6 @@ export default function RecordDetail() {
         setLoading(false);
         return;
       }
-
       setUser(data.user);
       setProfile(data.profile);
       setRecord(data.record);
@@ -147,19 +144,10 @@ export default function RecordDetail() {
     toast.success('Verification link copied!');
   };
 
-  // Permissions
-  const canSubmit = record?.status === 'draft'
-    && profile?.user_type === 'student'
-    && record?.student_email === user?.email;
-
-  const canTeacherSign = record?.status === 'awaiting_teacher_signature'
-    && profile?.user_type === 'teacher';
-
-  const canAdminSign = record?.status === 'awaiting_admin_signature'
-    && profile?.user_type === 'admin';
-
+  const canSubmit = record?.status === 'draft' && profile?.user_type === 'student' && record?.student_email === user?.email;
+  const canTeacherSign = record?.status === 'awaiting_teacher_signature' && profile?.user_type === 'teacher';
+  const canAdminSign = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
   const canReject = (canTeacherSign || canAdminSign);
-
   const canSendToVault = record?.status === 'approved' && profile?.user_type === 'admin';
 
   const vaultBlockReason = (() => {
@@ -170,32 +158,27 @@ export default function RecordDetail() {
   })();
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+    <div className="max-w-4xl mx-auto space-y-6">
+      <Skeleton className="h-8 w-64" />
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-48 w-full" />
     </div>
   );
 
   if (!record) return (
     <div className="max-w-md mx-auto mt-20">
-      <Card className="border-0 shadow-xl text-center">
+      <Card className="shadow-sm text-center">
         <CardContent className="py-12">
-          <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
-            errorType === 'not_found' ? 'bg-slate-100' :
-            errorType === 'access_denied' || errorType === 'wrong_school' ? 'bg-amber-100' :
-            'bg-red-100'
-          }`}>
-            {errorType === 'not_found' ? <Trophy className="h-8 w-8 text-slate-400" /> :
-             <AlertCircle className={`h-8 w-8 ${
-               errorType === 'access_denied' || errorType === 'wrong_school' ? 'text-amber-500' : 'text-red-500'
-             }`} />}
+          <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-4">
+            {errorType === 'not_found' ? <Trophy className="h-6 w-6 text-muted-foreground" /> : <AlertCircle className="h-6 w-6 text-muted-foreground" />}
           </div>
-          <h1 className="text-xl font-bold text-slate-900 mb-2">
+          <h1 className="text-lg font-semibold text-foreground mb-2">
             {errorType === 'not_found' ? 'Achievement Not Found' :
              errorType === 'access_denied' ? 'Access Denied' :
              errorType === 'wrong_school' ? 'Wrong Organisation' :
              'Unable to Load Record'}
           </h1>
-          <p className="text-slate-500 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {errorMessage || (recordId ? 'This record could not be found.' : 'No record ID provided. Please open this page from a valid link.')}
           </p>
           <Button variant="outline" onClick={() => navigate(-1)}>
@@ -208,55 +191,57 @@ export default function RecordDetail() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Back + Header */}
-      <div className="flex items-start gap-4">
+      {/* Header */}
+      <div className="flex items-start gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-bold text-slate-900">{record.title}</h1>
-            <RecordStatusBadge status={record.status} />
-            <Badge className="bg-slate-100 text-slate-600 border-0 capitalize">{record.category}</Badge>
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">{record.title}</h1>
+            <StatusBadge status={record.status} />
+            <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600'}`}>
+              {record.category}
+            </span>
           </div>
-          <p className="text-slate-500 mt-1 text-sm">Submitted {format(new Date(record.created_date), 'MMM d, yyyy')}</p>
+          <p className="text-muted-foreground mt-1 text-sm">Submitted {format(new Date(record.created_date), 'MMM d, yyyy')}</p>
         </div>
       </div>
 
       {/* Rejection banner */}
       {record.status === 'rejected' && (record.rejection_reason || record.teacher_rejection_reason) && (
-        <div className="rounded-xl p-4 bg-red-50 border border-red-200">
-          <p className="text-sm font-semibold text-red-700 mb-1">Rejection Reason</p>
-          <p className="text-sm text-red-600">{record.rejection_reason || record.teacher_rejection_reason}</p>
+        <div className="rounded-lg p-4 bg-destructive/5 border border-destructive/20">
+          <p className="text-sm font-medium text-destructive mb-1">Rejection Reason</p>
+          <p className="text-sm text-destructive">{record.rejection_reason || record.teacher_rejection_reason}</p>
         </div>
       )}
 
-      {/* Approved — ready for vault delivery banner (admin only) */}
+      {/* Approved banner */}
       {canSendToVault && (
-        <div className="rounded-xl p-4 bg-green-50 border border-green-200">
+        <div className="rounded-lg p-4 bg-success/5 border border-success/20">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-green-700">Approved — Ready for Vault Delivery</p>
-              <p className="text-sm text-green-600 mt-1">
-                This achievement is approved. Click "Send to Student Vault" to deliver it to the student's BlockWard Vault.
+              <p className="text-sm font-medium text-success">Approved — Ready for Vault Delivery</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Click "Send to Student Vault" to deliver this achievement to the student's BlockWard Vault.
               </p>
               {vaultBlockReason && (
-                <p className="text-sm text-red-600 mt-2 font-medium">{vaultBlockReason}</p>
+                <p className="text-sm text-destructive mt-2 font-medium">{vaultBlockReason}</p>
               )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Delivered to vault banner */}
+      {/* Delivered banner */}
       {record.status === 'delivered_to_vault' && (
-        <div className="rounded-xl p-4 bg-emerald-50 border border-emerald-200">
+        <div className="rounded-lg p-4 bg-success/5 border border-success/20">
           <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <Shield className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-700">Delivered to Student Vault</p>
-              <p className="text-sm text-emerald-600 mt-1">
+              <p className="text-sm font-medium text-success">Delivered to Student Vault</p>
+              <p className="text-sm text-muted-foreground mt-1">
                 This achievement has been delivered to the student's BlockWard Vault.
                 {record.vault_delivered_at && ` Delivered on ${format(new Date(record.vault_delivered_at), 'MMM d, yyyy HH:mm')}.`}
               </p>
@@ -265,45 +250,38 @@ export default function RecordDetail() {
         </div>
       )}
 
-
-
-      {/* NFT Card — show when delivered to vault (or legacy archived) */}
+      {/* NFT Card */}
       {(record.status === 'delivered_to_vault' || record.status === 'archived') && (
-        <div className={`rounded-2xl bg-gradient-to-br ${CATEGORY_COLORS[record.category] || 'from-violet-500 to-indigo-500'} p-1`}>
-          <div className="bg-white rounded-xl p-6">
-            <div className="flex flex-col md:flex-row gap-6 items-start">
-              {record.nft_image_url ? (
-                <img src={record.nft_image_url} alt="NFT" className="w-40 h-40 rounded-xl object-cover shadow-lg flex-shrink-0" />
-              ) : (
-                <div className={`w-40 h-40 rounded-xl bg-gradient-to-br ${CATEGORY_COLORS[record.category]} flex items-center justify-center flex-shrink-0`}>
-                  <Trophy className="h-20 w-20 text-white/80" />
-                </div>
-              )}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="h-5 w-5 text-violet-600" />
-                  <span className="text-sm font-semibold text-violet-600 uppercase tracking-wide">Verified NFT Achievement</span>
-                </div>
-                <h2 className="text-xl font-bold text-slate-900 mb-1">{record.title}</h2>
-                <p className="text-slate-600 text-sm mb-3">{record.description}</p>
-                <div className="flex flex-wrap gap-2">
-                  {record.verify_id && (
-                    <Button size="sm" variant="outline" onClick={copyVerifyLink} className="gap-1">
-                      <Link2 className="h-3.5 w-3.5" /> Copy Verify Link
-                    </Button>
-                  )}
-
-                </div>
+        <Card className="shadow-sm overflow-hidden">
+          <div className="flex flex-col md:flex-row gap-4 p-5">
+            {record.nft_image_url ? (
+              <img src={record.nft_image_url} alt="NFT" className="w-32 h-32 rounded-lg object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-32 h-32 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Trophy className="h-10 w-10 text-muted-foreground" />
               </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="text-xs font-medium text-primary uppercase tracking-wide">Verified NFT Achievement</span>
+              </div>
+              <h2 className="text-lg font-semibold text-foreground mb-1">{record.title}</h2>
+              <p className="text-sm text-muted-foreground mb-3">{record.description}</p>
+              {record.verify_id && (
+                <Button size="sm" variant="outline" onClick={copyVerifyLink}>
+                  <Link2 className="h-3.5 w-3.5 mr-1.5" /> Copy Verify Link
+                </Button>
+              )}
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Action Bar */}
       <div className="flex flex-wrap gap-3">
         {canSubmit && (
-          <Button onClick={handleSubmit} disabled={submitting} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+          <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
             Submit for Teacher Review
           </Button>
@@ -311,120 +289,107 @@ export default function RecordDetail() {
         {(canTeacherSign || canAdminSign) && (
           <Button
             onClick={() => {
-              if (!sigProfile) {
-                setShowSigSetup(true);
-              } else {
-                setShowSignDialog(true);
-              }
+              if (!sigProfile) setShowSigSetup(true);
+              else setShowSignDialog(true);
             }}
-            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
           >
             <PenLine className="h-4 w-4 mr-2" />
             {canAdminSign ? 'Sign & Approve' : 'Sign & Endorse'}
           </Button>
         )}
         {canReject && (
-          <Button variant="outline" onClick={() => setShowRejectDialog(true)} className="border-red-200 text-red-600 hover:bg-red-50">
+          <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
             <X className="h-4 w-4 mr-2" /> Reject
           </Button>
         )}
         {canSendToVault && (
-          <Button
-            onClick={handleSendToVault}
-            disabled={sendingVault || !!vaultBlockReason}
-            className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700"
-          >
+          <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason}>
             {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
             Send to Student Vault
           </Button>
         )}
-
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main info */}
         <div className="lg:col-span-2 space-y-6">
-
-          {/* Achievement Details */}
-          <Card className="border-0 shadow-md">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Trophy className="h-4 w-4" /> Achievement Details</CardTitle></CardHeader>
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><Trophy className="h-4 w-4" /> Achievement Details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-slate-500">Student</p>
-                  <p className="font-medium">{record.student_name}</p>
-                  <p className="text-xs text-slate-400">{record.student_email}</p>
+                  <p className="text-muted-foreground">Student</p>
+                  <p className="font-medium text-foreground">{record.student_name}</p>
+                  <p className="text-xs text-muted-foreground">{record.student_email}</p>
                 </div>
                 {record.teacher_name && (
                   <div>
-                    <p className="text-slate-500">Sent to Teacher for Validation</p>
-                    <p className="font-medium">{record.teacher_name}</p>
-                    <p className="text-xs text-slate-400">{record.teacher_email}</p>
+                    <p className="text-muted-foreground">Teacher</p>
+                    <p className="font-medium text-foreground">{record.teacher_name}</p>
+                    <p className="text-xs text-muted-foreground">{record.teacher_email}</p>
                   </div>
                 )}
                 {record.admin_name && (
                   <div>
-                    <p className="text-slate-500">Approving Admin</p>
-                    <p className="font-medium">{record.admin_name}</p>
+                    <p className="text-muted-foreground">Approving Admin</p>
+                    <p className="font-medium text-foreground">{record.admin_name}</p>
                   </div>
                 )}
                 {record.date_achieved && (
                   <div>
-                    <p className="text-slate-500">Date Achieved</p>
-                    <p className="font-medium">{format(new Date(record.date_achieved), 'MMM d, yyyy')}</p>
+                    <p className="text-muted-foreground">Date Achieved</p>
+                    <p className="font-medium text-foreground">{format(new Date(record.date_achieved), 'MMM d, yyyy')}</p>
                   </div>
                 )}
                 {record.class_name && (
                   <div>
-                    <p className="text-slate-500">Class</p>
-                    <p className="font-medium">{record.class_name}</p>
+                    <p className="text-muted-foreground">Class</p>
+                    <p className="font-medium text-foreground">{record.class_name}</p>
                   </div>
                 )}
               </div>
-              {/* Award type info for admin review */}
               {record.is_custom_award && (
-                <div className="flex items-center gap-2 p-3 bg-violet-50 rounded-lg border border-violet-200">
-                  <Sparkles className="h-4 w-4 text-violet-600" />
+                <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <ShieldCheck className="h-4 w-4 text-primary" />
                   <div>
-                    <p className="text-sm font-semibold text-violet-700">Custom Award</p>
-                    <p className="text-xs text-violet-500">Created by teacher for this record — not a school-wide template</p>
+                    <p className="text-sm font-medium text-primary">Custom Award</p>
+                    <p className="text-xs text-muted-foreground">Created by teacher for this record — not a school-wide template</p>
                   </div>
-                  {record.custom_award_icon && <span className="text-2xl ml-auto">{record.custom_award_icon}</span>}
                 </div>
               )}
               {!record.is_custom_award && record.award_type_title && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">Original Award Template</p>
-                  <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3 flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-slate-400" />
+                  <p className="text-sm text-muted-foreground mb-1">Award Template</p>
+                  <p className="text-sm text-foreground bg-muted/50 rounded-lg p-3 flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-muted-foreground" />
                     {record.award_type_title}
                     {record.title !== record.award_type_title && (
-                      <Badge className="ml-auto bg-violet-100 text-violet-700 border-0 text-xs">Customised</Badge>
+                      <Badge variant="outline" className="ml-auto text-xs">Customised</Badge>
                     )}
                   </p>
                 </div>
               )}
               {record.points > 0 && (
                 <div>
-                  <p className="text-sm text-slate-500">Points</p>
-                  <p className="font-medium">{record.points} pts</p>
+                  <p className="text-sm text-muted-foreground">Points</p>
+                  <p className="font-medium text-foreground">{record.points} pts</p>
                 </div>
               )}
               {record.teacher_notes && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">Teacher Notes for Admin</p>
-                  <p className="text-sm text-slate-700 bg-amber-50 rounded-lg p-3 border border-amber-200">{record.teacher_notes}</p>
+                  <p className="text-sm text-muted-foreground mb-1">Teacher Notes for Admin</p>
+                  <p className="text-sm text-foreground bg-warning/5 rounded-lg p-3 border border-warning/20">{record.teacher_notes}</p>
                 </div>
               )}
               {record.description && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-1">Description</p>
-                  <p className="text-sm text-slate-700 bg-slate-50 rounded-lg p-3">{record.description}</p>
+                  <p className="text-sm text-muted-foreground mb-1">Description</p>
+                  <p className="text-sm text-foreground bg-muted/50 rounded-lg p-3">{record.description}</p>
                 </div>
               )}
               {record.certificate_url && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-2">Certificate / Supporting Document</p>
+                  <p className="text-sm text-muted-foreground mb-2">Certificate</p>
                   <Button variant="outline" size="sm" asChild>
                     <a href={record.certificate_url} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4 mr-2" /> View Certificate
@@ -434,9 +399,9 @@ export default function RecordDetail() {
               )}
               {record.file_url && (
                 <div>
-                  <p className="text-sm text-slate-500 mb-2">Evidence</p>
+                  <p className="text-sm text-muted-foreground mb-2">Evidence</p>
                   {record.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                    <img src={record.file_url} alt="Evidence" className="max-h-64 rounded-xl border shadow-sm" />
+                    <img src={record.file_url} alt="Evidence" className="max-h-64 rounded-lg border border-border" />
                   ) : (
                     <Button variant="outline" size="sm" asChild>
                       <a href={record.file_url} target="_blank" rel="noopener noreferrer">
@@ -450,65 +415,61 @@ export default function RecordDetail() {
           </Card>
 
           {/* Signatures */}
-          <Card className="border-0 shadow-md">
-            <CardHeader><CardTitle className="text-base flex items-center gap-2"><PenLine className="h-4 w-4" /> Digital Signatures</CardTitle></CardHeader>
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle className="text-sm flex items-center gap-2"><PenLine className="h-4 w-4" /> Digital Signatures</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              {/* Teacher Signature */}
-              <div className={`rounded-xl p-4 border-2 ${record.teacher_signed ? 'border-amber-200 bg-amber-50' : 'border-dashed border-slate-200 bg-slate-50'}`}>
+              <div className={`rounded-lg p-4 border ${record.teacher_signed ? 'border-success/20 bg-success/5' : 'border-dashed border-border bg-muted/50'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-sm">Teacher Endorsement</span>
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Teacher Endorsement</span>
                   </div>
                   {record.teacher_signed
-                    ? <Badge className="bg-amber-100 text-amber-700 border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
-                    : <Badge className="bg-slate-100 text-slate-500 border-0">Pending</Badge>}
+                    ? <Badge className="bg-success/10 text-success border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
+                    : <Badge variant="outline">Pending</Badge>}
                 </div>
                 {teacherSig && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-700">{teacherSig.signer_name}</p>
+                    <p className="text-sm font-medium text-foreground">{teacherSig.signer_name}</p>
                     {teacherSig.signature_type === 'drawn'
-                      ? <img src={teacherSig.signature_value} alt="Teacher sig" className="h-12 border rounded bg-white" />
-                      : <p className="text-lg italic text-slate-800" style={{ fontFamily: 'Georgia, serif' }}>{teacherSig.signature_value}</p>
+                      ? <img src={teacherSig.signature_value} alt="Teacher signature" className="h-12 border border-border rounded bg-card" />
+                      : <p className="text-lg italic text-foreground" style={{ fontFamily: 'Georgia, serif' }}>{teacherSig.signature_value}</p>
                     }
-                    <p className="text-xs text-slate-400">{format(new Date(teacherSig.signed_at), 'MMM d, yyyy HH:mm')}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(teacherSig.signed_at), 'MMM d, yyyy HH:mm')}</p>
                   </div>
                 )}
               </div>
 
-              {/* Admin Signature */}
-              <div className={`rounded-xl p-4 border-2 ${record.admin_signed ? 'border-violet-200 bg-violet-50' : 'border-dashed border-slate-200 bg-slate-50'}`}>
+              <div className={`rounded-lg p-4 border ${record.admin_signed ? 'border-success/20 bg-success/5' : 'border-dashed border-border bg-muted/50'}`}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-violet-600" />
-                    <span className="font-medium text-sm">Admin Approval</span>
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm text-foreground">Admin Approval</span>
                   </div>
                   {record.admin_signed
-                    ? <Badge className="bg-violet-100 text-violet-700 border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
-                    : <Badge className="bg-slate-100 text-slate-500 border-0">Pending</Badge>}
+                    ? <Badge className="bg-success/10 text-success border-0 gap-1"><Check className="h-3 w-3" /> Signed</Badge>
+                    : <Badge variant="outline">Pending</Badge>}
                 </div>
                 {adminSig && (
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-slate-700">{adminSig.signer_name}</p>
+                    <p className="text-sm font-medium text-foreground">{adminSig.signer_name}</p>
                     {adminSig.signature_type === 'drawn'
-                      ? <img src={adminSig.signature_value} alt="Admin sig" className="h-12 border rounded bg-white" />
-                      : <p className="text-lg italic text-slate-800" style={{ fontFamily: 'Georgia, serif' }}>{adminSig.signature_value}</p>
+                      ? <img src={adminSig.signature_value} alt="Admin signature" className="h-12 border border-border rounded bg-card" />
+                      : <p className="text-lg italic text-foreground" style={{ fontFamily: 'Georgia, serif' }}>{adminSig.signature_value}</p>
                     }
-                    <p className="text-xs text-slate-400">{format(new Date(adminSig.signed_at), 'MMM d, yyyy HH:mm')}</p>
+                    <p className="text-xs text-muted-foreground">{format(new Date(adminSig.signed_at), 'MMM d, yyyy HH:mm')}</p>
                   </div>
                 )}
               </div>
-
-
             </CardContent>
           </Card>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Flow */}
-          <Card className="border-0 shadow-md">
-            <CardHeader><CardTitle className="text-base">Approval Flow</CardTitle></CardHeader>
+          {/* Approval Flow */}
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle className="text-sm">Approval Flow</CardTitle></CardHeader>
             <CardContent>
               {[
                 { key: 'draft', label: 'Student Sends to Teacher' },
@@ -527,23 +488,23 @@ export default function RecordDetail() {
                 return (
                   <div key={step.key} className="flex items-start gap-3 mb-3">
                     <div className="flex flex-col items-center">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                        isRejected && active ? 'bg-red-500 text-white' :
-                        done ? 'bg-violet-600 text-white' :
-                        active ? 'bg-violet-100 text-violet-700 ring-2 ring-violet-500' :
-                        'bg-slate-100 text-slate-400'
+                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
+                        isRejected && active ? 'bg-destructive text-destructive-foreground' :
+                        done ? 'bg-primary text-primary-foreground' :
+                        active ? 'bg-primary/10 text-primary ring-2 ring-primary/20' :
+                        'bg-muted text-muted-foreground'
                       }`}>
                         {done ? <Check className="h-3 w-3" /> : i + 1}
                       </div>
-                      {i < arr.length - 1 && <div className={`w-0.5 h-5 mt-0.5 ${done ? 'bg-violet-400' : 'bg-slate-200'}`} />}
+                      {i < arr.length - 1 && <div className={`w-px h-5 mt-0.5 ${done ? 'bg-primary/30' : 'bg-border'}`} />}
                     </div>
-                    <p className={`text-sm pt-0.5 ${active ? 'font-semibold text-violet-700' : done ? 'text-slate-600' : 'text-slate-400'}`}>{step.label}</p>
+                    <p className={`text-sm pt-0.5 ${active ? 'font-medium text-foreground' : done ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</p>
                   </div>
                 );
               })}
               {record.status === 'rejected' && (
-                <div className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2">
-                  <p className="text-xs font-semibold text-red-600">Submission Rejected</p>
+                <div className="mt-2 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2">
+                  <p className="text-xs font-medium text-destructive">Submission Rejected</p>
                 </div>
               )}
             </CardContent>
@@ -551,22 +512,22 @@ export default function RecordDetail() {
 
           {/* Verify Link */}
           {record.verify_id && (
-            <Card className="border-0 shadow-md">
+            <Card className="shadow-sm">
               <CardContent className="p-4">
-                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
                   <Link2 className="h-4 w-4" /> Public Verification
                 </p>
-                <p className="text-xs text-slate-500 mb-3">Anyone can verify this achievement using this link — ideal for universities and employers.</p>
-                <Button size="sm" variant="outline" onClick={copyVerifyLink} className="w-full gap-1">
-                  <Copy className="h-3.5 w-3.5" /> Copy Verify Link
+                <p className="text-xs text-muted-foreground mb-3">Anyone can verify this achievement using this link.</p>
+                <Button size="sm" variant="outline" onClick={copyVerifyLink} className="w-full">
+                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Verify Link
                 </Button>
               </CardContent>
             </Card>
           )}
 
           {/* Audit Trail */}
-          <Card className="border-0 shadow-md">
-            <CardHeader><CardTitle className="text-base">Audit Trail</CardTitle></CardHeader>
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle className="text-sm">Audit Trail</CardTitle></CardHeader>
             <CardContent>
               <AuditTrail logs={auditLogs} />
             </CardContent>
@@ -574,7 +535,7 @@ export default function RecordDetail() {
         </div>
       </div>
 
-      {/* Signature Profile Setup (first-time) */}
+      {/* Signature Setup */}
       {showSigSetup && (
         <SignatureSetup
           profile={profile}
@@ -587,7 +548,7 @@ export default function RecordDetail() {
         />
       )}
 
-      {/* Sign Confirm Dialog (reuses saved signature profile) */}
+      {/* Sign Confirm Dialog */}
       <SignatureConfirmDialog
         open={showSignDialog}
         onOpenChange={setShowSignDialog}
@@ -598,15 +559,15 @@ export default function RecordDetail() {
         disabled={signing}
       />
 
-      {/* Fallback: if somehow sign dialog is opened without a sigProfile, show SignatureCapture */}
+      {/* Fallback Sign Dialog */}
       <Dialog open={showSignDialog && !sigProfile} onOpenChange={setShowSignDialog}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{profile?.user_type === 'admin' ? 'Sign & Approve Achievement' : 'Sign & Endorse Achievement'}</DialogTitle>
           </DialogHeader>
           <div className="py-2">
-            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg p-3 mb-4">
-              ⚠️ Signatures are permanent and cannot be edited or deleted.
+            <p className="text-xs text-warning bg-warning/5 rounded-lg p-3 mb-4 border border-warning/20">
+              Signatures are permanent and cannot be edited or deleted.
             </p>
             <SignatureCapture
               signerName={`${profile?.first_name} ${profile?.last_name}`}
@@ -624,7 +585,7 @@ export default function RecordDetail() {
             <DialogTitle>Reject Achievement</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <p className="text-sm text-slate-600">Provide a reason for rejection. The student will be notified.</p>
+            <p className="text-sm text-muted-foreground">Provide a reason for rejection. The student will be notified.</p>
             <Textarea value={rejectReason} onChange={e => setRejectReason(e.target.value)} rows={3} placeholder="Reason for rejection..." />
           </div>
           <div className="flex justify-end gap-3">
@@ -636,8 +597,6 @@ export default function RecordDetail() {
           </div>
         </DialogContent>
       </Dialog>
-
-
     </div>
   );
 }

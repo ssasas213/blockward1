@@ -19,7 +19,7 @@ function GoogleIcon({ className }) {
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [accountStatus, setAccountStatus] = useState(null); // 'pending' | 'suspended'
+  const [accountStatus, setAccountStatus] = useState(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export default function Login() {
           else if (result === 'pending') setAccountStatus('pending');
         }
       } catch {
-        /* not authenticated — show Google button */
+        /* not authenticated */
       } finally {
         setChecking(false);
       }
@@ -56,79 +56,62 @@ export default function Login() {
 
   if (checking) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-indigo-950 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-violet-950 to-indigo-950 flex items-center justify-center px-4 py-12">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-md">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm">
         {/* Branding */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex flex-col items-center gap-2">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
-              <Shield className="h-8 w-8 text-white" />
+          <Link to="/" className="inline-flex flex-col items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
+              <Shield className="h-6 w-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-extrabold text-white tracking-tight">BlockWard</span>
+            <span className="text-xl font-semibold text-foreground tracking-tight">BlockWard</span>
           </Link>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-card border border-border rounded-xl shadow-sm p-8">
           {accountStatus === 'pending' ? (
-            /* Pending approval state */
             <div className="text-center">
-              <div className="mx-auto h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mb-5">
-                <Clock className="h-7 w-7 text-amber-600" />
+              <div className="mx-auto h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center mb-4">
+                <Clock className="h-6 w-6 text-warning" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Awaiting Approval</h2>
-              <p className="text-sm text-slate-500 mb-6">
-                Your account is pending administrator approval. You'll be able to access BlockWard
-                once an administrator approves your account.
+              <h2 className="text-lg font-semibold text-foreground mb-2">Awaiting Approval</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                Your account is pending administrator approval. You'll be able to access BlockWard once an administrator approves your account.
               </p>
-              <Button
-                onClick={handleSignOut}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={handleSignOut} variant="outline" className="w-full">
                 Sign Out
               </Button>
             </div>
           ) : accountStatus === 'suspended' ? (
-            /* Suspended state */
             <div className="text-center">
-              <div className="mx-auto h-14 w-14 rounded-full bg-red-100 flex items-center justify-center mb-5">
-                <Ban className="h-7 w-7 text-red-600" />
+              <div className="mx-auto h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
+                <Ban className="h-6 w-6 text-destructive" />
               </div>
-              <h2 className="text-xl font-bold text-slate-900 mb-2">Account Suspended</h2>
-              <p className="text-sm text-slate-500 mb-6">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Account Suspended</h2>
+              <p className="text-sm text-muted-foreground mb-6">
                 Your account has been suspended. Please contact your administrator.
               </p>
-              <Button
-                onClick={handleSignOut}
-                variant="outline"
-                className="w-full"
-              >
+              <Button onClick={handleSignOut} variant="outline" className="w-full">
                 Sign Out
               </Button>
             </div>
           ) : (
-            /* Default login state */
             <>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2 text-center">Welcome to BlockWard</h2>
-              <p className="text-sm text-slate-500 mb-8 text-center">
-                Sign in with your Google account to continue.
+              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in to BlockWard</h1>
+              <p className="text-sm text-muted-foreground mb-6 text-center">
+                Use your Google account to continue.
               </p>
 
               {error && (
-                <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700 mb-4">
+                <div role="alert" className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-sm text-destructive mb-4">
                   <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                   {error}
                 </div>
@@ -137,12 +120,13 @@ export default function Login() {
               <Button
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50 hover:border-slate-300 font-semibold py-3 shadow-sm"
+                variant="outline"
+                className="w-full font-medium py-2.5"
               >
                 {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2 text-slate-400" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : (
-                  <GoogleIcon className="mr-3" />
+                  <GoogleIcon className="mr-2.5" />
                 )}
                 Continue with Google
               </Button>
@@ -150,7 +134,7 @@ export default function Login() {
           )}
         </div>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-6">
           © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
       </div>

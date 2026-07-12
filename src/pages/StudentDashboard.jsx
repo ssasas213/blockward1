@@ -6,12 +6,14 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import PageHeader from '@/components/ui/page-header';
+import StatCard from '@/components/ui/stat-card';
+import EmptyState from '@/components/ui/empty-state';
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Award, Shield, Calendar, BookOpen,
-  ChevronRight, TrendingUp, Star, Clock, FileText, PenLine
+  ChevronRight, Star, FileText
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import ParentContactSection from '@/components/student/ParentContactSection';
 
 function StudentDashboardContent() {
@@ -26,6 +28,7 @@ function StudentDashboardContent() {
     achievementPoints: 0,
     behaviourPoints: 0
   });
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -34,40 +37,33 @@ function StudentDashboardContent() {
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-
       if (!currentUser) return;
 
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const profile = profiles.length > 0 ? profiles[0] : null;
       setUserProfile(profile);
 
-        // Get classes where student is enrolled
-        const allClasses = await base44.entities.Class.list();
-        const myClasses = allClasses.filter(c => 
-          c.student_emails?.includes(currentUser.email)
-        );
+      const allClasses = await base44.entities.Class.list();
+      const myClasses = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
 
-        // Get today's schedule based on enrolled classes
-        const today = new Date().getDay();
-        const dayIndex = today === 0 ? 6 : today - 1;
-        const classIds = myClasses.map(c => c.id);
-        const allSchedules = await base44.entities.TimetableEntry.filter({ day_of_week: dayIndex });
-        const todaySchedule = allSchedules.filter(s => classIds.includes(s.class_id));
+      const today = new Date().getDay();
+      const dayIndex = today === 0 ? 6 : today - 1;
+      const classIds = myClasses.map(c => c.id);
+      const allSchedules = await base44.entities.TimetableEntry.filter({ day_of_week: dayIndex });
+      const todaySchedule = allSchedules.filter(s => classIds.includes(s.class_id));
 
-        // Get points and earned achievements (single source of truth via backend function)
-        const [points, vaultRes] = await Promise.all([
-          base44.entities.PointEntry.filter({ student_email: currentUser.email }, '-created_date', 10),
-          base44.functions.invoke('getStudentVault', {})
-        ]);
-        const blockWards = vaultRes.data?.ok ? (vaultRes.data.achievements || []) : [];
+      const [points, vaultRes] = await Promise.all([
+        base44.entities.PointEntry.filter({ student_email: currentUser.email }, '-created_date', 10),
+        base44.functions.invoke('getStudentVault', {})
+      ]);
+      const blockWards = vaultRes.data?.ok ? (vaultRes.data.achievements || []) : [];
 
-        // Calculate totals
-        let achievementPoints = 0;
-        let behaviourPoints = 0;
-        points.forEach(p => {
-          if (p.type === 'achievement') achievementPoints += p.points;
-          else behaviourPoints += Math.abs(p.points);
-        });
+      let achievementPoints = 0;
+      let behaviourPoints = 0;
+      points.forEach(p => {
+        if (p.type === 'achievement') achievementPoints += p.points;
+        else behaviourPoints += Math.abs(p.points);
+      });
 
       setStats({
         myClasses,
@@ -84,136 +80,40 @@ function StudentDashboardContent() {
     }
   };
 
-  const classColors = [
-    'from-violet-500 to-purple-500',
-    'from-blue-500 to-cyan-500',
-    'from-emerald-500 to-green-500',
-    'from-rose-500 to-pink-500',
-    'from-amber-500 to-orange-500'
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Welcome, {userProfile?.first_name}!
-          </h1>
-          <p className="text-slate-500 mt-1">
-            {userProfile?.grade_level && `${userProfile.grade_level} • `}Student Dashboard
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
-            <Link to={createPageUrl('Timetable')}>
-              <Calendar className="h-4 w-4 mr-2" />
-              My Timetable
-            </Link>
-          </Button>
-          <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700" asChild>
-            <Link to={createPageUrl('StudentBlockWards')}>
-              <Shield className="h-4 w-4 mr-2" />
-              My BlockWards
-            </Link>
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title={`${userProfile?.first_name || 'Student'}'s Dashboard`}
+        description={userProfile?.grade_level ? `Grade ${userProfile.grade_level}` : 'Your achievement overview'}
+      >
+        <Button variant="outline" asChild>
+          <Link to={createPageUrl('Timetable')}>
+            <Calendar className="h-4 w-4 mr-2" />
+            Timetable
+          </Link>
+        </Button>
+        <Button asChild>
+          <Link to={createPageUrl('StudentBlockWards')}>
+            <Shield className="h-4 w-4 mr-2" />
+            My BlockWards
+          </Link>
+        </Button>
+      </PageHeader>
 
-      {/* Portfolio Vault Quick Access */}
-      <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50 border-l-4 border-l-violet-400">
-        <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-violet-100 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-violet-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-800">Portfolio Vault</p>
-              <p className="text-sm text-slate-600">Your permanent digital achievement portfolio — automatically maintained.</p>
-            </div>
-          </div>
-          <Button size="sm" asChild className="shrink-0 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
-            <Link to={createPageUrl('StudentPortfolioVault')}>Open Vault</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Points Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-emerald-500 to-green-600 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-emerald-100">Achievement Points</p>
-                  <p className="text-4xl font-bold mt-1">{stats.achievementPoints}</p>
-                </div>
-                <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <TrendingUp className="h-7 w-7" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-amber-100">Behaviour Points</p>
-                  <p className="text-4xl font-bold mt-1">{stats.behaviourPoints}</p>
-                </div>
-                <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <Award className="h-7 w-7" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
-        >
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-violet-100">BlockWards Earned</p>
-                  <p className="text-4xl font-bold mt-1">{stats.blockWards.length}</p>
-                </div>
-                <div className="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center">
-                  <Shield className="h-7 w-7" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard label="Achievement Points" value={stats.achievementPoints} icon={Award} />
+        <StatCard label="Behaviour Points" value={stats.behaviourPoints} icon={Award} />
+        <StatCard label="BlockWards Earned" value={stats.blockWards.length} icon={Shield} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Schedule */}
-        <Card className="border-0 shadow-lg">
+        <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Today's Classes</CardTitle>
+            <CardTitle className="text-base">Today's Classes</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to={createPageUrl('Timetable')}>
                 View Full
@@ -223,34 +123,31 @@ function StudentDashboardContent() {
           </CardHeader>
           <CardContent>
             {stats.todaySchedule.length > 0 ? (
-              <div className="space-y-3">
-                {stats.todaySchedule.map((entry, i) => (
-                  <div key={entry.id} className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
-                    <div className="text-center min-w-[60px]">
-                      <p className="text-sm font-medium text-slate-900">{entry.start_time}</p>
-                      <p className="text-xs text-slate-500">{entry.end_time}</p>
+              <div className="space-y-2">
+                {stats.todaySchedule.map((entry) => (
+                  <div key={entry.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                    <div className="text-center min-w-[56px]">
+                      <p className="text-sm font-medium text-foreground">{entry.start_time}</p>
+                      <p className="text-xs text-muted-foreground">{entry.end_time}</p>
                     </div>
-                    <div className={`h-12 w-1 rounded-full bg-gradient-to-b ${classColors[i % classColors.length]}`} />
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-900">{entry.class_name || entry.subject}</p>
-                      <p className="text-sm text-slate-500">Room {entry.room}</p>
+                    <div className="w-px h-10 bg-border" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm">{entry.class_name || entry.subject}</p>
+                      <p className="text-xs text-muted-foreground">Room {entry.room}</p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-400">
-                <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No classes scheduled today</p>
-              </div>
+              <EmptyState icon={Calendar} title="No classes scheduled today" />
             )}
           </CardContent>
         </Card>
 
         {/* Recent Points */}
-        <Card className="border-0 shadow-lg">
+        <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">Recent Points</CardTitle>
+            <CardTitle className="text-base">Recent Points</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to={createPageUrl('MyPoints')}>
                 View All
@@ -260,40 +157,35 @@ function StudentDashboardContent() {
           </CardHeader>
           <CardContent>
             {stats.recentPoints.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {stats.recentPoints.map((point) => (
-                  <div key={point.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                        point.type === 'achievement' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                      }`}>
-                        {point.type === 'achievement' ? <Star className="h-5 w-5" /> : <Award className="h-5 w-5" />}
+                  <div key={point.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0 ${point.type === 'achievement' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                        {point.type === 'achievement' ? <Star className="h-4 w-4" /> : <Award className="h-4 w-4" />}
                       </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{point.category_name || point.reason}</p>
-                        <p className="text-sm text-slate-500">{point.reason}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground text-sm truncate">{point.category_name || point.reason}</p>
+                        <p className="text-xs text-muted-foreground truncate">{point.reason}</p>
                       </div>
                     </div>
-                    <Badge variant={point.type === 'achievement' ? 'default' : 'destructive'}>
+                    <Badge variant={point.type === 'achievement' ? 'default' : 'destructive'} className="flex-shrink-0">
                       {point.points > 0 ? '+' : ''}{point.points}
                     </Badge>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-slate-400">
-                <Award className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>No points recorded yet</p>
-              </div>
+              <EmptyState icon={Award} title="No points recorded yet" />
             )}
           </CardContent>
         </Card>
       </div>
 
       {/* My Classes */}
-      <Card className="border-0 shadow-lg">
+      <Card className="shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">My Classes</CardTitle>
+          <CardTitle className="text-base">My Classes</CardTitle>
           <Button variant="ghost" size="sm" asChild>
             <Link to={createPageUrl('Classes')}>
               View All
@@ -303,60 +195,36 @@ function StudentDashboardContent() {
         </CardHeader>
         <CardContent>
           {stats.myClasses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stats.myClasses.map((cls, i) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {stats.myClasses.map((cls) => (
                 <Link
                   key={cls.id}
                   to={createPageUrl(`ClassDetail?id=${cls.id}`)}
-                  className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+                  className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${classColors[i % classColors.length]} flex items-center justify-center`}>
-                      <BookOpen className="h-6 w-6 text-white" />
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                      <BookOpen className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{cls.name}</p>
-                      <p className="text-sm text-slate-500">{cls.subject}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">{cls.name}</p>
+                      <p className="text-xs text-muted-foreground">{cls.subject}</p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Room {cls.room || 'TBA'}</span>
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Room {cls.room || 'TBA'}</span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <div className="text-center py-12 text-slate-400">
-              <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>Not enrolled in any classes yet</p>
-              <Button variant="outline" className="mt-4" asChild>
-                <Link to={createPageUrl('Classes')}>
-                  Join a Class
-                </Link>
+            <EmptyState icon={BookOpen} title="Not enrolled in any classes yet">
+              <Button variant="outline" size="sm" asChild>
+                <Link to={createPageUrl('Classes')}>Join a Class</Link>
               </Button>
-            </div>
+            </EmptyState>
           )}
-        </CardContent>
-      </Card>
-
-      {/* My Records Quick Access */}
-      <Card className="border-0 shadow-lg bg-gradient-to-r from-orange-50 to-amber-50">
-        <CardContent className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-orange-500 flex items-center justify-center">
-              <PenLine className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <p className="font-semibold text-slate-900">My Digital Records</p>
-              <p className="text-sm text-slate-500">View your awards and sign pending records</p>
-            </div>
-          </div>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white shrink-0" asChild>
-            <Link to={createPageUrl('StudentMyRecords')}>
-              <FileText className="h-4 w-4 mr-2" /> My Records
-            </Link>
-          </Button>
         </CardContent>
       </Card>
 
@@ -369,9 +237,9 @@ function StudentDashboardContent() {
 
       {/* BlockWards Showcase */}
       {stats.blockWards.length > 0 && (
-        <Card className="border-0 shadow-lg">
+        <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg">My BlockWards</CardTitle>
+            <CardTitle className="text-base">My BlockWards</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link to={createPageUrl('BlockWards')}>
                 View All
@@ -382,19 +250,14 @@ function StudentDashboardContent() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {stats.blockWards.slice(0, 3).map((bw) => (
-                <div key={bw.id} className="p-6 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl text-white">
-                  <div className="flex items-center justify-between mb-4">
-                    <Shield className="h-8 w-8" />
-                    <Badge className="bg-white/20 text-white border-0">
-                      Verified
-                    </Badge>
+                <div key={bw.id} className="p-4 border border-border rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">Verified</Badge>
                   </div>
-                  <h3 className="text-xl font-bold mb-1">{bw.title}</h3>
-                  <p className="text-white/80 text-sm mb-3">{bw.description}</p>
-                  <div className="flex items-center gap-2 text-white/60 text-xs">
-                    <Clock className="h-3 w-3" />
-                    <span>Issued by {bw.issuer_name}</span>
-                  </div>
+                  <h3 className="font-medium text-foreground text-sm mb-1">{bw.title}</h3>
+                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{bw.description}</p>
+                  <p className="text-xs text-muted-foreground">Issued by {bw.issuer_name}</p>
                 </div>
               ))}
             </div>

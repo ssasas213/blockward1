@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
   ShieldCheck, PenLine, FileText, HardDrive, Award, Lock,
   Link2, History, Building2, FolderArchive, MessageSquare, Users,
@@ -9,7 +8,7 @@ const features = [
   { icon: ShieldCheck, title: 'Digital Custodian System', desc: 'A secure, role-based custody model for every credential.' },
   { icon: PenLine, title: 'Digital Signatures', desc: 'Typed or drawn signatures with full signer attribution.' },
   { icon: FileText, title: 'Evidence Management', desc: 'Upload, attach, and review supporting evidence for each record.' },
-  { icon: HardDrive, title: 'Google Drive Archiving', desc: 'Permanent archival to each participant\'s personal Drive.' },
+  { icon: HardDrive, title: 'Drive Archiving', desc: 'Permanent archival to each participant\'s personal Drive.' },
   { icon: Award, title: 'NFT Credentials', desc: 'Achievements minted as non-fungible tokens on-chain.' },
   { icon: Lock, title: 'Blockchain Verification', desc: 'Immutable, transparent records on the Polygon network.' },
   { icon: Link2, title: 'Public Verification Links', desc: 'Shareable links for instant third-party verification.' },
@@ -22,38 +21,34 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="relative py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-white/5">
+    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-white/10">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-16">
-          <p className="text-sm font-semibold text-violet-400 uppercase tracking-widest mb-3">Features</p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
+        <div className="text-center mb-12">
+          <p className="text-sm text-slate-500 font-medium mb-2">Features</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
             One platform. Zero compromise.
           </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-slate-400 max-w-2xl mx-auto">
             From blockchain credentials to AI-powered workflows — everything a modern organisation needs.
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {features.map((feature, i) => (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.4, delay: (i % 3) * 0.08 }}
-              className="group p-6 rounded-2xl bg-white/[0.02] border border-white/10 hover:bg-white/[0.05] hover:border-violet-500/20 transition-all duration-300"
+              className="p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
             >
               <div className="flex items-start gap-4">
-                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-violet-500/15 to-indigo-500/15 border border-violet-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="h-5 w-5 text-violet-300" />
+                <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="h-5 w-5 text-slate-300" />
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold text-white mb-1.5">{feature.title}</h3>
+                <div className="min-w-0">
+                  <h3 className="text-base font-medium text-white mb-1">{feature.title}</h3>
                   <p className="text-sm text-slate-400 leading-relaxed">{feature.desc}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

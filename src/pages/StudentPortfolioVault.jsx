@@ -1,7 +1,3 @@
-/**
- * StudentPortfolioVault — Native BlockWard Portfolio Vault.
- * Every student automatically has a portfolio. BlockWard Vault is the sole source of truth.
- */
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,34 +5,39 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { jsPDF } from 'jspdf';
 import {
-  Loader2, Trophy, Shield, CheckCircle2,
-  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Sparkles, PenLine, Award
+  Trophy, Shield, CheckCircle2,
+  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Award
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import PageHeader from '@/components/ui/page-header';
+import StatCard from '@/components/ui/stat-card';
+import EmptyState from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/loading-skeleton';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
+import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
   { key: 'all', label: 'All' },
   { key: 'academic', label: 'Academic' },
   { key: 'sports', label: 'Sports' },
   { key: 'leadership', label: 'Leadership' },
-  { key: 'community', label: 'Community Service' },
+  { key: 'community', label: 'Community' },
   { key: 'arts', label: 'Arts & Music' },
   { key: 'special', label: 'Other' },
 ];
 
 const CATEGORY_STYLE = {
-  academic: { gradient: 'from-blue-500 to-indigo-500', badge: 'bg-blue-100 text-blue-700' },
-  sports: { gradient: 'from-green-500 to-emerald-500', badge: 'bg-green-100 text-green-700' },
-  arts: { gradient: 'from-pink-500 to-rose-500', badge: 'bg-pink-100 text-pink-700' },
-  leadership: { gradient: 'from-purple-500 to-violet-500', badge: 'bg-purple-100 text-purple-700' },
-  community: { gradient: 'from-amber-500 to-orange-500', badge: 'bg-amber-100 text-amber-700' },
-  behaviour: { gradient: 'from-red-500 to-rose-500', badge: 'bg-red-100 text-red-700' },
-  special: { gradient: 'from-indigo-500 to-purple-500', badge: 'bg-indigo-100 text-indigo-700' },
+  academic: { badge: 'bg-blue-50 text-blue-700' },
+  sports: { badge: 'bg-green-50 text-green-700' },
+  arts: { badge: 'bg-purple-50 text-purple-700' },
+  leadership: { badge: 'bg-amber-50 text-amber-700' },
+  community: { badge: 'bg-rose-50 text-rose-700' },
+  behaviour: { badge: 'bg-red-50 text-red-700' },
+  special: { badge: 'bg-indigo-50 text-indigo-700' },
 };
 
 const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, community: 5, special: 9, behaviour: 9 };
@@ -46,7 +47,6 @@ export default function StudentPortfolioVault() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
-  const [signatures, setSignatures] = useState({});
   const [activeCategory, setActiveCategory] = useState('all');
   const [exporting, setExporting] = useState(false);
   const [blockWards, setBlockWards] = useState([]);
@@ -69,14 +69,11 @@ export default function StudentPortfolioVault() {
   const loadPortfolio = async (email, schoolId) => {
     const targetEmail = email || user?.email;
     try {
-      // Use the backend function — single source of truth, bypasses RLS.
-      // This guarantees Portfolio Vault and My BlockWards show identical data.
       const res = await base44.functions.invoke('getStudentVault', {});
       const data = res.data;
       if (data?.ok) {
         const achievements = data.achievements || [];
         setBlockWards(achievements);
-        // Also set records for the detailed list view (same data, different shape)
         setRecords(achievements);
       } else {
         setRecords([]);
@@ -99,7 +96,6 @@ export default function StudentPortfolioVault() {
     return counts;
   }, [records]);
 
-  // ---- PDF Export ----
   const buildPDF = (type) => {
     const doc = new jsPDF();
     const studentName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
@@ -254,56 +250,42 @@ export default function StudentPortfolioVault() {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64">
-      <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+    <div className="max-w-5xl mx-auto space-y-6">
+      <Skeleton className="h-8 w-48" />
+      <div className="grid grid-cols-3 gap-4">
+        <Skeleton className="h-20" /><Skeleton className="h-20" /><Skeleton className="h-20" />
+      </div>
+      <Skeleton className="h-64 w-full" />
     </div>
   );
 
-  const stats = [
-    { label: 'Total Achievements', value: records.length, icon: Trophy, color: 'from-violet-500 to-indigo-500' },
-    { label: 'Categories', value: Object.keys(categoryCounts).length, icon: FolderArchive, color: 'from-blue-500 to-cyan-500' },
-    { label: 'Verified', value: records.filter(r => r.teacher_signed && r.admin_signed).length, icon: Shield, color: 'from-emerald-500 to-green-500' },
-  ];
-
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">My Portfolio Vault</h1>
-          <p className="text-slate-500 mt-1">Your permanent digital achievement portfolio — automatically maintained by BlockWard.</p>
-        </div>
+      <PageHeader
+        title="Portfolio Vault"
+        description="Your permanent digital achievement portfolio"
+      >
         <Button variant="outline" asChild>
           <Link to={createPageUrl('StudentMyRecords')}>
             <FileText className="h-4 w-4 mr-2" /> My Records
           </Link>
         </Button>
-      </div>
+      </PageHeader>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        {stats.map(s => (
-          <Card key={s.label} className="border-0 shadow-md">
-            <CardContent className="p-5 flex items-center gap-3">
-              <div className={`h-12 w-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center`}>
-                <s.icon className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-900">{s.value}</p>
-                <p className="text-xs text-slate-500">{s.label}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        <StatCard label="Total Achievements" value={records.length} icon={Trophy} />
+        <StatCard label="Categories" value={Object.keys(categoryCounts).length} icon={FolderArchive} />
+        <StatCard label="Verified" value={records.filter(r => r.teacher_signed && r.admin_signed).length} icon={Shield} />
       </div>
 
-      {/* My BlockWards — minted NFT badges */}
+      {/* BlockWards Grid */}
       {blockWards.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-violet-600" />
-            <h2 className="text-lg font-semibold text-slate-900">My BlockWards</h2>
-            <Badge className="bg-violet-100 text-violet-700 border-0">{blockWards.length}</Badge>
+            <Award className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-semibold text-foreground">My BlockWards</h2>
+            <Badge variant="outline">{blockWards.length}</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {blockWards.map(bw => (
@@ -313,46 +295,51 @@ export default function StudentPortfolioVault() {
         </div>
       )}
 
-      {/* Export Bar — students only */}
+      {/* Export Bar */}
       {profile?.user_type === 'student' && (
-      <Card className="border-0 shadow-md bg-gradient-to-r from-violet-50 to-indigo-50">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-semibold text-slate-800 flex items-center gap-2"><Download className="h-4 w-4 text-violet-600" /> Export Your Portfolio</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Download your verified achievements for university, CV, or personal records.</p>
+        <Card className="shadow-sm">
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-medium text-foreground flex items-center gap-2">
+                  <Download className="h-4 w-4 text-muted-foreground" /> Export Your Portfolio
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">Download verified achievements for university, CV, or personal records.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => handleExport('full')} disabled={exporting}>
+                  <FileText className="h-4 w-4 mr-1.5" /> PDF Portfolio
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleExport('university')} disabled={exporting}>
+                  <GraduationCap className="h-4 w-4 mr-1.5" /> University
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleExport('cv')} disabled={exporting}>
+                  <Briefcase className="h-4 w-4 mr-1.5" /> CV
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => handleExport('full')} disabled={exporting} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
-                <FileText className="h-4 w-4 mr-1" /> PDF Portfolio
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleExport('university')} disabled={exporting}>
-                <GraduationCap className="h-4 w-4 mr-1" /> University
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => handleExport('cv')} disabled={exporting}>
-                <Briefcase className="h-4 w-4 mr-1" /> CV
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
       )}
 
       {/* Category Filter */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {CATEGORIES.map(cat => (
           <button
             key={cat.key}
             onClick={() => setActiveCategory(cat.key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+            className={cn(
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               activeCategory === cat.key
-                ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-md'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+            )}
           >
             {cat.label}
             {cat.key !== 'all' && categoryCounts[cat.key] ? (
-              <span className={`ml-1.5 text-xs ${activeCategory === cat.key ? 'text-white/80' : 'text-slate-400'}`}>{categoryCounts[cat.key]}</span>
+              <span className={cn("ml-1.5 text-xs", activeCategory === cat.key ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                {categoryCounts[cat.key]}
+              </span>
             ) : null}
           </button>
         ))}
@@ -360,44 +347,43 @@ export default function StudentPortfolioVault() {
 
       {/* Records */}
       {filteredRecords.length === 0 ? (
-        <Card className="border-0 shadow-md">
-          <CardContent className="py-16 text-center">
-            <Trophy className="h-14 w-14 mx-auto mb-3 text-slate-300" />
-            <p className="font-medium text-slate-500">{records.length === 0 ? 'Your portfolio is ready and waiting' : 'No achievements in this category yet'}</p>
-            <p className="text-sm text-slate-400 mt-1">
-              {records.length === 0 ? 'Verified achievements will appear here automatically once your teacher and admin sign them.' : 'Try a different category filter.'}
-            </p>
-          </CardContent>
+        <Card className="shadow-sm">
+          <EmptyState
+            icon={Trophy}
+            title={records.length === 0 ? 'Your portfolio is ready and waiting' : 'No achievements in this category'}
+            description={records.length === 0
+              ? 'Verified achievements will appear here automatically once your teacher and admin sign them.'
+              : 'Try a different category filter.'}
+          />
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredRecords.map(rec => {
             const style = CATEGORY_STYLE[rec.category] || CATEGORY_STYLE.special;
             return (
-              <Card key={rec.id} className="border-0 shadow-md overflow-hidden">
-                <div className={`h-1.5 bg-gradient-to-r ${style.gradient}`} />
+              <Card key={rec.id} className="shadow-sm overflow-hidden">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${style.gradient} flex items-center justify-center flex-shrink-0`}>
-                        <Trophy className="h-5 w-5 text-white" />
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                        <Trophy className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900 leading-tight">{rec.title}</h3>
-                        <p className="text-xs text-slate-400 capitalize">{rec.category}</p>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-foreground leading-tight truncate">{rec.title}</h3>
+                        <p className="text-xs text-muted-foreground capitalize">{rec.category}</p>
                       </div>
                     </div>
                     {rec.verify_id && (
-                      <Badge className={`${style.badge} border-0`}>
+                      <Badge variant="outline" className={cn("flex-shrink-0", style.badge)}>
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Verified
                       </Badge>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs text-slate-500 mb-3">
-                    <div><span className="text-slate-400">Date:</span> {rec.date_achieved ? format(new Date(rec.date_achieved), 'MMM d, yyyy') : '—'}</div>
-                    {rec.points > 0 && <div><span className="text-slate-400">Points:</span> {rec.points}</div>}
-                    <div className="col-span-2"><span className="text-slate-400">Verify ID:</span> <span className="font-mono">{rec.verify_id || '—'}</span></div>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-3">
+                    <div><span className="text-muted-foreground/70">Date:</span> {rec.date_achieved ? format(new Date(rec.date_achieved), 'MMM d, yyyy') : '—'}</div>
+                    {rec.points > 0 && <div><span className="text-muted-foreground/70">Points:</span> {rec.points}</div>}
+                    <div className="col-span-2"><span className="text-muted-foreground/70">Verify ID:</span> <span className="font-mono">{rec.verify_id || '—'}</span></div>
                   </div>
 
                   {rec.file_url && rec.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
@@ -406,28 +392,22 @@ export default function StudentPortfolioVault() {
 
                   <div className="flex items-center gap-4 mb-3 text-xs">
                     <div className="flex items-center gap-1.5">
-                      <PenLine className={`h-3.5 w-3.5 ${rec.teacher_signed ? 'text-amber-500' : 'text-slate-300'}`} />
-                      <span className={rec.teacher_signed ? 'text-slate-600' : 'text-slate-400'}>{rec.teacher_name || 'Teacher'}</span>
+                      <span className={rec.teacher_signed ? 'text-success' : 'text-muted-foreground/40'}>✓</span>
+                      <span className={rec.teacher_signed ? 'text-foreground' : 'text-muted-foreground'}>{rec.teacher_name || 'Teacher'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Shield className={`h-3.5 w-3.5 ${rec.admin_signed ? 'text-violet-600' : 'text-slate-300'}`} />
-                      <span className={rec.admin_signed ? 'text-slate-600' : 'text-slate-400'}>{rec.admin_name || 'Admin'}</span>
+                      <span className={rec.admin_signed ? 'text-success' : 'text-muted-foreground/40'}>✓</span>
+                      <span className={rec.admin_signed ? 'text-foreground' : 'text-muted-foreground'}>{rec.admin_name || 'Admin'}</span>
                     </div>
                   </div>
 
-                  {rec.nft_token_id && (
-                    <div className="flex items-center gap-1.5 mb-3 text-xs text-violet-600 bg-violet-50 rounded-lg px-2 py-1.5">
-                      <Sparkles className="h-3.5 w-3.5" /> NFT Minted · Token #{rec.nft_token_id}
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2 border-t border-slate-100">
+                  <div className="flex gap-2 pt-2 border-t border-border">
                     <Button size="sm" variant="outline" onClick={() => downloadCertificate(rec)}>
                       <Download className="h-3.5 w-3.5 mr-1" /> Certificate
                     </Button>
                     <Button size="sm" variant="ghost" asChild>
                       <Link to={createPageUrl(`RecordDetail?id=${rec.record_id || rec.id}`)}>
-                        <Link2 className="h-3.5 w-3.5" /> Details
+                        <Link2 className="h-3.5 w-3.5 mr-1" /> Details
                       </Link>
                     </Button>
                   </div>

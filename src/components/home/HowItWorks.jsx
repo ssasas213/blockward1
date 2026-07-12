@@ -1,6 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { FileText, Search, PenLine, ShieldCheck, HardDrive, Link2, ArrowDown } from 'lucide-react';
+import { FileText, Search, PenLine, ShieldCheck, HardDrive, Link2 } from 'lucide-react';
 
 const steps = [
   { icon: FileText, title: 'Achievement Created', desc: 'A teacher, coach, instructor, or manager creates a record with supporting evidence.' },
@@ -13,58 +12,38 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative py-24 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-white/5">
+    <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-white/10">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-20">
-          <p className="text-sm font-semibold text-violet-400 uppercase tracking-widest mb-3">How it works</p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
+        <div className="text-center mb-12">
+          <p className="text-sm text-slate-500 font-medium mb-2">How it works</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
             From achievement to permanent record
           </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-slate-400 max-w-2xl mx-auto">
             A six-stage verification lifecycle that turns any accomplishment into a trusted, verifiable credential.
           </p>
         </div>
 
         <div className="relative">
           {/* vertical line */}
-          <div className="absolute left-6 sm:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-violet-500/0 via-violet-500/40 to-violet-500/0 sm:-translate-x-1/2" />
+          <div className="absolute left-5 top-0 bottom-0 w-px bg-white/10" />
 
-          {steps.map((step, i) => {
-            const isLeft = i % 2 === 0;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.5 }}
-                className={`relative flex items-center mb-12 last:mb-0 ${isLeft ? 'sm:justify-start' : 'sm:justify-end'}`}
-              >
-                {/* node */}
-                <div className="absolute left-6 sm:left-1/2 -translate-x-1/2 z-10">
-                  <div className="h-12 w-12 rounded-full bg-slate-900 border-2 border-violet-500/50 flex items-center justify-center shadow-lg shadow-violet-500/20">
-                    <step.icon className="h-5 w-5 text-violet-300" />
-                  </div>
+          {steps.map((step, i) => (
+            <div key={i} className="relative flex items-start gap-5 mb-6 last:mb-0">
+              <div className="relative z-10 flex-shrink-0">
+                <div className="h-10 w-10 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center">
+                  <step.icon className="h-5 w-5 text-slate-300" />
                 </div>
-
-                {/* card */}
-                <div className={`ml-20 sm:ml-0 sm:w-[calc(50%-3rem)] ${isLeft ? 'sm:pr-0' : 'sm:pl-0'}`}>
-                  <div className="p-6 rounded-2xl bg-white/[0.03] border border-white/10 backdrop-blur-sm hover:border-violet-500/30 transition-colors duration-300">
-                    <div className="flex items-center gap-3 mb-3">
-                      <span className="text-xs font-mono text-violet-400">0{i + 1}</span>
-                      <span className="h-px flex-1 bg-white/10" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-white mb-2">{step.title}</h3>
-                    <p className="text-sm text-slate-400 leading-relaxed">{step.desc}</p>
-                  </div>
+              </div>
+              <div className="flex-1 p-5 rounded-xl bg-white/5 border border-white/10">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-xs font-mono text-slate-500">0{i + 1}</span>
+                  <h3 className="text-base font-medium text-white">{step.title}</h3>
                 </div>
-
-                {i < steps.length - 1 && (
-                  <ArrowDown className="hidden sm:block absolute left-1/2 -translate-x-1/2 -bottom-7 h-4 w-4 text-violet-500/40" />
-                )}
-              </motion.div>
-            );
-          })}
+                <p className="text-sm text-slate-400 leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
