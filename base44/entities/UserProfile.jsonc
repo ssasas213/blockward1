@@ -8,7 +8,11 @@
     },
     "school_id": {
       "type": "string",
-      "description": "Organization this user belongs to"
+      "description": "Currently active school \u2014 used by RLS for data isolation. Updated when admin switches schools."
+    },
+    "active_school_id": {
+      "type": "string",
+      "description": "Explicit active school ID. Mirrors school_id for UI clarity and multi-school switching."
     },
     "user_type": {
       "type": "string",
@@ -21,7 +25,7 @@
     },
     "role_label": {
       "type": "string",
-      "description": "Custom display label for this user's role (e.g., 'Coach', 'Athlete', 'Tournament Director', 'Organisation Member', 'Organisation Admin'). Falls back to org-level role_labels."
+      "description": "Custom display label for this user's role"
     },
     "admin_level": {
       "type": "string",
@@ -106,11 +110,11 @@
     },
     "admin_email": {
       "type": "string",
-      "description": "School admin email \u2014 inherited by teachers and students when they join the school hierarchy"
+      "description": "School admin email \u2014 inherited by teachers and students"
     },
     "primary_teacher_email": {
       "type": "string",
-      "description": "Primary teacher email \u2014 inherited by students when they join a teacher's class"
+      "description": "Primary teacher email \u2014 inherited by students"
     },
     "parent_name": {
       "type": "string",
@@ -136,8 +140,7 @@
     },
     "parent_contact_updated_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When the parent contact was last updated by the student"
+      "format": "date-time"
     },
     "wallet_address": {
       "type": "string",
@@ -158,8 +161,7 @@
     },
     "can_issue_blockwards": {
       "type": "boolean",
-      "default": true,
-      "description": "Whether teacher is approved to mint BlockWards"
+      "default": true
     },
     "total_achievement_points": {
       "type": "number",
@@ -177,8 +179,7 @@
         "suspended",
         "pending_approval"
       ],
-      "default": "active",
-      "description": "Account status. pending_approval = new user awaiting admin approval before gaining access."
+      "default": "active"
     }
   },
   "required": [
