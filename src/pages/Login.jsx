@@ -63,7 +63,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12 accent-glow relative overflow-hidden">
       <div className="w-full max-w-sm">
         {/* Branding */}
         <div className="text-center mb-8">
@@ -76,7 +76,7 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-card border border-border rounded-xl shadow-sm p-8">
+        <div className="glass rounded-xl shadow-sm p-8">
           {accountStatus === 'pending' ? (
             <div className="text-center">
               <div className="mx-auto h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center mb-4">

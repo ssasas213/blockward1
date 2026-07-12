@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, PenLine, ShieldCheck, HardDrive, Link2, ArrowRight, RotateCcw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 const stages = [
   { icon: FileText, title: 'Achievement Created', desc: 'A record is created with evidence attached.' },
@@ -19,14 +20,14 @@ export default function InteractiveDemo() {
   const reset = () => setStep(0);
 
   return (
-    <section id="demo" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-950 border-t border-white/10">
+    <section id="demo" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-border">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
-          <p className="text-sm text-slate-500 font-medium mb-2">Interactive Demo</p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
+          <p className="text-sm text-primary font-medium mb-2">Interactive Demo</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
             See the verification lifecycle
           </h2>
-          <p className="text-base text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Click through each stage to watch an achievement become a permanent, verifiable credential.
           </p>
         </div>
@@ -41,24 +42,25 @@ export default function InteractiveDemo() {
                 aria-label={`Step ${i + 1}: ${s.title}`}
               >
                 <div
-                  className={`h-9 w-9 rounded-full flex items-center justify-center border transition-colors ${
+                  className={cn(
+                    "h-9 w-9 rounded-full flex items-center justify-center border transition-all duration-200",
                     i <= step
-                      ? 'bg-white border-white'
-                      : 'bg-slate-900 border-white/15'
-                  }`}
+                      ? 'bg-primary border-primary shadow-glow-sm'
+                      : 'bg-card border-border'
+                  )}
                 >
                   {i < step ? (
-                    <CheckCircle2 className="h-4 w-4 text-slate-900" />
+                    <CheckCircle2 className="h-4 w-4 text-primary-foreground" />
                   ) : (
-                    <s.icon className={`h-4 w-4 ${i <= step ? 'text-slate-900' : 'text-slate-500'}`} />
+                    <s.icon className={cn("h-4 w-4", i <= step ? 'text-primary-foreground' : 'text-muted-foreground')} />
                   )}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block ${i <= step ? 'text-white' : 'text-slate-500'}`}>
+                <span className={cn("text-xs font-medium hidden sm:block", i <= step ? 'text-foreground' : 'text-muted-foreground')}>
                   {s.title}
                 </span>
               </button>
               {i < stages.length - 1 && (
-                <div className={`flex-1 h-px mx-2 ${i < step ? 'bg-white/30' : 'bg-white/10'}`} />
+                <div className={cn("flex-1 h-px mx-2", i < step ? 'bg-primary/50' : 'bg-border')} />
               )}
             </div>
           ))}
@@ -66,24 +68,24 @@ export default function InteractiveDemo() {
 
         {/* stage card */}
         <div className="max-w-xl mx-auto">
-          <div className="p-8 rounded-xl bg-white/5 border border-white/10 text-center">
-            <div className="inline-flex h-12 w-12 rounded-xl bg-white/10 items-center justify-center mb-4">
-              <current.icon className="h-6 w-6 text-white" />
+          <div className="p-8 rounded-xl bg-card/40 backdrop-blur-md border border-border text-center">
+            <div className="inline-flex h-12 w-12 rounded-xl bg-primary/10 items-center justify-center mb-4">
+              <current.icon className="h-6 w-6 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{current.title}</h3>
-            <p className="text-sm text-slate-400 leading-relaxed max-w-md mx-auto">{current.desc}</p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">{current.title}</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">{current.desc}</p>
           </div>
         </div>
 
         {/* controls */}
         <div className="flex items-center justify-center gap-3 mt-6">
           {isComplete ? (
-            <Button onClick={reset} variant="outline" className="border-white/20 text-white bg-transparent hover:bg-white/10">
+            <Button onClick={reset} variant="outline">
               <RotateCcw className="mr-2 h-4 w-4" />
               Restart Demo
             </Button>
           ) : (
-            <Button onClick={next} className="bg-white text-slate-900 hover:bg-slate-200">
+            <Button onClick={next}>
               {step === 0 ? 'Start Demo' : 'Next Stage'}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

@@ -225,7 +225,7 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 px-4 flex items-center justify-between">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-sidebar/80 backdrop-blur-md border-b border-border z-50 px-4 flex items-center justify-between">
         <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-muted rounded-md transition-colors" aria-label="Open menu">
           <Menu className="h-5 w-5 text-muted-foreground" />
         </button>
@@ -240,7 +240,7 @@ export default function Layout({ children, currentPageName }) {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-64 bg-card shadow-xl">
+          <div className="absolute left-0 top-0 bottom-0 w-64 bg-sidebar shadow-xl">
             <SidebarContent
               groups={groups}
               currentPageName={currentPageName}
@@ -263,7 +263,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-card border-r border-border">
+        <div className="flex flex-col flex-grow bg-sidebar border-r border-border">
           <SidebarContent
             groups={groups}
             currentPageName={currentPageName}
@@ -324,7 +324,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                       isActive
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-primary/10 text-primary nav-active"
                         : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >

@@ -12,14 +12,14 @@ const trustItems = [
 
 export default function TrustSection() {
   return (
-    <section id="trust" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-950 border-t border-white/10">
+    <section id="trust" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-border">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <p className="text-sm text-slate-500 font-medium mb-2">Why BlockWard</p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
+          <p className="text-sm text-primary font-medium mb-2">Why BlockWard</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
             Built on trust, secured by design
           </h2>
-          <p className="text-base text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Six pillars that make every achievement verifiable, permanent, and impossible to forge.
           </p>
         </div>
@@ -28,13 +28,13 @@ export default function TrustSection() {
           {trustItems.map((item, i) => (
             <div
               key={i}
-              className="p-6 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              className="card-hover p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border"
             >
-              <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center mb-4">
-                <item.icon className="h-5 w-5 text-slate-300" />
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <item.icon className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="text-base font-medium text-white mb-2">{item.title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{item.desc}</p>
+              <h3 className="text-base font-medium text-foreground mb-2">{item.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
             </div>
           ))}
         </div>

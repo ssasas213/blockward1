@@ -22,17 +22,17 @@ export default function SiteHeader({ user, profile, onSignIn, onDashboard }) {
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-200",
-      scrolled ? "bg-slate-950/80 backdrop-blur-md border-b border-white/10" : "bg-transparent"
+      scrolled ? "bg-sidebar/80 backdrop-blur-md border-b border-border" : "bg-transparent"
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-white" />
-          <span className="font-semibold text-base text-white tracking-tight">BlockWard</span>
+          <Shield className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-base text-foreground tracking-tight">BlockWard</span>
         </a>
 
         <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="text-sm text-slate-400 hover:text-white transition-colors">
+            <a key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               {link.label}
             </a>
           ))}
@@ -40,15 +40,15 @@ export default function SiteHeader({ user, profile, onSignIn, onDashboard }) {
 
         <div className="flex items-center gap-3">
           {user && profile ? (
-            <Button onClick={onDashboard} size="sm" className="bg-white text-slate-900 hover:bg-slate-200">
+            <Button onClick={onDashboard} size="sm">
               Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
           ) : (
             <>
-              <button onClick={onSignIn} className="text-sm text-slate-400 hover:text-white transition-colors">
+              <button onClick={onSignIn} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Sign In
               </button>
-              <Button onClick={onSignIn} size="sm" className="bg-white text-slate-900 hover:bg-slate-200">
+              <Button onClick={onSignIn} size="sm">
                 Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </>

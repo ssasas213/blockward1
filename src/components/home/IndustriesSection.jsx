@@ -16,14 +16,14 @@ const industries = [
 
 export default function IndustriesSection() {
   return (
-    <section id="industries" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-950 border-t border-white/10">
+    <section id="industries" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-border">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <p className="text-sm text-slate-500 font-medium mb-2">Industries</p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
+          <p className="text-sm text-primary font-medium mb-2">Industries</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
             Not just schools. Any organisation.
           </h2>
-          <p className="text-base text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             BlockWard adapts to your organisation type — with custom roles, credential types, and approval workflows for each.
           </p>
         </div>
@@ -32,13 +32,13 @@ export default function IndustriesSection() {
           {industries.map((item, i) => (
             <div
               key={i}
-              className="p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              className="card-hover p-5 rounded-xl bg-card/40 backdrop-blur-md border border-border"
             >
-              <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center mb-4">
-                <item.icon className="h-5 w-5 text-slate-300" />
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <item.icon className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="text-base font-medium text-white mb-1">{item.title}</h3>
-              <p className="text-sm text-slate-400 leading-relaxed">{item.examples}</p>
+              <h3 className="text-base font-medium text-foreground mb-1">{item.title}</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">{item.examples}</p>
             </div>
           ))}
         </div>

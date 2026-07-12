@@ -2,17 +2,17 @@ import { Clock, PenLine, CheckCircle2, XCircle, Sparkles, Archive, FileCheck, Sh
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
-  draft:                        { label: 'Draft',                      icon: Clock,         class: 'bg-slate-100 text-slate-600' },
-  submitted:                    { label: 'Submitted',                  icon: Clock,         class: 'bg-blue-100 text-blue-700' },
-  awaiting_teacher_signature:   { label: 'Awaiting Teacher Review',    icon: PenLine,       class: 'bg-amber-100 text-amber-700' },
-  awaiting_admin_signature:     { label: 'Awaiting Admin Approval',    icon: PenLine,       class: 'bg-amber-100 text-amber-700' },
-  approved:                     { label: 'Approved',                   icon: CheckCircle2,  class: 'bg-emerald-100 text-emerald-700' },
-  delivered_to_vault:           { label: 'Delivered to Vault',         icon: Shield,        class: 'bg-emerald-100 text-emerald-700' },
-  minted:                       { label: 'Ready for Vault',            icon: Sparkles,      class: 'bg-indigo-100 text-indigo-700' },
-  archived:                     { label: 'Archived',                   icon: Archive,       class: 'bg-slate-100 text-slate-600' },
-  rejected:                     { label: 'Rejected',                   icon: XCircle,       class: 'bg-red-100 text-red-700' },
-  active:                       { label: 'Active',                     icon: FileCheck,     class: 'bg-emerald-100 text-emerald-700' },
-  awaiting_student_signature:   { label: 'Awaiting Student Signature', icon: PenLine,       class: 'bg-amber-100 text-amber-700' },
+  draft:                        { label: 'Draft',                      icon: Clock,         class: 'bg-muted text-muted-foreground' },
+  submitted:                    { label: 'Submitted',                  icon: Clock,         class: 'bg-primary/10 text-primary' },
+  awaiting_teacher_signature:   { label: 'Awaiting Teacher Review',    icon: PenLine,       class: 'bg-warning/10 text-warning' },
+  awaiting_admin_signature:     { label: 'Awaiting Admin Approval',    icon: PenLine,       class: 'bg-warning/10 text-warning' },
+  approved:                     { label: 'Approved',                   icon: CheckCircle2,  class: 'bg-success/10 text-success' },
+  delivered_to_vault:           { label: 'Delivered to Vault',         icon: Shield,        class: 'bg-success/10 text-success' },
+  minted:                       { label: 'Ready for Vault',            icon: Sparkles,      class: 'bg-primary/10 text-primary' },
+  archived:                     { label: 'Archived',                   icon: Archive,       class: 'bg-muted text-muted-foreground' },
+  rejected:                     { label: 'Rejected',                   icon: XCircle,       class: 'bg-destructive/10 text-destructive' },
+  active:                       { label: 'Active',                     icon: FileCheck,     class: 'bg-success/10 text-success' },
+  awaiting_student_signature:   { label: 'Awaiting Student Signature', icon: PenLine,       class: 'bg-warning/10 text-warning' },
 };
 
 export default function RecordStatusBadge({ status }) {

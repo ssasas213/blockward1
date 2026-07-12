@@ -51,14 +51,14 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="h-8 w-8 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 font-sans antialiased">
+    <div className="min-h-screen font-sans antialiased">
       <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
       <SiteHeader user={user} profile={profile} onSignIn={handleSignIn} onDashboard={handleGoToDashboard} />
       <HeroSection onSignIn={handleSignIn} onWatchDemo={() => setDemoOpen(true)} />
@@ -69,19 +69,18 @@ export default function Home() {
       <InteractiveDemo />
 
       {/* Final CTA */}
-      <section className="relative py-24 px-4 sm:px-6 lg:px-8 border-t border-white/10">
+      <section className="relative py-24 px-4 sm:px-6 lg:px-8 border-t border-border">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight">
             Give achievements that last a lifetime.
           </h2>
-          <p className="text-base text-slate-400 mt-4 max-w-xl mx-auto">
+          <p className="text-base text-muted-foreground mt-4 max-w-xl mx-auto">
             Join schools, clubs, and organisations using BlockWard to verify, preserve, and showcase achievements permanently.
           </p>
           <div className="mt-8">
             <Button
               size="lg"
               onClick={() => window.location.href = createPageUrl('Login')}
-              className="bg-white text-slate-900 hover:bg-slate-200"
             >
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />

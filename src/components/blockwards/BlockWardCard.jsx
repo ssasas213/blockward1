@@ -3,13 +3,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { ShieldCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const RARITY_TIERS = [
-  { name: 'Certified',     accent: 'bg-slate-400',   badge: 'bg-slate-100 text-slate-600' },
-  { name: 'Distinguished', accent: 'bg-blue-500',    badge: 'bg-blue-100 text-blue-700' },
-  { name: 'Elite',         accent: 'bg-amber-500',   badge: 'bg-amber-100 text-amber-700' },
-  { name: 'Exceptional',   accent: 'bg-purple-500',  badge: 'bg-purple-100 text-purple-700' },
-  { name: 'Legendary',     accent: 'bg-violet-600',  badge: 'bg-violet-100 text-violet-700' },
+  { name: 'Certified',     accent: 'bg-muted-foreground',  badge: 'bg-muted text-muted-foreground' },
+  { name: 'Distinguished', accent: 'bg-primary/60',       badge: 'bg-primary/10 text-primary' },
+  { name: 'Elite',         accent: 'bg-accent/60',        badge: 'bg-accent/10 text-accent' },
+  { name: 'Exceptional',   accent: 'bg-primary',          badge: 'bg-primary/20 text-primary' },
+  { name: 'Legendary',     accent: 'bg-accent',            badge: 'bg-accent/20 text-accent', glow: true },
 ];
 
 export function calculateRarity(points) {
@@ -29,11 +30,14 @@ export default function BlockWardCard({ blockWard, onClick }) {
 
   return (
     <Card
-      className="shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden cursor-pointer group"
+      className={cn(
+        "shadow-sm transition-all duration-200 overflow-hidden cursor-pointer group card-hover",
+        rarity.glow && "glow-accent"
+      )}
       onClick={onClick}
     >
       {/* Rarity accent strip */}
-      <div className={`h-1 ${rarity.accent}`} />
+      <div className={cn("h-1", rarity.accent)} />
 
       {/* Header with image or muted background */}
       <div
@@ -45,11 +49,11 @@ export default function BlockWardCard({ blockWard, onClick }) {
 
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
           {blockWard.verify_id && (
-            <div className="bg-white/90 rounded-md p-1">
-              <ShieldCheck className="h-3.5 w-3.5 text-foreground" />
+            <div className="bg-primary/20 backdrop-blur-sm rounded-md p-1 border border-primary/30">
+              <ShieldCheck className="h-3.5 w-3.5 text-primary" />
             </div>
           )}
-          <span className={`px-2 py-0.5 rounded text-xs font-medium ${rarity.badge}`}>
+          <span className={cn("px-2 py-0.5 rounded text-xs font-medium backdrop-blur-sm", rarity.badge)}>
             {rarity.name}
           </span>
         </div>

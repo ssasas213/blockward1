@@ -21,14 +21,14 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-slate-900 border-t border-white/10">
+    <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-border">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <p className="text-sm text-slate-500 font-medium mb-2">Features</p>
-          <h2 className="text-2xl sm:text-3xl font-semibold text-white tracking-tight mb-3">
+          <p className="text-sm text-primary font-medium mb-2">Features</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
             One platform. Zero compromise.
           </h2>
-          <p className="text-base text-slate-400 max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             From blockchain credentials to AI-powered workflows — everything a modern organisation needs.
           </p>
         </div>
@@ -37,15 +37,15 @@ export default function FeaturesSection() {
           {features.map((feature, i) => (
             <div
               key={i}
-              className="p-5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+              className="card-hover p-5 rounded-xl bg-card/40 backdrop-blur-md border border-border"
             >
               <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="h-5 w-5 text-slate-300" />
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <feature.icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-base font-medium text-white mb-1">{feature.title}</h3>
-                  <p className="text-sm text-slate-400 leading-relaxed">{feature.desc}</p>
+                  <h3 className="text-base font-medium text-foreground mb-1">{feature.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.desc}</p>
                 </div>
               </div>
             </div>

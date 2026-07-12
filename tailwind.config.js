@@ -14,6 +14,11 @@ module.exports = {
   			xl: 'calc(var(--radius) + 4px)',
   			'2xl': 'calc(var(--radius) + 8px)'
   		},
+  		boxShadow: {
+  			'glow': '0 0 24px hsl(263 70% 52% / 0.25)',
+  			'glow-sm': '0 0 12px hsl(263 70% 52% / 0.15)',
+  			'glow-accent': '0 0 16px hsl(329 73% 56% / 0.2)',
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
