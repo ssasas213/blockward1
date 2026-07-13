@@ -56,12 +56,7 @@ export default function SchoolSetup() {
       if (currentUser) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
-          const p = profiles[0];
-          setProfile(p);
-          if (p.user_type === 'admin' && p.school_id) {
-            window.location.href = createPageUrl('AdminDashboard');
-            return;
-          }
+          setProfile(profiles[0]);
         }
       }
     } catch (error) {
