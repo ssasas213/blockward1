@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { useSchool } from '@/lib/SchoolContext';
 import {
@@ -16,6 +16,12 @@ import { Shield, Check, ChevronDown, Plus, LogIn, Settings, Building2, Loader2 }
 export default function SchoolSwitcher({ onClose }) {
   const { activeSchool, managedSchools, loading, isAdmin, switchSchool } = useSchool();
   const [switching, setSwitching] = useState(null);
+  const navigate = useNavigate();
+
+  const goTo = (path) => {
+    if (onClose) onClose();
+    navigate(path);
+  };
 
   if (!isAdmin) {
     // Teachers and students — show school name without switcher
@@ -104,31 +110,29 @@ export default function SchoolSwitcher({ onClose }) {
 
         <DropdownMenuSeparator />
 
-        <DropdownMenuItem asChild>
-          <Link to={createPageUrl('SchoolSetup')} onClick={onClose} className="cursor-pointer flex items-center gap-2">
-            <Plus className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">Create New School</span>
-          </Link>
+        <DropdownMenuItem
+          onClick={() => goTo(createPageUrl('SchoolSetup'))}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">Create New School</span>
         </DropdownMenuItem>
 
-        <DropdownMenuItem asChild>
-          <Link to={createPageUrl('SchoolSetup') + '?mode=join'} onClick={onClose} className="cursor-pointer flex items-center gap-2">
-            <LogIn className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">Join School</span>
-          </Link>
+        <DropdownMenuItem
+          onClick={() => goTo(createPageUrl('SchoolSetup') + '?mode=join')}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <LogIn className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">Join School</span>
         </DropdownMenuItem>
 
-        {activeSchool && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link to={createPageUrl('SystemSettings')} onClick={onClose} className="cursor-pointer flex items-center gap-2">
-                <Settings className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">School Settings</span>
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
+        <DropdownMenuItem
+          onClick={() => goTo(createPageUrl('SystemSettings'))}
+          className="cursor-pointer flex items-center gap-2"
+        >
+          <Settings className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm">School Settings</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
