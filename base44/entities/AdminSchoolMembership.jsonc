@@ -69,16 +69,7 @@
           "data.admin_email": "{{user.email}}"
         },
         {
-          "$and": [
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "data.school_id": "{{user.profile.school_id}}"
-            }
-          ]
+          "data.school_id": "{{user.profile.school_id}}"
         }
       ]
     },
@@ -88,23 +79,12 @@
           "data.admin_email": "{{user.email}}"
         },
         {
-          "$and": [
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            },
-            {
-              "data.school_id": "{{user.profile.school_id}}"
-            }
-          ]
+          "data.school_id": "{{user.profile.school_id}}"
         }
       ]
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "data.school_id": "{{user.profile.school_id}}"
     }
   }
 }
