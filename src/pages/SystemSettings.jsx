@@ -1,332 +1,333 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Settings, Database, Users, Shield, AlertCircle, 
-  Check, FileText, Trash2, Download, Upload
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { useSchool } from '@/lib/SchoolContext';
+import {
+  Settings, Building2, Users, Shield, Loader2, Save, Upload, Crown, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const ORG_TYPES = [
+  { value: 'school', label: 'School' },
+  { value: 'sports_club', label: 'Sports Club' },
+  { value: 'martial_arts_academy', label: 'Martial Arts Academy' },
+  { value: 'chess_club', label: 'Chess Club' },
+  { value: 'competition_organizer', label: 'Competition Organizer' },
+  { value: 'training_provider', label: 'Training Provider' },
+  { value: 'music_academy', label: 'Music Academy' },
+  { value: 'debate_organization', label: 'Debate Organization' },
+  { value: 'stem_competition', label: 'STEM Competition' },
+  { value: 'corporate_training', label: 'Corporate Training' },
+  { value: 'other', label: 'Other' },
+];
+
+const ROLE_LABELS = {
+  owner: 'Owner',
+  super_admin: 'Super Admin',
+  admin: 'Admin',
+  reviewer: 'Reviewer',
+};
+
 export default function SystemSettings() {
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
-  const [school, setSchool] = useState(null);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalClasses: 0,
-    totalPoints: 0,
-    totalBlockWards: 0,
-    storageUsed: 0
-  });
+  const { activeSchool, profile, refresh, loading: schoolLoading } = useSchool();
+  const [form, setForm] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  const canEdit = activeSchool && (activeSchool.admin_email === profile?.user_email || profile?.admin_level === 'super_admin');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (activeSchool) {
+      setForm({
+        name: activeSchool.name || '',
+        country: activeSchool.country || '',
+        city: activeSchool.city || '',
+        org_type: activeSchool.org_type || 'school',
+        contact_email: activeSchool.contact_email || '',
+        website: activeSchool.website || '',
+        logo_url: activeSchool.logo_url || '',
+        admin_title: activeSchool.admin_title || '',
+      });
+      loadMembers();
+    }
+  }, [activeSchool]);
 
-  const loadData = async () => {
+  const loadMembers = async () => {
+    if (!activeSchool) return;
+    setLoadingMembers(true);
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
-        
-        if (profiles[0].school_id) {
-          const schools = await base44.entities.School.filter({ id: profiles[0].school_id });
-          if (schools.length > 0) setSchool(schools[0]);
-        }
-
-        const [users, classes, points, blockwards] = await Promise.all([
-          base44.entities.UserProfile.list(),
-          base44.entities.Class.list(),
-          base44.entities.PointEntry.list(),
-          base44.entities.BlockWard.list()
-        ]);
-
-        setStats({
-          totalUsers: users.length,
-          totalClasses: classes.length,
-          totalPoints: points.length,
-          totalBlockWards: blockwards.length,
-          storageUsed: Math.random() * 100 // Simulated
-        });
-      }
+      const mems = await base44.entities.AdminSchoolMembership.filter({ school_id: activeSchool.id });
+      // Sort: owners first, then by role
+      mems.sort((a, b) => {
+        const order = { owner: 0, super_admin: 1, admin: 2, reviewer: 3 };
+        return (order[a.role] ?? 9) - (order[b.role] ?? 9);
+      });
+      setMembers(mems);
     } catch (error) {
-      console.error('Error loading data:', error);
+      console.error('Error loading members:', error);
     } finally {
-      setLoading(false);
+      setLoadingMembers(false);
     }
   };
 
-  const handleUpdateSchool = async (updates) => {
+  const handleLogoUpload = async (file) => {
     try {
-      await base44.entities.School.update(school.id, updates);
-      loadData();
-      toast.success('School settings updated');
-    } catch (error) {
-      toast.error('Failed to update settings');
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm(f => ({ ...f, logo_url: file_url }));
+      toast.success('Logo uploaded');
+    } catch (err) {
+      toast.error('Failed to upload logo');
     }
   };
 
-  const handleExportData = async () => {
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('School name is required'); return; }
+    setSaving(true);
     try {
-      const [users, classes, points, blockwards] = await Promise.all([
-        base44.entities.UserProfile.list(),
-        base44.entities.Class.list(),
-        base44.entities.PointEntry.list(),
-        base44.entities.BlockWard.list()
-      ]);
-
-      const exportData = {
-        users,
-        classes,
-        points,
-        blockwards,
-        exportDate: new Date().toISOString()
-      };
-
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `blockward-export-${Date.now()}.json`;
-      a.click();
-      
-      toast.success('Data exported successfully');
+      await base44.entities.School.update(activeSchool.id, {
+        name: form.name.trim(),
+        country: form.country.trim() || undefined,
+        city: form.city.trim() || undefined,
+        org_type: form.org_type,
+        contact_email: form.contact_email.trim() || undefined,
+        website: form.website.trim() || undefined,
+        logo_url: form.logo_url || undefined,
+        admin_title: form.admin_title.trim() || undefined,
+        address: [form.city, form.country].filter(Boolean).join(', ') || undefined,
+      });
+      toast.success('School settings saved');
+      refresh();
     } catch (error) {
-      toast.error('Failed to export data');
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) {
+  if (schoolLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!activeSchool) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <Building2 className="h-12 w-12 text-muted-foreground mb-3" />
+        <p className="text-lg font-medium text-foreground">No active school</p>
+        <p className="text-sm text-muted-foreground mt-1">Create or join a school first.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">System Settings</h1>
-        <p className="text-slate-500 mt-1">Configure and manage system-wide settings</p>
+        <h1 className="text-2xl font-bold text-foreground">School Settings</h1>
+        <p className="text-sm text-muted-foreground mt-1">Manage your school details and admin team</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-        </TabsList>
+      {/* School Information */}
+      <Card className="border-border bg-card/60 backdrop-blur-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5 text-primary" />
+            School Information
+          </CardTitle>
+          <CardDescription>Update your school's basic details</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>School Name</Label>
+            <Input
+              value={form?.name || ''}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              disabled={!canEdit}
+            />
+          </div>
 
-        <TabsContent value="general">
-          <div className="grid gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>School Information</CardTitle>
-                <CardDescription>Basic details about your institution</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>School Name</Label>
-                  <Input 
-                    defaultValue={school?.name} 
-                    onBlur={(e) => handleUpdateSchool({ name: e.target.value })}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Country</Label>
+              <Input
+                value={form?.country || ''}
+                onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+                disabled={!canEdit}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>City</Label>
+              <Input
+                value={form?.city || ''}
+                onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                disabled={!canEdit}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>School Type</Label>
+              <select
+                value={form?.org_type || 'school'}
+                onChange={e => setForm(f => ({ ...f, org_type: e.target.value }))}
+                disabled={!canEdit}
+                className="flex h-9 w-full rounded-md border border-input bg-background/50 px-3 py-2 text-sm text-foreground shadow-sm focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-50"
+              >
+                {ORG_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Contact Email</Label>
+              <Input
+                type="email"
+                value={form?.contact_email || ''}
+                onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                disabled={!canEdit}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Website</Label>
+              <Input
+                value={form?.website || ''}
+                onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
+                disabled={!canEdit}
+                placeholder="https://"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Administrator Title</Label>
+              <Input
+                value={form?.admin_title || ''}
+                onChange={e => setForm(f => ({ ...f, admin_title: e.target.value }))}
+                disabled={!canEdit}
+                placeholder="e.g. Principal"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>School Logo</Label>
+            <div className="flex items-center gap-3">
+              {form?.logo_url && (
+                <img src={form.logo_url} alt="Logo" className="h-12 w-12 rounded-lg object-cover border border-border" />
+              )}
+              {canEdit && (
+                <label className="cursor-pointer">
+                  <span className="inline-flex items-center justify-center h-9 rounded-md border border-input bg-transparent px-3 text-sm text-foreground shadow-sm hover:bg-primary/10 hover:border-primary/50 transition-all">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Logo
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={e => e.target.files[0] && handleLogoUpload(e.target.files[0])}
                   />
-                </div>
-                <div className="space-y-2">
-                  <Label>School Code</Label>
-                  <Input value={school?.code} disabled className="bg-slate-50" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Address</Label>
-                  <Input 
-                    defaultValue={school?.address} 
-                    placeholder="School address"
-                    onBlur={(e) => handleUpdateSchool({ address: e.target.value })}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>System Statistics</CardTitle>
-                <CardDescription>Overview of system usage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <Users className="h-5 w-5 text-slate-400 mb-2" />
-                    <p className="text-2xl font-bold text-slate-900">{stats.totalUsers}</p>
-                    <p className="text-sm text-slate-500">Total Users</p>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <FileText className="h-5 w-5 text-slate-400 mb-2" />
-                    <p className="text-2xl font-bold text-slate-900">{stats.totalClasses}</p>
-                    <p className="text-sm text-slate-500">Classes</p>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <Database className="h-5 w-5 text-slate-400 mb-2" />
-                    <p className="text-2xl font-bold text-slate-900">{stats.totalPoints}</p>
-                    <p className="text-sm text-slate-500">Point Entries</p>
-                  </div>
-                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <Shield className="h-5 w-5 text-slate-400 mb-2" />
-                    <p className="text-2xl font-bold text-slate-900">{stats.totalBlockWards}</p>
-                    <p className="text-sm text-slate-500">BlockWards</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </label>
+              )}
+            </div>
           </div>
-        </TabsContent>
 
-        <TabsContent value="database">
-          <div className="grid gap-6">
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Data Management</CardTitle>
-                <CardDescription>Export and backup system data</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">Export All Data</p>
-                    <p className="text-sm text-slate-500">Download complete system backup as JSON</p>
-                  </div>
-                  <Button onClick={handleExportData}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-slate-900">Storage Used</p>
-                    <p className="text-sm text-slate-500">{stats.storageUsed.toFixed(1)}% of available storage</p>
-                  </div>
-                  <Badge variant="outline">{stats.storageUsed > 80 ? 'High' : 'Normal'}</Badge>
-                </div>
-              </CardContent>
-            </Card>
+          {canEdit && (
+            <Button onClick={handleSave} disabled={saving} className="w-full">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Save className="h-4 w-4 mr-2" /> Save Changes</>}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Database Health</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-900">Users Table</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-700">Healthy</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-900">Classes Table</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-700">Healthy</Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-600" />
-                      <span className="text-sm font-medium text-green-900">BlockWards Table</span>
-                    </div>
-                    <Badge className="bg-green-100 text-green-700">Healthy</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* School Status */}
+      <Card className="border-border bg-card/60 backdrop-blur-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            School Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Status</span>
+            <Badge variant={activeSchool.status === 'active' ? 'success' : 'destructive'}>
+              {activeSchool.status || 'active'}
+            </Badge>
           </div>
-        </TabsContent>
-
-        <TabsContent value="security">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-              <CardDescription>Configure authentication and access controls</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">Require Email Verification</p>
-                  <p className="text-sm text-slate-500">Users must verify email before accessing system</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">Two-Factor Authentication</p>
-                  <p className="text-sm text-slate-500">Require 2FA for admin accounts</p>
-                </div>
-                <Switch />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-                <div>
-                  <p className="font-medium text-slate-900">Session Timeout</p>
-                  <p className="text-sm text-slate-500">Auto-logout after 30 minutes of inactivity</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-600" />
-                  <div>
-                    <p className="font-medium text-amber-900">Activity Logging</p>
-                    <p className="text-sm text-amber-700">All administrative actions are logged</p>
-                  </div>
-                </div>
-                <Badge className="bg-amber-100 text-amber-700">Active</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="maintenance">
-          <div className="grid gap-6">
-            <Card className="border-0 shadow-lg border-red-200">
-              <CardHeader>
-                <CardTitle className="text-red-600">Danger Zone</CardTitle>
-                <CardDescription>Irreversible actions - proceed with caution</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-red-900">Reset All Points</p>
-                    <p className="text-sm text-red-700">Clear all achievement and behavior points</p>
-                  </div>
-                  <Button variant="destructive" disabled>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Reset Points
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <div>
-                    <p className="font-medium text-red-900">Archive Academic Year</p>
-                    <p className="text-sm text-red-700">Move current year data to archive</p>
-                  </div>
-                  <Button variant="destructive" disabled>
-                    <Database className="h-4 w-4 mr-2" />
-                    Archive Year
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">School Code</span>
+            <span className="text-sm font-mono text-foreground">{activeSchool.school_code || activeSchool.code}</span>
           </div>
-        </TabsContent>
-      </Tabs>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">Created By</span>
+            <span className="text-sm text-foreground">{activeSchool.created_by || activeSchool.admin_email}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Admin Team */}
+      <Card className="border-border bg-card/60 backdrop-blur-md">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Admin Team
+          </CardTitle>
+          <CardDescription>Current admins and their membership roles</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingMembers ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : members.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">No admin members found.</p>
+          ) : (
+            <div className="space-y-2">
+              {members.map(m => (
+                <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      {m.role === 'owner' ? (
+                        <Crown className="h-4 w-4 text-primary" />
+                      ) : (
+                        <span className="text-sm font-medium text-primary">
+                          {m.admin_name?.[0]?.toUpperCase() || m.admin_email?.[0]?.toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{m.admin_name || m.admin_email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{m.admin_email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Badge variant={m.role === 'owner' ? 'default' : 'secondary'}>
+                      {ROLE_LABELS[m.role] || m.role}
+                    </Badge>
+                    <Badge variant={m.status === 'active' ? 'success' : 'outline'}>
+                      {m.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {!canEdit && (
+        <p className="text-xs text-muted-foreground text-center">
+          Only the school owner or super admin can edit these settings.
+        </p>
+      )}
     </div>
   );
 }

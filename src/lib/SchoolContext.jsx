@@ -29,9 +29,25 @@ export const SchoolProvider = ({ children }) => {
       setProfile(p);
 
       if (p.user_type === 'admin') {
-        // Load all schools where this admin is the owner
-        const ownedSchools = await base44.entities.School.filter({ admin_email: currentUser.email });
-        setManagedSchools(ownedSchools);
+        // Load owned schools + schools from active memberships
+        const [ownedSchools, memberships] = await Promise.all([
+          base44.entities.School.filter({ admin_email: currentUser.email }),
+          base44.entities.AdminSchoolMembership.filter({ admin_email: currentUser.email, status: 'active' }),
+        ]);
+
+        // Fetch schools from memberships that aren't already in ownedSchools
+        const ownedIds = new Set(ownedSchools.map(s => s.id));
+        const memberSchoolIds = memberships.map(m => m.school_id).filter(id => !ownedIds.has(id));
+        const memberSchools = [];
+        for (const sid of memberSchoolIds) {
+          try {
+            const s = await base44.entities.School.filter({ id: sid });
+            if (s.length > 0) memberSchools.push(s[0]);
+          } catch { /* skip */ }
+        }
+
+        const allSchools = [...ownedSchools, ...memberSchools];
+        setManagedSchools(allSchools);
 
         // Load the active school (from school_id or active_school_id)
         const schoolId = p.active_school_id || p.school_id;

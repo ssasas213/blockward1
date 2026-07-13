@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
-  Shield, Plus, LogIn, Rocket, ArrowRight, Loader2, Building2, Search, Check, Clock,
+  Shield, Plus, LogIn, Rocket, ArrowRight, Loader2, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,20 +28,17 @@ export default function SchoolSetup() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState(null); // null = choose, 'create', 'join', 'demo'
+  const [mode, setMode] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Create form state
   const [form, setForm] = useState({
     name: '', country: '', city: '', org_type: 'school',
-    website: '', admin_title: '', logo_url: '',
+    website: '', contact_email: '', admin_title: '', logo_url: '',
   });
 
-  // Join search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-  const [requestedSchools, setRequestedSchools] = useState(new Set());
+  // Join-by-code state
+  const [joinCode, setJoinCode] = useState('');
+  const [joinResult, setJoinResult] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -61,7 +58,6 @@ export default function SchoolSetup() {
         if (profiles.length > 0) {
           const p = profiles[0];
           setProfile(p);
-          // If admin already has a school, redirect to dashboard
           if (p.user_type === 'admin' && p.school_id) {
             window.location.href = createPageUrl('AdminDashboard');
             return;
@@ -75,6 +71,21 @@ export default function SchoolSetup() {
     }
   };
 
+  const ensureProfile = async () => {
+    if (profile) return profile;
+    const nameParts = (user.full_name || user.email || 'Admin').split(' ');
+    const p = await base44.entities.UserProfile.create({
+      user_email: user.email,
+      user_type: 'admin',
+      first_name: nameParts[0] || 'Admin',
+      last_name: nameParts.slice(1).join(' ') || '',
+      admin_level: 'super_admin',
+      status: 'active',
+    });
+    setProfile(p);
+    return p;
+  };
+
   const handleLogoUpload = async (file) => {
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -85,30 +96,19 @@ export default function SchoolSetup() {
     }
   };
 
+  const generateCode = (name) => {
+    return `${name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8)}-${Math.random().toString(36).toUpperCase().slice(2, 6)}`;
+  };
+
   const handleCreateSchool = async () => {
-    if (!form.name.trim()) {
-      toast.error('Please enter a school name');
-      return;
-    }
+    if (!form.name.trim()) { toast.error('Please enter a school name'); return; }
+    if (!form.contact_email.trim()) { toast.error('Please enter a contact email'); return; }
+
     setSubmitting(true);
     try {
-      const code = `${form.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8)}-${Date.now().toString().slice(-4)}`;
+      const currentProfile = await ensureProfile();
+      const code = generateCode(form.name);
       const schoolCode = `${form.name.replace(/[^a-zA-Z0-9]/g, '-').toUpperCase().slice(0, 12)}-${new Date().getFullYear()}`;
-
-      // 0. Ensure a UserProfile exists — create one if missing
-      let currentProfile = profile;
-      if (!currentProfile) {
-        const nameParts = (user.full_name || user.email || 'Admin').split(' ');
-        currentProfile = await base44.entities.UserProfile.create({
-          user_email: user.email,
-          user_type: 'admin',
-          first_name: nameParts[0] || 'Admin',
-          last_name: nameParts.slice(1).join(' ') || '',
-          admin_level: 'super_admin',
-          status: 'active',
-        });
-        setProfile(currentProfile);
-      }
 
       // 1. Create the School
       const school = await base44.entities.School.create({
@@ -119,10 +119,13 @@ export default function SchoolSetup() {
         country: form.country.trim() || undefined,
         city: form.city.trim() || undefined,
         website: form.website.trim() || undefined,
+        contact_email: form.contact_email.trim(),
         logo_url: form.logo_url || undefined,
         admin_email: user.email,
         admin_title: form.admin_title.trim() || undefined,
         address: [form.city, form.country].filter(Boolean).join(', ') || undefined,
+        status: 'active',
+        created_by: user.email,
       });
 
       // 2. Create AdminSchoolMembership (owner role)
@@ -138,7 +141,18 @@ export default function SchoolSetup() {
         joined_at: new Date().toISOString(),
       });
 
-      // 3. Update UserProfile with the new school_id
+      // 3. Create a SchoolCode for admin joining
+      await base44.entities.SchoolCode.create({
+        school_id: school.id,
+        school_name: school.name,
+        code: schoolCode,
+        role_type: 'admin',
+        status: 'active',
+        created_by: user.email,
+        label: 'Default Admin Code',
+      });
+
+      // 4. Set the new school as active school
       await base44.entities.UserProfile.update(currentProfile.id, {
         school_id: school.id,
         active_school_id: school.id,
@@ -146,7 +160,6 @@ export default function SchoolSetup() {
       });
 
       toast.success(`${school.name} created successfully`);
-      // Redirect to dashboard
       window.location.href = createPageUrl('AdminDashboard');
     } catch (error) {
       console.error('Error creating school:', error);
@@ -155,63 +168,112 @@ export default function SchoolSetup() {
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    try {
-      // Search by name — RLS allows admins to read schools they own;
-      // for join, we use a broader search that returns public school info
-      const results = await base44.entities.School.filter({});
-      const filtered = results.filter(s =>
-        s.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(filtered);
-    } catch (error) {
-      toast.error('Search failed');
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleRequestAccess = async (school) => {
+  const handleJoinByCode = async () => {
+    if (!joinCode.trim()) { toast.error('Please enter a school code'); return; }
     setSubmitting(true);
+    setJoinResult(null);
+
     try {
-      // Ensure a UserProfile exists
-      let currentProfile = profile;
-      if (!currentProfile) {
-        const nameParts = (user.full_name || user.email || 'Admin').split(' ');
-        currentProfile = await base44.entities.UserProfile.create({
-          user_email: user.email,
-          user_type: 'admin',
-          first_name: nameParts[0] || 'Admin',
-          last_name: nameParts.slice(1).join(' ') || '',
-          admin_level: 'super_admin',
-          status: 'active',
-        });
-        setProfile(currentProfile);
+      const currentProfile = await ensureProfile();
+
+      // 1. Look up the code
+      const codes = await base44.entities.SchoolCode.filter({ code: joinCode.trim() });
+      if (codes.length === 0) {
+        setJoinResult({ error: 'Invalid code. No school found with that code.' });
+        setSubmitting(false);
+        return;
       }
-      // Create a pending membership request
-      await base44.entities.AdminSchoolMembership.create({
+
+      const schoolCode = codes[0];
+
+      // 2. Check code status
+      if (schoolCode.status === 'disabled') {
+        setJoinResult({ error: 'This code has been disabled. Contact the school administrator.' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Check expiry
+      if (schoolCode.expires_at && new Date(schoolCode.expires_at) < new Date()) {
+        setJoinResult({ error: 'This code has expired. Contact the school administrator.' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 4. Check role type validity
+      if (schoolCode.role_type !== 'admin' && schoolCode.role_type !== 'all') {
+        setJoinResult({ error: 'This code is not valid for admin access.' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 5. Check max uses
+      if (schoolCode.max_uses && schoolCode.use_count >= schoolCode.max_uses) {
+        setJoinResult({ error: 'This code has reached its maximum uses.' });
+        setSubmitting(false);
+        return;
+      }
+
+      // 6. Check for duplicate memberships
+      const existing = await base44.entities.AdminSchoolMembership.filter({
+        admin_email: user.email,
+        school_id: schoolCode.school_id,
+      });
+
+      if (existing.length > 0) {
+        const mem = existing[0];
+        if (mem.status === 'active') {
+          setJoinResult({ error: 'You are already linked to this school.' });
+        } else if (mem.status === 'pending') {
+          setJoinResult({ error: 'You already have a pending join request for this school.' });
+        } else {
+          setJoinResult({ error: 'You already have a membership record for this school.' });
+        }
+        setSubmitting(false);
+        return;
+      }
+
+      // 7. Create the membership — immediate access for admin codes
+      const membership = await base44.entities.AdminSchoolMembership.create({
         admin_user_id: currentProfile.id,
         admin_email: user.email,
         admin_name: `${currentProfile.first_name} ${currentProfile.last_name}`,
-        school_id: school.id,
-        school_name: school.name,
+        school_id: schoolCode.school_id,
+        school_name: schoolCode.school_name,
         role: 'admin',
-        status: 'pending',
+        status: 'active',
+        is_primary: !currentProfile.school_id,
         joined_at: new Date().toISOString(),
       });
-      setRequestedSchools(prev => new Set([...prev, school.id]));
-      toast.success(`Access requested for ${school.name}. You'll be notified when approved.`);
+
+      // 8. Set as active school if user has no school yet
+      if (!currentProfile.school_id) {
+        await base44.entities.UserProfile.update(currentProfile.id, {
+          school_id: schoolCode.school_id,
+          active_school_id: schoolCode.school_id,
+        });
+      }
+
+      // 9. Increment use count
+      await base44.entities.SchoolCode.update(schoolCode.id, {
+        use_count: (schoolCode.use_count || 0) + 1,
+      });
+
+      setJoinResult({ success: true, schoolName: schoolCode.school_name });
+      toast.success(`Successfully joined ${schoolCode.school_name}`);
+
+      // Redirect after a short delay
+      setTimeout(() => {
+        window.location.href = createPageUrl('AdminDashboard');
+      }, 1500);
     } catch (error) {
-      toast.error('Failed to request access');
-    } finally {
+      console.error('Error joining school:', error);
+      setJoinResult({ error: error.message || 'Failed to join school' });
       setSubmitting(false);
     }
   };
 
   const handleDemoMode = () => {
-    // Continue without a school — redirect to dashboard which will show empty state
     window.location.href = createPageUrl('AdminDashboard');
   };
 
@@ -231,7 +293,6 @@ export default function SchoolSetup() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <div className="w-full max-w-2xl">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="h-7 w-7 text-primary" />
@@ -263,7 +324,7 @@ export default function SchoolSetup() {
                 <LogIn className="h-5 w-5 text-primary" />
               </div>
               <h3 className="font-medium text-foreground text-sm">Join an Existing School</h3>
-              <p className="text-xs text-muted-foreground mt-1">Request access to a school already on BlockWard</p>
+              <p className="text-xs text-muted-foreground mt-1">Enter a school code to join</p>
             </button>
 
             <button
@@ -326,6 +387,18 @@ export default function SchoolSetup() {
                   </select>
                 </div>
                 <div className="space-y-2">
+                  <Label>Contact Email *</Label>
+                  <Input
+                    type="email"
+                    value={form.contact_email}
+                    onChange={e => setForm(f => ({ ...f, contact_email: e.target.value }))}
+                    placeholder="admin@school.edu"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Administrator Title</Label>
                   <Input
                     value={form.admin_title}
@@ -333,15 +406,14 @@ export default function SchoolSetup() {
                     placeholder="e.g. Principal, Director"
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Website (optional)</Label>
-                <Input
-                  value={form.website}
-                  onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
-                  placeholder="https://"
-                />
+                <div className="space-y-2">
+                  <Label>Website (optional)</Label>
+                  <Input
+                    value={form.website}
+                    onChange={e => setForm(f => ({ ...f, website: e.target.value }))}
+                    placeholder="https://"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -382,66 +454,42 @@ export default function SchoolSetup() {
           <Card className="border-border bg-card/60 backdrop-blur-md">
             <CardHeader>
               <CardTitle className="text-lg">Join an Existing School</CardTitle>
-              <CardDescription>Search for a school and request access</CardDescription>
+              <CardDescription>Enter the school code provided by the school administrator</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                    placeholder="Search by school name…"
-                    className="pl-9"
-                  />
-                </div>
-                <Button onClick={handleSearch} disabled={searching} variant="outline">
-                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
-                </Button>
+              <div className="space-y-2">
+                <Label>School Code</Label>
+                <Input
+                  value={joinCode}
+                  onChange={e => setJoinCode(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleJoinByCode()}
+                  placeholder="e.g. DUBAIINT-2026"
+                  className="font-mono uppercase"
+                />
               </div>
 
-              {searchResults.length > 0 && (
-                <div className="space-y-2">
-                  {searchResults.map(school => (
-                    <div key={school.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-9 w-9 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          {school.logo_url ? (
-                            <img src={school.logo_url} alt="" className="h-9 w-9 rounded-md object-cover" />
-                          ) : (
-                            <Building2 className="h-4 w-4 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{school.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {[school.city, school.country].filter(Boolean).join(', ') || school.org_type}
-                          </p>
-                        </div>
-                      </div>
-                      {requestedSchools.has(school.id) ? (
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
-                          <Clock className="h-3.5 w-3.5" /> Pending
-                        </span>
-                      ) : (
-                        <Button size="sm" variant="outline" onClick={() => handleRequestAccess(school)} disabled={submitting}>
-                          Request Access
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+              {joinResult?.error && (
+                <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-sm text-destructive">
+                  {joinResult.error}
                 </div>
               )}
 
-              {searchResults.length === 0 && searchQuery && !searching && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No schools found matching "{searchQuery}"
-                </p>
+              {joinResult?.success && (
+                <div className="p-3 rounded-lg border border-success/30 bg-success/10 text-sm text-success-foreground flex items-center gap-2">
+                  <Check className="h-4 w-4" />
+                  Successfully joined {joinResult.schoolName}. Redirecting…
+                </div>
               )}
 
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => setMode(null)}>Back</Button>
+                <Button onClick={handleJoinByCode} disabled={submitting} className="flex-1">
+                  {submitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>Join School <ArrowRight className="h-4 w-4 ml-2" /></>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>

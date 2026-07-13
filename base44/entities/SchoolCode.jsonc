@@ -1,0 +1,78 @@
+{
+  "name": "SchoolCode",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this code belongs to"
+    },
+    "school_name": {
+      "type": "string",
+      "description": "School name (denormalized for display)"
+    },
+    "code": {
+      "type": "string",
+      "description": "The join code string users enter"
+    },
+    "role_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "teacher",
+        "student",
+        "all"
+      ],
+      "default": "all",
+      "description": "Which role type this code is valid for"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled",
+        "expired"
+      ],
+      "default": "active",
+      "description": "Whether this code is currently usable"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this code expires (null = never)"
+    },
+    "max_uses": {
+      "type": "number",
+      "description": "Maximum number of times this code can be used (null = unlimited)"
+    },
+    "use_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times this code has been used"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User email who created this code"
+    },
+    "label": {
+      "type": "string",
+      "description": "Optional label for this code (e.g. 'Year 7 Teachers')"
+    }
+  },
+  "required": [
+    "school_id",
+    "code",
+    "role_type"
+  ],
+  "rls": {
+    "create": {
+      "data.created_by": "{{user.email}}"
+    },
+    "read": {},
+    "update": {
+      "data.created_by": "{{user.email}}"
+    },
+    "delete": {
+      "data.created_by": "{{user.email}}"
+    }
+  }
+}
