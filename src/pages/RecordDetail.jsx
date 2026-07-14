@@ -132,9 +132,23 @@ export default function RecordDetail() {
     try {
       const res = await base44.functions.invoke('sendToStudentVault', { record_id: recordId });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Delivery failed');
-      toast.success('Achievement delivered to student vault!');
+      const verifyUrl = res.data.publicVerificationUrl 
+        ? `${window.location.origin}/verify/${res.data.verificationId}`
+        : null;
+      toast.success('Achievement delivered to student vault!', {
+        description: verifyUrl ? `Verification ID: ${res.data.verificationId}` : undefined,
+        action: verifyUrl ? {
+          label: 'Copy Link',
+          onClick: () => {
+            navigator.clipboard.writeText(verifyUrl);
+            toast.success('Verification link copied!');
+          }
+        } : undefined,
+      });
       loadAll();
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { 
+      toast.error('Delivery failed', { description: e.message });
+    }
     finally { setSendingVault(false); }
   };
 
@@ -174,16 +188,26 @@ export default function RecordDetail() {
           </div>
           <h1 className="text-lg font-semibold text-foreground mb-2">
             {errorType === 'not_found' ? 'Achievement Not Found' :
-             errorType === 'access_denied' ? 'Access Denied' :
+             errorType === 'access_denied' ? 'Permission Denied' :
              errorType === 'wrong_school' ? 'Wrong Organisation' :
+             errorType === 'auth_required' ? 'Sign In Required' :
              'Unable to Load Record'}
           </h1>
           <p className="text-sm text-muted-foreground mb-4">
-            {errorMessage || (recordId ? 'This record could not be found.' : 'No record ID provided. Please open this page from a valid link.')}
+            {errorMessage || (recordId
+              ? 'This record may have been deleted, or you may not have permission to view it. If you believe this is an error, please contact your school administrator.'
+              : 'No record ID provided. Please open this page from a valid link.')}
           </p>
-          <Button variant="outline" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
-          </Button>
+          <div className="flex gap-2 justify-center">
+            {errorType === 'auth_required' && (
+              <Button onClick={() => base44.auth.redirectToLogin()}>
+                <PenLine className="h-4 w-4 mr-2" /> Sign In
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-4 w-4 mr-2" /> Go Back
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

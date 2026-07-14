@@ -111,8 +111,23 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
     const actorName = `${profile.first_name} ${profile.last_name}`;
-    const canonicalStudentId = record.owner_student_id || record.student_id;
     const normalizedStudentEmail = normalizeEmail(record.student_email);
+
+    // ── Resolve the student's UserProfile by email to get the canonical ID ──
+    // This is the SAME resolution getStudentVault uses (profile.id).
+    // Without this, owner_student_id might not match what getStudentVault expects,
+    // causing the student to see an empty vault even after successful delivery.
+    let studentProfile = null;
+    try {
+      const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
+      studentProfile = studentProfiles[0] || null;
+      if (!studentProfile) {
+        const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
+        studentProfile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizedStudentEmail) || null;
+      }
+    } catch (e) { /* best-effort — fall through to record-level IDs */ }
+
+    const canonicalStudentId = studentProfile?.id || record.owner_student_id || record.student_id;
 
     // ── STEP 3: Create or update linked BlockWard ──
     let blockWard = null;
@@ -180,6 +195,7 @@ Deno.serve(async (req) => {
       vault_delivered_at: now,
       vault_delivered_by: user.email,
       blockward_id: blockWard.id,
+      student_id: canonicalStudentId,
       owner_student_id: canonicalStudentId,
       owner_student_email: normalizedStudentEmail,
       owner_school_id: record.school_id,
@@ -280,8 +296,8 @@ Deno.serve(async (req) => {
     try {
       // Query by student_id (same as getStudentVault)
       const verifyRecords = await base44.asServiceRole.entities.StudentRecord.filter({ student_id: canonicalStudentId });
-      // Also query by email as fallback (same as getStudentVault)
-      const verifyRecordsByEmail = await base44.asServiceRole.entities.StudentRecord.filter({ student_email: record.student_email });
+      // Also query by the resolved profile email (same as getStudentVault)
+      const verifyRecordsByEmail = await base44.asServiceRole.entities.StudentRecord.filter({ student_email: studentProfile?.user_email || record.student_email });
 
       // Merge and deduplicate (same logic as getStudentVault)
       const seenIds = new Set();

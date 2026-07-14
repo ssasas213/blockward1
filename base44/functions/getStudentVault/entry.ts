@@ -88,8 +88,9 @@ Deno.serve(async (req) => {
       if (!seenIds.has(r.id)) { seenIds.add(r.id); records.push(r); }
     }
     for (const r of recordsByEmail) {
-      // Also match by owner_student_id
-      if (!seenIds.has(r.id) && (normalizeEmail(r.student_email) === targetEmail || r.owner_student_id === canonicalStudentId)) {
+      // Include any record where the email matches — don't require owner_student_id
+      // to also match, since owner_student_id may not have been set correctly at creation.
+      if (!seenIds.has(r.id) && normalizeEmail(r.student_email) === targetEmail) {
         seenIds.add(r.id);
         records.push(r);
       }
