@@ -62,7 +62,7 @@ export default function AdminApprovalPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -71,40 +71,40 @@ export default function AdminApprovalPage() {
     const config = {
       auth_required: {
         icon: LogIn,
-        color: 'bg-blue-100',
-        iconColor: 'text-blue-600',
+        color: 'bg-info/10',
+        iconColor: 'text-info',
         title: 'Sign In Required',
         message: 'You must be signed in as an administrator to approve this achievement.',
         action: { label: 'Sign In', path: '/Login' }
       },
       not_admin: {
         icon: Lock,
-        color: 'bg-red-100',
-        iconColor: 'text-red-600',
+        color: 'bg-destructive/10',
+        iconColor: 'text-destructive',
         title: 'Access Denied',
         message: 'You do not have permission to approve this achievement. Only school administrators can access the approval workflow.',
         action: null
       },
       wrong_school: {
         icon: Shield,
-        color: 'bg-amber-100',
-        iconColor: 'text-amber-600',
+        color: 'bg-warning/10',
+        iconColor: 'text-warning',
         title: 'Wrong Organisation',
         message: 'This achievement belongs to a different school. You can only approve records from your own organisation.',
         action: null
       },
       not_found: {
         icon: AlertCircle,
-        color: 'bg-slate-100',
-        iconColor: 'text-slate-400',
+        color: 'bg-muted',
+        iconColor: 'text-muted-foreground',
         title: 'Record Not Found',
         message: 'This achievement record could not be found or may have been removed.',
         action: null
       },
       access_denied: {
         icon: Lock,
-        color: 'bg-red-100',
-        iconColor: 'text-red-600',
+        color: 'bg-destructive/10',
+        iconColor: 'text-destructive',
         title: 'Access Denied',
         message: 'You do not have permission to view this record.',
         action: null
@@ -115,13 +115,13 @@ export default function AdminApprovalPage() {
 
     return (
       <div className="max-w-md mx-auto mt-20">
-        <Card className="border-0 shadow-xl text-center">
+        <Card className="shadow-xl text-center">
           <CardContent className="py-12">
             <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${cfg.color}`}>
               <Icon className={`h-8 w-8 ${cfg.iconColor}`} />
             </div>
-            <h1 className="text-xl font-bold text-slate-900 mb-2">{cfg.title}</h1>
-            <p className="text-slate-500 mb-6">{cfg.message}</p>
+            <h1 className="text-xl font-bold text-foreground mb-2">{cfg.title}</h1>
+            <p className="text-muted-foreground mb-6">{cfg.message}</p>
             <div className="flex gap-3 justify-center">
               {cfg.action && (
                 <Button onClick={() => navigate(cfg.action.path)}>

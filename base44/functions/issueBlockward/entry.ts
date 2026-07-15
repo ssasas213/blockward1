@@ -4,7 +4,7 @@ import { createPublicClient, createWalletClient, http, parseAbi, getAddress } fr
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia, polygon } from "npm:viem@2.7.0/chains";
 import { encodeBytes32String } from "npm:ethers@6.13.0";
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -155,6 +155,11 @@ Deno.serve(async (req) => {
 
   const blockwardRecord = {
     school_id: body.schoolId || studentProfile?.school_id || null,
+    record_id: body.recordId || null,
+    student_record_id: body.recordId || null,
+    owner_student_id: body.studentId || null,
+    owner_student_email: studentProfile?.user_email || null,
+    owner_school_id: body.schoolId || studentProfile?.school_id || null,
     token_id: tokenId !== null ? tokenId.toString() : null,
     student_email: studentProfile?.user_email || null,
     student_name: studentProfile ? `${studentProfile.first_name} ${studentProfile.last_name}` : null,
@@ -169,6 +174,7 @@ Deno.serve(async (req) => {
     transaction_hash: mintReceipt.transactionHash,
     block_number: Number(mintReceipt.blockNumber),
     minted_at: new Date().toISOString(),
+    vault_status: 'delivered',
     status: 'active'
   };
 

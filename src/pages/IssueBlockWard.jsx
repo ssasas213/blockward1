@@ -35,17 +35,17 @@ function Stepper({ currentStep }) {
           <React.Fragment key={step.id}>
             <div className="flex flex-col items-center flex-1">
               <div className={`h-10 w-10 rounded-full flex items-center justify-center font-semibold transition-all
-                ${currentStep > step.id ? 'bg-green-500 text-white' :
-                  currentStep === step.id ? 'bg-violet-600 text-white ring-4 ring-violet-100' :
-                  'bg-slate-200 text-slate-500'}`}>
+                ${currentStep > step.id ? 'bg-success text-success-foreground' :
+                  currentStep === step.id ? 'bg-primary text-primary-foreground ring-4 ring-primary/20' :
+                  'bg-muted text-muted-foreground'}`}>
                 {currentStep > step.id ? <Check className="h-5 w-5" /> : step.id}
               </div>
-              <p className={`text-xs mt-2 font-medium text-center ${currentStep >= step.id ? 'text-slate-900' : 'text-slate-400'}`}>
+              <p className={`text-xs mt-2 font-medium text-center ${currentStep >= step.id ? 'text-foreground' : 'text-muted-foreground'}`}>
                 {step.name}
               </p>
             </div>
             {index < STEPS.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-2 mt-[-20px] transition-all ${currentStep > step.id ? 'bg-green-500' : 'bg-slate-200'}`} />
+              <div className={`h-0.5 flex-1 mx-2 mt-[-20px] transition-all ${currentStep > step.id ? 'bg-success' : 'bg-border'}`} />
             )}
           </React.Fragment>
         ))}

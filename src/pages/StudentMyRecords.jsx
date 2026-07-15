@@ -20,11 +20,11 @@ const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'be
 const CATEGORY_COLORS = {
   academic: 'from-blue-500 to-indigo-500',
   sports: 'from-green-500 to-emerald-500',
-  arts: 'from-pink-500 to-rose-500',
-  leadership: 'from-purple-500 to-violet-500',
-  community: 'from-amber-500 to-orange-500',
+  arts: 'from-purple-500 to-fuchsia-500',
+  leadership: 'from-amber-500 to-orange-500',
+  community: 'from-rose-500 to-pink-500',
   behaviour: 'from-red-500 to-rose-500',
-  special: 'from-indigo-500 to-purple-500',
+  special: 'from-violet-500 to-purple-500',
 };
 
 export default function StudentMyRecords() {

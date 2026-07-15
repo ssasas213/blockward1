@@ -4,7 +4,7 @@ import { createPublicClient, createWalletClient, http, parseAbi, getAddress } fr
 import { encodeBytes32String } from "npm:ethers@6.13.0";
 import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +25,16 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: CORS });
+
+  // ── ROLE ENFORCEMENT: caller must be an approved teacher ──
+  const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+  const callerProfile = callerProfiles?.[0];
+  if (!callerProfile || callerProfile.user_type !== 'teacher') {
+    return new Response(JSON.stringify({ ok: false, error: 'Only teachers can issue BlockWards' }), { status: 403, headers: CORS });
+  }
+  if (callerProfile.can_issue_blockwards !== true) {
+    return new Response(JSON.stringify({ ok: false, error: 'You are not approved to issue BlockWards. Ask your admin to enable your permission.' }), { status: 403, headers: CORS });
+  }
 
   const body = await req.json();
   const { studentId, title, category, description, tokenURI } = body;

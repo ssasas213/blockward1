@@ -31,13 +31,13 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_STYLE = {
-  academic: { badge: 'bg-blue-50 text-blue-700' },
-  sports: { badge: 'bg-green-50 text-green-700' },
-  arts: { badge: 'bg-purple-50 text-purple-700' },
-  leadership: { badge: 'bg-amber-50 text-amber-700' },
-  community: { badge: 'bg-rose-50 text-rose-700' },
-  behaviour: { badge: 'bg-red-50 text-red-700' },
-  special: { badge: 'bg-indigo-50 text-indigo-700' },
+  academic: { badge: 'bg-blue-500/10 text-blue-400' },
+  sports: { badge: 'bg-green-500/10 text-green-400' },
+  arts: { badge: 'bg-purple-500/10 text-purple-400' },
+  leadership: { badge: 'bg-amber-500/10 text-amber-400' },
+  community: { badge: 'bg-rose-500/10 text-rose-400' },
+  behaviour: { badge: 'bg-red-500/10 text-red-400' },
+  special: { badge: 'bg-indigo-500/10 text-indigo-400' },
 };
 
 const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, community: 5, special: 9, behaviour: 9 };

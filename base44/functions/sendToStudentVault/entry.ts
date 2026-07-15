@@ -382,17 +382,13 @@ Deno.serve(async (req) => {
       }
     } catch (e) { /* best-effort */ }
 
-    // Update student statistics
-    if (record.points && record.points > 0) {
+    // Update student statistics atomically (avoids race condition)
+    if (record.points && record.points > 0 && studentProfile) {
       try {
-        const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
-        if (studentProfiles.length > 0) {
-          const sp = studentProfiles[0];
-          const current = sp.total_achievement_points || 0;
-          await base44.asServiceRole.entities.UserProfile.update(sp.id, {
-            total_achievement_points: current + record.points,
-          });
-        }
+        await base44.asServiceRole.entities.UserProfile.updateMany(
+          { id: studentProfile.id },
+          { $inc: { total_achievement_points: record.points } }
+        );
       } catch (e) { /* best-effort */ }
     }
 

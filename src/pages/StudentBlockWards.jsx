@@ -77,8 +77,8 @@ function StudentBlockWardsContent() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">My BlockWards</h1>
-        <p className="text-slate-500 mt-1">
+        <h1 className="text-3xl font-bold text-foreground">My BlockWards</h1>
+        <p className="text-muted-foreground mt-1">
           Your achievements are stored securely in your BlockWard Vault
         </p>
       </div>
@@ -90,13 +90,13 @@ function StudentBlockWardsContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="border-0 shadow-lg">
+          <Card className="shadow-lg">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Total BlockWards</p>
-                  <p className="text-4xl font-bold text-slate-900 mt-1">{blockWards.length}</p>
-                  <p className="text-sm text-slate-600 mt-1">Achievements earned</p>
+                  <p className="text-sm text-muted-foreground">Total BlockWards</p>
+                  <p className="text-4xl font-bold text-foreground mt-1">{blockWards.length}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Achievements earned</p>
                 </div>
                 <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
                   <Award className="h-8 w-8 text-white" />
@@ -111,32 +111,32 @@ function StudentBlockWardsContent() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <Card className="shadow-lg bg-success/5 border-success/20">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-green-500 flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-white" />
+                  <div className="h-12 w-12 rounded-xl bg-success flex items-center justify-center">
+                    <Shield className="h-6 w-6 text-success-foreground" />
                   </div>
                   <div>
-                    <p className="font-semibold text-green-900">Vault Status</p>
+                    <p className="font-semibold text-foreground">Vault Status</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      <Badge className="bg-green-100 text-green-700 border-green-300">
+                      <CheckCircle2 className="h-4 w-4 text-success" />
+                      <Badge className="bg-success/10 text-success border-success/30">
                         Active
                       </Badge>
                     </div>
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-green-800 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Your achievements are securely stored by BlockWard
               </p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowVaultModal(true)}
-                className="w-full border-green-300 hover:bg-green-100"
+                className="w-full border-success/30 hover:bg-success/10"
               >
                 View Vault Details
               </Button>
@@ -146,7 +146,7 @@ function StudentBlockWardsContent() {
       </div>
 
       {/* Collection */}
-      <Card className="border-0 shadow-lg">
+      <Card className="shadow-lg">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-lg">My Collection</CardTitle>
@@ -169,11 +169,11 @@ function StudentBlockWardsContent() {
         <CardContent>
           {filteredBlockWards.length === 0 ? (
             <div className="text-center py-16">
-              <Award className="h-20 w-20 mx-auto text-slate-200 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">
+              <Award className="h-20 w-20 mx-auto text-muted-foreground/30 mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">
                 {blockWards.length === 0 ? 'No BlockWards Yet' : 'No matches found'}
               </h3>
-              <p className="text-slate-500 max-w-md mx-auto">
+              <p className="text-muted-foreground max-w-md mx-auto">
                 {blockWards.length === 0 
                   ? "When your teacher issues awards, they'll show up here. Keep up the great work!"
                   : 'Try selecting a different category'}
@@ -200,15 +200,15 @@ function StudentBlockWardsContent() {
       </Card>
 
       {/* Info Card */}
-      <Card className="border-violet-200 bg-gradient-to-r from-violet-50 to-indigo-50">
+      <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
-              <Shield className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+              <Shield className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 mb-1">About Your BlockWards</h3>
-              <p className="text-sm text-slate-600">
+              <h3 className="font-semibold text-foreground mb-1">About Your BlockWards</h3>
+              <p className="text-sm text-muted-foreground">
                 Your BlockWards are unique achievements that are permanently tied to you. 
                 They cannot be transferred or given away - they're proof of what you've accomplished!
               </p>

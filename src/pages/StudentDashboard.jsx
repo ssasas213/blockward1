@@ -43,13 +43,15 @@ function StudentDashboardContent() {
       const profile = profiles.length > 0 ? profiles[0] : null;
       setUserProfile(profile);
 
-      const allClasses = await base44.entities.Class.list();
+      const classFilter = profile?.school_id ? { school_id: profile.school_id } : {};
+      const allClasses = await base44.entities.Class.filter(classFilter);
       const myClasses = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
 
       const today = new Date().getDay();
       const dayIndex = today === 0 ? 6 : today - 1;
       const classIds = myClasses.map(c => c.id);
-      const allSchedules = await base44.entities.TimetableEntry.filter({ day_of_week: dayIndex });
+      const scheduleFilter = profile?.school_id ? { school_id: profile.school_id, day_of_week: dayIndex } : { day_of_week: dayIndex };
+      const allSchedules = await base44.entities.TimetableEntry.filter(scheduleFilter);
       const todaySchedule = allSchedules.filter(s => classIds.includes(s.class_id));
 
       const [points, vaultRes] = await Promise.all([
