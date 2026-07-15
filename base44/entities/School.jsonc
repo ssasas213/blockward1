@@ -32,6 +32,20 @@
       "default": "school",
       "description": "Type of organization"
     },
+    "school_type": {
+      "type": "string",
+      "enum": [
+        "primary_school",
+        "secondary_school",
+        "sixth_form",
+        "college",
+        "university",
+        "training_centre",
+        "other"
+      ],
+      "default": "other",
+      "description": "Specific type of school"
+    },
     "country": {
       "type": "string",
       "description": "Country where the organization is located"
@@ -50,6 +64,10 @@
     },
     "address": {
       "type": "string"
+    },
+    "phone": {
+      "type": "string",
+      "description": "School phone number"
     },
     "logo_url": {
       "type": "string"

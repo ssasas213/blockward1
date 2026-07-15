@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { createPageUrl } from '@/utils';
 
 const ACCOUNT_TYPES = [
   {
@@ -117,12 +118,19 @@ export default function Onboarding() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         role_label: accountType.roleLabel || undefined,
-        status: 'pending_approval',
+        status: 'active',
         total_achievement_points: 0,
         total_behaviour_points: 0,
       });
 
-      setDone(true);
+      // Redirect based on role
+      if (accountType.key === 'admin') {
+        window.location.href = createPageUrl('SchoolSetup');
+      } else if (accountType.key === 'teacher') {
+        window.location.href = createPageUrl('JoinSchool');
+      } else {
+        window.location.href = createPageUrl('StudentDashboard');
+      }
     } catch (error) {
       console.error('Error creating profile:', error);
       toast.error(error.message || 'Failed to create account');

@@ -12,6 +12,8 @@ import StatCard from '@/components/ui/stat-card';
 import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
+import PendingTeacherRequests from '@/components/onboarding/PendingTeacherRequests';
+import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import {
   Users, BookOpen, Shield, TrendingUp,
   ChevronRight, RefreshCw, Loader2,
@@ -196,6 +198,12 @@ function AdminDashboardContent() {
         <StatCard label="BlockWards Issued" value={stats.totalBlockWards} icon={Shield} />
         <StatCard label="Drive Connected" value={stats.driveConnected} icon={HardDrive} />
         <StatCard label="Pending Archive" value={stats.recordsPendingArchive} icon={AlertCircle} />
+      </div>
+
+      {/* Setup Checklist + Pending Teacher Requests */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <SetupChecklist />
+        <PendingTeacherRequests />
       </div>
 
       {/* Pending Signatures */}

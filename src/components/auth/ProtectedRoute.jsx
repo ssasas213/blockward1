@@ -54,6 +54,12 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    // Teacher with no school linked — redirect to join school page
+    if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
+      window.location.href = createPageUrl('JoinSchool');
+      return;
+    }
+
     // Profile pending approval - redirect to login (shows pending message)
     if (requireProfile && profile && profile.status === 'pending_approval') {
       window.location.href = '/Login';
@@ -70,17 +76,17 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
   // Show loading state while checking auth
   if (!initialized || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4 animate-in fade-in duration-500">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-2xl shadow-violet-500/30">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
             <div className="animate-pulse">
-              <Shield className="h-8 w-8 text-white" />
+              <Shield className="h-8 w-8 text-primary" />
             </div>
           </div>
-          <div className="h-1 w-32 bg-slate-200 rounded-full overflow-hidden">
-            <div className="h-full w-1/2 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-full animate-[shimmer_1s_ease-in-out_infinite]" />
+          <div className="h-1 w-32 bg-muted rounded-full overflow-hidden">
+            <div className="h-full w-1/2 bg-primary rounded-full animate-pulse" />
           </div>
-          <p className="text-slate-600 text-sm font-medium">Loading BlockWard...</p>
+          <p className="text-muted-foreground text-sm font-medium">Loading BlockWard...</p>
         </div>
       </div>
     );
@@ -98,6 +104,11 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Admin with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
+    return null;
+  }
+
+  // Teacher with no school — redirect in progress
+  if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
     return null;
   }
 

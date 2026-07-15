@@ -30,6 +30,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
 import { SchoolProvider } from '@/lib/SchoolContext';
 import SchoolSetup from './pages/SchoolSetup';
+import JoinSchool from './pages/JoinSchool';
 import OrgsLayout from '@/components/layouts/OrgsLayout';
 import SchoolsLogin from './pages/schools/Login';
 import SchoolsSignup from './pages/schools/Signup';
@@ -104,6 +105,7 @@ const AuthenticatedApp = () => {
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
+      <Route path="/JoinSchool" element={<JoinSchool />} />
 
       {/* Platform-specific login/signup routes */}
       <Route path="/schools/login" element={<SchoolsLogin />} />
