@@ -2,11 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { PenLine, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 export default function SignatureProfileSection({ userEmail, userRole }) {
   const [sigProfile, setSigProfile] = useState(null);
@@ -41,56 +38,55 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
     }
   };
 
-  // Only show for teachers and admins — AFTER all hooks
   if (!isEligible) return null;
 
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <PenLine className="h-4 w-4" /> Digital Signature Profile
+        <CardTitle className="text-base flex items-center gap-2 text-foreground">
+          <PenLine className="h-4 w-4 text-primary" /> Digital Signature Profile
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white shadow-sm flex items-center justify-center">
-              <PenLine className="h-4 w-4 text-violet-500" />
+            <div className="h-9 w-9 rounded-lg bg-muted/40 flex items-center justify-center">
+              <PenLine className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Signature Profile</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm font-semibold text-foreground">Signature Profile</p>
+              <p className="text-xs text-muted-foreground">
                 {sigProfile ? `"${sigProfile.display_name}" · ${sigProfile.signature_type === 'drawn' ? 'Hand-drawn' : 'Typed'} signature` : 'Not yet configured'}
               </p>
             </div>
           </div>
           {loading ? (
-            <Badge className="bg-slate-100 text-slate-400 border-0">Loading…</Badge>
+            <Badge variant="outline" className="text-muted-foreground border-border bg-muted/30">Loading…</Badge>
           ) : sigProfile ? (
-            <Badge className="bg-emerald-100 text-emerald-700 border-0 gap-1">
+            <Badge variant="outline" className="border-success/30 bg-success/10 text-success gap-1">
               <CheckCircle2 className="h-3 w-3" /> Configured
             </Badge>
           ) : (
-            <Badge className="bg-amber-100 text-amber-700 border-0 gap-1">
+            <Badge variant="outline" className="border-warning/30 bg-warning/10 text-warning gap-1">
               <XCircle className="h-3 w-3" /> Not Set Up
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border">
           <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-white shadow-sm flex items-center justify-center">
-              <Clock className="h-4 w-4 text-slate-400" />
+            <div className="h-9 w-9 rounded-lg bg-muted/40 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-slate-800">Last Signed</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm font-semibold text-foreground">Last Signed</p>
+              <p className="text-xs text-muted-foreground">
                 {lastSig ? format(new Date(lastSig.signed_at), 'dd MMM yyyy, HH:mm') : 'No signatures yet'}
               </p>
             </div>
           </div>
           {lastSig && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs text-muted-foreground border-border">
               {lastSig.signer_role}
             </Badge>
           )}
@@ -98,7 +94,7 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
 
         {!sigProfile && !loading && (
           <div className="pt-1">
-            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs text-warning bg-warning/10 border border-warning/20 rounded-lg p-3">
               You need to set up your signature profile before you can approve student achievement records.
               Go to any pending record to configure it.
             </p>
@@ -107,8 +103,8 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
 
         {sigProfile?.signature_type === 'drawn' && sigProfile?.signature_value && (
           <div className="pt-1">
-            <p className="text-xs text-slate-400 mb-2">Signature Preview</p>
-            <div className="bg-white border border-slate-200 rounded-lg p-3 inline-block">
+            <p className="text-xs text-muted-foreground mb-2">Signature Preview</p>
+            <div className="bg-muted/20 border border-border rounded-lg p-3 inline-block">
               <img
                 src={sigProfile.signature_value}
                 alt="Signature"
@@ -119,9 +115,9 @@ export default function SignatureProfileSection({ userEmail, userRole }) {
         )}
         {sigProfile?.signature_type === 'typed' && sigProfile?.signature_value && (
           <div className="pt-1">
-            <p className="text-xs text-slate-400 mb-2">Signature Preview</p>
-            <div className="bg-white border border-slate-200 rounded-lg p-3 inline-block">
-              <p className="font-serif text-xl text-slate-700 italic">{sigProfile.signature_value}</p>
+            <p className="text-xs text-muted-foreground mb-2">Signature Preview</p>
+            <div className="bg-muted/20 border border-border rounded-lg p-3 inline-block">
+              <p className="font-serif text-xl text-foreground italic">{sigProfile.signature_value}</p>
             </div>
           </div>
         )}

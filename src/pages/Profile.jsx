@@ -155,14 +155,14 @@ function ProfileContent() {
 
       {/* Blockchain Wallet */}
       {profile?.wallet_address && (
-        <Card className="shadow-sm">
+        <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
           <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Wallet className="h-4 w-4" /> Blockchain Wallet
+            <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+              <Wallet className="h-4 w-4 text-primary" /> Blockchain Wallet
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
+            <div className="p-4 bg-muted/20 rounded-lg border border-border">
               <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Wallet Address (Polygon)</p>
               <div className="flex items-center gap-3">
                 <code className="flex-1 text-sm font-mono text-foreground truncate">{profile.wallet_address}</code>
@@ -174,7 +174,7 @@ function ProfileContent() {
             {profile.blockchain_role && (
               <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline">On-chain: {profile.blockchain_role}</Badge>
+                  <Badge variant="outline" className="text-muted-foreground border-border">On-chain: {profile.blockchain_role}</Badge>
                   {profile.user_type === 'teacher' && (
                     <Badge variant="outline" className={profile.can_issue_blockwards ? 'text-success border-success/30 bg-success/5' : 'text-warning border-warning/30 bg-warning/5'}>
                       Minting: {profile.can_issue_blockwards ? 'Enabled' : 'Disabled'}
@@ -201,10 +201,10 @@ function ProfileContent() {
       )}
 
       {/* Notification Preferences */}
-      <Card className="shadow-sm">
+      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
         <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Bell className="h-4 w-4" /> Notification Preferences
+          <CardTitle className="text-sm flex items-center gap-2 text-foreground">
+            <Bell className="h-4 w-4 text-primary" /> Notification Preferences
           </CardTitle>
         </CardHeader>
         <CardContent>

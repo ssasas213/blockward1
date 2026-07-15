@@ -80,25 +80,25 @@ export default function NotificationPreferences({ userEmail }) {
     }
   };
 
-  if (!prefs) return <div className="flex items-center gap-2 text-slate-400 text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading preferences...</div>;
+  if (!prefs) return <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Loading preferences...</div>;
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-slate-900 mb-0.5">Notification Preferences</h3>
-        <p className="text-xs text-slate-500">Choose which announcements trigger in-app alerts</p>
+        <h3 className="font-semibold text-foreground mb-0.5">Notification Preferences</h3>
+        <p className="text-xs text-muted-foreground">Choose which announcements trigger in-app alerts</p>
       </div>
       {PREFS.map(p => {
         const Icon = p.icon;
         return (
-          <div key={p.key} className="flex items-center justify-between gap-4 p-3 rounded-xl border border-slate-200 bg-white">
+          <div key={p.key} className="flex items-center justify-between gap-4 p-3 rounded-xl border border-border bg-muted/20">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg bg-slate-50 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-lg bg-muted/40 flex items-center justify-center">
                 <Icon className={`h-4 w-4 ${p.iconColor}`} />
               </div>
               <div>
-                <Label className="text-sm font-medium text-slate-800">{p.label}</Label>
-                <p className="text-xs text-slate-500">{p.description}</p>
+                <Label className="text-sm font-medium text-foreground">{p.label}</Label>
+                <p className="text-xs text-muted-foreground">{p.description}</p>
               </div>
             </div>
             <Switch

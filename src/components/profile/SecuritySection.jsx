@@ -12,39 +12,41 @@ export default function SecuritySection() {
   };
 
   return (
-    <Card className="border-0 shadow-lg">
+    <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
       <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Lock className="h-4 w-4" /> Security
+        <CardTitle className="text-base flex items-center gap-2 text-foreground">
+          <Lock className="h-4 w-4 text-primary" /> Security
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border">
           <div className="flex items-center gap-3">
-            <Shield className="h-5 w-5 text-slate-400" />
+            <Shield className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-slate-700">Two-Factor Authentication</p>
-              <p className="text-xs text-slate-400">Extra security for your account</p>
+              <p className="text-sm font-medium text-foreground">Two-Factor Authentication</p>
+              <p className="text-xs text-muted-foreground">Extra security for your account</p>
             </div>
           </div>
-          <Badge className="bg-slate-100 text-slate-500 border-0 text-xs">Coming Soon</Badge>
+          <Badge variant="outline" className="text-muted-foreground border-border bg-muted/30 text-xs">Coming Soon</Badge>
         </div>
 
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50">
+        <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border">
           <div className="flex items-center gap-3">
-            <Smartphone className="h-5 w-5 text-slate-400" />
+            <Smartphone className="h-5 w-5 text-muted-foreground" />
             <div>
-              <p className="text-sm font-medium text-slate-700">Active Sessions</p>
-              <p className="text-xs text-slate-400">Managed by your identity provider</p>
+              <p className="text-sm font-medium text-foreground">Active Sessions</p>
+              <p className="text-xs text-muted-foreground">Managed by your identity provider</p>
             </div>
           </div>
-          <Badge className="bg-emerald-100 text-emerald-600 border-0 text-xs">1 Active</Badge>
+          <Badge variant="outline" className="border-success/30 bg-success/10 text-success text-xs gap-1">
+            1 Active
+          </Badge>
         </div>
 
         <div className="pt-2">
           <Button
             variant="outline"
-            className="w-full border-red-200 text-red-600 hover:bg-red-50"
+            className="w-full border-destructive/30 text-destructive hover:bg-destructive/10"
             onClick={logoutAll}
           >
             <LogOut className="h-4 w-4 mr-2" />
