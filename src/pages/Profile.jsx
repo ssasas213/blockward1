@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -14,7 +14,11 @@ import EditProfileForm from '@/components/profile/EditProfileForm';
 import ProfileStats from '@/components/profile/ProfileStats';
 import SecuritySection from '@/components/profile/SecuritySection';
 import SignatureProfileSection from '@/components/profile/SignatureProfileSection';
+import SchoolMembershipSection from '@/components/profile/SchoolMembershipSection';
+import AppearanceSettings from '@/components/profile/AppearanceSettings';
+import AccountSection from '@/components/profile/AccountSection';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
+import { useSchool } from '@/lib/SchoolContext';
 
 function ProfileContent() {
   const [user, setUser] = useState(null);
@@ -23,6 +27,7 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copiedWallet, setCopiedWallet] = useState(false);
+  const { refresh: refreshSchool } = useSchool();
 
   useEffect(() => { load(); }, []);
 
@@ -38,10 +43,23 @@ function ProfileContent() {
       const p = profiles[0] || null;
       setProfile(p);
 
+      // Refresh school context so sidebar avatar/name updates
+      if (refreshSchool) refreshSchool();
+
       if (p?.school_id) {
         try {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length) setSchool(schools[0]);
+        } catch (_) {}
+      } else if (p?.user_type === 'teacher') {
+        // Teachers may have an active StaffMembership without school_id on profile
+        try {
+          const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+          const active = staff.find(s => s.status === 'active');
+          if (active) {
+            const schools = await base44.entities.School.filter({ id: active.school_id });
+            if (schools.length) setSchool(schools[0]);
+          }
         } catch (_) {}
       }
     } catch (e) {
@@ -144,11 +162,16 @@ function ProfileContent() {
         </Card>
       )}
 
+      {/* School Membership */}
+      {profile && (
+        <SchoolMembershipSection profile={profile} user={user} school={school} onRefresh={load} />
+      )}
+
+      {/* Edit Profile Form (includes profile picture uploader) */}
+      <EditProfileForm profile={profile} onSaved={load} />
+
       {/* Digital Custodian Status */}
       <ProfileStats profile={profile} userEmail={user?.email} />
-
-      {/* Edit Profile Form */}
-      <EditProfileForm profile={profile} onSaved={load} />
 
       {/* Signature Profile (teacher/admin only) */}
       <SignatureProfileSection userEmail={user?.email} userRole={profile?.user_type} />
@@ -200,17 +223,23 @@ function ProfileContent() {
         </div>
       )}
 
-      {/* Notification Preferences */}
+      {/* Preferences — Appearance + Notifications */}
       <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
         <CardHeader>
-          <CardTitle className="text-sm flex items-center gap-2 text-foreground">
-            <Bell className="h-4 w-4 text-primary" /> Notification Preferences
+          <CardTitle className="text-base flex items-center gap-2 text-foreground">
+            <Palette className="h-4 w-4 text-primary" /> Preferences
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <NotificationPreferences userEmail={user?.email} />
+        <CardContent className="space-y-6">
+          <AppearanceSettings profile={profile} onPreferenceChange={() => load()} />
+          <div className="pt-4 border-t border-border">
+            <NotificationPreferences userEmail={user?.email} />
+          </div>
         </CardContent>
       </Card>
+
+      {/* Account */}
+      <AccountSection user={user} profile={profile} />
 
       <SecuritySection />
     </div>

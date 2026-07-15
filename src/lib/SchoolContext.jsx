@@ -60,6 +60,24 @@ export const SchoolProvider = ({ children }) => {
         if (p.school_id) {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length > 0) setActiveSchool(schools[0]);
+        } else if (p.user_type === 'teacher') {
+          // Teachers may have an active StaffMembership without school_id on profile yet
+          try {
+            const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+            const active = staff.find(s => s.status === 'active');
+            if (active) {
+              const schools = await base44.entities.School.filter({ id: active.school_id });
+              if (schools.length > 0) {
+                setActiveSchool(schools[0]);
+                // Also update profile.school_id so RLS works
+                await base44.entities.UserProfile.update(p.id, {
+                  school_id: active.school_id,
+                  active_school_id: active.school_id,
+                  admin_email: schools[0].admin_email,
+                });
+              }
+            }
+          } catch { /* skip */ }
         }
       }
     } catch (error) {
@@ -85,7 +103,7 @@ export const SchoolProvider = ({ children }) => {
   }, [profile]);
 
   const refresh = useCallback(() => {
-    setLoading(true);
+    // Background refresh — don't set loading=true (that would show full-page spinner in Layout)
     loadSchoolData();
   }, [loadSchoolData]);
 

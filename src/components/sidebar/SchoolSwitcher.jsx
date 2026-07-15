@@ -24,18 +24,22 @@ export default function SchoolSwitcher({ onClose }) {
   };
 
   if (!isAdmin) {
-    // Teachers and students — show school name without switcher
+    // Teachers and students — show school name, clickable to Profile
+    const goToProfile = () => {
+      if (onClose) onClose();
+      navigate(createPageUrl('Profile'));
+    };
     return (
-      <div className="flex-1 min-w-0">
+      <button onClick={goToProfile} className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
         <p className="font-semibold text-foreground text-sm leading-tight">BlockWard</p>
         {loading ? (
           <p className="text-xs text-muted-foreground truncate leading-tight">Loading school…</p>
         ) : activeSchool ? (
-          <p className="text-xs text-muted-foreground truncate leading-tight">{activeSchool.name}</p>
+          <p className="text-xs text-primary/80 truncate leading-tight">{activeSchool.name}</p>
         ) : (
-          <p className="text-xs text-muted-foreground truncate leading-tight">No school linked</p>
+          <p className="text-xs text-warning truncate leading-tight">No school linked — click to join</p>
         )}
-      </div>
+      </button>
     );
   }
 

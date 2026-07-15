@@ -89,6 +89,16 @@
     "avatar_url": {
       "type": "string"
     },
+    "theme_preference": {
+      "type": "string",
+      "enum": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "default": "system",
+      "description": "User's preferred UI theme"
+    },
     "student_id": {
       "type": "string",
       "description": "Student ID number (for students)"

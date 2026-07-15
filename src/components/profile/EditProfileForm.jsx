@@ -6,9 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { User, Save, Loader2, BookOpen, GraduationCap, Users } from 'lucide-react';
+import { User, Save, Loader2, BookOpen, GraduationCap, Users, ImagePlus } from 'lucide-react';
+import ProfilePictureUploader from './ProfilePictureUploader';
 
 export default function EditProfileForm({ profile, onSaved }) {
+  const handlePictureUpdated = (updatedProfile) => {
+    if (onSaved) onSaved();
+  };
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     first_name: '',
@@ -109,11 +113,19 @@ export default function EditProfileForm({ profile, onSaved }) {
         <p className="text-sm text-muted-foreground">Update your personal information and contact details.</p>
       </CardHeader>
       <CardContent className="space-y-5">
+        {/* Profile picture */}
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center gap-2">
+            <ImagePlus className="h-4 w-4 text-primary" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Profile Picture</p>
+          </div>
+          <ProfilePictureUploader profile={profile} onUpdated={handlePictureUpdated} />
+        </div>
+
         {/* Basic info */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
           {field('First Name *', 'first_name', 'text', 'First name')}
           {field('Last Name *', 'last_name', 'text', 'Last name')}
-          {field('Avatar URL', 'avatar_url', 'url', 'https://...')}
         </div>
 
         {/* Teacher fields */}

@@ -83,11 +83,24 @@ export default function ProfileHeader({ profile, user, school }) {
           </div>
         </div>
 
-        {/* Metadata row — only meaningful fields */}
+        {/* Metadata row — role-specific fields */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 pt-4 border-t border-border">
+          {profile?.user_type === 'admin' && profile?.admin_level && (
+            <MetaItem label="Admin Level" value={profile.admin_level.replace(/_/g, ' ')} />
+          )}
+          {profile?.user_type === 'teacher' && profile?.department && (
+            <MetaItem label="Department" value={profile.department} />
+          )}
+          {profile?.user_type === 'teacher' && profile?.subjects?.length > 0 && (
+            <MetaItem label="Subjects" value={profile.subjects.join(', ')} />
+          )}
+          {profile?.user_type === 'student' && profile?.grade_level && (
+            <MetaItem label="Grade Level" value={profile.grade_level} />
+          )}
+          {profile?.user_type === 'student' && profile?.student_id && (
+            <MetaItem label="Student ID" value={profile.student_id} />
+          )}
           <MetaItem label="Joined" value={profile?.created_date ? format(new Date(profile.created_date), 'MMM yyyy') : '—'} />
-          {profile?.department && <MetaItem label="Department" value={profile.department} />}
-          {profile?.grade_level && <MetaItem label="Grade Level" value={profile.grade_level} />}
           <MetaItem label="Account Status" value={statusCfg.label} />
         </div>
 

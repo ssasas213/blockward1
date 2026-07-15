@@ -305,9 +305,13 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-full flex items-center gap-3 p-2 rounded-md hover:bg-muted transition-colors">
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium text-sm flex-shrink-0">
-                {profile?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
-              </div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="h-8 w-8 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-medium text-sm flex-shrink-0">
+                  {profile?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
+                </div>
+              )}
               <div className="flex-1 text-left min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
                   {profile ? `${profile.first_name} ${profile.last_name}` : user?.email}
