@@ -37,7 +37,11 @@
         "drive_saved",
         "status_changed",
         "viewed",
-        "sent_to_student_vault"
+        "sent_to_student_vault",
+        "school_created",
+        "join_request_submitted",
+        "teacher_approved",
+        "teacher_rejected"
       ],
       "description": "What happened"
     },
