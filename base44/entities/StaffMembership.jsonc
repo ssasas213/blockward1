@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Foreign key to School.id"
     },
+    "school_name": {
+      "type": "string",
+      "description": "Denormalized school name for display"
+    },
     "user_email": {
       "type": "string",
       "description": "Staff member email"
@@ -13,6 +17,10 @@
     "user_id": {
       "type": "string",
       "description": "Staff member user id"
+    },
+    "teacher_name": {
+      "type": "string",
+      "description": "Full name of the teacher"
     },
     "role": {
       "type": "string",
@@ -28,6 +36,36 @@
         "type": "string"
       },
       "description": "Class IDs this teacher is assigned to"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "rejected"
+      ],
+      "default": "active",
+      "description": "Whether this membership is active or pending admin approval"
+    },
+    "joined_via_code": {
+      "type": "string",
+      "description": "The school code used to join"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the join request was submitted"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin email who reviewed the request"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
     }
   },
   "required": [
@@ -43,29 +81,33 @@
       "data.school_id": "{{user.profile.school_id}}"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
       "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
         {
           "user_condition": {
             "role": "admin"
           }
-        },
-        {
-          "data.user_email": "{{user.email}}"
         }
       ]
     },
     "update": {
-      "user_condition": {
-        "role": "admin"
-      },
-      "data.school_id": "{{user.profile.school_id}}"
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     },
     "delete": {
       "user_condition": {
         "role": "admin"
-      },
-      "data.school_id": "{{user.profile.school_id}}"
+      }
     }
   }
 }
