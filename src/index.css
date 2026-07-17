@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,42 +9,49 @@
     /* Typography */
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-    /* Background — dark charcoal */
-    --background: 255 15% 6%;
+    /* ===== Layered Dark Surfaces — never pure black ===== */
+    /* Page background — #0B0A10 */
+    --background: 255 18% 5%;
     --foreground: 0 0% 98%;
 
-    /* Card / Surface — dark grey */
-    --card: 255 12% 10%;
+    /* Card — #171520 */
+    --card: 252 21% 10%;
     --card-foreground: 0 0% 95%;
 
-    /* Popover */
-    --popover: 255 15% 8%;
+    /* Popover — #1D1A28 */
+    --popover: 252 21% 12%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary — deep premium purple */
-    --primary: 263 70% 52%;
+    /* Primary — #8B5CF6 */
+    --primary: 258 90% 66%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary — dark surface */
-    --secondary: 255 12% 14%;
+    /* Secondary — #1D1A28 */
+    --secondary: 252 21% 13%;
     --secondary-foreground: 0 0% 90%;
 
-    /* Muted */
-    --muted: 255 12% 14%;
-    --muted-foreground: 240 8% 60%;
+    /* Muted — slightly lighter than card */
+    --muted: 252 18% 15%;
+    --muted-foreground: 240 8% 62%;
 
-    /* Accent — bright elegant pink (accent only, never dominant) */
-    --accent: 329 73% 56%;
+    /* Accent — #EC4899 */
+    --accent: 330 81% 60%;
     --accent-foreground: 0 0% 100%;
+
+    /* Accent Blue — #6366F1 */
+    --accent-blue: 239 84% 67%;
+
+    /* Hover surface — #262236 */
+    --hover: 253 23% 17%;
 
     /* Destructive */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border / Input */
-    --border: 255 12% 18%;
-    --input: 255 12% 18%;
-    --ring: 263 70% 52%;
+    /* Borders — semi-transparent white for premium glass feel */
+    --border: 0 0% 100% / 0.08;
+    --input: 0 0% 100% / 0.10;
+    --ring: 258 90% 66%;
 
     /* Status */
     --success: 142 71% 45%;
@@ -53,31 +60,31 @@
     --warning-foreground: 0 0% 100%;
     --error: 0 72% 51%;
     --error-foreground: 0 0% 100%;
-    --info: 263 70% 52%;
+    --info: 239 84% 67%;
     --info-foreground: 0 0% 100%;
 
-    /* Radius — 12px base */
-    --radius: 0.75rem;
+    /* Radius — 14px base */
+    --radius: 0.875rem;
 
-    /* Sidebar */
-    --sidebar-background: 255 18% 5%;
-    --sidebar-foreground: 240 8% 55%;
-    --sidebar-primary: 263 70% 52%;
+    /* Sidebar — #111019, distinct surface */
+    --sidebar-background: 252 22% 7%;
+    --sidebar-foreground: 240 8% 58%;
+    --sidebar-primary: 258 90% 66%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 70% 52%;
+    --sidebar-accent: 258 90% 66%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 255 12% 14%;
-    --sidebar-ring: 263 70% 52%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 258 90% 66%;
 
-    /* Charts — purple, pink, white, grey only */
-    --chart-1: 263 70% 52%;
-    --chart-2: 329 73% 56%;
-    --chart-3: 0 0% 90%;
+    /* Charts */
+    --chart-1: 258 90% 66%;
+    --chart-2: 330 81% 60%;
+    --chart-3: 239 84% 67%;
     --chart-4: 240 8% 55%;
-    --chart-5: 263 50% 35%;
+    --chart-5: 258 50% 40%;
   }
 
-  /* Light theme overrides — applied when html.light class is present */
+  /* ===== Light theme overrides ===== */
   html.light {
     --background: 240 20% 98%;
     --foreground: 240 10% 10%;
@@ -88,24 +95,28 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 15%;
 
-    --primary: 263 70% 52%;
+    --primary: 258 90% 60%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 240 15% 95%;
     --secondary-foreground: 240 10% 20%;
 
-    --muted: 240 15% 95%;
-    --muted-foreground: 240 5% 40%;
+    --muted: 240 15% 94%;
+    --muted-foreground: 240 5% 42%;
 
-    --accent: 329 73% 56%;
+    --accent: 330 81% 56%;
     --accent-foreground: 0 0% 100%;
+
+    --accent-blue: 239 84% 61%;
+
+    --hover: 240 15% 92%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 240 15% 88%;
     --input: 240 15% 90%;
-    --ring: 263 70% 52%;
+    --ring: 258 90% 60%;
 
     --success: 142 71% 40%;
     --success-foreground: 0 0% 100%;
@@ -113,23 +124,23 @@
     --warning-foreground: 0 0% 100%;
     --error: 0 72% 51%;
     --error-foreground: 0 0% 100%;
-    --info: 263 70% 52%;
+    --info: 239 84% 61%;
     --info-foreground: 0 0% 100%;
 
     --sidebar-background: 240 15% 97%;
-    --sidebar-foreground: 240 5% 40%;
-    --sidebar-primary: 263 70% 52%;
+    --sidebar-foreground: 240 5% 42%;
+    --sidebar-primary: 258 90% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 263 70% 52%;
+    --sidebar-accent: 258 90% 60%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 240 15% 88%;
-    --sidebar-ring: 263 70% 52%;
+    --sidebar-ring: 258 90% 60%;
 
-    --chart-1: 263 70% 52%;
-    --chart-2: 329 73% 56%;
-    --chart-3: 240 10% 30%;
+    --chart-1: 258 90% 60%;
+    --chart-2: 330 81% 56%;
+    --chart-3: 239 84% 61%;
     --chart-4: 240 5% 55%;
-    --chart-5: 263 50% 65%;
+    --chart-5: 258 50% 70%;
   }
 }
 
@@ -143,26 +154,50 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-
-    /* Dark gradient: deep purple top → charcoal → near-black bottom */
-    background: linear-gradient(180deg,
-      hsl(263 25% 9%) 0%,
-      hsl(255 15% 6%) 35%,
-      hsl(245 12% 4%) 100%
-    );
-    background-attachment: fixed;
+    background-color: hsl(var(--background));
     min-height: 100vh;
   }
 
-  html.light body {
-    /* Light gradient: soft purple-tinted white */
-    background: linear-gradient(180deg,
-      hsl(263 30% 97%) 0%,
-      hsl(240 20% 98%) 35%,
-      hsl(240 15% 99%) 100%
-    );
-    background-attachment: fixed;
+  /* ===== Premium animated background ===== */
+  /* Layer 1: Ambient radial gradients + faint grid (with slow pulse) */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse 90% 60% at 50% -10%, hsl(258 90% 66% / 0.07), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 100% 100%, hsl(330 81% 60% / 0.04), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 0% 80%, hsl(239 84% 67% / 0.03), transparent 60%),
+      linear-gradient(hsl(0 0% 100% / 0.012) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(0 0% 100% / 0.012) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+    animation: ambient-pulse 20s ease-in-out infinite;
+    pointer-events: none;
   }
+
+  /* Layer 2: Very faint noise texture */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 200px 200px;
+    opacity: 0.015;
+    pointer-events: none;
+  }
+
+  html.light body { background-color: hsl(var(--background)); }
+  html.light body::before {
+    background:
+      radial-gradient(ellipse 90% 60% at 50% -10%, hsl(258 90% 60% / 0.05), transparent 60%),
+      radial-gradient(ellipse 70% 50% at 100% 100%, hsl(330 81% 56% / 0.03), transparent 60%),
+      linear-gradient(hsl(240 10% 20% / 0.015) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(240 10% 20% / 0.015) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+  }
+  html.light body::after { opacity: 0.02; }
 }
 
 /* Smooth transitions — 200ms, no bouncing */
@@ -196,25 +231,25 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Custom scrollbar — dark track, purple thumb, rounded */
+/* Custom scrollbar — premium dark track, purple thumb */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(255 15% 4%);
+  background: hsl(var(--background));
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(263 70% 52% / 0.4);
+  background: hsl(258 90% 66% / 0.3);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(263 70% 52% / 0.6);
+  background: hsl(258 90% 66% / 0.5);
 }
 
 /* Selection — purple tint */
 ::selection {
-  background: hsl(263 70% 52% / 0.2);
+  background: hsl(258 90% 66% / 0.2);
   color: hsl(0 0% 100%);
 }
 
@@ -230,28 +265,34 @@ img, video {
 }
 
 @layer utilities {
-  /* Glass effect — light blur + transparency + soft border */
+  /* ===== Glassmorphism — subtle, premium ===== */
   .glass {
-    background: hsl(255 12% 10% / 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(255 12% 18% / 0.8);
+    background: hsl(252 21% 10% / 0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(0 0% 100% / 0.08);
+  }
+  html.light .glass {
+    background: hsl(0 0% 100% / 0.75);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid hsl(240 15% 88% / 0.8);
   }
 
-  /* Glow — subtle, only for important elements */
+  /* ===== Glow effects ===== */
   .glow-primary {
-    box-shadow: 0 0 24px hsl(263 70% 52% / 0.15);
+    box-shadow: 0 0 24px hsl(258 90% 66% / 0.15), 0 0 48px hsl(258 90% 66% / 0.05);
   }
   .glow-accent {
-    box-shadow: 0 0 16px hsl(329 73% 56% / 0.2);
+    box-shadow: 0 0 16px hsl(330 81% 60% / 0.15);
   }
 
-  /* Hero / Login radial purple glow */
+  /* Hero radial glow */
   .hero-glow::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(263 70% 52% / 0.12), transparent 60%);
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, hsl(258 90% 66% / 0.12), transparent 60%);
     pointer-events: none;
   }
   .accent-glow::before {
@@ -259,12 +300,12 @@ img, video {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 60% 40% at 50% 30%, hsl(263 70% 52% / 0.1), transparent 60%),
-      radial-gradient(ellipse 40% 30% at 80% 70%, hsl(329 73% 56% / 0.06), transparent 60%);
+      radial-gradient(ellipse 60% 40% at 50% 30%, hsl(258 90% 66% / 0.08), transparent 60%),
+      radial-gradient(ellipse 40% 30% at 80% 70%, hsl(330 81% 60% / 0.05), transparent 60%);
     pointer-events: none;
   }
 
-  /* Nav active — pink accent line on left */
+  /* ===== Nav active — animated purple indicator ===== */
   .nav-active {
     position: relative;
   }
@@ -272,24 +313,107 @@ img, video {
     content: '';
     position: absolute;
     left: 0;
-    top: 20%;
-    bottom: 20%;
+    top: 15%;
+    bottom: 15%;
     width: 2px;
     background: hsl(var(--accent));
     border-radius: 0 2px 2px 0;
+    box-shadow: 0 0 8px hsl(var(--accent) / 0.6);
   }
 
-  /* Card hover — small lift + purple border */
+  /* ===== Card hover — lift + glow ===== */
   .card-hover {
-    transition: all 0.2s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
   }
   .card-hover:hover {
-    transform: translateY(-2px);
-    border-color: hsl(263 70% 52% / 0.5);
+    transform: translateY(-3px);
+    border-color: hsl(258 90% 66% / 0.3);
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3), 0 0 24px hsl(258 90% 66% / 0.08);
+  }
+
+  /* ===== Shimmer — loading skeletons ===== */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(0 0% 100% / 0.04), transparent);
+    animation: shimmer 2s infinite;
+  }
+
+  /* ===== Premium card surface ===== */
+  .surface-card {
+    background: linear-gradient(180deg, hsl(252 21% 11% / 0.9), hsl(252 21% 9% / 0.95));
+    border: 1px solid hsl(0 0% 100% / 0.08);
+    box-shadow: 0 1px 3px hsl(0 0% 0% / 0.2), inset 0 1px 0 hsl(0 0% 100% / 0.04);
+  }
+  html.light .surface-card {
+    background: linear-gradient(180deg, hsl(0 0% 100%), hsl(240 15% 99%));
+    border: 1px solid hsl(240 15% 88% / 0.8);
+    box-shadow: 0 1px 3px hsl(240 10% 30% / 0.06), inset 0 1px 0 hsl(0 0% 100% / 0.5);
+  }
+
+  /* ===== Sidebar surface ===== */
+  .surface-sidebar {
+    background: hsl(252 22% 7% / 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+  html.light .surface-sidebar {
+    background: hsl(240 15% 97% / 0.85);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  /* ===== Animations ===== */
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+  .animate-slide-up {
+    animation: slide-up 0.4s ease-out;
+  }
+  .animate-scale-in {
+    animation: scale-in 0.3s ease-out;
+  }
+  .animate-page-in {
+    animation: page-in 0.35s ease-out;
   }
 }
 
-/* ===== Hero background animations — elegant, slow, no bouncing ===== */
+/* ===== Keyframes ===== */
+@keyframes ambient-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
 @keyframes hero-float {
   0%, 100% { transform: translateY(0px) translateX(0px); }
   50% { transform: translateY(-16px) translateX(5px); }
@@ -298,12 +422,6 @@ img, video {
 @keyframes hero-float-alt {
   0%, 100% { transform: translateY(0px) translateX(0px); }
   50% { transform: translateY(13px) translateX(-4px); }
-}
-
-@keyframes hero-particle-drift {
-  0%, 100% { transform: translate(0, 0); opacity: 0; }
-  20%, 80% { opacity: 0.25; }
-  50% { transform: translate(12px, -22px); }
 }
 
 @keyframes hero-glow-pulse {
