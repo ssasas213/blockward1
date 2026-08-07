@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { jsPDF } from 'jspdf';
 import {
   Trophy, Shield, CheckCircle2,
-  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Award
+  Download, FileText, GraduationCap, Briefcase, FolderArchive, Link2, Award, Share2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -18,6 +18,7 @@ import EmptyState from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/loading-skeleton';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
+import SharePortfolioDialog from '@/components/portfolio/SharePortfolioDialog';
 import { cn } from '@/lib/utils';
 
 const CATEGORIES = [
@@ -51,6 +52,7 @@ export default function StudentPortfolioVault() {
   const [exporting, setExporting] = useState(false);
   const [blockWards, setBlockWards] = useState([]);
   const [selectedBlockWard, setSelectedBlockWard] = useState(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -265,12 +267,17 @@ export default function StudentPortfolioVault() {
         title="Portfolio Vault"
         description="Your permanent digital achievement portfolio"
       >
+        <Button variant="outline" onClick={() => setShareOpen(true)}>
+          <Share2 className="h-4 w-4 mr-2" /> Share
+        </Button>
         <Button variant="outline" asChild>
           <Link to={createPageUrl('StudentMyRecords')}>
             <FileText className="h-4 w-4 mr-2" /> My Records
           </Link>
         </Button>
       </PageHeader>
+
+      <SharePortfolioDialog open={shareOpen} onOpenChange={setShareOpen} studentId={profile?.id} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

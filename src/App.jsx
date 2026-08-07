@@ -24,6 +24,7 @@ import TeacherRecords from './pages/TeacherRecords';
 import StudentMyRecords from './pages/StudentMyRecords';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
+import PublicPortfolio from './pages/PublicPortfolio';
 import CustodianDashboard from './pages/CustodianDashboard';
 import ChoosePlatform from './pages/ChoosePlatform';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -103,6 +104,7 @@ const AuthenticatedApp = () => {
       <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       <Route path="/verify/:verification_id" element={<Verify />} />
+      <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
