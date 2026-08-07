@@ -74,9 +74,15 @@ export default function JoinSchool() {
       if (data.status === 'pending') {
         setResult({ pending: true, message: data.message, schoolName: data.school_name });
       } else {
-        // Student (or auto-approved) — linked immediately, go to dashboard
+        // Student (auto-approved) — linked immediately; new students go through guided setup
         setResult({ success: true, message: data.message, schoolName: data.school_name });
-        setTimeout(() => redirectByRole(role), 1800);
+        setTimeout(() => {
+          if (role === 'student') {
+            window.location.href = createPageUrl('StudentOnboarding');
+          } else {
+            redirectByRole(role);
+          }
+        }, 1800);
       }
     } catch (error) {
       setResult({ error: error.response?.data?.error || error.message || 'Failed to join school' });

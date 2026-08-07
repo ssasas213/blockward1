@@ -17,9 +17,15 @@ Deno.serve(async (req) => {
     const { userId } = await req.json();
     if (!userId) return Response.json({ error: 'userId required' }, { status: 400 });
 
-    // Fetch the target user's profile to check their role
+    // Fetch the target user's profile to check their role.
+    // UserProfile has no user_id field, so for self-service (caller creating their own
+    // vault) fall back to a lookup by the caller's email.
     const targetProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: userId });
-    const targetProfile = targetProfiles[0];
+    let targetProfile = targetProfiles[0];
+    if (!targetProfile && userId === user.id) {
+      const byEmail = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+      targetProfile = byEmail[0];
+    }
 
     // Admins do NOT get personal vaults
     if (targetProfile?.user_type === 'admin') {
