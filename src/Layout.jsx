@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
+import ThemeToggle from '@/components/sidebar/ThemeToggle';
 import { useSchool } from '@/lib/SchoolContext';
 import {
   DropdownMenu,
@@ -322,6 +323,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            <ThemeToggle />
             <DropdownMenuItem asChild>
               <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
                 <UserCircle className="h-4 w-4" />

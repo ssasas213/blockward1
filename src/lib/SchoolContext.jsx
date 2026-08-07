@@ -108,7 +108,9 @@ export const SchoolProvider = ({ children }) => {
   }, [loadSchoolData]);
 
   const isAdmin = profile?.user_type === 'admin';
-  const hasNoSchool = isAdmin && !activeSchool && !loading;
+  // Any authenticated user without an active school is "unlinked" — the route guard
+  // redirects them to the join flow, so the app never renders in a half-state.
+  const hasNoSchool = !!profile && !activeSchool && !loading;
 
   const value = {
     user,

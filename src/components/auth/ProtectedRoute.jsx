@@ -60,6 +60,12 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    // Student with no school linked — redirect to join school page
+    if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
+      window.location.href = createPageUrl('JoinSchool');
+      return;
+    }
+
     // Profile pending approval - redirect to login (shows pending message)
     if (requireProfile && profile && profile.status === 'pending_approval') {
       window.location.href = '/Login';
@@ -109,6 +115,11 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Teacher with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
+    return null;
+  }
+
+  // Student with no school — redirect in progress
+  if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
     return null;
   }
 

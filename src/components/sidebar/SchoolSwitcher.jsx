@@ -24,13 +24,14 @@ export default function SchoolSwitcher({ onClose }) {
   };
 
   if (!isAdmin) {
-    // Teachers and students — show school name, clickable to Profile
-    const goToProfile = () => {
+    // Teachers and students — show school name. If somehow no school is linked,
+    // clicking routes to the join flow (the route guard normally prevents this state).
+    const handleClick = () => {
       if (onClose) onClose();
-      navigate(createPageUrl('Profile'));
+      navigate(createPageUrl(activeSchool ? 'Profile' : 'JoinSchool'));
     };
     return (
-      <button onClick={goToProfile} className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
+      <button onClick={handleClick} className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
         <p className="font-semibold text-foreground text-sm leading-tight">BlockWard</p>
         {loading ? (
           <p className="text-xs text-muted-foreground truncate leading-tight">Loading school…</p>

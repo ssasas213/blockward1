@@ -123,13 +123,12 @@ export default function Onboarding() {
         total_behaviour_points: 0,
       });
 
-      // Redirect based on role
+      // Redirect based on role — every user must link to a school before using the app
       if (accountType.key === 'admin') {
         window.location.href = createPageUrl('SchoolSetup');
-      } else if (accountType.key === 'teacher') {
-        window.location.href = createPageUrl('JoinSchool');
       } else {
-        window.location.href = createPageUrl('StudentDashboard');
+        // Teachers and students both join via a school code
+        window.location.href = createPageUrl('JoinSchool');
       }
     } catch (error) {
       console.error('Error creating profile:', error);
