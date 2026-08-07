@@ -9,11 +9,11 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
     <section id="top" className="relative min-h-screen flex items-center justify-center overflow-hidden">
       <HeroBackground />
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16">
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-foreground mb-5 leading-[1.1] tracking-tight">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white mb-5 leading-[1.1] tracking-tight">
           Where achievements become permanent.
         </h1>
 
-        <p className="text-base sm:text-lg text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-base sm:text-lg text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
           BlockWard helps schools, organisations, and clubs verify achievements, secure records,
           and preserve accomplishments permanently on the blockchain.
         </p>
@@ -36,7 +36,7 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
           </Button>
         </div>
 
-        <p className="mt-8 text-sm text-muted-foreground/60">
+        <p className="mt-8 text-sm text-white/50">
           Verify · Authorise · Preserve
         </p>
       </div>

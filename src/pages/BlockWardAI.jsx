@@ -35,12 +35,12 @@ export default function BlockWardAI() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
-              <Sparkles className="h-5 w-5 text-white" />
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-glow">
+              <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">BlockWard AI</h1>
-              <p className="text-sm text-slate-500">Your intelligent school assistant</p>
+              <h1 className="text-2xl font-bold text-foreground">BlockWard AI</h1>
+              <p className="text-sm text-muted-foreground">Your intelligent school assistant</p>
             </div>
           </div>
         </div>
@@ -53,23 +53,23 @@ export default function BlockWardAI() {
               onClick={() => setActiveTab(tab.id)}
               className={`p-4 rounded-xl border-2 text-left transition-all duration-200 ${
                 activeTab === tab.id
-                  ? 'border-violet-500 bg-violet-50 shadow-sm'
-                  : 'border-slate-200 bg-white hover:border-violet-200 hover:bg-violet-50/50'
+                  ? 'border-primary bg-primary/10 shadow-sm'
+                  : 'border-border bg-card hover:border-primary/40 hover:bg-hover/50'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <tab.icon className={`h-5 w-5 ${activeTab === tab.id ? 'text-violet-600' : 'text-slate-400'}`} />
-                <span className={`font-semibold text-sm ${activeTab === tab.id ? 'text-violet-900' : 'text-slate-700'}`}>
+                <tab.icon className={`h-5 w-5 ${activeTab === tab.id ? 'text-primary' : 'text-muted-foreground'}`} />
+                <span className={`font-semibold text-sm ${activeTab === tab.id ? 'text-primary' : 'text-foreground'}`}>
                   {tab.label}
                 </span>
               </div>
-              <p className="text-xs text-slate-500">{tab.description}</p>
+              <p className="text-xs text-muted-foreground">{tab.description}</p>
             </button>
           ))}
         </div>
 
         {/* Content card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+        <div className="bg-card rounded-2xl border border-border shadow-card p-6">
           <AIErrorBoundary key={activeTab}>
             {activeTab === 'schedule' && <ScheduleTab userType={userType} />}
             {activeTab === 'announcement' && (
@@ -82,7 +82,7 @@ export default function BlockWardAI() {
           </AIErrorBoundary>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-4">
+        <p className="text-center text-xs text-muted-foreground mt-4">
           Schedule answers are based only on events in your school's calendar. AI never invents events.
         </p>
       </div>

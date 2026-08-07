@@ -178,23 +178,20 @@ export default function Messages() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Messages</h1>
-          <p className="text-slate-500 mt-1">Direct messaging with teachers and students</p>
+          <h1 className="text-3xl font-bold text-foreground">Messages</h1>
+          <p className="text-muted-foreground mt-1">Direct messaging with teachers and students</p>
         </div>
-        <Button 
-          onClick={() => setShowComposeDialog(true)}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-        >
+        <Button onClick={() => setShowComposeDialog(true)}>
           <Plus className="h-4 w-4 mr-2" />
           New Message
         </Button>
@@ -203,11 +200,11 @@ export default function Messages() {
       {/* Main Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Conversations List */}
-        <Card className="border-0 shadow-lg lg:col-span-1">
+        <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg">Conversations</CardTitle>
+            <CardTitle className="text-base">Conversations</CardTitle>
             <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -232,24 +229,24 @@ export default function Messages() {
                         setSelectedConversation(conv);
                         conv.messages.forEach(msg => markAsRead(msg));
                       }}
-                      className={`w-full p-4 text-left hover:bg-slate-50 transition-colors border-b ${
-                        isSelected ? 'bg-violet-50' : ''
+                      className={`w-full p-4 text-left hover:bg-hover/50 transition-colors border-b border-border ${
+                        isSelected ? 'bg-primary/10' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-semibold flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold flex-shrink-0">
                             {otherPartyName?.[0]}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="font-medium text-slate-900 truncate">{otherPartyName}</p>
+                              <p className="font-medium text-foreground truncate">{otherPartyName}</p>
                               {conv.unreadCount > 0 && (
-                                <Badge className="bg-violet-600 text-white">{conv.unreadCount}</Badge>
+                                <Badge>{conv.unreadCount}</Badge>
                               )}
                             </div>
-                            <p className="text-sm text-slate-500 truncate">{conv.latestMessage.content}</p>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-sm text-muted-foreground truncate">{conv.latestMessage.content}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
                               {format(new Date(conv.latestMessage.created_date), 'MMM d, h:mm a')}
                             </p>
                           </div>
@@ -259,7 +256,7 @@ export default function Messages() {
                   );
                 })
               ) : (
-                <div className="text-center py-12 text-slate-400">
+                <div className="text-center py-12 text-muted-foreground">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No conversations yet</p>
                 </div>
@@ -269,7 +266,7 @@ export default function Messages() {
         </Card>
 
         {/* Message Thread */}
-        <Card className="border-0 shadow-lg lg:col-span-2">
+        <Card className="lg:col-span-2">
           {selectedConversation ? (
             <MessageThread
               conversation={selectedConversation}
@@ -278,9 +275,9 @@ export default function Messages() {
             />
           ) : (
             <CardContent className="text-center py-20">
-              <Mail className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">Select a conversation</h3>
-              <p className="text-slate-500">Choose a conversation from the list to view messages</p>
+              <Mail className="h-16 w-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-xl font-semibold text-foreground mb-2">Select a conversation</h3>
+              <p className="text-muted-foreground">Choose a conversation from the list to view messages</p>
             </CardContent>
           )}
         </Card>
@@ -363,14 +360,14 @@ function MessageThread({ conversation, profile, onReply }) {
 
   return (
     <>
-      <CardHeader className="border-b">
+      <CardHeader className="border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground font-semibold">
             {otherPartyName?.[0]}
           </div>
           <div>
-            <h3 className="font-semibold text-slate-900">{otherPartyName}</h3>
-            <p className="text-sm text-slate-500">{sortedMessages.length} messages</p>
+            <h3 className="font-semibold text-foreground">{otherPartyName}</h3>
+            <p className="text-sm text-muted-foreground">{sortedMessages.length} messages</p>
           </div>
         </div>
       </CardHeader>
@@ -388,18 +385,18 @@ function MessageThread({ conversation, profile, onReply }) {
               >
                 <div className={`max-w-[80%] ${isSender ? 'order-2' : 'order-1'}`}>
                   <div className={`rounded-2xl px-4 py-2.5 ${
-                    isSender 
-                      ? 'bg-gradient-to-r from-violet-600 to-indigo-600 text-white' 
-                      : 'bg-slate-100 text-slate-900'
+                    isSender
+                      ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground'
+                      : 'bg-muted text-foreground'
                   }`}>
                     {msg.subject && msg.subject !== '(No subject)' && (
-                      <p className={`text-sm font-semibold mb-1 ${isSender ? 'text-white' : 'text-slate-700'}`}>
+                      <p className="text-sm font-semibold mb-1">
                         {msg.subject}
                       </p>
                     )}
                     <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
-                  <div className={`flex items-center gap-2 mt-1 px-2 text-xs text-slate-400 ${
+                  <div className={`flex items-center gap-2 mt-1 px-2 text-xs text-muted-foreground ${
                     isSender ? 'justify-end' : 'justify-start'
                   }`}>
                     <Clock className="h-3 w-3" />
@@ -412,7 +409,7 @@ function MessageThread({ conversation, profile, onReply }) {
           })}
         </AnimatePresence>
       </CardContent>
-      <div className="p-4 border-t">
+      <div className="p-4 border-t border-border">
         <div className="flex gap-2">
           <Textarea
             value={replyContent}

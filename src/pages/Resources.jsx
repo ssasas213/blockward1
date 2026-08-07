@@ -29,6 +29,7 @@ import {
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import EmptyState from '@/components/ui/empty-state';
 
 export default function Resources() {
   const [loading, setLoading] = useState(true);
@@ -168,11 +169,11 @@ export default function Resources() {
   };
 
   const fileTypeColors = {
-    pdf: 'bg-red-100 text-red-600',
-    document: 'bg-blue-100 text-blue-600',
-    image: 'bg-green-100 text-green-600',
-    video: 'bg-purple-100 text-purple-600',
-    other: 'bg-slate-100 text-slate-600'
+    pdf: 'bg-destructive/15 text-destructive',
+    document: 'bg-info/15 text-info',
+    image: 'bg-success/15 text-success',
+    video: 'bg-primary/15 text-primary',
+    other: 'bg-muted text-muted-foreground'
   };
 
   const isTeacher = profile?.user_type === 'teacher' || profile?.user_type === 'admin';
@@ -187,25 +188,25 @@ export default function Resources() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Resources</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Resources</h1>
+          <p className="text-muted-foreground mt-1">
             {isTeacher ? 'Upload and manage learning materials' : 'Access class materials'}
           </p>
         </div>
         {isTeacher && (
           <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+              <Button>
                 <Upload className="h-4 w-4 mr-2" />
                 Upload Resource
               </Button>
@@ -238,7 +239,7 @@ export default function Resources() {
                 </div>
                 <div className="space-y-2">
                   <Label>File *</Label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-lg p-6 text-center hover:border-violet-300 transition-colors">
+                  <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-primary/40 transition-colors">
                     <input
                       type="file"
                       onChange={handleFileSelect}
@@ -249,17 +250,17 @@ export default function Resources() {
                     <label htmlFor="file-upload" className="cursor-pointer">
                       {selectedFile ? (
                         <div className="flex items-center justify-center gap-3">
-                          <FileText className="h-8 w-8 text-violet-500" />
+                          <FileText className="h-8 w-8 text-primary" />
                           <div className="text-left">
-                            <p className="font-medium text-slate-900">{selectedFile.name}</p>
-                            <p className="text-sm text-slate-500">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="font-medium text-foreground">{selectedFile.name}</p>
+                            <p className="text-sm text-muted-foreground">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
                           </div>
                         </div>
                       ) : (
                         <div>
-                          <Upload className="h-10 w-10 text-slate-400 mx-auto mb-2" />
-                          <p className="text-slate-600">Click to select a file</p>
-                          <p className="text-xs text-slate-400 mt-1">PDF, DOC, Images, Video</p>
+                          <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+                          <p className="text-muted-foreground">Click to select a file</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">PDF, DOC, Images, Video</p>
                         </div>
                       )}
                     </label>
@@ -305,10 +306,9 @@ export default function Resources() {
                 <Button variant="outline" onClick={() => setShowUploadDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleUpload}
                   disabled={!selectedFile || !newResource.class_id || !newResource.title || uploading}
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600"
                 >
                   {uploading ? (
                     <>
@@ -331,7 +331,7 @@ export default function Resources() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -364,7 +364,7 @@ export default function Resources() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: i * 0.05 }}
             >
-              <Card className="border-0 shadow-lg hover:shadow-xl transition-all">
+              <Card className="card-hover transition-all">
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className={`h-14 w-14 rounded-xl flex items-center justify-center ${fileTypeColors[resource.file_type] || fileTypeColors.other}`}>
@@ -375,19 +375,19 @@ export default function Resources() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleDelete(resource.id)}
-                        className="text-slate-400 hover:text-red-500"
+                        className="text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     )}
                   </div>
-                  <h3 className="font-semibold text-slate-900 mb-1">{resource.title}</h3>
+                  <h3 className="font-semibold text-foreground mb-1">{resource.title}</h3>
                   {resource.description && (
-                    <p className="text-sm text-slate-500 mb-3 line-clamp-2">{resource.description}</p>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{resource.description}</p>
                   )}
                   <div className="flex items-center justify-between mb-4">
                     <Badge variant="outline">{resource.class_name}</Badge>
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {resource.created_date && format(new Date(resource.created_date), 'MMM d')}
                     </span>
                   </div>
@@ -408,15 +408,11 @@ export default function Resources() {
           ))}
         </div>
       ) : (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="text-center py-16">
-            <Folder className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-xl font-semibold text-slate-900 mb-2">No resources yet</h3>
-            <p className="text-slate-500 mb-6">
-              {isTeacher ? 'Upload your first learning material' : 'No resources have been shared yet'}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Folder}
+          title="No resources yet"
+          description={isTeacher ? 'Upload your first learning material' : 'No resources have been shared yet'}
+        />
       )}
     </div>
   );

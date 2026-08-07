@@ -27,12 +27,22 @@ export default function SiteHeader({ user, profile, onSignIn, onDashboard }) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-base text-foreground tracking-tight">BlockWard</span>
+          <span className={cn(
+            "font-semibold text-base tracking-tight transition-colors",
+            scrolled ? "text-foreground" : "text-white"
+          )}>BlockWard</span>
         </a>
 
         <nav className="hidden md:flex items-center gap-6">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <a
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "text-sm transition-colors",
+                scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
+              )}
+            >
               {link.label}
             </a>
           ))}
@@ -45,10 +55,16 @@ export default function SiteHeader({ user, profile, onSignIn, onDashboard }) {
             </Button>
           ) : (
             <>
-              <button onClick={onSignIn} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={onSignIn}
+                className={cn(
+                  "text-sm transition-colors",
+                  scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
+                )}
+              >
                 Sign In
               </button>
-              <Button onClick={onSignIn} size="sm">
+              <Button onClick={onSignIn} size="sm" variant={scrolled ? "default" : "default"}>
                 Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </>

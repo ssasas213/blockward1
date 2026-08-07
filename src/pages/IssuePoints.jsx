@@ -15,7 +15,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
+import PageHeader from '@/components/ui/page-header';
+import EmptyState from '@/components/ui/empty-state';
+import { CardSkeleton } from '@/components/ui/loading-skeleton';
+import {
   Award, Search, User, Check, ArrowLeft,
   Loader2, AlertTriangle, TrendingUp, TrendingDown
 } from 'lucide-react';
@@ -48,11 +51,10 @@ export default function IssuePoints() {
     try {
       const user = await base44.auth.me();
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
+
       if (profiles.length > 0) {
         setProfile(profiles[0]);
 
-        // Load classes: use StaffMembership first, fall back to teacher_email or co_teacher
         const [memberships, allClasses] = await Promise.all([
           base44.entities.StaffMembership.filter({ user_email: user.email }),
           base44.entities.Class.list()
@@ -62,7 +64,6 @@ export default function IssuePoints() {
         if (membership?.class_ids?.length > 0) {
           teacherClasses = allClasses.filter(c => membership.class_ids.includes(c.id));
         } else {
-          // Legacy: check teacher_email or co_teachers array
           teacherClasses = allClasses.filter(c =>
             c.teacher_email === user.email ||
             (c.co_teachers && c.co_teachers.includes(user.email))
@@ -70,13 +71,11 @@ export default function IssuePoints() {
         }
         setClasses(teacherClasses);
 
-        // Preselect class if provided
         if (preselectedClass) {
           setSelectedClass(preselectedClass);
           loadClassStudents(preselectedClass);
         }
 
-        // Load point categories
         const cats = await base44.entities.PointCategory.list();
         setCategories(cats);
       }
@@ -89,14 +88,12 @@ export default function IssuePoints() {
 
   const loadClassStudents = async (classId) => {
     try {
-      // Use Enrollment entity first; fall back to class.student_emails
       const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
       if (enrollments.length > 0) {
         const emails = enrollments.map(e => e.student_email);
         const allProfiles = await base44.entities.UserProfile.list();
         setStudents(allProfiles.filter(p => emails.includes(p.user_email) && p.user_type === 'student'));
       } else {
-        // Fallback: use class object from already-loaded classes state
         const cls = classes.find(c => c.id === classId);
         if (cls?.student_emails?.length > 0) {
           const allProfiles = await base44.entities.UserProfile.list();
@@ -143,7 +140,6 @@ export default function IssuePoints() {
 
       await base44.entities.PointEntry.create(pointEntry);
 
-      // Update student's total points
       const currentAchievement = selectedStudent.total_achievement_points || 0;
       const currentBehaviour = selectedStudent.total_behaviour_points || 0;
 
@@ -179,51 +175,55 @@ export default function IssuePoints() {
   const achievementCategories = categories.filter(c => c.type === 'achievement');
   const behaviourCategories = categories.filter(c => c.type === 'behaviour');
 
-  const filteredStudents = students.filter(s => 
+  const filteredStudents = students.filter(s =>
     `${s.first_name} ${s.last_name}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+      <div className="space-y-6">
+        <PageHeader title="Issue Points" description="Award achievement or behaviour points to students" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <Link to={createPageUrl('TeacherDashboard')} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-900 mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Dashboard
-        </Link>
-        <h1 className="text-3xl font-bold text-slate-900">Issue Points</h1>
-        <p className="text-slate-500 mt-1">Award achievement or behaviour points to students</p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Issue Points" description="Award achievement or behaviour points to students">
+        <Button variant="outline" asChild>
+          <Link to={createPageUrl('TeacherDashboard')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Link>
+        </Button>
+      </PageHeader>
 
       {/* No categories warning */}
       {categories.length === 0 && (
-        <div className="flex items-start gap-4 p-5 bg-amber-50 border border-amber-200 rounded-xl">
-          <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-4 p-5 bg-warning/10 border border-warning/30 rounded-xl">
+          <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
           <div>
-            <p className="font-medium text-amber-900">No point categories set up yet</p>
-            <p className="text-sm text-amber-700 mt-1">An admin needs to create point categories before you can issue points.</p>
-            <Link to={createPageUrl('PointCategories')} className="text-sm text-amber-800 font-semibold underline mt-2 inline-block">
+            <p className="font-medium text-foreground">No point categories set up yet</p>
+            <p className="text-sm text-muted-foreground mt-1">An admin needs to create point categories before you can issue points.</p>
+            <Link to={createPageUrl('PointCategories')} className="text-sm text-warning font-semibold underline mt-2 inline-block">
               Go to Point Categories →
             </Link>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Student Selection */}
         <div className="lg:col-span-2 space-y-6">
           {/* Class Selection */}
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-lg">Select Class</CardTitle>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Select Class</CardTitle>
             </CardHeader>
             <CardContent>
               <Select value={selectedClass} onValueChange={handleClassChange}>
@@ -243,11 +243,11 @@ export default function IssuePoints() {
 
           {/* Students List */}
           {selectedClass && (
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Select Student</CardTitle>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <CardTitle className="text-base">Select Student</CardTitle>
                 <div className="relative w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -265,34 +265,33 @@ export default function IssuePoints() {
                         onClick={() => setSelectedStudent(student)}
                         className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all text-left ${
                           selectedStudent?.id === student.id
-                            ? 'border-violet-500 bg-violet-50'
-                            : 'border-slate-200 hover:border-slate-300'
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/40 hover:bg-hover/50'
                         }`}
                         whileTap={{ scale: 0.98 }}
                       >
                         <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                          selectedStudent?.id === student.id ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-600'
+                          selectedStudent?.id === student.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground'
                         }`}>
                           {student.first_name[0]}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-slate-900">{student.first_name} {student.last_name}</p>
+                          <p className="font-medium text-foreground">{student.first_name} {student.last_name}</p>
                           <div className="flex gap-2 mt-1">
-                            <Badge variant="outline" className="text-green-600 text-xs">+{student.total_achievement_points || 0}</Badge>
-                            <Badge variant="outline" className="text-red-600 text-xs">-{student.total_behaviour_points || 0}</Badge>
+                            <Badge variant="success" className="text-xs">+{student.total_achievement_points || 0}</Badge>
+                            <Badge variant="destructive" className="text-xs">-{student.total_behaviour_points || 0}</Badge>
                           </div>
                         </div>
                         {selectedStudent?.id === student.id && (
-                          <Check className="h-5 w-5 text-violet-500" />
+                          <Check className="h-5 w-5 text-primary" />
                         )}
                       </motion.button>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-slate-400">
-                    <User className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No students in this class</p>
-                  </div>
+                  <EmptyState icon={User} title="No students in this class" />
                 )}
               </CardContent>
             </Card>
@@ -311,10 +310,10 @@ export default function IssuePoints() {
                 className="h-full flex items-center justify-center"
               >
                 <div className="text-center">
-                  <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                    <Check className="h-10 w-10 text-green-600" />
+                  <div className="h-20 w-20 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-4">
+                    <Check className="h-10 w-10 text-success" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">Points Issued!</h3>
+                  <h3 className="text-xl font-bold text-foreground">Points Issued!</h3>
                 </div>
               </motion.div>
             ) : (
@@ -322,12 +321,13 @@ export default function IssuePoints() {
                 key="form"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
+                className="space-y-6"
               >
                 {/* Achievement Categories */}
-                <Card className="border-0 shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-green-500" />
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-success" />
                       Achievement Points
                     </CardTitle>
                   </CardHeader>
@@ -339,25 +339,25 @@ export default function IssuePoints() {
                         disabled={!selectedStudent}
                         className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
                           selectedCategory?.id === cat.id
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-slate-200 hover:border-slate-300'
+                            ? 'border-success bg-success/10'
+                            : 'border-border hover:border-success/40 hover:bg-hover/50'
                         } ${!selectedStudent ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color || '#10B981' }} />
-                          <span className="font-medium">{cat.name}</span>
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color || 'hsl(142 71% 45%)' }} />
+                          <span className="font-medium text-foreground">{cat.name}</span>
                         </div>
-                        <Badge className="bg-green-100 text-green-700">+{cat.default_points}</Badge>
+                        <Badge variant="success">+{cat.default_points}</Badge>
                       </button>
                     ))}
                   </CardContent>
                 </Card>
 
                 {/* Behaviour Categories */}
-                <Card className="border-0 shadow-lg mt-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <TrendingDown className="h-5 w-5 text-red-500" />
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <TrendingDown className="h-5 w-5 text-destructive" />
                       Behaviour Points
                     </CardTitle>
                   </CardHeader>
@@ -369,15 +369,15 @@ export default function IssuePoints() {
                         disabled={!selectedStudent}
                         className={`w-full flex items-center justify-between p-3 rounded-lg border transition-all ${
                           selectedCategory?.id === cat.id
-                            ? 'border-red-500 bg-red-50'
-                            : 'border-slate-200 hover:border-slate-300'
+                            ? 'border-destructive bg-destructive/10'
+                            : 'border-border hover:border-destructive/40 hover:bg-hover/50'
                         } ${!selectedStudent ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color || '#EF4444' }} />
-                          <span className="font-medium">{cat.name}</span>
+                          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color || 'hsl(0 72% 51%)' }} />
+                          <span className="font-medium text-foreground">{cat.name}</span>
                         </div>
-                        <Badge className="bg-red-100 text-red-700">{cat.default_points}</Badge>
+                        <Badge variant="destructive">{cat.default_points}</Badge>
                       </button>
                     ))}
                   </CardContent>
@@ -389,14 +389,14 @@ export default function IssuePoints() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <Card className="border-0 shadow-lg mt-6">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Confirm Points</CardTitle>
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Confirm Points</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <div className="p-4 bg-slate-50 rounded-lg">
-                          <p className="text-sm text-slate-500">Issuing to</p>
-                          <p className="font-semibold">{selectedStudent.first_name} {selectedStudent.last_name}</p>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm text-muted-foreground">Issuing to</p>
+                          <p className="font-semibold text-foreground">{selectedStudent.first_name} {selectedStudent.last_name}</p>
                         </div>
                         <div className="space-y-2">
                           <Label>Custom Points (optional)</Label>
@@ -416,14 +416,11 @@ export default function IssuePoints() {
                             rows={3}
                           />
                         </div>
-                        <Button 
+                        <Button
                           onClick={handleIssuePoints}
                           disabled={!reason || submitting}
-                          className={`w-full ${
-                            selectedCategory.type === 'achievement'
-                              ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                              : 'bg-gradient-to-r from-red-500 to-rose-500'
-                          }`}
+                          variant={selectedCategory.type === 'achievement' ? 'success' : 'destructive'}
+                          className="w-full"
                         >
                           {submitting ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

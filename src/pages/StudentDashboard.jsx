@@ -163,7 +163,7 @@ function StudentDashboardContent() {
                 {stats.recentPoints.map((point) => (
                   <div key={point.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0 ${point.type === 'achievement' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                      <div className={`h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0 ${point.type === 'achievement' ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
                         {point.type === 'achievement' ? <Star className="h-4 w-4" /> : <Award className="h-4 w-4" />}
                       </div>
                       <div className="min-w-0">
@@ -255,7 +255,7 @@ function StudentDashboardContent() {
                 <div key={bw.id} className="p-4 border border-border rounded-lg">
                   <div className="flex items-center justify-between mb-3">
                     <Shield className="h-5 w-5 text-primary" />
-                    <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">Verified</Badge>
+                    <Badge variant="success">Verified</Badge>
                   </div>
                   <h3 className="font-medium text-foreground text-sm mb-1">{bw.title}</h3>
                   <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{bw.description}</p>

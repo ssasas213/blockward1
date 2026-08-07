@@ -164,7 +164,7 @@ function AdminDashboardContent() {
     URL.revokeObjectURL(url);
   };
 
-  const COLORS = ['#4F46E5', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
+  const COLORS = ['hsl(258 90% 66%)', 'hsl(330 81% 60%)', 'hsl(239 84% 67%)', 'hsl(142 71% 45%)', 'hsl(38 92% 50%)'];
 
   if (loading) return <DashboardSkeleton />;
 
@@ -316,7 +316,7 @@ function AdminDashboardContent() {
                   {stats.recentPoints.map((point) => (
                     <div key={point.id} className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className={`h-6 w-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${point.type === 'achievement' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <div className={`h-6 w-6 rounded-md flex items-center justify-center text-xs font-bold flex-shrink-0 ${point.type === 'achievement' ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
                           {point.type === 'achievement' ? '+' : '−'}
                         </div>
                         <div className="min-w-0">
@@ -411,7 +411,7 @@ function AdminDashboardContent() {
                           </a>
                         )}
                         <Badge
-                          className={`text-xs ${bw.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}
+                          className={`text-xs ${bw.status === 'active' ? 'border-success/30 bg-success/15 text-success' : 'border-destructive/30 bg-destructive/15 text-destructive'}`}
                           variant="outline"
                         >
                           {bw.status === 'active' ? <CheckCircle2 className="h-3 w-3 mr-1" /> : <XCircle className="h-3 w-3 mr-1" />}

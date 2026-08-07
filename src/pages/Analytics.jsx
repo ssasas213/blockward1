@@ -2,20 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+import PageHeader from '@/components/ui/page-header';
+import EmptyState from '@/components/ui/empty-state';
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
+import {
+  BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import { TrendingUp, Users, Award, Activity } from 'lucide-react';
+
+const TOOLTIP_STYLE = {
+  background: 'hsl(252 21% 10%)',
+  border: '1px solid hsl(0 0% 100% / 0.1)',
+  borderRadius: '0.5rem',
+  color: 'hsl(0 0% 95%)',
+};
+
+const AXIS_TICK = { fontSize: 12, fill: 'hsl(240 8% 62%)' };
 
 export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
-    userGrowth: [],
     pointsOverTime: [],
     topStudents: [],
     classPerformance: [],
-    attendanceRate: []
   });
 
   useEffect(() => {
@@ -24,14 +33,12 @@ export default function Analytics() {
 
   const loadAnalytics = async () => {
     try {
-      const [students, teachers, points, classes] = await Promise.all([
+      const [students, points, classes] = await Promise.all([
         base44.entities.UserProfile.filter({ user_type: 'student' }),
-        base44.entities.UserProfile.filter({ user_type: 'teacher' }),
         base44.entities.PointEntry.list('-created_date', 200),
         base44.entities.Class.list()
       ]);
 
-      // Calculate points over time (last 4 weeks)
       const now = new Date();
       const pointsOverTime = [];
       for (let i = 3; i >= 0; i--) {
@@ -48,7 +55,6 @@ export default function Analytics() {
         });
       }
 
-      // Top students
       const topStudents = students
         .sort((a, b) => (b.total_achievement_points || 0) - (a.total_achievement_points || 0))
         .slice(0, 10)
@@ -57,7 +63,6 @@ export default function Analytics() {
           points: s.total_achievement_points || 0
         }));
 
-      // Class performance (based on enrolled students' average points)
       const classPerformance = classes.map(cls => {
         const classStudents = students.filter(s => cls.student_emails?.includes(s.user_email));
         const avgPoints = classStudents.length > 0
@@ -71,11 +76,9 @@ export default function Analytics() {
       }).sort((a, b) => b.avg - a.avg).slice(0, 5);
 
       setStats({
-        userGrowth: [],
         pointsOverTime,
         topStudents,
         classPerformance,
-        attendanceRate: 0
       });
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -84,24 +87,18 @@ export default function Analytics() {
     }
   };
 
-  const COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+      <div className="space-y-6">
+        <PageHeader title="Analytics Dashboard" description="Comprehensive insights and performance metrics" />
+        <DashboardSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Analytics Dashboard</h1>
-        <p className="text-slate-500 mt-1">Comprehensive insights and performance metrics</p>
-      </div>
-
-
+    <div className="space-y-6">
+      <PageHeader title="Analytics Dashboard" description="Comprehensive insights and performance metrics" />
 
       <Tabs defaultValue="points" className="space-y-6">
         <TabsList>
@@ -111,21 +108,21 @@ export default function Analytics() {
         </TabsList>
 
         <TabsContent value="points">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Points Distribution</CardTitle>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Points Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={stats.pointsOverTime}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="week" />
-                    <YAxis />
-                    <Tooltip />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 100% / 0.08)" />
+                    <XAxis dataKey="week" tick={AXIS_TICK} />
+                    <YAxis tick={AXIS_TICK} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} />
                     <Legend />
-                    <Bar dataKey="achievement" fill="#10B981" />
-                    <Bar dataKey="behaviour" fill="#EF4444" />
+                    <Bar dataKey="achievement" fill="hsl(142 71% 45%)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="behaviour" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -134,45 +131,53 @@ export default function Analytics() {
         </TabsContent>
 
         <TabsContent value="performance">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Average Class Performance</CardTitle>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Average Class Performance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.classPerformance}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="avg" fill="#8B5CF6" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {stats.classPerformance.length > 0 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.classPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 100% / 0.08)" />
+                      <XAxis dataKey="name" tick={AXIS_TICK} />
+                      <YAxis tick={AXIS_TICK} />
+                      <Tooltip contentStyle={TOOLTIP_STYLE} />
+                      <Bar dataKey="avg" fill="hsl(258 90% 66%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <EmptyState title="No class data available" />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="top">
-          <Card className="border-0 shadow-lg">
-            <CardHeader>
-              <CardTitle>Top 10 Students by Achievement Points</CardTitle>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Top 10 Students by Achievement Points</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {stats.topStudents.map((student, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 text-white flex items-center justify-center font-bold">
-                        #{i + 1}
+              {stats.topStudents.length > 0 ? (
+                <div className="space-y-3">
+                  {stats.topStudents.map((student, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground flex items-center justify-center font-bold text-sm">
+                          {i + 1}
+                        </div>
+                        <span className="font-medium text-foreground">{student.name}</span>
                       </div>
-                      <span className="font-medium text-slate-900">{student.name}</span>
+                      <span className="text-lg font-bold text-primary">{student.points}</span>
                     </div>
-                    <span className="text-lg font-bold text-violet-600">{student.points}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState title="No student data available" />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

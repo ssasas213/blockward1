@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,10 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
+import PageHeader from '@/components/ui/page-header';
+import StatCard from '@/components/ui/stat-card';
+import EmptyState from '@/components/ui/empty-state';
+import { TableSkeleton } from '@/components/ui/loading-skeleton';
+import {
   Users, Search, Shield, GraduationCap, UserPlus,
-  MoreVertical, Check, X, Edit, Trash2
+  MoreVertical, Check, X, Edit,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -40,7 +43,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 export default function ManageUsers() {
@@ -73,8 +75,7 @@ export default function ManageUsers() {
       const currentProfiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
       const currentProfile = currentProfiles[0];
       const schoolId = currentProfile?.school_id;
-      
-      // Scope to same school if available
+
       const profiles = schoolId
         ? await base44.entities.UserProfile.filter({ school_id: schoolId }, '-created_date')
         : await base44.entities.UserProfile.list('-created_date');
@@ -132,7 +133,7 @@ export default function ManageUsers() {
     const username = `${newUser.first_name.toLowerCase()}${newUser.last_name.toLowerCase()}`.replace(/\s/g, '');
     const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
     const studentId = newUser.user_type === 'student' ? `STU${Date.now().toString().slice(-6)}` : '';
-    
+
     setNewUser({
       ...newUser,
       username,
@@ -162,8 +163,6 @@ export default function ManageUsers() {
       const school_id = currentProfile[0]?.school_id;
 
       const walletAddress = generateWallet();
-      
-      // Create fake email based on username for Base44 auth
       const userEmail = `${newUser.username}@${school_id || 'school'}.blockward.local`;
 
       const profileData = {
@@ -228,23 +227,26 @@ export default function ManageUsers() {
     }
   };
 
-  const getUserTypeBadge = (type) => {
-    const colors = {
-      admin: 'bg-rose-100 text-rose-700',
-      teacher: 'bg-violet-100 text-violet-700',
-      student: 'bg-blue-100 text-blue-700'
-    };
-    return colors[type] || 'bg-slate-100 text-slate-700';
+  const roleBadgeVariant = (type) => {
+    switch (type) {
+      case 'admin': return 'destructive';
+      case 'teacher': return 'default';
+      case 'student': return 'info';
+      default: return 'secondary';
+    }
   };
 
-  const statusColors = {
-    active: 'bg-green-100 text-green-700',
-    inactive: 'bg-slate-100 text-slate-700',
-    suspended: 'bg-red-100 text-red-700'
+  const statusBadgeVariant = (status) => {
+    switch (status) {
+      case 'active': return 'success';
+      case 'suspended': return 'destructive';
+      case 'inactive': return 'secondary';
+      default: return 'success';
+    }
   };
 
   const filteredUsers = users.filter(u => {
-    const matchesSearch = 
+    const matchesSearch =
       `${u.first_name} ${u.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.user_email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === 'all' || u.user_type === filterType;
@@ -257,70 +259,33 @@ export default function ManageUsers() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+      <div className="space-y-6">
+        <PageHeader title="Manage Users" description="Manage teachers, students, and permissions" />
+        <TableSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Manage Users</h1>
-          <p className="text-slate-500 mt-1">Manage teachers, students, and permissions</p>
-        </div>
-        <Button 
-          onClick={() => setShowCreateDialog(true)}
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-        >
+    <div className="space-y-6">
+      <PageHeader title="Manage Users" description="Manage teachers, students, and permissions">
+        <Button onClick={() => setShowCreateDialog(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
           Create User
         </Button>
-      </div>
+      </PageHeader>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center">
-              <Shield className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Admins</p>
-              <p className="text-2xl font-bold text-slate-900">{admins.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Teachers</p>
-              <p className="text-2xl font-bold text-slate-900">{teachers.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
-              <GraduationCap className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm text-slate-500">Students</p>
-              <p className="text-2xl font-bold text-slate-900">{students.length}</p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard label="Admins" value={admins.length} icon={Shield} accentColor="destructive" />
+        <StatCard label="Teachers" value={teachers.length} icon={Users} accentColor="primary" />
+        <StatCard label="Students" value={students.length} icon={GraduationCap} accentColor="blue" />
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -342,89 +307,93 @@ export default function ManageUsers() {
       </div>
 
       {/* Users Table */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Wallet</TableHead>
-                <TableHead>BlockWard Permission</TableHead>
-                <TableHead className="w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getUserTypeBadge(user.user_type)}`}>
-                        {user.first_name?.[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium">{user.first_name} {user.last_name}</p>
-                        <p className="text-xs text-slate-500">
-                          {user.user_type === 'student' ? user.student_id : user.department}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-slate-500">{user.user_email}</TableCell>
-                  <TableCell>
-                    <Badge className={getUserTypeBadge(user.user_type)}>
-                      {getUserTypeIcon(user.user_type)}
-                      <span className="ml-1">{user.user_type}</span>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={statusColors[user.status] || statusColors.active}>
-                      {user.status || 'active'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-xs text-slate-500">
-                      {user.wallet_address?.slice(0, 6)}...{user.wallet_address?.slice(-4)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {user.user_type === 'teacher' && (
-                      <Switch
-                        checked={user.can_issue_blockwards}
-                        onCheckedChange={() => handleToggleBlockWardPermission(user)}
-                      />
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => { setSelectedUser(user); setShowEditDialog(true); }}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleUpdateStatus(user, user.status === 'active' ? 'suspended' : 'active')}>
-                          {user.status === 'active' ? (
-                            <><X className="h-4 w-4 mr-2" />Suspend</>
-                          ) : (
-                            <><Check className="h-4 w-4 mr-2" />Activate</>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+      {filteredUsers.length === 0 ? (
+        <EmptyState icon={Users} title="No users found" description="Try adjusting your search or filters." />
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Wallet</TableHead>
+                  <TableHead>BlockWard Permission</TableHead>
+                  <TableHead className="w-20"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/10 border border-border flex items-center justify-center text-sm font-medium text-primary">
+                          {user.first_name?.[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-foreground">{user.first_name} {user.last_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {user.user_type === 'student' ? user.student_id : user.department}
+                          </p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{user.user_email}</TableCell>
+                    <TableCell>
+                      <Badge variant={roleBadgeVariant(user.user_type)}>
+                        {getUserTypeIcon(user.user_type)}
+                        <span className="ml-1 capitalize">{user.user_type}</span>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusBadgeVariant(user.status)}>
+                        {user.status || 'active'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {user.wallet_address?.slice(0, 6)}...{user.wallet_address?.slice(-4)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {user.user_type === 'teacher' && (
+                        <Switch
+                          checked={user.can_issue_blockwards}
+                          onCheckedChange={() => handleToggleBlockWardPermission(user)}
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setSelectedUser(user); setShowEditDialog(true); }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleUpdateStatus(user, user.status === 'active' ? 'suspended' : 'active')}>
+                            {user.status === 'active' ? (
+                              <><X className="h-4 w-4 mr-2" />Suspend</>
+                            ) : (
+                              <><Check className="h-4 w-4 mr-2" />Activate</>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -435,7 +404,7 @@ export default function ManageUsers() {
               Create a new teacher or student account with credentials
             </DialogDescription>
           </DialogHeader>
-          
+
           {!generatedCredentials ? (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -528,33 +497,33 @@ export default function ManageUsers() {
             </div>
           ) : (
             <div className="py-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 space-y-4">
-                <div className="flex items-center gap-2 text-green-700">
+              <div className="bg-success/10 border border-success/30 rounded-lg p-6 space-y-4">
+                <div className="flex items-center gap-2 text-success">
                   <Check className="h-5 w-5" />
                   <h3 className="font-semibold">User Created Successfully!</h3>
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-sm text-slate-500">Name</p>
-                    <p className="font-medium text-slate-900">{generatedCredentials.name}</p>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium text-foreground">{generatedCredentials.name}</p>
                   </div>
                   {generatedCredentials.student_id && (
                     <div>
-                      <p className="text-sm text-slate-500">Student ID</p>
-                      <p className="font-medium text-slate-900">{generatedCredentials.student_id}</p>
+                      <p className="text-sm text-muted-foreground">Student ID</p>
+                      <p className="font-medium text-foreground">{generatedCredentials.student_id}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-slate-500">Username</p>
-                    <p className="font-mono font-medium text-slate-900">{generatedCredentials.username}</p>
+                    <p className="text-sm text-muted-foreground">Username</p>
+                    <p className="font-mono font-medium text-foreground">{generatedCredentials.username}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500">Password</p>
-                    <p className="font-mono font-medium text-slate-900">{generatedCredentials.password}</p>
+                    <p className="text-sm text-muted-foreground">Password</p>
+                    <p className="font-mono font-medium text-foreground">{generatedCredentials.password}</p>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-green-200">
-                  <p className="text-sm text-green-700">
+                <div className="pt-3 border-t border-success/20">
+                  <p className="text-sm text-success">
                     ⚠️ Save these credentials! Share them with the user for login.
                   </p>
                 </div>

@@ -128,12 +128,12 @@ export default function Timetable() {
   };
 
   const classColors = [
-    'bg-violet-100 border-violet-300 text-violet-700',
-    'bg-blue-100 border-blue-300 text-blue-700',
-    'bg-emerald-100 border-emerald-300 text-emerald-700',
-    'bg-rose-100 border-rose-300 text-rose-700',
-    'bg-amber-100 border-amber-300 text-amber-700',
-    'bg-indigo-100 border-indigo-300 text-indigo-700'
+    'bg-primary/10 border-primary/30 text-primary',
+    'bg-accent/10 border-accent/30 text-accent',
+    'bg-accent-blue/10 border-accent-blue/30 text-accent-blue',
+    'bg-success/10 border-success/30 text-success',
+    'bg-warning/10 border-warning/30 text-warning',
+    'bg-info/10 border-info/30 text-info'
   ];
 
   const getColorForClass = (classId) => {
@@ -146,25 +146,25 @@ export default function Timetable() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="h-8 w-8 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
+        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Timetable</h1>
-          <p className="text-slate-500 mt-1">
+          <h1 className="text-3xl font-bold text-foreground">Timetable</h1>
+          <p className="text-muted-foreground mt-1">
             {profile?.user_type === 'student' ? 'Your class schedule' : 'Your teaching schedule'}
           </p>
         </div>
         {isTeacher && (
           <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
+              <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Entry
               </Button>
@@ -264,10 +264,9 @@ export default function Timetable() {
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleAddEntry}
                   disabled={!newEntry.class_id || !newEntry.start_time || !newEntry.end_time || adding}
-                  className="bg-gradient-to-r from-violet-600 to-indigo-600"
                 >
                   {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Entry'}
                 </Button>
@@ -288,7 +287,7 @@ export default function Timetable() {
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
-        <Card className="border-0 shadow-lg">
+        <Card>
           <CardContent className="p-4">
             {getEntriesForDay(selectedDay).length > 0 ? (
               <div className="space-y-3">
@@ -304,7 +303,7 @@ export default function Timetable() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-400">
+              <div className="text-center py-8 text-muted-foreground">
                 <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No classes scheduled</p>
               </div>
@@ -315,19 +314,19 @@ export default function Timetable() {
 
       {/* Desktop Week View */}
       <div className="hidden md:block">
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <div className="grid grid-cols-5 divide-x divide-slate-200">
+        <Card className="overflow-hidden">
+          <div className="grid grid-cols-5 divide-x divide-border">
             {DAYS.map((day, dayIndex) => {
               const dayEntries = getEntriesForDay(dayIndex);
               const isToday = new Date().getDay() === dayIndex + 1;
-              
+
               return (
-                <div key={day} className={`min-h-[500px] ${isToday ? 'bg-violet-50/50' : ''}`}>
-                  <div className={`p-4 border-b ${isToday ? 'bg-violet-100' : 'bg-slate-50'}`}>
-                    <h3 className={`font-semibold ${isToday ? 'text-violet-700' : 'text-slate-700'}`}>
+                <div key={day} className={`min-h-[500px] ${isToday ? 'bg-primary/5' : ''}`}>
+                  <div className={`p-4 border-b border-border ${isToday ? 'bg-primary/10' : 'bg-muted/50'}`}>
+                    <h3 className={`font-semibold ${isToday ? 'text-primary' : 'text-foreground'}`}>
                       {day}
                     </h3>
-                    {isToday && <Badge className="mt-1 bg-violet-600">Today</Badge>}
+                    {isToday && <Badge className="mt-1">Today</Badge>}
                   </div>
                   <div className="p-3 space-y-2">
                     {dayEntries.length > 0 ? (
@@ -353,7 +352,7 @@ export default function Timetable() {
                         </motion.div>
                       ))
                     ) : (
-                      <div className="text-center py-8 text-slate-400 text-sm">
+                      <div className="text-center py-8 text-muted-foreground text-sm">
                         No classes
                       </div>
                     )}
@@ -370,9 +369,9 @@ export default function Timetable() {
 
       {/* Legend */}
       {classes.length > 0 && (
-        <Card className="border-0 shadow-lg">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Classes</CardTitle>
+            <CardTitle className="text-base">Classes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3">

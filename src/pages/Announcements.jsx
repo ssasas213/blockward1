@@ -17,9 +17,9 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 const STATUS_CONFIG = {
-  draft: { label: 'Draft', color: 'bg-slate-100 text-slate-600', icon: FileText },
-  scheduled: { label: 'Scheduled', color: 'bg-amber-100 text-amber-700', icon: CalendarClock },
-  sent: { label: 'Sent', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
+  draft: { label: 'Draft', color: 'bg-muted text-muted-foreground', icon: FileText },
+  scheduled: { label: 'Scheduled', color: 'bg-warning/15 text-warning', icon: CalendarClock },
+  sent: { label: 'Sent', color: 'bg-success/15 text-success', icon: CheckCircle2 },
 };
 
 function audienceLabel(a) {
@@ -37,8 +37,8 @@ function audienceLabel(a) {
 }
 
 const PRIORITY_CONFIG = {
-  urgent: { label: 'Urgent', color: 'bg-red-100 text-red-700', icon: AlertCircle },
-  important: { label: 'Important', color: 'bg-amber-100 text-amber-700', icon: Star },
+  urgent: { label: 'Urgent', color: 'bg-destructive/15 text-destructive', icon: AlertCircle },
+  important: { label: 'Important', color: 'bg-warning/15 text-warning', icon: Star },
   normal: null,
 };
 
@@ -48,17 +48,17 @@ function AnnouncementCard({ announcement, onRead }) {
   const priority = PRIORITY_CONFIG[announcement.priority];
   return (
     <div
-      className={`p-4 bg-white border rounded-xl hover:shadow-md transition-shadow cursor-pointer ${
-        announcement.priority === 'urgent' ? 'border-red-300 bg-red-50/30' :
-        announcement.priority === 'important' ? 'border-amber-300 bg-amber-50/20' :
-        'border-slate-200'
+      className={`p-4 bg-card border rounded-xl hover:shadow-md transition-shadow cursor-pointer ${
+        announcement.priority === 'urgent' ? 'border-destructive/40 bg-destructive/5' :
+        announcement.priority === 'important' ? 'border-warning/40 bg-warning/5' :
+        'border-border'
       }`}
       onClick={() => onRead && onRead(announcement)}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
-          {priority && <priority.icon className={`h-4 w-4 ${announcement.priority === 'urgent' ? 'text-red-500' : 'text-amber-500'}`} />}
-          <h3 className="font-semibold text-slate-900">{announcement.title}</h3>
+          {priority && <priority.icon className={`h-4 w-4 ${announcement.priority === 'urgent' ? 'text-destructive' : 'text-warning'}`} />}
+          <h3 className="font-semibold text-foreground">{announcement.title}</h3>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {priority && (
@@ -70,8 +70,8 @@ function AnnouncementCard({ announcement, onRead }) {
           </Badge>
         </div>
       </div>
-      <p className="text-sm text-slate-600 line-clamp-2 mb-3">{announcement.body || announcement.body_short}</p>
-      <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
+      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{announcement.body || announcement.body_short}</p>
+      <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         <span className="flex items-center gap-1">
           <User className="h-3 w-3" />
           {announcement.created_by}
@@ -234,18 +234,18 @@ export default function Announcements() {
   const byStatus = (status) => filtered.filter(a => a.status === status);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-violet-600" /></div>;
+    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Announcements</h1>
-          <p className="text-slate-500 mt-1">School communications hub</p>
+          <h1 className="text-3xl font-bold text-foreground">Announcements</h1>
+          <p className="text-muted-foreground mt-1">School communications hub</p>
         </div>
         {canCreate && (
-          <Button onClick={openCreate} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 gap-2">
+          <Button onClick={openCreate} className="gap-2">
             <Plus className="h-4 w-4" />
             New Announcement
           </Button>
@@ -253,7 +253,7 @@ export default function Announcements() {
       </div>
 
       <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search announcements..." className="pl-10" />
       </div>
 
@@ -261,9 +261,9 @@ export default function Announcements() {
         <div className="space-y-3">
           {filtered.length === 0 ? (
             <Card><CardContent className="py-16 text-center">
-              <Megaphone className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-1">No announcements yet</h3>
-              <p className="text-sm text-slate-500">Check back later for school news.</p>
+              <Megaphone className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-1">No announcements yet</h3>
+              <p className="text-sm text-muted-foreground">Check back later for school news.</p>
             </CardContent></Card>
           ) : filtered.map(a => <AnnouncementCard key={a.id} announcement={a} onRead={handleRead} />)}
         </div>
@@ -301,22 +301,22 @@ export default function Announcements() {
               <Label>Priority</Label>
               <div className="flex gap-2 mt-1.5">
                 {[
-                  { value: 'normal', label: 'Normal', cls: 'border-slate-200 text-slate-600' },
-                  { value: 'important', label: '⭐ Important', cls: 'border-amber-300 text-amber-700 bg-amber-50' },
-                  { value: 'urgent', label: '🚨 Urgent', cls: 'border-red-300 text-red-700 bg-red-50' },
+                  { value: 'normal', label: 'Normal', cls: 'border-border text-muted-foreground' },
+                  { value: 'important', label: '⭐ Important', cls: 'border-warning/40 text-warning bg-warning/10' },
+                  { value: 'urgent', label: '🚨 Urgent', cls: 'border-destructive/40 text-destructive bg-destructive/10' },
                 ].map(opt => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => setForm(f => ({ ...f, priority: opt.value }))}
-                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${opt.cls} ${form.priority === opt.value ? 'ring-2 ring-offset-1 ring-violet-400' : 'opacity-60 hover:opacity-100'}`}
+                    className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${opt.cls} ${form.priority === opt.value ? 'ring-2 ring-offset-1 ring-primary ring-offset-background' : 'opacity-60 hover:opacity-100'}`}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
               {form.priority !== 'normal' && (
-                <p className="text-xs text-slate-400 mt-1">Users opted in to {form.priority} notifications will be alerted.</p>
+                <p className="text-xs text-muted-foreground mt-1">Users opted in to {form.priority} notifications will be alerted.</p>
               )}
             </div>
             <div>
@@ -340,11 +340,11 @@ export default function Announcements() {
               <FileText className="h-4 w-4 mr-2" />Save Draft
             </Button>
             {form.scheduled_at && (
-              <Button variant="outline" onClick={() => handleCreate('scheduled')} disabled={saving} className="border-amber-300 text-amber-700 hover:bg-amber-50">
+              <Button variant="outline" onClick={() => handleCreate('scheduled')} disabled={saving}>
                 <CalendarClock className="h-4 w-4 mr-2" />Schedule
               </Button>
             )}
-            <Button onClick={() => handleCreate('sent')} disabled={saving} className="bg-green-600 hover:bg-green-700">
+            <Button variant="success" onClick={() => handleCreate('sent')} disabled={saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
               Send Now
             </Button>
@@ -368,8 +368,8 @@ export default function Announcements() {
                     {audienceLabel(selectedAnnouncement)}
                   </Badge>
                 </div>
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{selectedAnnouncement.body}</p>
-                <div className="text-xs text-slate-400 border-t pt-3 space-y-1">
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{selectedAnnouncement.body}</p>
+                <div className="text-xs text-muted-foreground border-t border-border pt-3 space-y-1">
                   <p>From: {selectedAnnouncement.created_by}</p>
                   {selectedAnnouncement.sent_at && <p>Sent: {format(new Date(selectedAnnouncement.sent_at), 'PPpp')}</p>}
                   {selectedAnnouncement.scheduled_at && selectedAnnouncement.status === 'scheduled' && (
@@ -388,8 +388,8 @@ export default function Announcements() {
 function EmptyState({ icon: Icon, msg }) {
   return (
     <Card><CardContent className="py-12 text-center">
-      <Icon className="h-10 w-10 mx-auto text-slate-300 mb-3" />
-      <p className="text-slate-500">{msg}</p>
+      <Icon className="h-10 w-10 mx-auto text-muted-foreground/50 mb-3" />
+      <p className="text-muted-foreground">{msg}</p>
     </CardContent></Card>
   );
 }
