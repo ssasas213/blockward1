@@ -138,6 +138,7 @@
         "submitted",
         "awaiting_teacher_signature",
         "awaiting_admin_signature",
+        "changes_requested",
         "approved",
         "minted",
         "archived",
@@ -146,6 +147,32 @@
       ],
       "default": "draft",
       "description": "Workflow status"
+    },
+    "changes_requested_reason": {
+      "type": "string",
+      "description": "Admin's message when requesting changes"
+    },
+    "changes_requested_by": {
+      "type": "string",
+      "description": "Email of the admin who requested changes"
+    },
+    "changes_requested_by_name": {
+      "type": "string",
+      "description": "Display name of the admin who requested changes"
+    },
+    "changes_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When changes were requested"
+    },
+    "resubmitted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the record was resubmitted after changes"
+    },
+    "last_notified_status": {
+      "type": "string",
+      "description": "Idempotency marker \u2014 the last status a notification was dispatched for. Prevents duplicate notifications on retries."
     },
     "delivered_to_student_vault": {
       "type": "boolean",

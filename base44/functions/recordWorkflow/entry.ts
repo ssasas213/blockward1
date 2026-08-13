@@ -36,6 +36,10 @@ const VALID_TRANSITIONS = {
   // sendToVault is deprecated — use sendToStudentVault function instead.
   // Kept for backward compat: redirects to the sendToStudentVault logic.
   sendToVault:          { fromStatus: 'approved',                    requiredRole: 'admin' },
+  // Admin requests changes instead of approving/rejecting.
+  requestChanges:         { fromStatus: 'awaiting_admin_signature',  requiredRole: 'admin' },
+  // Student or teacher edits + resubmits after changes were requested.
+  resubmitAfterChanges:   { fromStatus: 'changes_requested',        requiredRole: 'student' },
 };
 
 Deno.serve(async (req) => {
@@ -78,7 +82,9 @@ Deno.serve(async (req) => {
     return Response.json({ ok: false, error: 'Access denied: wrong school' }, { status: 403, headers: CORS });
   }
 
-  if (profile.user_type !== rule.requiredRole) {
+  // resubmitAfterChanges allows student OR teacher (the handler does its own
+  // ownership validation), so it bypasses the strict single-role check.
+  if (action !== 'resubmitAfterChanges' && profile.user_type !== rule.requiredRole) {
     return Response.json({ ok: false, error: `Action '${action}' requires role '${rule.requiredRole}', you are '${profile.user_type}'` }, { status: 403, headers: CORS });
   }
 
@@ -254,6 +260,66 @@ Deno.serve(async (req) => {
     });
     await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'admin_rejected', 'awaiting_admin_signature', 'rejected', reason);
     return Response.json({ ok: true, newStatus: 'rejected' }, { headers: CORS });
+  }
+
+  // --- requestChanges: admin requests changes (awaiting_admin_signature → changes_requested) ---
+  // The same record_id survives. The teacher's existing signature is preserved until
+  // the content is actually edited on resubmission.
+  if (action === 'requestChanges') {
+    const reason = (rejectionReason || '').trim();
+    if (!reason) return Response.json({ ok: false, error: 'A reason is required to request changes' }, { status: 400, headers: CORS });
+
+    await base44.asServiceRole.entities.StudentRecord.update(recordId, {
+      status: 'changes_requested',
+      changes_requested_reason: reason,
+      changes_requested_by: user.email,
+      changes_requested_by_name: actorName,
+      changes_requested_at: now,
+    });
+    await audit(base44, recordId, record.school_id, user.email, actorName, 'admin', 'changes_requested', 'awaiting_admin_signature', 'changes_requested', `Admin requested changes: ${reason}`);
+    return Response.json({ ok: true, newStatus: 'changes_requested' }, { headers: CORS });
+  }
+
+  // --- resubmitAfterChanges: student or teacher edits + resubmits (changes_requested → …) ---
+  // Protected fields (title/description/category/points/date/evidence) invalidate the
+  // teacher's prior signature → record returns to awaiting_teacher_signature for re-sign.
+  // Non-protected edits (e.g. teacher_notes) keep the signature → back to awaiting_admin_signature.
+  if (action === 'resubmitAfterChanges') {
+    if (profile.user_type !== 'student' && profile.user_type !== 'teacher') {
+      return Response.json({ ok: false, error: 'Only students or teachers can resubmit after changes' }, { status: 403, headers: CORS });
+    }
+    if (profile.user_type === 'student' && record.student_email !== user.email) {
+      return Response.json({ ok: false, error: 'You can only resubmit your own records' }, { status: 403, headers: CORS });
+    }
+    if (profile.user_type === 'teacher' && record.teacher_email && record.teacher_email !== user.email) {
+      return Response.json({ ok: false, error: 'Only the assigned teacher can resubmit this record' }, { status: 403, headers: CORS });
+    }
+
+    const updatedFields = body.updatedFields || {};
+    const PROTECTED = ['title', 'description', 'category', 'points', 'date_achieved', 'file_url', 'file_type', 'certificate_url', 'custom_award_icon', 'custom_award_color', 'custom_nft_image_url'];
+    const protectedChanged = PROTECTED.some(f => f in updatedFields && String(updatedFields[f] ?? '') !== String(record[f] ?? ''));
+
+    const allowedFields = ['title', 'description', 'category', 'points', 'date_achieved', 'file_url', 'file_type', 'certificate_url', 'teacher_notes', 'custom_award_icon', 'custom_award_color', 'custom_nft_image_url'];
+    const update = { resubmitted_at: now };
+    for (const f of allowedFields) {
+      if (f in updatedFields) update[f] = updatedFields[f];
+    }
+
+    let newStatus;
+    if (protectedChanged) {
+      update.teacher_signed = false;
+      update.teacher_signature_id = null;
+      update.teacher_signed_at = null;
+      newStatus = 'awaiting_teacher_signature';
+    } else {
+      newStatus = 'awaiting_admin_signature';
+    }
+    update.status = newStatus;
+
+    await base44.asServiceRole.entities.StudentRecord.update(recordId, update);
+    const note = `Resubmitted by ${profile.user_type} (${actorName}). Teacher re-sign ${protectedChanged ? 'required (protected fields changed)' : 'not required'}. Returned to ${newStatus}.`;
+    await audit(base44, recordId, record.school_id, user.email, actorName, profile.user_type, 'resubmitted_after_changes', 'changes_requested', newStatus, note);
+    return Response.json({ ok: true, newStatus, teacherReSignRequired: protectedChanged }, { headers: CORS });
   }
 
   return Response.json({ ok: false, error: 'Unhandled action' }, { status: 400, headers: CORS });

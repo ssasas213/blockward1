@@ -11,12 +11,15 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
   ArrowLeft, PenLine, Check, X, ExternalLink, Loader2,
-  Trophy, Shield, User, SendHorizonal, Copy, Link2, AlertCircle, CheckCircle2, ShieldCheck
+  Trophy, Shield, User, SendHorizonal, Copy, Link2, AlertCircle, CheckCircle2, ShieldCheck,
+  MessageSquare, RefreshCw
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/status-badge';
 import { Skeleton } from '@/components/ui/loading-skeleton';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
+import WorkflowTimeline from '@/components/records/WorkflowTimeline';
+import EditResubmitDialog from '@/components/records/EditResubmitDialog';
 import SignatureSetup from '@/components/records/SignatureSetup';
 import SignatureConfirmDialog from '@/components/records/SignatureConfirmDialog';
 
@@ -51,6 +54,10 @@ export default function RecordDetail() {
   const [sigProfile, setSigProfile] = useState(null);
   const [showSigSetup, setShowSigSetup] = useState(false);
   const [sendingVault, setSendingVault] = useState(false);
+  const [showChangesDialog, setShowChangesDialog] = useState(false);
+  const [changesReason, setChangesReason] = useState('');
+  const [requestingChanges, setRequestingChanges] = useState(false);
+  const [showEditResubmit, setShowEditResubmit] = useState(false);
   const [errorType, setErrorType] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
 
@@ -152,6 +159,19 @@ export default function RecordDetail() {
     finally { setSendingVault(false); }
   };
 
+  const handleRequestChanges = async () => {
+    if (!changesReason.trim()) { toast.error('Please provide feedback for the requested changes'); return; }
+    setRequestingChanges(true);
+    try {
+      await callWorkflow('requestChanges', { rejectionReason: changesReason });
+      setShowChangesDialog(false);
+      setChangesReason('');
+      toast.success('Changes requested — teacher and student notified');
+      loadAll();
+    } catch (e) { toast.error(e.message); }
+    finally { setRequestingChanges(false); }
+  };
+
   const copyVerifyLink = () => {
     const link = `${window.location.origin}/verify/${record.verify_id}`;
     navigator.clipboard.writeText(link);
@@ -163,6 +183,11 @@ export default function RecordDetail() {
   const canAdminSign = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
   const canReject = (canTeacherSign || canAdminSign);
   const canSendToVault = record?.status === 'approved' && profile?.user_type === 'admin';
+  const canRequestChanges = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
+  const canEditResubmit = record?.status === 'changes_requested' && (
+    (profile?.user_type === 'student' && record?.student_email === user?.email) ||
+    (profile?.user_type === 'teacher' && record?.teacher_email === user?.email)
+  );
 
   const vaultBlockReason = (() => {
     if (!record?.teacher_signed) return 'Cannot send to vault: teacher signature missing.';
@@ -237,6 +262,28 @@ export default function RecordDetail() {
         <div className="rounded-lg p-4 bg-destructive/5 border border-destructive/20">
           <p className="text-sm font-medium text-destructive mb-1">Rejection Reason</p>
           <p className="text-sm text-destructive">{record.rejection_reason || record.teacher_rejection_reason}</p>
+        </div>
+      )}
+
+      {/* Changes Requested banner */}
+      {record.status === 'changes_requested' && (
+        <div className="rounded-lg p-4 bg-accent/5 border border-accent/20">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-accent">Changes Requested by Admin</p>
+              {record.changes_requested_reason && (
+                <p className="text-sm text-foreground mt-1">{record.changes_requested_reason}</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {record.changes_requested_by_name ? `Requested by ${record.changes_requested_by_name}` : ''}
+                {record.changes_requested_at ? ` · ${format(new Date(record.changes_requested_at), 'MMM d, yyyy HH:mm')}` : ''}
+              </p>
+              {canEditResubmit && (
+                <p className="text-xs text-muted-foreground mt-1">Edit the achievement and resubmit to continue the approval.</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -330,6 +377,16 @@ export default function RecordDetail() {
           <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason}>
             {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
             Send to Student Vault
+          </Button>
+        )}
+        {canRequestChanges && (
+          <Button variant="outline" onClick={() => setShowChangesDialog(true)}>
+            <MessageSquare className="h-4 w-4 mr-2" /> Request Changes
+          </Button>
+        )}
+        {canEditResubmit && (
+          <Button onClick={() => setShowEditResubmit(true)}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Edit &amp; Resubmit
           </Button>
         )}
       </div>
@@ -491,46 +548,11 @@ export default function RecordDetail() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Approval Flow */}
+          {/* Workflow Timeline */}
           <Card className="shadow-sm">
-            <CardHeader><CardTitle className="text-sm">Approval Flow</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Workflow Timeline</CardTitle></CardHeader>
             <CardContent>
-              {[
-                { key: 'draft', label: 'Student Sends to Teacher' },
-                { key: 'awaiting_teacher_signature', label: 'Teacher Validates & Signs' },
-                { key: 'awaiting_admin_signature', label: 'Admin Authorises' },
-                { key: 'approved', label: 'Approved — Ready to Deliver' },
-                { key: 'delivered_to_vault', label: 'Delivered to Student Vault' },
-              ].map((step, i, arr) => {
-                const ORDER = ['draft', 'awaiting_teacher_signature', 'awaiting_admin_signature', 'approved', 'delivered_to_vault'];
-                const effectiveStatus = record.status === 'archived' ? 'delivered_to_vault' : record.status;
-                const current = ORDER.indexOf(effectiveStatus);
-                const stepIdx = ORDER.indexOf(step.key);
-                const done = current > stepIdx;
-                const active = current === stepIdx;
-                const isRejected = record.status === 'rejected';
-                return (
-                  <div key={step.key} className="flex items-start gap-3 mb-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
-                        isRejected && active ? 'bg-destructive text-destructive-foreground' :
-                        done ? 'bg-primary text-primary-foreground' :
-                        active ? 'bg-primary/10 text-primary ring-2 ring-primary/20' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {done ? <Check className="h-3 w-3" /> : i + 1}
-                      </div>
-                      {i < arr.length - 1 && <div className={`w-px h-5 mt-0.5 ${done ? 'bg-primary/30' : 'bg-border'}`} />}
-                    </div>
-                    <p className={`text-sm pt-0.5 ${active ? 'font-medium text-foreground' : done ? 'text-foreground' : 'text-muted-foreground'}`}>{step.label}</p>
-                  </div>
-                );
-              })}
-              {record.status === 'rejected' && (
-                <div className="mt-2 rounded-lg bg-destructive/5 border border-destructive/20 px-3 py-2">
-                  <p className="text-xs font-medium text-destructive">Submission Rejected</p>
-                </div>
-              )}
+              <WorkflowTimeline logs={auditLogs} record={record} />
             </CardContent>
           </Card>
 
@@ -621,6 +643,34 @@ export default function RecordDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Request Changes Dialog */}
+      <Dialog open={showChangesDialog} onOpenChange={setShowChangesDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Request Changes</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Provide feedback for the student/teacher. The achievement will return to them for editing and resubmission. The same record is preserved.</p>
+            <Textarea value={changesReason} onChange={e => setChangesReason(e.target.value)} rows={4} placeholder="Describe what needs to change..." />
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowChangesDialog(false)}>Cancel</Button>
+            <Button onClick={handleRequestChanges} disabled={requestingChanges}>
+              {requestingChanges && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Request Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit & Resubmit Dialog */}
+      <EditResubmitDialog
+        open={showEditResubmit}
+        onOpenChange={setShowEditResubmit}
+        record={record}
+        onDone={loadAll}
+      />
     </div>
   );
 }

@@ -342,19 +342,9 @@ Deno.serve(async (req) => {
       }, { status: 500, headers: CORS });
     }
 
-    // ── STEP 8: Send student notification (FINAL STEP — only after verification) ──
-    try {
-      await base44.asServiceRole.entities.Notification.create({
-        user_email: record.student_email,
-        school_id: record.school_id,
-        title: 'New BlockWard in Your Vault!',
-        body: `A new BlockWard has been added to your Vault: "${record.title}". View it in My BlockWards.`,
-        type: 'announcement_important',
-        priority: 'important',
-        related_id: record_id,
-        read: false,
-      });
-    } catch (e) { /* best-effort — delivery already succeeded */ }
+    // NOTE: The in-app student notification + email are now dispatched by the single
+    // canonical notifyOnRecordStatusChange automation (on the delivered_to_vault
+    // status change), so we do NOT create a Notification here — that would duplicate.
 
     // Parent/guardian email notification (if parent email exists)
     try {

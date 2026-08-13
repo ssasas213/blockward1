@@ -41,7 +41,8 @@
         "school_created",
         "join_request_submitted",
         "teacher_approved",
-        "teacher_rejected"
+        "changes_requested",
+        "resubmitted_after_changes"
       ],
       "description": "What happened"
     },

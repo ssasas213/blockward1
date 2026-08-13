@@ -6,6 +6,7 @@ const STATUS_CONFIG = {
   submitted: { label: "Submitted", className: "bg-primary/10 text-primary" },
   awaiting_teacher_signature: { label: "Awaiting Teacher Signature", className: "bg-warning/10 text-warning" },
   awaiting_admin_signature: { label: "Awaiting Admin Approval", className: "bg-warning/10 text-warning" },
+  changes_requested: { label: "Changes Requested", className: "bg-accent/10 text-accent" },
   approved: { label: "Approved", className: "bg-success/10 text-success" },
   minted: { label: "Ready for Vault", className: "bg-primary/10 text-primary" },
   archived: { label: "Archived", className: "bg-muted text-muted-foreground" },
