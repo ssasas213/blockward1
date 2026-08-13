@@ -133,7 +133,7 @@ export default function Verify() {
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12 space-y-6 animate-fade-in">
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12 space-y-6 animate-fade-in relative verify-ambient">
 
         {/* Status banner */}
         {isRevoked ? (
@@ -167,8 +167,8 @@ export default function Verify() {
         )}
 
         {/* Premium credential card */}
-        <Card className="surface-card overflow-hidden">
-          <div className="h-1 bg-gradient-to-r from-primary via-primary to-accent" />
+        <Card className={cn("surface-card overflow-hidden", isVerified && "verified-glow")}>
+          <div className="h-1 bg-gradient-to-r from-primary via-brand-pink to-accent" />
           <CardContent className="p-6 md:p-8">
             <div className="flex flex-col sm:flex-row gap-6">
               <div className={cn("w-28 h-28 rounded-2xl bg-gradient-to-br from-primary/15 to-accent/10 border border-border flex items-center justify-center flex-shrink-0")}>

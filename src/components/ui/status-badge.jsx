@@ -12,7 +12,7 @@ const STATUS_CONFIG = {
 
   changes_requested: { label: "Changes Requested", tone: "warning", dot: "bg-warning" },
 
-  approved: { label: "Approved", tone: "info", dot: "bg-info" },
+  approved: { label: "Approved", tone: "primary", dot: "bg-primary" },
   delivering: { label: "Delivering…", tone: "primary", dot: "bg-primary animate-pulse" },
 
   delivered_to_vault: { label: "Delivered", tone: "success", dot: "bg-success" },

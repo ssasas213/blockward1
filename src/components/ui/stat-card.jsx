@@ -37,6 +37,15 @@ const ACCENT_TEXT = {
   destructive: 'text-destructive',
 };
 
+const ACCENT_BG = {
+  primary: 'bg-primary/10 border-primary/20',
+  accent: 'bg-accent/10 border-accent/20',
+  blue: 'bg-accent-blue/10 border-accent-blue/20',
+  success: 'bg-success/10 border-success/20',
+  warning: 'bg-warning/10 border-warning/20',
+  destructive: 'bg-destructive/10 border-destructive/20',
+};
+
 export default function StatCard({ label, value, icon: Icon, hint, trend, trendDirection, accentColor, className }) {
   const numericValue = typeof value === 'number' ? value : parseFloat(value);
   const displayValue = useCountUp(numericValue);
@@ -64,7 +73,8 @@ export default function StatCard({ label, value, icon: Icon, hint, trend, trendD
           </div>
           {Icon && (
             <div className={cn(
-              "h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center flex-shrink-0",
+              "h-10 w-10 rounded-xl border flex items-center justify-center flex-shrink-0",
+              ACCENT_BG[accentColor || 'primary'] || ACCENT_BG.primary,
               accent
             )}>
               <Icon className="h-[18px] w-[18px]" />

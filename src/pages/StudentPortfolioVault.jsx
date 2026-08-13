@@ -288,7 +288,7 @@ export default function StudentPortfolioVault() {
 
       {/* BlockWards Grid */}
       {blockWards.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3 vault-ambient">
           <div className="flex items-center gap-2">
             <Award className="h-5 w-5 text-primary" />
             <h2 className="text-base font-semibold text-foreground">My BlockWards</h2>

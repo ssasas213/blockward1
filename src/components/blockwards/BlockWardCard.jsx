@@ -64,7 +64,7 @@ export default function BlockWardCard({ blockWard, onClick, onShare, onVerify, s
 
         <div className="absolute top-3 right-3 flex items-center gap-1.5">
           {isVerified && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/20 backdrop-blur-md border border-primary/40 text-[11px] font-semibold text-primary">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-success/25 backdrop-blur-md border border-success/50 text-[11px] font-semibold text-success shadow-[0_0_12px_hsl(142_71%_45%/0.35)]">
               <ShieldCheck className="h-3 w-3" /> Verified
             </span>
           )}
