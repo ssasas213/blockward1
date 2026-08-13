@@ -15,12 +15,13 @@ module.exports = {
   			'2xl': 'calc(var(--radius) + 8px)'
   		},
   		boxShadow: {
-  			'glow': '0 0 24px hsl(258 90% 66% / 0.25)',
-  			'glow-sm': '0 0 12px hsl(258 90% 66% / 0.15)',
-  			'glow-accent': '0 0 16px hsl(330 81% 60% / 0.2)',
-  			'card': '0 1px 3px hsl(0 0% 0% / 0.2), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-  			'card-hover': '0 8px 32px hsl(0 0% 0% / 0.3), 0 0 24px hsl(258 90% 66% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-  			'button': '0 1px 2px hsl(0 0% 0% / 0.3), 0 0 16px hsl(258 90% 66% / 0.15)',
+  		'glow': '0 0 22px hsl(258 90% 66% / 0.14)',
+  		'glow-sm': '0 0 12px hsl(258 90% 66% / 0.10)',
+  		'glow-accent': '0 0 16px hsl(330 81% 60% / 0.12)',
+  		'card': '0 1px 3px hsl(0 0% 0% / 0.22), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+  		'card-hover': '0 6px 24px hsl(0 0% 0% / 0.28), 0 0 18px hsl(258 90% 66% / 0.06), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
+  		'button': '0 1px 2px hsl(0 0% 0% / 0.28), 0 0 14px hsl(258 90% 66% / 0.12)',
+  		'elevated': '0 4px 20px hsl(0 0% 0% / 0.3), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
   		},
   		colors: {
   			background: 'hsl(var(--background))',
@@ -75,8 +76,10 @@ module.exports = {
   				foreground: 'hsl(var(--info-foreground))'
   			},
   			border: 'hsl(var(--border))',
+  			strong: 'hsl(var(--border-strong))',
   			input: 'hsl(var(--input))',
   			ring: 'hsl(var(--ring))',
+  			'surface-elevated': 'hsl(var(--popover))',
   			chart: {
   				'1': 'hsl(var(--chart-1))',
   				'2': 'hsl(var(--chart-2))',
