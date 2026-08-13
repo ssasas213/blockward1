@@ -81,11 +81,14 @@ Deno.serve(async (req) => {
       private_key_encrypted: encryptedKey
     });
 
-    // Also update the user profile with the wallet address
+    // Also update the user profile with the wallet address + a public portfolio
+    // identifier (used in shareable /portfolio/:id links so the raw id is never exposed).
     if (targetProfile) {
-      await base44.asServiceRole.entities.UserProfile.update(targetProfile.id, {
-        wallet_address: address
-      });
+      const update = { wallet_address: address };
+      if (!targetProfile.portfolio_public_id) {
+        update.portfolio_public_id = 'prt-' + Math.random().toString(36).substring(2, 10);
+      }
+      await base44.asServiceRole.entities.UserProfile.update(targetProfile.id, update);
     }
 
     return Response.json({ success: true, vaultAddress: address });

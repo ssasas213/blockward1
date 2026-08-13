@@ -160,6 +160,10 @@
       "type": "string",
       "description": "Encrypted private key (server-side only)"
     },
+    "portfolio_public_id": {
+      "type": "string",
+      "description": "Public identifier for the student's shareable portfolio (format: prt-xxxxxxxx). Used in /portfolio/:id URLs so the internal UserProfile.id is never exposed."
+    },
     "blockchain_role": {
       "type": "string",
       "enum": [

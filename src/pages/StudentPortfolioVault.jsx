@@ -277,7 +277,7 @@ export default function StudentPortfolioVault() {
         </Button>
       </PageHeader>
 
-      <SharePortfolioDialog open={shareOpen} onOpenChange={setShareOpen} studentId={profile?.id} />
+      <SharePortfolioDialog open={shareOpen} onOpenChange={setShareOpen} studentId={profile?.portfolio_public_id || profile?.id} />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

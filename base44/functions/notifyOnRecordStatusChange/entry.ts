@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
           status: 'active'
         });
 
+        // Send to every admin in parallel, isolated with allSettled so a single bad
+        // recipient (e.g. unregistered email) can never fail the whole batch.
         const notifications = adminProfiles.map(admin =>
           base44.asServiceRole.integrations.Core.SendEmail({
             to: admin.user_email,
@@ -71,14 +73,14 @@ Deno.serve(async (req) => {
   <li><strong>Teacher:</strong> ${data.teacher_name}</li>
   <li><strong>Category:</strong> ${data.category}</li>
 </ul>
-<p>Sign in to BlockWard to approve and authorise NFT minting:</p>
+<p>Sign in to BlockWard to approve and authorise the BlockWard:</p>
 <p><a href="${adminApprovalUrl}" style="background:#7c3aed;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;display:inline-block;">Approve Achievement →</a></p>
 <p style="color:#64748b;font-size:12px;">You received this as an admin at your school.</p>
             `.trim()
           })
         );
 
-        await Promise.all(notifications);
+        await Promise.allSettled(notifications);
       } catch (e) { /* best-effort */ }
       return Response.json({ ok: true, notified: 'admins' });
     }

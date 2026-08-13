@@ -32,15 +32,33 @@ Deno.serve(async (req) => {
   if (!student_id) return Response.json({ ok: false, error: 'Missing student_id' }, { status: 400, headers: CORS });
 
   try {
-    // 1. Resolve the student profile (service role — no auth required)
+    // 1. Resolve the student profile by public portfolio ID (preferred), fall back to
+    //    raw id for backward compatibility during the transition. This keeps the
+    //    internal UserProfile.id out of newly generated public links.
     let profile = null;
     try {
-      const profiles = await base44.asServiceRole.entities.UserProfile.filter({ id: student_id });
-      profile = profiles[0] || null;
+      const byPublic = await base44.asServiceRole.entities.UserProfile.filter({ portfolio_public_id: student_id });
+      profile = byPublic[0] || null;
     } catch (e) { /* ignore */ }
+    if (!profile) {
+      try {
+        const byId = await base44.asServiceRole.entities.UserProfile.filter({ id: student_id });
+        profile = byId[0] || null;
+      } catch (e) { /* ignore */ }
+    }
 
     if (!profile || profile.user_type !== 'student') {
       return Response.json({ ok: false, error: 'Portfolio not found' }, { status: 404, headers: CORS });
+    }
+
+    // If this is a legacy link (resolved by raw id) and the student has no public
+    // portfolio ID yet, generate + persist one now so future links use it.
+    if (!profile.portfolio_public_id) {
+      try {
+        const publicId = 'prt-' + Math.random().toString(36).substring(2, 10);
+        await base44.asServiceRole.entities.UserProfile.update(profile.id, { portfolio_public_id: publicId });
+        profile = { ...profile, portfolio_public_id: publicId };
+      } catch (e) { /* best-effort — link still works */ }
     }
 
     // 2. School / organisation info

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 export default function SharePortfolioDialog({ open, onOpenChange, studentId }) {
   const [copied, setCopied] = useState(false);
   const shareUrl = studentId ? `${window.location.origin}/portfolio/${studentId}` : '';
+  // studentId passed in is profile.portfolio_public_id (preferred) with id fallback
 
   useEffect(() => {
     if (!open) setCopied(false);
