@@ -15,6 +15,7 @@ import {
   ChevronRight, Star, FileText
 } from 'lucide-react';
 import ParentContactSection from '@/components/student/ParentContactSection';
+import BlockWardCard from '@/components/blockwards/BlockWardCard';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -87,8 +88,8 @@ function StudentDashboardContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${userProfile?.first_name || 'Student'}'s Dashboard`}
-        description={userProfile?.grade_level ? `Grade ${userProfile.grade_level}` : 'Your achievement overview'}
+        title={`Welcome back, ${userProfile?.first_name || 'Student'}`}
+        description={userProfile?.grade_level ? `Grade ${userProfile.grade_level} · Your achievement overview` : 'Your achievement overview'}
       >
         <Button variant="outline" asChild>
           <Link to={createPageUrl('Timetable')}>
@@ -252,15 +253,7 @@ function StudentDashboardContent() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {stats.blockWards.slice(0, 3).map((bw) => (
-                <div key={bw.id} className="p-4 border border-border rounded-lg">
-                  <div className="flex items-center justify-between mb-3">
-                    <Shield className="h-5 w-5 text-primary" />
-                    <Badge variant="success">Verified</Badge>
-                  </div>
-                  <h3 className="font-medium text-foreground text-sm mb-1">{bw.title}</h3>
-                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{bw.description}</p>
-                  <p className="text-xs text-muted-foreground">Issued by {bw.issuer_name}</p>
-                </div>
+                <BlockWardCard key={bw.id} blockWard={bw} onClick={() => window.location.href = createPageUrl(`StudentBlockWards`)} showStudent={false} />
               ))}
             </div>
           </CardContent>

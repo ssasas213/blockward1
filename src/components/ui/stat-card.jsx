@@ -28,20 +28,19 @@ function useCountUp(end, duration = 900) {
   return count;
 }
 
+const ACCENT_TEXT = {
+  primary: 'text-primary',
+  accent: 'text-accent',
+  blue: 'text-accent-blue',
+  success: 'text-success',
+  warning: 'text-warning',
+  destructive: 'text-destructive',
+};
+
 export default function StatCard({ label, value, icon: Icon, hint, trend, trendDirection, accentColor, className }) {
   const numericValue = typeof value === 'number' ? value : parseFloat(value);
   const displayValue = useCountUp(numericValue);
-
-  const accent = accentColor || 'primary';
-
-  const accentMap = {
-    primary: 'from-primary/20 to-primary/5 text-primary',
-    accent: 'from-accent/20 to-accent/5 text-accent',
-    blue: 'from-accent-blue/20 to-accent-blue/5 text-accent-blue',
-    success: 'from-success/20 to-success/5 text-success',
-    warning: 'from-warning/20 to-warning/5 text-warning',
-    destructive: 'from-destructive/20 to-destructive/5 text-destructive',
-  };
+  const accent = ACCENT_TEXT[accentColor || 'primary'] || ACCENT_TEXT.primary;
 
   return (
     <Card className={cn("card-hover overflow-hidden", className)}>
@@ -52,7 +51,7 @@ export default function StatCard({ label, value, icon: Icon, hint, trend, trendD
             <p className="text-3xl font-bold text-foreground tabular-nums tracking-tight">
               {typeof value === 'number' ? displayValue : value}
             </p>
-            {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+            {hint && <p className="text-xs text-tertiary">{hint}</p>}
             {trend && (
               <div className={cn(
                 "inline-flex items-center gap-1 text-xs font-semibold mt-1",
@@ -65,10 +64,10 @@ export default function StatCard({ label, value, icon: Icon, hint, trend, trendD
           </div>
           {Icon && (
             <div className={cn(
-              "h-11 w-11 rounded-xl bg-gradient-to-br flex items-center justify-center flex-shrink-0 shadow-sm",
-              accentMap[accent] || accentMap.primary
+              "h-10 w-10 rounded-xl bg-secondary border border-border flex items-center justify-center flex-shrink-0",
+              accent
             )}>
-              <Icon className="h-5 w-5" />
+              <Icon className="h-[18px] w-[18px]" />
             </div>
           )}
         </div>
