@@ -14,6 +14,8 @@ import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
 import PendingTeacherRequests from '@/components/onboarding/PendingTeacherRequests';
 import SetupChecklist from '@/components/onboarding/SetupChecklist';
+import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
+import { Send } from 'lucide-react';
 import {
   Users, BookOpen, Shield, TrendingUp,
   ChevronRight, RefreshCw, Loader2,
@@ -27,6 +29,7 @@ function AdminDashboardContent() {
   const [userProfile, setUserProfile] = useState(null);
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState(null);
   const [healthResult, setHealthResult] = useState(null);
@@ -174,13 +177,20 @@ function AdminDashboardContent() {
         title="Admin Dashboard"
         description={school?.name || 'Administration overview'}
       >
-        <Button asChild>
-          <Link to={createPageUrl('AdminApprovalQueue')}>
-            <PenLine className="h-4 w-4 mr-2" />
-            Open Approval Queue
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setInviteOpen(true)}>
+            <Send className="h-4 w-4 mr-2" /> Invite People
+          </Button>
+          <Button asChild>
+            <Link to={createPageUrl('AdminApprovalQueue')}>
+              <PenLine className="h-4 w-4 mr-2" />
+              Open Approval Queue
+            </Link>
+          </Button>
+        </div>
       </PageHeader>
+
+      <InvitePeopleModal open={inviteOpen} onOpenChange={setInviteOpen} defaultRole="teacher" schoolId={userProfile?.school_id} />
 
       {/* Info banner */}
       <div className="flex items-start gap-3 p-3 bg-info/5 border border-info/20 rounded-lg max-w-2xl">

@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -62,6 +62,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Management', items: [
         { name: 'Users', icon: Users, page: 'ManageUsers' },
+        { name: 'Invitations', icon: Send, page: 'Invitations' },
         { name: 'Classes', icon: BookOpen, page: 'Classes' },
         { name: 'Announcements', icon: Bell, page: 'Announcements' },
       ]},

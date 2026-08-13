@@ -39,6 +39,8 @@ import SchoolsSignup from './pages/schools/Signup';
 import OrgsLogin from './pages/organisations/Login';
 import OrgsSignup from './pages/organisations/Signup';
 import OrgDashboard from './pages/organisations/Dashboard';
+import AcceptInvite from './pages/AcceptInvite';
+import Invitations from './pages/Invitations';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -110,6 +112,8 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />
       <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
+      <Route path="/invite/:token" element={<AcceptInvite />} />
+      <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
 
       {/* Platform-specific login/signup routes */}
       <Route path="/schools/login" element={<SchoolsLogin />} />

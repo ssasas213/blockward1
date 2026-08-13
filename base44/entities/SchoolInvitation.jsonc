@@ -1,0 +1,105 @@
+{
+  "name": "SchoolInvitation",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this invitation grants access to"
+    },
+    "school_name": {
+      "type": "string",
+      "description": "Denormalized school name for display"
+    },
+    "invited_email": {
+      "type": "string",
+      "description": "Email address invited. The Google account that accepts MUST match this email."
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "student",
+        "admin"
+      ],
+      "description": "Role the invitee will receive on acceptance"
+    },
+    "invited_by": {
+      "type": "string",
+      "description": "Email of the admin who sent the invitation"
+    },
+    "invited_by_name": {
+      "type": "string",
+      "description": "Display name of the inviting admin"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "accepted",
+        "expired",
+        "revoked"
+      ],
+      "default": "pending",
+      "description": "Current state of the invitation"
+    },
+    "token": {
+      "type": "string",
+      "description": "Secure random token used in /invite/:token URLs. Never expose the database id."
+    },
+    "invited_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the invitation was created"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the invitation expires (default 7 days)"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the invitation was accepted"
+    },
+    "accepted_by_email": {
+      "type": "string",
+      "description": "Email that actually accepted (should match invited_email)"
+    }
+  },
+  "required": [
+    "school_id",
+    "invited_email",
+    "role",
+    "token",
+    "invited_by"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.invited_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
