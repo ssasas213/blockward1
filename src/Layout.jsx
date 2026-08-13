@@ -11,6 +11,7 @@ import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
+import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
 import { useSchool } from '@/lib/SchoolContext';
 import {
   DropdownMenu,
@@ -218,6 +219,8 @@ export default function Layout({ children, currentPageName }) {
           {children}
         </div>
       </main>
+
+      <BlockWardGuide />
     </div>
   );
 }

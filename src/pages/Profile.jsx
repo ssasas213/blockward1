@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ import AppearanceSettings from '@/components/profile/AppearanceSettings';
 import AccountSection from '@/components/profile/AccountSection';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
 import { useSchool } from '@/lib/SchoolContext';
+import { resetTour } from '@/lib/tour';
 
 function ProfileContent() {
   const [user, setUser] = useState(null);
@@ -235,6 +236,24 @@ function ProfileContent() {
           <div className="pt-4 border-t border-border">
             <NotificationPreferences userEmail={user?.email} />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Help — Replay BlockWard Tour */}
+      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+        <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">BlockWard Tour</p>
+              <p className="text-sm text-muted-foreground">Replay the guided introduction to BlockWard.</p>
+            </div>
+          </div>
+          <Button variant="outline" onClick={() => resetTour()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Replay Tour
+          </Button>
         </CardContent>
       </Card>
 
