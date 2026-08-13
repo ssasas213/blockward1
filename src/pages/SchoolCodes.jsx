@@ -25,8 +25,44 @@ export default function SchoolCodes() {
   const [copied, setCopied] = useState({});
   const [regenerating, setRegenerating] = useState({});
   const [toggling, setToggling] = useState({});
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => { loadData(); }, []);
+
+  const generateInitialCodes = async () => {
+    if (!school) { toast.error('No school linked'); return; }
+    setGenerating(true);
+    try {
+      const user = await base44.auth.me();
+      const roleDefs = [
+        { role_type: 'teacher', suffix: 'TEACH', label: 'Teacher Join Code' },
+        { role_type: 'student', suffix: 'STUDENT', label: 'Student Join Code' },
+        { role_type: 'admin', suffix: 'ADMIN', label: 'Admin Join Code' },
+      ];
+      const created = [];
+      for (const def of roleDefs) {
+        const codeStr = generateCode(school.name, def.suffix);
+        const rec = await base44.entities.SchoolCode.create({
+          school_id: school.id,
+          school_name: school.name,
+          code: codeStr,
+          role_type: def.role_type,
+          status: 'active',
+          created_by: user.email,
+          label: def.label,
+        });
+        created.push(rec);
+      }
+      const order = { teacher: 0, student: 1, admin: 2 };
+      created.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
+      setCodes(created);
+      toast.success('Join codes created');
+    } catch (error) {
+      toast.error(error.message || 'Failed to generate codes');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -128,7 +164,13 @@ export default function SchoolCodes() {
         <Card className="border-border bg-card/60">
           <CardContent className="py-12 text-center">
             <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">No codes found. Contact support if codes were not generated during setup.</p>
+            <p className="text-sm text-muted-foreground mb-5">
+              No join codes found for {school?.name || 'this school'}. Generate them now so teachers and students can join.
+            </p>
+            <Button onClick={generateInitialCodes} disabled={generating || !school}>
+              {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
+              {generating ? 'Generating…' : 'Generate Join Codes'}
+            </Button>
           </CardContent>
         </Card>
       ) : (
