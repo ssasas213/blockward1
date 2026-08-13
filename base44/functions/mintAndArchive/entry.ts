@@ -1,4 +1,8 @@
 /**
+ * ⚠️ DORMANT — NOT part of the current canonical flow. The old archive/Drive path
+ * is retired; the canonical delivery path is sendToStudentVault. Kept for backward
+ * compatibility only. Do not call from the UI.
+ *
  * mintAndArchive — DEPRECATED: Admin override archive path.
  *
  * This function previously archived to Google Drive. It has been converted to

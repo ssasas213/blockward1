@@ -1,3 +1,5 @@
+// ⚠️ DORMANT — NOT part of the current canonical flow. Legacy on-chain pending-award
+// reconciliation; deferred until blockchain minting is wired. Kept for future use.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { createPublicClient, http } from 'npm:viem@2.7.0';
 import { sepolia } from 'npm:viem@2.7.0/chains';

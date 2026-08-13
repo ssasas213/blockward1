@@ -1,4 +1,4 @@
-import { Clock, PenLine, CheckCircle2, XCircle, Sparkles, Archive, FileCheck, Shield } from 'lucide-react';
+import { Clock, PenLine, CheckCircle2, XCircle, Sparkles, Archive, FileCheck, Shield, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
@@ -6,7 +6,8 @@ const STATUS_CONFIG = {
   submitted:                    { label: 'Submitted',                  icon: Clock,         class: 'bg-primary/10 text-primary' },
   awaiting_teacher_signature:   { label: 'Awaiting Teacher Review',    icon: PenLine,       class: 'bg-warning/10 text-warning' },
   awaiting_admin_signature:     { label: 'Awaiting Admin Approval',    icon: PenLine,       class: 'bg-warning/10 text-warning' },
-  approved:                     { label: 'Approved',                   icon: CheckCircle2,  class: 'bg-success/10 text-success' },
+  approved:                     { label: 'Approved — Ready to Deliver', icon: CheckCircle2,  class: 'bg-success/10 text-success' },
+  delivering:                   { label: 'Delivering…',                 icon: Loader2,       class: 'bg-primary/10 text-primary' },
   delivered_to_vault:           { label: 'Delivered to Vault',         icon: Shield,        class: 'bg-success/10 text-success' },
   minted:                       { label: 'Ready for Vault',            icon: Sparkles,      class: 'bg-primary/10 text-primary' },
   archived:                     { label: 'Archived',                   icon: Archive,       class: 'bg-muted text-muted-foreground' },

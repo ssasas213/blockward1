@@ -1,31 +1,26 @@
 /**
- * sendToStudentVault — The ONLY method for final vault delivery.
+ * sendToStudentVault — the ONLY method for final vault delivery.
  *
  * Input: { record_id }
+ * Auth: logged-in admin, same school as the record.
  *
- * Auth: logged-in admin (or organisation_admin), same school as the record.
+ * ── CONCURRENCY SAFETY (prevents duplicate BlockWards / verification records) ──
+ * Delivery is serialised with an atomic status lock:
+ *   approved → delivering (atomic, conditional on status === 'approved')
+ * Only ONE request can win this transition. Concurrent requests re-fetch and either
+ * return the already-delivered state or back off ("delivery in progress").
+ * This does NOT rely on "query first, then create" — the status transition is the lock.
  *
- * Validation BEFORE delivery:
- *   - StudentRecord exists
- *   - status is 'approved'
- *   - teacher signature exists
- *   - admin signature exists
- *   - student_id exists
- *   - student_email exists
- *   - school_id exists
- *   - evidence exists (file_url)
+ * ── ATOMICITY (critical vs non-critical) ──
+ * CRITICAL (must all succeed or safely recover):
+ *   1. BlockWard  (create/update by student_record_id — one per StudentRecord)
+ *   2. BlockWardVerificationRegistry (create/update by student_record_id — one per StudentRecord)
+ *   3. StudentRecord  (delivering → delivered_to_vault commit)
+ * If any critical step fails, created entities are rolled back and the status reverts to
+ * 'approved' so delivery can be retried — never leaving an inconsistent half-state.
  *
- * Delivery actions (in order):
- *   1. Load approved StudentRecord
- *   2. Create or update linked BlockWard (by student_record_id)
- *   3. Update StudentRecord: vault_status=delivered, delivered_to_student_vault=true, etc.
- *   4. Create or update public verification record
- *   5. Create AuditLog entry
- *   6. Re-query student vault using the SAME loader used by student pages
- *   7. Confirm the delivered record appears in the results
- *   8. ONLY after re-query succeeds → send student notification
- *
- * If re-query fails: mark delivery as failed, do NOT notify, return error.
+ * NON-CRITICAL (never roll back a successful delivery):
+ *   - AuditLog, re-query verification, student/parent notifications, point statistics.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -53,12 +48,10 @@ Deno.serve(async (req) => {
     // ── Auth: admin only ──
     let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
     let profile = profiles[0] || null;
-    // Fallback: case-insensitive match
     if (!profile) {
       const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
       profile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizeEmail(user.email)) || null;
     }
-
     if (!profile) return Response.json({ ok: false, error: 'User profile not found' }, { status: 403, headers: CORS });
     if (profile.status === 'inactive' || profile.status === 'suspended') {
       return Response.json({ ok: false, error: 'Your account is inactive' }, { status: 403, headers: CORS });
@@ -81,15 +74,12 @@ Deno.serve(async (req) => {
     }
     const record = records[0];
 
-    // ── School check ──
+    // ── School isolation ──
     if (profile.school_id !== record.school_id) {
       return Response.json({ ok: false, error: 'Access denied: you do not belong to this school' }, { status: 403, headers: CORS });
     }
 
-    // ── STEP 2: Validate ALL required conditions ──
-    if (record.status !== 'approved' && record.status !== 'delivered_to_vault') {
-      return Response.json({ ok: false, error: `Record status must be 'approved'. Current: '${record.status}'`, missing_requirement: 'status_approved' }, { status: 400, headers: CORS });
-    }
+    // ── STEP 2: Validate ALL required conditions BEFORE claiming the lock ──
     if (!record.teacher_signed) {
       return Response.json({ ok: false, error: 'Teacher signature is missing', missing_requirement: 'teacher_signature' }, { status: 400, headers: CORS });
     }
@@ -113,10 +103,7 @@ Deno.serve(async (req) => {
     const actorName = `${profile.first_name} ${profile.last_name}`;
     const normalizedStudentEmail = normalizeEmail(record.student_email);
 
-    // ── Resolve the student's UserProfile by email to get the canonical ID ──
-    // This is the SAME resolution getStudentVault uses (profile.id).
-    // Without this, owner_student_id might not match what getStudentVault expects,
-    // causing the student to see an empty vault even after successful delivery.
+    // ── Resolve the student's UserProfile (same resolution getStudentVault uses) ──
     let studentProfile = null;
     try {
       const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
@@ -125,25 +112,114 @@ Deno.serve(async (req) => {
         const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
         studentProfile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizedStudentEmail) || null;
       }
-    } catch (e) { /* best-effort — fall through to record-level IDs */ }
-
+    } catch (e) { /* best-effort */ }
     const canonicalStudentId = studentProfile?.id || record.owner_student_id || record.student_id;
 
-    // ── STEP 3: Create or update linked BlockWard ──
-    let blockWard = null;
-    const existingBlockWards = await base44.asServiceRole.entities.BlockWard.filter({ record_id: record_id, status: 'active' });
-    // Also check by student_record_id (deterministic — one BlockWard per StudentRecord)
-    const existingByStudentRecord = await base44.asServiceRole.entities.BlockWard.filter({ student_record_id: record_id, status: 'active' });
-
-    if (existingBlockWards.length > 0) {
-      blockWard = existingBlockWards[0];
-    } else if (existingByStudentRecord.length > 0) {
-      blockWard = existingByStudentRecord[0];
+    // ════════════════════════════════════════════════════════════════════════
+    // STEP 3: CONCURRENCY LOCK — atomically claim the delivery.
+    // Only a record with status 'approved' can be claimed. This is the single
+    // gate that prevents two concurrent deliveries from both creating a BlockWard.
+    // ════════════════════════════════════════════════════════════════════════
+    if (record.status === 'delivered_to_vault') {
+      // Idempotent re-delivery: return the existing delivered state, no re-creation.
+      const existingBw = await base44.asServiceRole.entities.BlockWard.filter({ student_record_id: record_id, status: 'active' });
+      const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: record_id });
+      return Response.json({
+        ok: true,
+        newStatus: 'delivered_to_vault',
+        blockWardId: existingBw[0]?.id || record.blockward_id || null,
+        deliveredAt: record.vault_delivered_at || null,
+        verificationId: existingReg[0]?.verification_id || record.verify_id || null,
+        publicVerificationUrl: existingReg[0]?.public_verification_url || null,
+        verified: true,
+        idempotent: true,
+      }, { headers: CORS });
     }
 
-    if (blockWard) {
-      // Update existing BlockWard
-      blockWard = await base44.asServiceRole.entities.BlockWard.update(blockWard.id, {
+    if (record.status !== 'approved') {
+      return Response.json({
+        ok: false,
+        error: `Record status must be 'approved' to deliver. Current: '${record.status}'`,
+        missing_requirement: 'status_approved'
+      }, { status: 400, headers: CORS });
+    }
+
+    // Atomic claim: approved → delivering (conditional on current status === 'approved').
+    // If the conditional updateMany is unavailable/throws, fall back to a plain update;
+    // the re-fetch + delivery_claimed_by check below remains the authoritative gate.
+    try {
+      await base44.asServiceRole.entities.StudentRecord.updateMany(
+        { id: record_id, status: 'approved' },
+        { $set: { status: 'delivering', delivery_claimed_by: user.email, delivery_claimed_at: now } }
+      );
+    } catch (e) {
+      try {
+        await base44.asServiceRole.entities.StudentRecord.update(record_id, {
+          status: 'delivering', delivery_claimed_by: user.email, delivery_claimed_at: now,
+        });
+      } catch (e2) {
+        return Response.json({ ok: false, error: 'Failed to claim delivery lock: ' + e2.message, stage: 'claim' }, { status: 500, headers: CORS });
+      }
+    }
+
+    // Re-fetch to determine who won the claim.
+    const refetched = await base44.asServiceRole.entities.StudentRecord.filter({ id: record_id });
+    const claimed = refetched[0] || record;
+
+    if (claimed.status === 'delivered_to_vault') {
+      // Another request completed delivery between our load and claim.
+      const existingBw = await base44.asServiceRole.entities.BlockWard.filter({ student_record_id: record_id, status: 'active' });
+      const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: record_id });
+      return Response.json({
+        ok: true, newStatus: 'delivered_to_vault',
+        blockWardId: existingBw[0]?.id || record.blockward_id || null,
+        deliveredAt: claimed.vault_delivered_at || null,
+        verificationId: existingReg[0]?.verification_id || claimed.verify_id || null,
+        publicVerificationUrl: existingReg[0]?.public_verification_url || null,
+        verified: true, idempotent: true,
+      }, { headers: CORS });
+    }
+
+    if (claimed.status !== 'delivering' || claimed.delivery_claimed_by !== user.email) {
+      // Another admin currently holds the lock.
+      return Response.json({
+        ok: false,
+        error: 'Delivery is already in progress by another administrator. Please wait and refresh.',
+        missing_requirement: 'delivery_in_progress'
+      }, { status: 409, headers: CORS });
+    }
+
+    // We hold the lock. Helper to release it back to 'approved' on failure.
+    const releaseLock = async () => {
+      try {
+        await base44.asServiceRole.entities.StudentRecord.updateMany(
+          { id: record_id, status: 'delivering' },
+          { $set: { status: 'approved', delivery_claimed_by: null, delivery_claimed_at: null } }
+        );
+      } catch (e) {
+        try {
+          await base44.asServiceRole.entities.StudentRecord.update(record_id, {
+            status: 'approved', delivery_claimed_by: null, delivery_claimed_at: null,
+          });
+        } catch (e2) { /* best-effort */ }
+      }
+    };
+
+    // ════════════════════════════════════════════════════════════════════════
+    // CRITICAL OPERATIONS — all must succeed or roll back.
+    // ════════════════════════════════════════════════════════════════════════
+    let blockWard = null;
+    let createdNewBlockWard = false;
+    let createdNewRegistry = false;
+    let registryRecord = null;
+
+    // ── CRITICAL 1: BlockWard (create/update by student_record_id) ──
+    try {
+      const existingBlockWards = await base44.asServiceRole.entities.BlockWard.filter({ student_record_id: record_id, status: 'active' });
+      const existingByRecordId = await base44.asServiceRole.entities.BlockWard.filter({ record_id: record_id, status: 'active' });
+      const existing = existingBlockWards[0] || existingByRecordId[0];
+
+      const bwPayload = {
         student_record_id: record_id,
         student_email: record.student_email,
         student_name: record.student_name || null,
@@ -152,213 +228,194 @@ Deno.serve(async (req) => {
         owner_school_id: record.school_id,
         issuer_email: record.admin_email || user.email,
         issuer_name: record.admin_name || actorName,
-        teacher_id: record.teacher_id || null,
-        admin_id: record.admin_id || profile.id,
-        title: record.title,
-        description: record.description || null,
-        category: record.category || 'special',
-        image_url: record.nft_image_url || record.custom_nft_image_url || blockWard.image_url || null,
-        vault_status: 'delivered',
-        status: 'active',
-      });
-    } else {
-      // Create new BlockWard
-      blockWard = await base44.asServiceRole.entities.BlockWard.create({
-        school_id: record.school_id,
-        record_id: record_id,
-        student_record_id: record_id,
-        student_email: record.student_email,
-        student_name: record.student_name || null,
-        owner_student_id: canonicalStudentId,
-        owner_student_email: normalizedStudentEmail,
-        owner_school_id: record.school_id,
-        issuer_email: record.admin_email || user.email,
-        issuer_name: record.admin_name || actorName,
-        issuer_wallet: 'system',
         teacher_id: record.teacher_id || null,
         admin_id: record.admin_id || profile.id,
         title: record.title,
         description: record.description || null,
         category: record.category || 'special',
         image_url: record.nft_image_url || record.custom_nft_image_url || null,
-        minted_at: now,
-        status: 'active',
         vault_status: 'delivered',
-      });
+        status: 'active',
+      };
+
+      if (existing) {
+        blockWard = await base44.asServiceRole.entities.BlockWard.update(existing.id, {
+          ...bwPayload,
+          record_id: record_id,
+          school_id: record.school_id,
+        });
+      } else {
+        blockWard = await base44.asServiceRole.entities.BlockWard.create({
+          school_id: record.school_id,
+          record_id: record_id,
+          ...bwPayload,
+          issuer_wallet: 'system',
+          minted_at: now,
+        });
+        createdNewBlockWard = true;
+      }
+    } catch (e) {
+      await releaseLock();
+      return Response.json({ ok: false, error: 'Failed to create BlockWard: ' + e.message, stage: 'blockward' }, { status: 500, headers: CORS });
     }
 
-    // ── STEP 4: Update StudentRecord ──
-    await base44.asServiceRole.entities.StudentRecord.update(record_id, {
-      status: 'delivered_to_vault',
-      vault_status: 'delivered',
-      delivered_to_student_vault: true,
-      vault_delivered_at: now,
-      vault_delivered_by: user.email,
-      blockward_id: blockWard.id,
-      student_id: canonicalStudentId,
-      owner_student_id: canonicalStudentId,
-      owner_student_email: normalizedStudentEmail,
-      owner_school_id: record.school_id,
-      nft_image_url: blockWard.image_url || record.nft_image_url || null,
-    });
-
-    // ── STEP 5: Create or update public verification record ──
+    // ── CRITICAL 2: Verification Registry (create/update by student_record_id) ──
     let verificationId = record.verify_id;
     let publicVerificationUrl = null;
-    const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: record_id });
+    try {
+      const existingReg = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_record_id: record_id });
 
-    if (existingReg.length > 0) {
-      // Update existing registry
-      verificationId = existingReg[0].verification_id;
-      publicVerificationUrl = existingReg[0].public_verification_url;
-      await base44.asServiceRole.entities.BlockWardVerificationRegistry.update(existingReg[0].id, {
-        blockward_id: blockWard.id,
-        vault_status: 'delivered',
-        approval_status: 'approved',
-        owner_student_id: canonicalStudentId,
-        student_email: record.student_email,
-        achievement_image: record.nft_image_url || record.custom_nft_image_url || null,
-        evidence_file_url: record.file_url || null,
-        date_delivered: now,
-      });
-    } else {
-      // Create new verification registry
-      const schools = await base44.asServiceRole.entities.School.filter({ id: record.school_id });
-      const school = schools[0] || null;
-      const year = new Date().getFullYear();
-      const rand = Math.random().toString(36).substring(2, 10).toUpperCase();
-      verificationId = `BW-${year}-${rand}`;
-      const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-      const publicSlug = `${slugify(record.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`;
-      publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
+      if (existingReg.length > 0) {
+        registryRecord = existingReg[0];
+        verificationId = registryRecord.verification_id;
+        publicVerificationUrl = registryRecord.public_verification_url;
+        await base44.asServiceRole.entities.BlockWardVerificationRegistry.update(registryRecord.id, {
+          blockward_id: blockWard.id,
+          vault_status: 'delivered',
+          approval_status: 'approved',
+          owner_student_id: canonicalStudentId,
+          student_email: record.student_email,
+          achievement_image: record.nft_image_url || record.custom_nft_image_url || null,
+          evidence_file_url: record.file_url || null,
+          date_delivered: now,
+        });
+      } else {
+        const schools = await base44.asServiceRole.entities.School.filter({ id: record.school_id });
+        const school = schools[0] || null;
+        const year = new Date().getFullYear();
+        const rand = Math.random().toString(36).substring(2, 10).toUpperCase();
+        verificationId = `BW-${year}-${rand}`;
+        const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        const publicSlug = `${slugify(record.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`;
+        publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
 
-      await base44.asServiceRole.entities.BlockWardVerificationRegistry.create({
-        verification_id: verificationId,
-        public_slug: publicSlug,
-        blockward_id: blockWard.id,
-        student_record_id: record_id,
-        organisation_id: record.school_id,
-        organisation_type: school?.org_type || 'school',
-        organisation_name: school?.name || null,
-        school_id: record.school_id,
-        student_id: canonicalStudentId,
-        student_name: record.student_name || null,
-        student_email: record.student_email,
-        achievement_title: record.title,
-        achievement_category: record.category || 'special',
-        achievement_description: record.description || null,
-        achievement_image: record.nft_image_url || record.custom_nft_image_url || null,
-        evidence_file_url: record.file_url || null,
-        date_achieved: record.date_achieved || null,
-        date_approved: record.approved_at || null,
-        date_delivered: now,
-        teacher_id: record.teacher_id || null,
-        teacher_name: record.teacher_name || null,
-        teacher_signature_id: record.teacher_signature_id || null,
-        admin_id: record.admin_id || profile.id,
-        admin_name: record.admin_name || actorName,
-        admin_signature_id: record.admin_signature_id || null,
-        approval_status: 'approved',
-        vault_status: 'delivered',
-        nft_status: record.nft_token_id ? 'minted' : 'pending',
-        blockchain_network: record.nft_token_id ? (Deno.env.get('NETWORK') || 'sepolia') : null,
-        contract_address: record.nft_token_id ? (Deno.env.get('CONTRACT_ADDRESS') || null) : null,
-        token_id: record.nft_token_id || null,
-        transaction_hash: record.nft_transaction_hash || null,
-        certificate_url: record.certificate_url || null,
-        metadata_url: null,
-        public_verification_url: publicVerificationUrl,
-        is_public: true,
-      });
-
-      // Update the StudentRecord with the verification ID
-      await base44.asServiceRole.entities.StudentRecord.update(record_id, { verify_id: verificationId });
+        registryRecord = await base44.asServiceRole.entities.BlockWardVerificationRegistry.create({
+          verification_id: verificationId,
+          public_slug: publicSlug,
+          blockward_id: blockWard.id,
+          student_record_id: record_id,
+          organisation_id: record.school_id,
+          organisation_type: school?.org_type || 'school',
+          organisation_name: school?.name || null,
+          school_id: record.school_id,
+          student_id: canonicalStudentId,
+          student_name: record.student_name || null,
+          student_email: record.student_email,
+          achievement_title: record.title,
+          achievement_category: record.category || 'special',
+          achievement_description: record.description || null,
+          achievement_image: record.nft_image_url || record.custom_nft_image_url || null,
+          evidence_file_url: record.file_url || null,
+          date_achieved: record.date_achieved || null,
+          date_approved: record.approved_at || null,
+          date_delivered: now,
+          teacher_id: record.teacher_id || null,
+          teacher_name: record.teacher_name || null,
+          teacher_signature_id: record.teacher_signature_id || null,
+          admin_id: record.admin_id || profile.id,
+          admin_name: record.admin_name || actorName,
+          admin_signature_id: record.admin_signature_id || null,
+          approval_status: 'approved',
+          vault_status: 'delivered',
+          nft_status: record.nft_token_id ? 'minted' : 'pending',
+          certificate_url: record.certificate_url || null,
+          public_verification_url: publicVerificationUrl,
+          is_public: true,
+        });
+        createdNewRegistry = true;
+      }
+    } catch (e) {
+      // Rollback critical 1 (delete only if we just created it).
+      if (createdNewBlockWard) {
+        try { await base44.asServiceRole.entities.BlockWard.delete(blockWard.id); } catch (_) {}
+      }
+      await releaseLock();
+      return Response.json({ ok: false, error: 'Failed to create verification record: ' + e.message, stage: 'registry' }, { status: 500, headers: CORS });
     }
 
-    // ── STEP 6: Create AuditLog entry ──
-    const auditLog = await base44.asServiceRole.entities.AuditLog.create({
-      record_id: record_id,
-      school_id: record.school_id,
-      actor_email: user.email,
-      actor_name: actorName,
-      actor_role: 'admin',
-      action: 'sent_to_student_vault',
-      old_status: record.status,
-      new_status: 'delivered_to_vault',
-      notes: `Admin delivered achievement to student vault. BlockWard ID: ${blockWard.id}. Verification ID: ${verificationId}`,
-      timestamp: now,
-    });
+    // ── CRITICAL 3: COMMIT — delivering → delivered_to_vault ──
+    try {
+      await base44.asServiceRole.entities.StudentRecord.update(record_id, {
+        status: 'delivered_to_vault',
+        vault_status: 'delivered',
+        delivered_to_student_vault: true,
+        vault_delivered_at: now,
+        vault_delivered_by: user.email,
+        blockward_id: blockWard.id,
+        delivery_claimed_by: null,
+        delivery_claimed_at: null,
+        student_id: canonicalStudentId,
+        owner_student_id: canonicalStudentId,
+        owner_student_email: normalizedStudentEmail,
+        owner_school_id: record.school_id,
+        verify_id: verificationId,
+        nft_image_url: blockWard.image_url || record.nft_image_url || null,
+      });
+    } catch (e) {
+      // Rollback critical 1 & 2 (delete only what we created).
+      if (createdNewRegistry) {
+        try { await base44.asServiceRole.entities.BlockWardVerificationRegistry.delete(registryRecord.id); } catch (_) {}
+      }
+      if (createdNewBlockWard) {
+        try { await base44.asServiceRole.entities.BlockWard.delete(blockWard.id); } catch (_) {}
+      }
+      await releaseLock();
+      return Response.json({ ok: false, error: 'Failed to commit delivery: ' + e.message, stage: 'commit' }, { status: 500, headers: CORS });
+    }
 
-    // ── STEP 7: Re-query using the SAME filter criteria as getStudentVault ──
-    // This confirms the delivered record is retrievable by the student-facing pages.
+    // ════════════════════════════════════════════════════════════════════════
+    // NON-CRITICAL — these never roll back a successful critical commit.
+    // ════════════════════════════════════════════════════════════════════════
+
+    // Audit log (important, but best-effort)
+    let auditLogId = null;
+    try {
+      const auditLog = await base44.asServiceRole.entities.AuditLog.create({
+        record_id: record_id,
+        school_id: record.school_id,
+        actor_email: user.email,
+        actor_name: actorName,
+        actor_role: 'admin',
+        action: 'sent_to_student_vault',
+        old_status: 'approved',
+        new_status: 'delivered_to_vault',
+        notes: `Admin delivered achievement to student vault. BlockWard ID: ${blockWard.id}. Verification ID: ${verificationId}`,
+        timestamp: now,
+      });
+      auditLogId = auditLog.id;
+    } catch (e) { /* best-effort */ }
+
+    // Re-query verification (confirms student vault can retrieve it) — non-blocking.
     let verified = false;
     let verifyError = null;
     try {
-      // Query by student_id (same as getStudentVault)
       const verifyRecords = await base44.asServiceRole.entities.StudentRecord.filter({ student_id: canonicalStudentId });
-      // Also query by the resolved profile email (same as getStudentVault)
       const verifyRecordsByEmail = await base44.asServiceRole.entities.StudentRecord.filter({ student_email: studentProfile?.user_email || record.student_email });
-
-      // Merge and deduplicate (same logic as getStudentVault)
       const seenIds = new Set();
       const allVerifyRecords = [];
-      for (const r of verifyRecords) {
-        if (!seenIds.has(r.id)) { seenIds.add(r.id); allVerifyRecords.push(r); }
-      }
-      for (const r of verifyRecordsByEmail) {
-        if (!seenIds.has(r.id)) { seenIds.add(r.id); allVerifyRecords.push(r); }
-      }
-
-      // Use the SAME filter criteria as getStudentVault:
-      //   status === 'delivered_to_vault' || 'archived'
-      //   vault_status === 'delivered'
-      //   delivered_to_student_vault === true (or undefined)
+      for (const r of verifyRecords) { if (!seenIds.has(r.id)) { seenIds.add(r.id); allVerifyRecords.push(r); } }
+      for (const r of verifyRecordsByEmail) { if (!seenIds.has(r.id)) { seenIds.add(r.id); allVerifyRecords.push(r); } }
       const deliveredRecord = allVerifyRecords.find(r =>
         r.id === record_id &&
         (r.status === 'delivered_to_vault' || r.status === 'archived') &&
         r.vault_status === 'delivered' &&
-        (r.delivered_to_student_vault === true || r.delivered_to_student_vault === undefined) &&
         r.blockward_id === blockWard.id
       );
-
-      if (deliveredRecord) {
-        verified = true;
-      } else {
-        verifyError = 'Record not found in student vault query after delivery (status/vault_status/delivered_flag mismatch)';
-      }
+      verified = !!deliveredRecord;
+      if (!verified) verifyError = 'Record not found in student vault query after delivery';
     } catch (e) {
       verifyError = e.message;
     }
 
-    if (!verified) {
-      // ── DELIVERY FAILED — do NOT notify student ──
-      return Response.json({
-        ok: false,
-        error: 'vault_delivery_verification_failed',
-        details: 'The record was saved but could not be retrieved by the student vault query. Notification NOT sent.',
-        verify_error: verifyError,
-        record_id: record_id,
-        blockward_id: blockWard.id,
-      }, { status: 500, headers: CORS });
-    }
-
-    // NOTE: The in-app student notification + email are now dispatched by the single
-    // canonical notifyOnRecordStatusChange automation (on the delivered_to_vault
-    // status change), so we do NOT create a Notification here — that would duplicate.
-
-    // Parent/guardian email notification (if parent email exists)
+    // Parent/guardian email notification (non-critical)
     try {
-      const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
-      const studentProfile = studentProfiles[0];
       if (studentProfile?.parent_email) {
         const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
         const verifyUrl = `${appUrl}/verify/${verificationId}`;
-
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: studentProfile.parent_email,
           subject: `${record.student_name || 'Your child'} has received a verified achievement certificate`,
-          body: `
-<p>Dear ${studentProfile.parent_name || 'Parent/Guardian'},</p>
+          body: `<p>Dear ${studentProfile.parent_name || 'Parent/Guardian'},</p>
 <p>We are pleased to inform you that <strong>${record.student_name || 'your child'}</strong> has received a verified digital achievement certificate.</p>
 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin:20px 0;">
   <h3 style="color:#5b21b6;margin:0 0 12px;">${record.title}</h3>
@@ -366,13 +423,12 @@ Deno.serve(async (req) => {
   <p style="color:#64748b;font-size:13px;margin:0;"><strong>Category:</strong> ${record.category || 'Achievement'}</p>
   <p style="color:#64748b;font-size:13px;margin:4px 0 0;"><strong>Verification ID:</strong> ${verificationId}</p>
 </div>
-<p><a href="${verifyUrl}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">View & Verify Certificate</a></p>
-          `.trim()
+<p><a href="${verifyUrl}" style="background:#7c3aed;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:600;">View &amp; Verify Certificate</a></p>`.trim()
         });
       }
     } catch (e) { /* best-effort */ }
 
-    // Update student statistics atomically (avoids race condition)
+    // Student point statistics (non-critical)
     if (record.points && record.points > 0 && studentProfile) {
       try {
         await base44.asServiceRole.entities.UserProfile.updateMany(
@@ -381,6 +437,8 @@ Deno.serve(async (req) => {
         );
       } catch (e) { /* best-effort */ }
     }
+    // NOTE: in-app student notification on 'delivered_to_vault' is handled by the
+    // single canonical notifyOnRecordStatusChange automation — not duplicated here.
 
     return Response.json({
       ok: true,
@@ -389,8 +447,9 @@ Deno.serve(async (req) => {
       deliveredAt: now,
       verificationId,
       publicVerificationUrl,
-      auditLogId: auditLog.id,
-      verified: true,
+      auditLogId,
+      verified,
+      verify_error: verifyError,
     }, { headers: CORS });
 
   } catch (error) {

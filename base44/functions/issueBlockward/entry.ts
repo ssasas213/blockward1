@@ -1,3 +1,6 @@
+// ⚠️ DORMANT — NOT part of the current canonical flow. On-chain minting is deferred.
+// The canonical delivery path is sendToStudentVault (DB-backed BlockWard). This
+// function is kept for future blockchain integration. Do not call from the UI.
 // issueBlockward - canonical version, delegates to issueBlockwardV2 logic
 // Soulbound NFT: minted directly to student via issueAward, no transfer needed
 import { createPublicClient, createWalletClient, http, parseAbi, getAddress } from "npm:viem@2.7.0";

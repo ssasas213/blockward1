@@ -62,6 +62,14 @@
       "type": "string",
       "description": "PERMANENT OWNER \u2014 school_id at time of creation. Immutable ownership anchor."
     },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "student",
+        "teacher"
+      ],
+      "description": "Who originally submitted the achievement. Determines the editor when changes are requested: student-submitted \u2192 student edits; teacher-issued \u2192 issuing teacher edits."
+    },
     "title": {
       "type": "string"
     },
@@ -140,13 +148,23 @@
         "awaiting_admin_signature",
         "changes_requested",
         "approved",
+        "delivering",
+        "delivered_to_vault",
         "minted",
         "archived",
-        "delivered_to_vault",
         "rejected"
       ],
       "default": "draft",
-      "description": "Workflow status"
+      "description": "Workflow status. 'delivering' is a transient lock status set atomically during vault delivery to prevent concurrent duplicate BlockWards."
+    },
+    "delivery_claimed_by": {
+      "type": "string",
+      "description": "Admin email that currently holds the delivery lock (transient, set during 'delivering' status)."
+    },
+    "delivery_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the delivery lock was claimed."
     },
     "changes_requested_reason": {
       "type": "string",

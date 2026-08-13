@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/loading-skeleton';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
 import WorkflowTimeline from '@/components/records/WorkflowTimeline';
+import NextActionBadge from '@/components/records/NextActionBadge';
 import EditResubmitDialog from '@/components/records/EditResubmitDialog';
 import SignatureSetup from '@/components/records/SignatureSetup';
 import SignatureConfirmDialog from '@/components/records/SignatureConfirmDialog';
@@ -249,6 +250,7 @@ export default function RecordDetail() {
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold text-foreground">{record.title}</h1>
             <StatusBadge status={record.status} />
+            <NextActionBadge status={record.status} record={record} />
             <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600'}`}>
               {record.category}
             </span>
@@ -287,6 +289,23 @@ export default function RecordDetail() {
         </div>
       )}
 
+      {/* Delivery in progress banner (transient lock status) */}
+      {record.status === 'delivering' && (
+        <div className="rounded-lg p-4 bg-primary/5 border border-primary/20">
+          <div className="flex items-start gap-3">
+            <Loader2 className="h-5 w-5 text-primary animate-spin flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-primary">Delivering BlockWard…</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {record.delivery_claimed_by && record.delivery_claimed_by !== user?.email
+                  ? `Delivery is in progress by ${record.delivery_claimed_by}. Please wait and refresh.`
+                  : 'Delivery is in progress. Please wait a moment and refresh.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Approved banner */}
       {canSendToVault && (
         <div className="rounded-lg p-4 bg-success/5 border border-success/20">
@@ -305,20 +324,64 @@ export default function RecordDetail() {
         </div>
       )}
 
-      {/* Delivered banner */}
+      {/* Delivered banner — full success card for admins */}
       {record.status === 'delivered_to_vault' && (
-        <div className="rounded-lg p-4 bg-success/5 border border-success/20">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-success">Delivered to Student Vault</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                This achievement has been delivered to the student's BlockWard Vault.
-                {record.vault_delivered_at && ` Delivered on ${format(new Date(record.vault_delivered_at), 'MMM d, yyyy HH:mm')}.`}
-              </p>
+        <Card className="shadow-sm border-success/20 bg-success/5">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="h-9 w-9 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+                <ShieldCheck className="h-5 w-5 text-success" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-success flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" /> BlockWard Delivered
+                </p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  This achievement has been delivered to the student's BlockWard Vault.
+                </p>
+              </div>
             </div>
-          </div>
-        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm mb-4 pl-12">
+              <div>
+                <span className="text-muted-foreground">Student: </span>
+                <span className="font-medium text-foreground">{record.student_name}</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Achievement: </span>
+                <span className="font-medium text-foreground">{record.title}</span>
+              </div>
+              {record.verify_id && (
+                <div>
+                  <span className="text-muted-foreground">Verification ID: </span>
+                  <span className="font-mono text-xs text-foreground">{record.verify_id}</span>
+                </div>
+              )}
+              {record.vault_delivered_at && (
+                <div>
+                  <span className="text-muted-foreground">Delivered: </span>
+                  <span className="font-medium text-foreground">{format(new Date(record.vault_delivered_at), 'MMM d, yyyy HH:mm')}</span>
+                </div>
+              )}
+            </div>
+            {profile?.user_type === 'admin' && (
+              <div className="flex flex-wrap gap-2 pl-12">
+                <Button size="sm" variant="outline" asChild>
+                  <Link to={`/verify/${record.verify_id}`} target="_blank">
+                    <Shield className="h-3.5 w-3.5 mr-1.5" /> View BlockWard
+                  </Link>
+                </Button>
+                <Button size="sm" variant="outline" onClick={copyVerifyLink}>
+                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Verification Link
+                </Button>
+                <Button size="sm" variant="ghost" asChild>
+                  <Link to={createPageUrl('AdminApprovalQueue')}>
+                    <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Return to Approvals
+                  </Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* NFT Card */}
@@ -374,9 +437,9 @@ export default function RecordDetail() {
           </Button>
         )}
         {canSendToVault && (
-          <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason}>
+          <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason} className="min-w-[200px]">
             {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
-            Send to Student Vault
+            {sendingVault ? 'Delivering BlockWard…' : 'Send to Student Vault'}
           </Button>
         )}
         {canRequestChanges && (

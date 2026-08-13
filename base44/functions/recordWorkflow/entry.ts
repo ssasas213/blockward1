@@ -102,7 +102,8 @@ Deno.serve(async (req) => {
     }
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
       status: 'awaiting_teacher_signature',
-      submitted_at: now
+      submitted_at: now,
+      origin: 'student'
     });
     await audit(base44, recordId, record.school_id, user.email, actorName, 'student', 'submitted', 'draft', 'awaiting_teacher_signature', 'Student submitted achievement for teacher review');
     return Response.json({ ok: true, newStatus: 'awaiting_teacher_signature' }, { headers: CORS });
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
     await base44.asServiceRole.entities.StudentRecord.update(recordId, {
       status: 'awaiting_teacher_signature',
       submitted_at: now,
+      origin: 'teacher',
       teacher_id: profile.id,
       teacher_email: user.email,
       teacher_name: actorName,
@@ -288,11 +290,29 @@ Deno.serve(async (req) => {
     if (profile.user_type !== 'student' && profile.user_type !== 'teacher') {
       return Response.json({ ok: false, error: 'Only students or teachers can resubmit after changes' }, { status: 403, headers: CORS });
     }
-    if (profile.user_type === 'student' && record.student_email !== user.email) {
-      return Response.json({ ok: false, error: 'You can only resubmit your own records' }, { status: 403, headers: CORS });
-    }
-    if (profile.user_type === 'teacher' && record.teacher_email && record.teacher_email !== user.email) {
-      return Response.json({ ok: false, error: 'Only the assigned teacher can resubmit this record' }, { status: 403, headers: CORS });
+    // Origin-based ownership: the editor is determined by WHO ORIGINALLY SUBMITTED the
+    // achievement, not just by who is assigned. This prevents unrelated students or
+    // teachers from editing a record simply because its status is 'changes_requested'.
+    //   origin 'student'  → only the owning student may edit
+    //   origin 'teacher' → only the issuing teacher may edit
+    // Legacy records without an origin fall back to the permissive student-own / teacher-assigned rule.
+    const origin = record.origin;
+    if (origin === 'student') {
+      if (profile.user_type !== 'student' || record.student_email !== user.email) {
+        return Response.json({ ok: false, error: 'This student-submitted achievement can only be edited by the student who owns it' }, { status: 403, headers: CORS });
+      }
+    } else if (origin === 'teacher') {
+      if (profile.user_type !== 'teacher' || (record.teacher_email && record.teacher_email !== user.email)) {
+        return Response.json({ ok: false, error: 'This teacher-issued achievement can only be edited by the issuing teacher' }, { status: 403, headers: CORS });
+      }
+    } else {
+      // Legacy record (no origin) — keep the original permissive rule.
+      if (profile.user_type === 'student' && record.student_email !== user.email) {
+        return Response.json({ ok: false, error: 'You can only resubmit your own records' }, { status: 403, headers: CORS });
+      }
+      if (profile.user_type === 'teacher' && record.teacher_email && record.teacher_email !== user.email) {
+        return Response.json({ ok: false, error: 'Only the assigned teacher can resubmit this record' }, { status: 403, headers: CORS });
+      }
     }
 
     const updatedFields = body.updatedFields || {};

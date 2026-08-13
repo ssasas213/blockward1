@@ -42,6 +42,11 @@ Deno.serve(async (req) => {
     // Only act on actual status transitions — never on unrelated field updates.
     if (newStatus === oldStatus) return Response.json({ ok: true, skipped: 'no status change' });
 
+    // 'delivering' is a transient concurrency-lock status during vault delivery.
+    // It is never user-facing and must not notify, nor set the idempotency marker
+    // (so the subsequent delivered_to_vault transition still dispatches correctly).
+    if (newStatus === 'delivering') return Response.json({ ok: true, skipped: 'transient delivering lock' });
+
     // Idempotency: a transition is dispatched at most once, even on retries.
     if (data.last_notified_status === newStatus) {
       return Response.json({ ok: true, skipped: 'already notified for this status' });

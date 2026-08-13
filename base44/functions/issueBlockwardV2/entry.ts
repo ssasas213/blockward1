@@ -1,3 +1,5 @@
+// ⚠️ DORMANT — NOT part of the current canonical flow. On-chain minting is deferred.
+// Kept for future blockchain integration. Do not call from the UI.
 // issueBlockwardV2 - clean slate, viem only
 // teacherVault ALWAYS = signer address (ISSUER_PRIVATE_KEY derived address)
 import { createPublicClient, createWalletClient, http, parseAbi, getAddress } from "npm:viem@2.7.0";

@@ -8,6 +8,7 @@ const STATUS_CONFIG = {
   awaiting_admin_signature: { label: "Awaiting Admin Approval", className: "bg-warning/10 text-warning" },
   changes_requested: { label: "Changes Requested", className: "bg-accent/10 text-accent" },
   approved: { label: "Approved", className: "bg-success/10 text-success" },
+  delivering: { label: "Delivering…", className: "bg-primary/10 text-primary" },
   minted: { label: "Ready for Vault", className: "bg-primary/10 text-primary" },
   archived: { label: "Archived", className: "bg-muted text-muted-foreground" },
   delivered_to_vault: { label: "Delivered to Vault", className: "bg-success/10 text-success" },

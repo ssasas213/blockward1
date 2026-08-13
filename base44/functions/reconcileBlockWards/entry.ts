@@ -1,3 +1,5 @@
+// ⚠️ DORMANT — NOT part of the current canonical flow. On-chain reconcile/verify
+// is deferred until blockchain minting is wired. Kept for future use.
 // reconcileBlockWards - scans all BlockWard records, verifies tx on Sepolia, repairs status
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { createPublicClient, http } from 'npm:viem@2.7.0';
