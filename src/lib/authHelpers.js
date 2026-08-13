@@ -57,25 +57,63 @@ export async function handlePostLoginRedirect() {
 
   const role = profile.user_type; // admin | teacher | student
 
-  // Determine which platform the user belongs to
-  // Check role_label first (set during onboarding for org users)
+  // ===== Resolve school membership BEFORE picking a destination. =====
+  // This prevents landing a no-school user on a dashboard (which then bounces
+  // through the route guard) and routes a pending teacher/admin to the
+  // awaiting-approval screen instead of the dashboard.
+  // Admin: owns a school (admin_email) OR active AdminSchoolMembership.
+  // Teacher: school_id on profile OR active StaffMembership.
+  // Student: school_id on profile (auto-linked at join time).
+  let hasSchool = !!(profile.school_id || profile.active_school_id);
+  let pendingMembership = false;
+
+  if (!hasSchool) {
+    if (role === 'admin') {
+      try {
+        const owned = await base44.entities.School.filter({ admin_email: user.email });
+        if (owned.length > 0) {
+          hasSchool = true;
+        } else {
+          const memberships = await base44.entities.AdminSchoolMembership.filter({ admin_email: user.email });
+          if (memberships.some(m => m.status === 'active')) hasSchool = true;
+          else if (memberships.some(m => m.status === 'pending')) pendingMembership = true;
+        }
+      } catch { /* ignore — treat as no school */ }
+    } else if (role === 'teacher') {
+      try {
+        const staff = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        if (staff.some(s => s.status === 'active')) hasSchool = true;
+        else if (staff.some(s => s.status === 'pending')) pendingMembership = true;
+      } catch { /* ignore */ }
+    }
+  }
+
+  // Pending join request — show the awaiting-approval state on the Login page
+  if (pendingMembership) return 'pending';
+
+  // No school linked yet — route to setup, not the dashboard
+  if (!hasSchool) {
+    window.location.href = role === 'admin' ? '/SchoolSetup' : '/JoinSchool';
+    return null;
+  }
+
+  // ===== Determine platform (organisations vs schools) =====
   const roleLabel = (profile.role_label || '').toLowerCase();
   let platform = roleLabel.includes('organisation') || roleLabel.includes('org')
     ? 'organisations'
     : 'schools';
 
-  // If school_id exists, check the school's org_type
-  if (platform === 'schools' && profile.school_id) {
-    try {
-      const schools = await base44.entities.School.filter({ id: profile.school_id });
-      if (schools.length > 0) {
-        const orgType = schools[0].org_type || 'school';
-        if (orgType !== 'school') {
+  if (platform === 'schools') {
+    const schoolId = profile.active_school_id || profile.school_id;
+    if (schoolId) {
+      try {
+        const schools = await base44.entities.School.filter({ id: schoolId });
+        if (schools.length > 0 && (schools[0].org_type || 'school') !== 'school') {
           platform = 'organisations';
         }
+      } catch {
+        /* ignore — default to schools */
       }
-    } catch {
-      /* ignore — default to schools */
     }
   }
 
