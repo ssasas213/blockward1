@@ -265,7 +265,7 @@ export default function StudentPortfolioVault() {
     <div className="max-w-5xl mx-auto space-y-6">
       <PageHeader
         title="Portfolio Vault"
-        description="Your permanent digital achievement portfolio"
+        description="Your permanent collection of verified achievements."
       >
         <Button variant="outline" onClick={() => setShareOpen(true)}>
           <Share2 className="h-4 w-4 mr-2" /> Share

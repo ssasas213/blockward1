@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/loading-skeleton';
 import SignatureCapture from '@/components/records/SignatureCapture';
 import AuditTrail from '@/components/records/AuditTrail';
 import WorkflowTimeline from '@/components/records/WorkflowTimeline';
+import WorkflowStepper from '@/components/records/WorkflowStepper';
 import NextActionBadge from '@/components/records/NextActionBadge';
 import EditResubmitDialog from '@/components/records/EditResubmitDialog';
 import SignatureSetup from '@/components/records/SignatureSetup';
@@ -259,6 +260,13 @@ export default function RecordDetail() {
         </div>
       </div>
 
+      {/* Status + lifecycle stepper */}
+      <Card className="surface-card">
+        <CardContent className="p-5">
+          <WorkflowStepper record={record} />
+        </CardContent>
+      </Card>
+
       {/* Rejection banner */}
       {record.status === 'rejected' && (record.rejection_reason || record.teacher_rejection_reason) && (
         <div className="rounded-lg p-4 bg-destructive/5 border border-destructive/20">
@@ -306,20 +314,26 @@ export default function RecordDetail() {
         </div>
       )}
 
-      {/* Approved banner */}
+      {/* Approved hero — ready for vault delivery */}
       {canSendToVault && (
-        <div className="rounded-lg p-4 bg-success/5 border border-success/20">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-success">Approved — Ready for Vault Delivery</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Click "Send to Student Vault" to deliver this achievement to the student's BlockWard Vault.
-              </p>
-              {vaultBlockReason && (
-                <p className="text-sm text-destructive mt-2 font-medium">{vaultBlockReason}</p>
-              )}
+        <div className="rounded-xl p-5 bg-success/5 border border-success/20">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="h-11 w-11 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="h-6 w-6 text-success" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-success tracking-tight">Approved</p>
+                <p className="text-sm text-muted-foreground">Ready to be delivered to the student's BlockWard Vault.</p>
+                {vaultBlockReason && (
+                  <p className="text-sm text-destructive mt-1.5 font-medium">{vaultBlockReason}</p>
+                )}
+              </div>
             </div>
+            <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason} size="lg" className="sm:min-w-[220px]">
+              {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
+              {sendingVault ? 'Securing BlockWard…' : 'Send to Student Vault'}
+            </Button>
           </div>
         </div>
       )}
@@ -412,7 +426,7 @@ export default function RecordDetail() {
         </Card>
       )}
 
-      {/* Action Bar */}
+      {/* Action Bar — student & teacher actions (admin actions live in the right approval panel) */}
       <div className="flex flex-wrap gap-3">
         {canSubmit && (
           <Button onClick={handleSubmit} disabled={submitting}>
@@ -420,7 +434,7 @@ export default function RecordDetail() {
             Submit for Teacher Review
           </Button>
         )}
-        {(canTeacherSign || canAdminSign) && (
+        {canTeacherSign && (
           <Button
             onClick={() => {
               if (!sigProfile) setShowSigSetup(true);
@@ -428,23 +442,12 @@ export default function RecordDetail() {
             }}
           >
             <PenLine className="h-4 w-4 mr-2" />
-            {canAdminSign ? 'Sign & Approve' : 'Sign & Endorse'}
+            Sign &amp; Endorse
           </Button>
         )}
-        {canReject && (
+        {canTeacherSign && (
           <Button variant="destructive" onClick={() => setShowRejectDialog(true)}>
             <X className="h-4 w-4 mr-2" /> Reject
-          </Button>
-        )}
-        {canSendToVault && (
-          <Button onClick={handleSendToVault} disabled={sendingVault || !!vaultBlockReason} className="min-w-[200px]">
-            {sendingVault ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <SendHorizonal className="h-4 w-4 mr-2" />}
-            {sendingVault ? 'Delivering BlockWard…' : 'Send to Student Vault'}
-          </Button>
-        )}
-        {canRequestChanges && (
-          <Button variant="outline" onClick={() => setShowChangesDialog(true)}>
-            <MessageSquare className="h-4 w-4 mr-2" /> Request Changes
           </Button>
         )}
         {canEditResubmit && (
@@ -611,9 +614,61 @@ export default function RecordDetail() {
 
         {/* Sidebar */}
         <div className="space-y-6">
+          {/* Admin Approval Panel */}
+          {profile?.user_type === 'admin' && (canAdminSign || canRequestChanges || canSendToVault) && (
+            <Card className="surface-card lg:sticky lg:top-20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" /> Approval
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-tertiary">Student</span>
+                    <span className="font-medium text-foreground truncate ml-2">{record.student_name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-tertiary">Teacher</span>
+                    <span className="font-medium text-foreground truncate ml-2">{record.teacher_name || '—'}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-tertiary">Teacher Signed</span>
+                    {record.teacher_signed
+                      ? <Badge className="bg-success/10 text-success border-0 gap-1"><Check className="h-3 w-3" /> Yes</Badge>
+                      : <Badge variant="outline">Pending</Badge>}
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-border">
+                  {canAdminSign && (
+                    <Button
+                      className="w-full"
+                      onClick={() => { if (!sigProfile) setShowSigSetup(true); else setShowSignDialog(true); }}
+                      disabled={signing}
+                    >
+                      {signing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                      Approve &amp; Sign
+                    </Button>
+                  )}
+                  {canRequestChanges && (
+                    <Button variant="outline" className="w-full border-warning/40 text-warning hover:bg-warning/10 hover:text-warning" onClick={() => setShowChangesDialog(true)}>
+                      <MessageSquare className="h-4 w-4 mr-2" /> Request Changes
+                    </Button>
+                  )}
+                  {(canAdminSign || canRequestChanges) && (
+                    <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setShowRejectDialog(true)}>
+                      <X className="h-4 w-4 mr-2" /> Reject
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Workflow Timeline */}
           <Card className="shadow-sm">
-            <CardHeader><CardTitle className="text-sm">Workflow Timeline</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-sm">Workflow History</CardTitle></CardHeader>
             <CardContent>
               <WorkflowTimeline logs={auditLogs} record={record} />
             </CardContent>
