@@ -18,6 +18,7 @@
  *   signer_name is always the legal display_name from SignatureProfile, never the raw profile name.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -47,15 +48,19 @@ Deno.serve(async (req) => {
 
   const base44 = createClientFromRequest(req);
 
-  const user = await base44.auth.me();
-  if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
+  const authUser = await base44.auth.me();
+  if (!authUser) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
 
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-  const profile = profiles[0];
-  if (!profile) return Response.json({ ok: false, error: 'User profile not found' }, { status: 403, headers: CORS });
-  if (profile.status === 'inactive' || profile.status === 'suspended') {
-    return Response.json({ ok: false, error: 'Your account is inactive. Contact your administrator.' }, { status: 403, headers: CORS });
-  }
+  // Resolve the effective actor. In Test Mode this is the active test persona
+  // (its own role/email/name/id), so workflow authorization follows the selected
+  // persona, NOT the controller's admin role. The active persona is loaded
+  // server-side from the controller's profile — never trusted from frontend input.
+  const actor = await resolveEffectiveActor(base44);
+  if (!actor.authorized) return Response.json({ ok: false, error: actor.reason || 'Unauthorized' }, { status: actor.status || 401, headers: CORS });
+
+  // Map the actor onto the existing variable names so the state-machine logic below is unchanged.
+  const user = { email: actor.actor_email, id: actor.controller_user_id };
+  const profile = { id: actor.actor_id, user_type: actor.actor_role, school_id: actor.school_id, first_name: actor.first_name, last_name: actor.last_name, status: 'active' };
 
   let body;
   try { body = await req.json(); } catch (e) {

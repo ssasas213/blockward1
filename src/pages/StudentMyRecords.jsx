@@ -14,6 +14,7 @@ import { ChevronRight, Plus, Upload, FileText, Sparkles, Trophy, Loader2 } from 
 import { format } from 'date-fns';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import { toast } from 'sonner';
+import { useSchool } from '@/lib/SchoolContext';
 
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'behaviour', 'special'];
 
@@ -28,6 +29,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function StudentMyRecords() {
+  const { testMode } = useSchool();
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState(null);
   const [user, setUser] = useState(null);
@@ -51,7 +53,8 @@ export default function StudentMyRecords() {
       setProfile(p);
 
       // Fetch all student records (direct, for showing pending/in-progress submissions)
-      const recordFilter = { student_email: currentUser.email };
+      const effectiveEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : currentUser.email;
+      const recordFilter = { student_email: effectiveEmail };
       if (p?.school_id) recordFilter.school_id = p.school_id;
       const recs = await base44.entities.StudentRecord.filter(recordFilter, '-created_date');
       setRecords(recs);
@@ -104,25 +107,33 @@ export default function StudentMyRecords() {
       const selectedTeacher = teachers.find(t => t.user_email === form.teacher_email);
       const teacherName = selectedTeacher ? `${selectedTeacher.first_name} ${selectedTeacher.last_name}` : '';
 
-      // Create as draft, then route through the workflow (server-side audit log + status transition)
-      const record = await base44.entities.StudentRecord.create({
-        school_id: profile.school_id,
-        student_id: profile.id,
-        student_email: user.email,
-        student_name: `${profile.first_name} ${profile.last_name}`,
-        // Permanent ownership — the student owns this achievement forever
-        owner_student_id: profile.id,
-        owner_student_email: user.email,
-        owner_school_id: profile.school_id,
-        title: form.title,
-        category: form.category,
-        description: form.description,
-        date_achieved: form.date_achieved || null,
-        file_url: fileUrl,
-        teacher_email: form.teacher_email,
-        teacher_name: teacherName,
-        status: 'draft',
-      });
+      // Create as draft. In Test Mode, route through the service-role createTestRecord
+      // function so the record is owned by the active student persona (RLS would block
+      // a direct create whose student_email is the persona email).
+      let record;
+      if (testMode?.isTestSuperUser) {
+        const res = await base44.functions.invoke('createTestRecord', {
+          title: form.title, category: form.category, description: form.description,
+          date_achieved: form.date_achieved || null, file_url: fileUrl,
+          teacher_email: form.teacher_email, teacher_name: teacherName,
+        });
+        if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to create record');
+        record = res.data.record;
+      } else {
+        record = await base44.entities.StudentRecord.create({
+          school_id: profile.school_id,
+          student_id: profile.id,
+          student_email: user.email,
+          student_name: `${profile.first_name} ${profile.last_name}`,
+          owner_student_id: profile.id,
+          owner_student_email: user.email,
+          owner_school_id: profile.school_id,
+          title: form.title, category: form.category, description: form.description,
+          date_achieved: form.date_achieved || null, file_url: fileUrl,
+          teacher_email: form.teacher_email, teacher_name: teacherName,
+          status: 'draft',
+        });
+      }
 
       // Submit through the workflow — creates the audit log server-side, no client-side audit
       const submitRes = await base44.functions.invoke('recordWorkflow', {

@@ -21,6 +21,7 @@
  * Joins linked BlockWard data by student_record_id.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -40,37 +41,36 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
+    const authUser = await base44.auth.me();
+    if (!authUser) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
 
     let body;
     try { body = await req.json(); } catch (e) { body = {}; }
-    const targetEmail = normalizeEmail(body.student_email || user.email);
+
+    // Resolve the effective actor. In Test Mode this is the active persona, so the
+    // vault loads for the student persona (persona email/id), not the controller.
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return Response.json({ ok: false, error: actor.reason || 'Unauthorized' }, { status: actor.status || 401, headers: CORS });
+
+    if (actor.actor_role === 'teacher') {
+      return Response.json({ ok: false, error: 'Teachers cannot view student vaults' }, { status: 403, headers: CORS });
+    }
+
+    // The canonical student identity is the effective actor's email. (An admin may
+    // optionally pass body.student_email to view a specific student's vault.)
+    const targetEmail = actor.actor_role === 'admin' && body.student_email
+      ? normalizeEmail(body.student_email)
+      : normalizeEmail(actor.actor_email);
 
     // ── STEP 1: Resolve the canonical student identity ──
-    // Look up UserProfile by email (direct filter, with case-insensitive fallback)
-    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: targetEmail });
     let profile = profiles[0] || null;
-
-    // Fallback: case-insensitive match if exact filter didn't find it
     if (!profile) {
       const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
       profile = allProfiles.find(p => normalizeEmail(p.user_email) === targetEmail) || null;
     }
-
     if (!profile) {
-      return Response.json({
-        ok: false,
-        error: 'User profile not found for email: ' + user.email
-      }, { status: 403, headers: CORS });
-    }
-
-    // Permission: students can only see their own vault; admins can see any student in their school
-    if (profile.user_type === 'student' && normalizeEmail(body.student_email || '') && normalizeEmail(body.student_email) !== normalizeEmail(user.email)) {
-      return Response.json({ ok: false, error: 'You can only view your own vault' }, { status: 403, headers: CORS });
-    }
-    if (profile.user_type === 'teacher') {
-      return Response.json({ ok: false, error: 'Teachers cannot view student vaults' }, { status: 403, headers: CORS });
+      return Response.json({ ok: false, error: 'Student profile not found for email: ' + targetEmail }, { status: 403, headers: CORS });
     }
 
     const canonicalStudentId = profile.id;

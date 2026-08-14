@@ -12,8 +12,10 @@ import { Search, ChevronRight, PenLine, Trophy, Clock, HardDrive } from 'lucide-
 import { format } from 'date-fns';
 import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import { toast } from 'sonner';
+import { useSchool } from '@/lib/SchoolContext';
 
 export default function TeacherRecords() {
+  const { testMode } = useSchool();
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -30,15 +32,17 @@ export default function TeacherRecords() {
       setProfile(p);
       if (!p?.school_id) return;
 
-      // Teachers see records specifically sent to them OR from students in their assigned classes
-      const classes = await base44.entities.Class.filter({ teacher_email: user.email });
+      // Teachers see records specifically sent to them OR from students in their assigned classes.
+      // In Test Mode, "them" = the active teacher persona's email.
+      const effEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user.email;
+      const classes = await base44.entities.Class.filter({ teacher_email: effEmail });
       const assignedStudentEmails = new Set();
       classes.forEach(cls => (cls.student_emails || []).forEach(e => assignedStudentEmails.add(e)));
 
       const allRecs = await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date');
       // Filter to only assigned students (or records the teacher has already signed — keep those visible)
       const filtered = allRecs.filter(r =>
-        assignedStudentEmails.has(r.student_email) || r.teacher_email === user.email
+        assignedStudentEmails.has(r.student_email) || r.teacher_email === effEmail
       );
       setRecords(filtered);
     } catch (e) {
@@ -56,9 +60,10 @@ export default function TeacherRecords() {
     return matchSearch && matchStatus;
   });
 
+  const effEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : profile?.user_email;
   const pendingReview = records.filter(r => r.status === 'awaiting_teacher_signature').length;
-  const sentToMe = records.filter(r => r.teacher_email === profile?.user_email && r.status === 'awaiting_teacher_signature').length;
-  const myApproved = records.filter(r => r.teacher_email === profile?.user_email && r.teacher_signed).length;
+  const sentToMe = records.filter(r => r.teacher_email === effEmail && r.status === 'awaiting_teacher_signature').length;
+  const myApproved = records.filter(r => r.teacher_email === effEmail && r.teacher_signed).length;
   const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
 
   if (loading) return (

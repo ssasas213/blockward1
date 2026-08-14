@@ -37,10 +37,18 @@ export const SchoolProvider = ({ children }) => {
         try {
           const res = await base44.functions.invoke('getTestModeStatus');
           if (res.data?.is_test_super_user) {
+            const personas = res.data.personas || {};
+            const activePersona = res.data.active_persona || 'admin';
+            const activeInfo = personas[activePersona] || {};
             setTestMode({
               isTestSuperUser: true,
-              activePersona: res.data.active_persona,
+              activePersona,
               testSchool: res.data.test_school,
+              testClass: res.data.test_class,
+              personas,
+              effectiveEmail: activeInfo.email,
+              effectiveId: activeInfo.id,
+              effectiveName: activeInfo.name,
               profileId: res.data.profile_id,
             });
             // The function may have just set school_id — refresh the local profile copy

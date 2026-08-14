@@ -15,8 +15,9 @@ export default async function(req) {
     if (schools.length === 0) return Response.json({ error: 'Test school not found' }, { status: 404 });
     const schoolId = schools[0].id;
 
-    // Only reset workflow/scenario data — never the school, profile, memberships, or classes.
-    const entitiesToReset = ['StudentRecord', 'BlockWard', 'DigitalSignature', 'DriveVault', 'AuditLog', 'PointEntry'];
+    // Reset ONLY workflow/scenario data in the test school.
+    // KEEP: school, persona profiles, memberships, test class, signature profiles, test config.
+    const entitiesToReset = ['StudentRecord', 'BlockWard', 'BlockWardVerificationRegistry', 'DigitalSignature', 'DriveVault', 'AuditLog', 'PointEntry'];
     const counts: any = {};
     for (const name of entitiesToReset) {
       try {

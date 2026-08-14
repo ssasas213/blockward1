@@ -162,7 +162,7 @@
     },
     "portfolio_public_id": {
       "type": "string",
-      "description": "Public identifier for the student's shareable portfolio (format: prt-xxxxxxxx). Used in /portfolio/:id URLs so the internal UserProfile.id is never exposed."
+      "description": "Public identifier for the student's shareable portfolio (format: prt-xxxxxxxx)."
     },
     "blockchain_role": {
       "type": "string",
@@ -198,7 +198,7 @@
     "test_super_user": {
       "type": "boolean",
       "default": false,
-      "description": "True only for the server-authorised test super user. Source of truth is the TEST_SUPER_USER_EMAIL secret; this flag is a cache set by getTestModeStatus."
+      "description": "True only for the server-authorised test super user (the controller). Source of truth is the TEST_SUPER_USER_EMAIL secret; this flag is a cache set by getTestModeStatus."
     },
     "active_test_persona": {
       "type": "string",
@@ -207,7 +207,26 @@
         "teacher",
         "admin"
       ],
-      "description": "For test super user only \u2014 which persona's experience is currently active. Controls nav + display name. Null for normal users."
+      "description": "For the test super user only \u2014 which persona's experience is currently active. Read server-side by resolveEffectiveActor; never trusted from frontend input."
+    },
+    "test_persona_ids": {
+      "type": "object",
+      "description": "For the test super user only \u2014 maps persona role \u2192 UserProfile.id of the corresponding test persona profile. Set by getTestModeStatus.",
+      "properties": {
+        "student": {
+          "type": "string"
+        },
+        "teacher": {
+          "type": "string"
+        },
+        "admin": {
+          "type": "string"
+        }
+      }
+    },
+    "test_persona_of": {
+      "type": "string",
+      "description": "For test persona profiles only \u2014 the controller email that owns this persona. Null for normal users and the controller itself."
     }
   },
   "required": [

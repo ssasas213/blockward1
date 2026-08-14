@@ -23,6 +23,7 @@
  *   - AuditLog, re-query verification, student/parent notifications, point statistics.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -42,23 +43,18 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
+    const authUser = await base44.auth.me();
+    if (!authUser) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
 
-    // ── Auth: admin only ──
-    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    let profile = profiles[0] || null;
-    if (!profile) {
-      const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
-      profile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizeEmail(user.email)) || null;
-    }
-    if (!profile) return Response.json({ ok: false, error: 'User profile not found' }, { status: 403, headers: CORS });
-    if (profile.status === 'inactive' || profile.status === 'suspended') {
-      return Response.json({ ok: false, error: 'Your account is inactive' }, { status: 403, headers: CORS });
-    }
-    if (profile.user_type !== 'admin') {
+    // ── Auth: admin only (Test Mode resolves the active persona first, so a
+    // student/teacher persona is correctly rejected here). ──
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return Response.json({ ok: false, error: actor.reason || 'Unauthorized' }, { status: actor.status || 401, headers: CORS });
+    if (actor.actor_role !== 'admin') {
       return Response.json({ ok: false, error: 'Only admins can deliver to student vault' }, { status: 403, headers: CORS });
     }
+    const user = { email: actor.actor_email, id: actor.controller_user_id };
+    const profile = { id: actor.actor_id, user_type: actor.actor_role, school_id: actor.school_id, first_name: actor.first_name, last_name: actor.last_name, status: 'active' };
 
     let body;
     try { body = await req.json(); } catch (e) {

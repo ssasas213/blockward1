@@ -53,7 +53,7 @@ export function TestModeBanner() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">Viewing BlockWard as</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs text-muted-foreground">Acting as</DropdownMenuLabel>
         {['student', 'teacher', 'admin'].map((p) => {
           const PIcon = PERSONA_ICONS[p];
           return (
@@ -95,7 +95,7 @@ export function TestModeMenuItems() {
         <FlaskConical className="h-3.5 w-3.5" /> TEST MODE
       </DropdownMenuLabel>
       <DropdownMenuLabel className="text-xs text-muted-foreground -mt-1 font-normal">
-        Viewing as {PERSONA_LABELS[active]}
+        Acting as {PERSONA_LABELS[active]}
       </DropdownMenuLabel>
       {['student', 'teacher', 'admin'].map((p) => {
         const PIcon = PERSONA_ICONS[p];
