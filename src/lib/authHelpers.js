@@ -39,6 +39,23 @@ export async function handlePostLoginRedirect() {
     profiles = await base44.entities.UserProfile.filter({ user_email: normalizedEmail });
   }
 
+  // ===== Test Super User — server-authorised, skips onboarding/setup. =====
+  // The backend verifies the email against the TEST_SUPER_USER_EMAIL secret and
+  // ensures the test school + profile exist. Normal users never hit this path.
+  try {
+    const testRes = await base44.functions.invoke('getTestModeStatus');
+    if (testRes.data?.is_test_super_user) {
+      const fresh = await base44.entities.UserProfile.filter({ user_email: user.email });
+      if (fresh.length > 0) {
+        const tp = fresh[0];
+        if (tp.status === 'inactive' || tp.status === 'suspended') return 'suspended';
+        const persona = testRes.data.active_persona || 'admin';
+        window.location.href = SCHOOLS_DASHBOARD_MAP[persona] || '/AdminDashboard';
+        return null;
+      }
+    }
+  } catch { /* not test super user or test mode disabled — continue normal flow */ }
+
   if (profiles.length === 0) {
     // Authenticated but no BlockWard profile — send to onboarding
     window.location.href = '/Onboarding';

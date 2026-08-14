@@ -194,6 +194,20 @@
         "pending_approval"
       ],
       "default": "active"
+    },
+    "test_super_user": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only for the server-authorised test super user. Source of truth is the TEST_SUPER_USER_EMAIL secret; this flag is a cache set by getTestModeStatus."
+    },
+    "active_test_persona": {
+      "type": "string",
+      "enum": [
+        "student",
+        "teacher",
+        "admin"
+      ],
+      "description": "For test super user only \u2014 which persona's experience is currently active. Controls nav + display name. Null for normal users."
     }
   },
   "required": [

@@ -12,6 +12,7 @@ import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
+import { TestModeBanner, TestModeMenuItems } from '@/components/testmode/TestModeBanner';
 import { useSchool } from '@/lib/SchoolContext';
 import {
   DropdownMenu,
@@ -25,7 +26,7 @@ import { getRoleLabel } from '@/lib/orgTypes';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, profile, activeSchool: school, loading } = useSchool();
+  const { user, profile, activeSchool: school, loading, testMode } = useSchool();
 
   const publicPages = ['Home', 'Login', 'Onboarding', 'Signup', 'ChoosePlatform', 'SchoolSetup'];
   const isPublicPage = publicPages.includes(currentPageName);
@@ -48,7 +49,10 @@ export default function Layout({ children, currentPageName }) {
     );
   }
 
-  const userType = profile?.user_type || 'student';
+  // Test Super User: the active persona drives the nav/dashboard, not the
+  // permanent user_type (which stays 'admin' so platform RLS still works).
+  const isTestSuperUser = !!testMode?.isTestSuperUser;
+  const userType = isTestSuperUser ? (testMode.activePersona || 'admin') : (profile?.user_type || 'student');
 
   const navigationGroups = {
     admin: [
@@ -160,6 +164,7 @@ export default function Layout({ children, currentPageName }) {
           <Shield className="h-5 w-5 text-primary" />
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
+        <TestModeBanner />
         <NotificationBell userEmail={user?.email} />
       </header>
 
@@ -208,6 +213,7 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
         <div className="flex items-center gap-1">
+          <TestModeBanner />
           <ThemeToggleCompact />
           <div className="h-6 w-px bg-border mx-1" />
           <NotificationBell userEmail={user?.email} />
@@ -284,6 +290,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
+            <TestModeMenuItems />
             <ThemeToggle />
             <DropdownMenuItem asChild>
               <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
