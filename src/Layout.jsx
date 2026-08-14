@@ -165,7 +165,7 @@ export default function Layout({ children, currentPageName }) {
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
         <TestModeBanner />
-        <NotificationBell userEmail={user?.email} />
+        <NotificationBell userEmail={testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email} />
       </header>
 
       {/* Mobile Sidebar Overlay */}
@@ -216,7 +216,7 @@ export default function Layout({ children, currentPageName }) {
           <TestModeBanner />
           <ThemeToggleCompact />
           <div className="h-6 w-px bg-border mx-1" />
-          <NotificationBell userEmail={user?.email} />
+          <NotificationBell userEmail={testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email} />
         </div>
       </header>
 

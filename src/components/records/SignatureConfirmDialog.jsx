@@ -22,6 +22,7 @@ export default function SignatureConfirmDialog({ open, onOpenChange, sigProfile,
       value: sigProfile.signature_value,
       display_name: sigProfile.display_name,
       title: sigProfile.title,
+      sig_profile_id: sigProfile.id,
     });
   };
 

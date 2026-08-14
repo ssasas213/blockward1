@@ -156,6 +156,29 @@ export const SchoolProvider = ({ children }) => {
   }, [loadSchoolData]);
 
   const isAdmin = profile?.user_type === 'admin';
+
+  // ── Effective persona ──
+  // In Test Mode, the effective role/profile/email is the active test persona's;
+  // for normal users it is their real profile. This is the single value role-dependent
+  // UI should consult so the interface matches what a real user of that role sees.
+  const isTestMode = !!testMode?.isTestSuperUser;
+  const effectiveRole = isTestMode ? testMode.activePersona : profile?.user_type;
+  const effectiveEmail = isTestMode && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email;
+  const effectiveId = isTestMode && testMode.effectiveId ? testMode.effectiveId : profile?.id;
+  const effectiveName = isTestMode && testMode.effectiveName ? testMode.effectiveName
+    : (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null);
+  const activePersonaInfo = isTestMode ? (testMode.personas?.[testMode.activePersona] || {}) : null;
+  const effectiveProfile = isTestMode ? {
+    id: testMode.effectiveId,
+    user_email: testMode.effectiveEmail,
+    user_type: testMode.activePersona,
+    first_name: activePersonaInfo?.first_name || '',
+    last_name: activePersonaInfo?.last_name || '',
+    school_id: testMode.testSchool?.id,
+    status: 'active',
+  } : profile;
+  const effectiveUser = isTestMode ? { email: effectiveEmail, id: user?.id } : user;
+
   // Any authenticated user without an active school is "unlinked" — the route guard
   // redirects them to the join flow, so the app never renders in a half-state.
   const hasNoSchool = !!profile && !activeSchool && !loading;
@@ -174,6 +197,14 @@ export const SchoolProvider = ({ children }) => {
     testMode,
     setTestPersona,
     resetTestData,
+    // Effective persona values — use these for role-dependent UI.
+    isTestMode,
+    effectiveRole,
+    effectiveEmail,
+    effectiveId,
+    effectiveName,
+    effectiveProfile,
+    effectiveUser,
   };
 
   return (

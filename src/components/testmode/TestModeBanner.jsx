@@ -5,6 +5,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import { useSchool } from '@/lib/SchoolContext';
+import TestFlowIndicator from '@/components/testmode/TestFlowIndicator';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
@@ -65,6 +66,8 @@ export function TestModeBanner() {
           );
         })}
         <DropdownMenuSeparator />
+        <TestFlowIndicator />
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleReset} className="text-destructive">
           <RotateCcw className="h-4 w-4 mr-2" /> Reset Test Data
         </DropdownMenuItem>
@@ -105,6 +108,8 @@ export function TestModeMenuItems() {
           </DropdownMenuItem>
         );
       })}
+      <DropdownMenuSeparator />
+      <TestFlowIndicator />
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={handleReset} className="text-destructive">
         <RotateCcw className="h-4 w-4 mr-2" /> Reset Test Data

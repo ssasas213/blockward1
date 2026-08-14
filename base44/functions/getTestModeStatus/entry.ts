@@ -56,7 +56,7 @@ export default async function(req) {
         if (Object.keys(upd).length) p = await svc.entities.UserProfile.update(p.id, upd);
       }
       personaIds[role] = p.id;
-      personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, role };
+      personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, first_name: name.first_name, last_name: name.last_name, role };
     }
 
     // 3. Ensure test class (teacher assigned, student enrolled)

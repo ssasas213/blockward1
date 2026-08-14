@@ -2,15 +2,13 @@
  * getRecordDetail — Fetches a single StudentRecord with all related data
  * (signatures, audit logs) for the RecordDetail page.
  *
- * Bypasses RLS by using asServiceRole, but enforces permissions server-side:
- *   - Admin: can see any record in their school
- *   - Teacher: can see records where they are the assigned teacher
- *   - Student: can see their own records only
- *
- * Returns a structured error message when access is denied or record not found,
- * so the frontend can show a helpful message instead of "Record not found."
+ * Uses resolveEffectiveActor so that in Test Mode the effective persona's
+ * role/email/id drive permission checks and the signature profile loaded —
+ * the frontend receives the persona's profile + email, so RecordDetail's
+ * role-dependent UI renders exactly as it would for a real user of that role.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,15 +23,16 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   try {
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ ok: false, error: 'Unauthorized' }, { status: 401, headers: CORS });
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return Response.json({ ok: false, error: actor.reason || 'Unauthorized' }, { status: actor.status || 401, headers: CORS });
 
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    const profile = profiles[0];
-    if (!profile) return Response.json({ ok: false, error: 'User profile not found' }, { status: 403, headers: CORS });
-    if (profile.status === 'inactive' || profile.status === 'suspended') {
-      return Response.json({ ok: false, error: 'Your account is inactive. Contact your administrator.' }, { status: 403, headers: CORS });
-    }
+    // Map the effective actor onto profile/user objects the frontend expects.
+    const profile = {
+      id: actor.actor_id, user_type: actor.actor_role,
+      first_name: actor.first_name, last_name: actor.last_name,
+      school_id: actor.school_id, status: 'active',
+    };
+    const user = { email: actor.actor_email, id: actor.controller_user_id };
 
     let body;
     try { body = await req.json(); } catch (e) {
@@ -47,7 +46,6 @@ Deno.serve(async (req) => {
     try {
       records = await base44.asServiceRole.entities.StudentRecord.filter({ id: recordId });
     } catch (e) {
-      // Invalid ID format or other query error — treat as not found
       return Response.json({ ok: false, error: 'not_found', message: 'This achievement record does not exist. It may have been deleted.' }, { status: 404, headers: CORS });
     }
     if (!records.length) {
@@ -55,28 +53,26 @@ Deno.serve(async (req) => {
     }
     const record = records[0];
 
-    // Permission check (server-side, since we bypassed RLS)
+    // Permission check — driven by the effective persona (role + email).
     const isAdmin = profile.user_type === 'admin';
     const isTeacher = profile.user_type === 'teacher' && record.teacher_email === user.email;
     const isStudent = profile.user_type === 'student' && record.student_email === user.email;
-
-    // School check — all roles must be in the same school
     const sameSchool = profile.school_id && record.school_id && profile.school_id === record.school_id;
 
     if (!sameSchool) {
       return Response.json({ ok: false, error: 'wrong_school', message: 'This record belongs to a different organisation.' }, { status: 403, headers: CORS });
     }
-
     if (!isAdmin && !isTeacher && !isStudent) {
       return Response.json({ ok: false, error: 'access_denied', message: 'You do not have permission to view this record.' }, { status: 403, headers: CORS });
     }
 
-    // Fetch related data
+    // Fetch related data. Signature profile is loaded by the effective actor's email
+    // (the persona's email in Test Mode), never the controller's.
     const [auditLogs, signatures, sigProfile] = await Promise.all([
       base44.asServiceRole.entities.AuditLog.filter({ record_id: recordId }),
       base44.asServiceRole.entities.DigitalSignature.filter({ record_id: recordId }),
       (profile.user_type === 'teacher' || profile.user_type === 'admin')
-        ? base44.asServiceRole.entities.SignatureProfile.filter({ user_email: user.email })
+        ? base44.asServiceRole.entities.SignatureProfile.filter({ user_email: user.email, school_id: record.school_id })
         : Promise.resolve([]),
     ]);
 

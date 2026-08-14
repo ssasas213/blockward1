@@ -133,6 +133,15 @@ Deno.serve(async (req) => {
     if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { status: 400, headers: CORS });
     if (record.teacher_signed) return Response.json({ ok: false, error: 'Record already has a teacher signature' }, { status: 409, headers: CORS });
 
+    // Verify the signature profile belongs to the effective actor (Test Mode: persona).
+    if (signatureData?.sig_profile_id) {
+      const spRows = await base44.asServiceRole.entities.SignatureProfile.filter({ id: signatureData.sig_profile_id });
+      const sp = spRows[0];
+      if (!sp || sp.user_email !== user.email) {
+        return Response.json({ ok: false, error: 'Signature profile does not belong to the current signer' }, { status: 403, headers: CORS });
+      }
+    }
+
     const sigDisplayName = signatureData.display_name || actorName;
     const sigTitle = signatureData.title || '';
 
@@ -179,6 +188,15 @@ Deno.serve(async (req) => {
   if (action === 'adminSignRecord') {
     if (!signatureData?.value) return Response.json({ ok: false, error: 'Missing signature data' }, { status: 400, headers: CORS });
     if (record.admin_signed) return Response.json({ ok: false, error: 'Record already has an admin signature' }, { status: 409, headers: CORS });
+
+    // Verify the signature profile belongs to the effective actor (Test Mode: persona).
+    if (signatureData?.sig_profile_id) {
+      const spRows = await base44.asServiceRole.entities.SignatureProfile.filter({ id: signatureData.sig_profile_id });
+      const sp = spRows[0];
+      if (!sp || sp.user_email !== user.email) {
+        return Response.json({ ok: false, error: 'Signature profile does not belong to the current signer' }, { status: 403, headers: CORS });
+      }
+    }
 
     const sigDisplayName = signatureData.display_name || actorName;
     const sigTitle = signatureData.title || '';

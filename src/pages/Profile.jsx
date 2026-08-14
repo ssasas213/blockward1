@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette, Sparkles } from 'lucide-react';
+import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette, Sparkles, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -28,7 +28,8 @@ function ProfileContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copiedWallet, setCopiedWallet] = useState(false);
-  const { refresh: refreshSchool } = useSchool();
+  const [controllerEmail, setControllerEmail] = useState(null);
+  const { refresh: refreshSchool, testMode } = useSchool();
 
   useEffect(() => { load(); }, []);
 
@@ -37,17 +38,23 @@ function ProfileContent() {
     setError(null);
     try {
       const currentUser = await base44.auth.me();
-      setUser(currentUser);
       if (!currentUser) { setLoading(false); return; }
+      setControllerEmail(currentUser.email);
 
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+      // In Test Mode, show the active persona's profile (not the controller's).
+      const targetEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : currentUser.email;
+      setUser({ ...currentUser, email: targetEmail });
+
+      const profiles = await base44.entities.UserProfile.filter({ user_email: targetEmail });
       const p = profiles[0] || null;
       setProfile(p);
 
       // Refresh school context so sidebar avatar/name updates
       if (refreshSchool) refreshSchool();
 
-      if (p?.school_id) {
+      if (testMode?.isTestSuperUser && testMode.testSchool) {
+        setSchool(testMode.testSchool);
+      } else if (p?.school_id) {
         try {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length) setSchool(schools[0]);
@@ -135,6 +142,23 @@ function ProfileContent() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <PageHeader title="My Profile" description="Manage your account, contact details and integrations" />
+
+      {testMode?.isTestSuperUser && (
+        <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+          <FlaskConical className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">Test Mode Details</p>
+            <div className="mt-1.5 space-y-0.5 text-xs text-muted-foreground">
+              <p>Simulating: <span className="font-medium text-foreground">{testMode.effectiveName}</span> ({testMode.activePersona})</p>
+              <p>Controller: <span className="font-mono text-foreground">{controllerEmail}</span></p>
+              <p>School: <span className="font-medium text-foreground">{testMode.testSchool?.name}</span></p>
+            </div>
+            <p className="text-[11px] text-muted-foreground/80 mt-2">
+              This profile reflects the simulated user. The controller identity above is kept separate for auditing.
+            </p>
+          </div>
+        </div>
+      )}
 
       {missingFields.length > 0 && (
         <div className="flex items-start gap-3 p-3 bg-warning/5 border border-warning/20 rounded-lg">
