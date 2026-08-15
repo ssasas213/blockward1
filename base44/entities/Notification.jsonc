@@ -20,7 +20,8 @@
       "enum": [
         "announcement_urgent",
         "announcement_important",
-        "announcement_scheduled_reminder"
+        "announcement_scheduled_reminder",
+        "message"
       ],
       "description": "Notification type"
     },
@@ -35,7 +36,7 @@
     },
     "related_id": {
       "type": "string",
-      "description": "ID of the related entity (e.g. announcement ID)"
+      "description": "ID of the related entity (e.g. announcement ID, message ID)"
     },
     "read": {
       "type": "boolean",
