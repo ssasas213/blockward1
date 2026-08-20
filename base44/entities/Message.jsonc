@@ -13,6 +13,14 @@
       ],
       "description": "Direct message or class announcement"
     },
+    "conversation_id": {
+      "type": "string",
+      "description": "Stable conversation key: school_id + ':' + sorted([sender_profile_id, recipient_profile_id]).join('|'). Same pair always maps to the same conversation."
+    },
+    "sender_profile_id": {
+      "type": "string",
+      "description": "UserProfile.id of the sender (effective persona in Test Mode)"
+    },
     "sender_email": {
       "type": "string"
     },
@@ -28,12 +36,35 @@
         "admin"
       ]
     },
+    "sender_role": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "student",
+        "parent",
+        "admin"
+      ],
+      "description": "Canonical sender role (mirrors sender_type)"
+    },
+    "recipient_profile_id": {
+      "type": "string",
+      "description": "UserProfile.id of the recipient (effective persona in Test Mode)"
+    },
     "recipient_email": {
       "type": "string",
       "description": "For direct messages"
     },
     "recipient_name": {
       "type": "string"
+    },
+    "recipient_role": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "student",
+        "parent",
+        "admin"
+      ]
     },
     "class_id": {
       "type": "string",
@@ -47,6 +78,15 @@
     },
     "content": {
       "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "delivered",
+        "read"
+      ],
+      "default": "sent"
     },
     "read": {
       "type": "boolean",
@@ -73,31 +113,55 @@
       "data.sender_email": "{{user.email}}"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "data.sender_email": "{{user.email}}"
-        },
-        {
-          "data.recipient_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.sender_email": "{{user.email}}"
+            },
+            {
+              "data.recipient_email": "{{user.email}}"
+            },
+            {
+              "data.sender_profile_id": "{{user.profile.id}}"
+            },
+            {
+              "data.recipient_profile_id": "{{user.profile.id}}"
+            }
+          ]
         }
       ]
     },
     "update": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "data.sender_email": "{{user.email}}"
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$or": [
+            {
+              "data.sender_email": "{{user.email}}"
+            },
+            {
+              "data.recipient_email": "{{user.email}}"
+            },
+            {
+              "data.recipient_profile_id": "{{user.profile.id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
