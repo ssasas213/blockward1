@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Bell, X, Check, CheckCheck, AlertCircle, Megaphone, Clock } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, AlertCircle, Megaphone, Clock, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
@@ -8,6 +8,7 @@ const TYPE_ICONS = {
   announcement_urgent: AlertCircle,
   announcement_important: Megaphone,
   announcement_scheduled_reminder: Clock,
+  message: MessageSquare,
 };
 
 export default function NotificationBell({ userEmail }) {
@@ -37,21 +38,28 @@ export default function NotificationBell({ userEmail }) {
 
   const loadNotifications = async () => {
     try {
-      const data = await base44.entities.Notification.filter({ user_email: userEmail }, '-created_date', 30);
-      setNotifications(data || []);
+      // Persona-aware: getNotifications resolves the effective actor server-side,
+      // so Test Mode personas see their own notifications (RLS keys on controller email).
+      const res = await base44.functions.invoke('getNotifications', {});
+      const data = res.data || {};
+      if (data.ok) setNotifications(data.notifications || []);
     } catch (_) {}
   };
 
   const markRead = async (n) => {
     if (n.read) return;
-    await base44.entities.Notification.update(n.id, { read: true, read_at: new Date().toISOString() });
     setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+    try {
+      await base44.functions.invoke('markNotificationRead', { notification_id: n.id });
+    } catch (_) {}
   };
 
   const markAllRead = async () => {
     const unread = notifications.filter(n => !n.read);
-    await Promise.all(unread.map(n => base44.entities.Notification.update(n.id, { read: true, read_at: new Date().toISOString() })));
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      await Promise.all(unread.map(n => base44.functions.invoke('markNotificationRead', { notification_id: n.id })));
+    } catch (_) {}
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;

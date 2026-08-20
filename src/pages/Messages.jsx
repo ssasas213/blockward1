@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -22,12 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MessageSquare, Send, Search, Plus, Mail, MailOpen, Clock, User } from 'lucide-react';
+import { MessageSquare, Send, Search, Plus, Mail, MailOpen, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSchool } from '@/lib/SchoolContext';
 
 export default function Messages() {
+  const { testMode } = useSchool();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -35,144 +36,131 @@ export default function Messages() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showComposeDialog, setShowComposeDialog] = useState(false);
+  const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState({
-    recipient_email: '',
+    recipient_id: '',
     subject: '',
     content: ''
   });
 
+  // Reload whenever the active persona changes (Test Mode switches)
+  const personaKey = testMode?.isTestSuperUser ? testMode.activePersona : null;
   useEffect(() => {
     loadData();
-  }, []);
+  }, [personaKey]);
 
   const loadData = async () => {
+    setLoading(true);
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      
-      if (profiles.length > 0) {
-        setProfile(profiles[0]);
-        
-        // Load all direct messages (sent or received)
-        const allMessages = await base44.entities.Message.filter({ type: 'direct' }, '-created_date');
-        const userMessages = allMessages.filter(m => 
-          m.sender_email === user.email || m.recipient_email === user.email
-        );
-        setMessages(userMessages);
-
-        // Load potential contacts based on user type
-        if (profiles[0].user_type === 'teacher') {
-          // Teachers can message students and parents
-          const students = await base44.entities.UserProfile.filter({ user_type: 'student' });
-          setContacts(students);
-        } else if (profiles[0].user_type === 'student') {
-          // Students can message teachers
-          const teachers = await base44.entities.UserProfile.filter({ user_type: 'teacher' });
-          setContacts(teachers);
-        } else {
-          // Admins can message everyone
-          const allProfiles = await base44.entities.UserProfile.list();
-          setContacts(allProfiles.filter(p => p.user_email !== user.email));
-        }
+      const res = await base44.functions.invoke('getMessages', {});
+      const data = res.data || {};
+      if (!data.ok) {
+        throw new Error(data.error || 'Could not load messages');
       }
+      setProfile(data.profile || null);
+      setMessages(data.messages || []);
+      setContacts(data.contacts || []);
+      setSelectedConversation(null);
     } catch (error) {
       console.error('Error loading messages:', error);
+      toast.error('Could not load your messages. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.recipient_email || !newMessage.content) {
+    if (!newMessage.recipient_id || !newMessage.content.trim()) {
       toast.error('Please select a recipient and enter a message');
       return;
     }
-
+    setSending(true);
     try {
-      const recipient = contacts.find(c => c.user_email === newMessage.recipient_email);
-      
-      await base44.entities.Message.create({
-        school_id: profile.school_id,
-        type: 'direct',
-        sender_email: profile.user_email,
-        sender_name: `${profile.first_name} ${profile.last_name}`,
-        sender_type: profile.user_type,
-        recipient_email: newMessage.recipient_email,
-        recipient_name: `${recipient.first_name} ${recipient.last_name}`,
-        subject: newMessage.subject || '(No subject)',
+      const res = await base44.functions.invoke('sendMessage', {
+        recipient_profile_id: newMessage.recipient_id,
+        subject: newMessage.subject,
         content: newMessage.content,
-        read: false
       });
-
+      const data = res.data || {};
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to send message');
+      }
       setShowComposeDialog(false);
-      setNewMessage({ recipient_email: '', subject: '', content: '' });
-      loadData();
+      setNewMessage({ recipient_id: '', subject: '', content: '' });
+      await loadData();
       toast.success('Message sent');
     } catch (error) {
-      toast.error('Failed to send message');
+      toast.error(error.message || 'Failed to send message');
+    } finally {
+      setSending(false);
     }
   };
 
   const handleReply = async (originalMessage, replyContent) => {
+    if (!replyContent || !replyContent.trim()) return;
+    // The other party is whoever is NOT the effective persona.
+    const otherPartyId = originalMessage.sender_email === profile.user_email
+      ? originalMessage.recipient_profile_id
+      : originalMessage.sender_profile_id;
+    if (!otherPartyId) {
+      toast.error('Could not resolve the recipient for this reply.');
+      return;
+    }
+    setSending(true);
     try {
-      await base44.entities.Message.create({
-        school_id: profile.school_id,
-        type: 'direct',
-        sender_email: profile.user_email,
-        sender_name: `${profile.first_name} ${profile.last_name}`,
-        sender_type: profile.user_type,
-        recipient_email: originalMessage.sender_email,
-        recipient_name: originalMessage.sender_name,
-        subject: `Re: ${originalMessage.subject}`,
+      const res = await base44.functions.invoke('sendMessage', {
+        recipient_profile_id: otherPartyId,
+        subject: `Re: ${originalMessage.subject || '(No subject)'}`,
         content: replyContent,
-        read: false,
-        parent_message_id: originalMessage.id
       });
-
-      loadData();
+      const data = res.data || {};
+      if (!data.ok) {
+        throw new Error(data.error || 'Failed to send reply');
+      }
+      await loadData();
       toast.success('Reply sent');
     } catch (error) {
-      toast.error('Failed to send reply');
+      toast.error(error.message || 'Failed to send reply');
+    } finally {
+      setSending(false);
     }
   };
 
   const markAsRead = async (message) => {
-    if (!message.read && message.recipient_email === profile.user_email) {
+    if (!message.read && message.recipient_email === profile?.user_email) {
       try {
-        await base44.entities.Message.update(message.id, {
-          read: true,
-          read_at: new Date().toISOString()
-        });
-        loadData();
+        await base44.functions.invoke('markMessageRead', { message_id: message.id });
+        // Optimistic local update; full reload happens on next loadData.
+        setMessages(prev => prev.map(m => m.id === message.id ? { ...m, read: true, status: 'read' } : m));
       } catch (error) {
         console.error('Error marking as read:', error);
       }
     }
   };
 
-  // Group messages into conversations
+  // Group messages into conversations by conversation_id (stable), fallback to other party email
   const conversations = {};
   messages.forEach(msg => {
-    const otherParty = msg.sender_email === profile?.user_email ? msg.recipient_email : msg.sender_email;
-    if (!conversations[otherParty]) {
-      conversations[otherParty] = [];
-    }
-    conversations[otherParty].push(msg);
+    const key = msg.conversation_id || (msg.sender_email === profile?.user_email ? msg.recipient_email : msg.sender_email);
+    if (!conversations[key]) conversations[key] = [];
+    conversations[key].push(msg);
   });
 
-  // Sort conversations by most recent message
   const sortedConversations = Object.entries(conversations)
-    .map(([email, msgs]) => ({
-      email,
-      messages: msgs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)),
-      latestMessage: msgs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))[0],
-      unreadCount: msgs.filter(m => !m.read && m.recipient_email === profile?.user_email).length
-    }))
+    .map(([key, msgs]) => {
+      const ordered = msgs.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+      return {
+        key,
+        messages: ordered,
+        latestMessage: ordered[0],
+        unreadCount: msgs.filter(m => !m.read && m.recipient_email === profile?.user_email).length
+      };
+    })
     .sort((a, b) => new Date(b.latestMessage.created_date) - new Date(a.latestMessage.created_date));
 
   const filteredConversations = sortedConversations.filter(conv =>
-    conv.latestMessage.sender_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    conv.latestMessage.recipient_name.toLowerCase().includes(searchTerm.toLowerCase())
+    conv.latestMessage.sender_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conv.latestMessage.recipient_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -191,7 +179,7 @@ export default function Messages() {
           <h1 className="text-3xl font-bold text-foreground">Messages</h1>
           <p className="text-muted-foreground mt-1">Direct messaging with teachers and students</p>
         </div>
-        <Button onClick={() => setShowComposeDialog(true)}>
+        <Button onClick={() => setShowComposeDialog(true)} disabled={contacts.length === 0}>
           <Plus className="h-4 w-4 mr-2" />
           New Message
         </Button>
@@ -220,11 +208,11 @@ export default function Messages() {
                   const otherPartyName = conv.latestMessage.sender_email === profile.user_email
                     ? conv.latestMessage.recipient_name
                     : conv.latestMessage.sender_name;
-                  const isSelected = selectedConversation?.email === conv.email;
-                  
+                  const isSelected = selectedConversation?.key === conv.key;
+
                   return (
                     <button
-                      key={conv.email}
+                      key={conv.key}
                       onClick={() => {
                         setSelectedConversation(conv);
                         conv.messages.forEach(msg => markAsRead(msg));
@@ -258,7 +246,7 @@ export default function Messages() {
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
                   <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>No conversations yet</p>
+                  <p>{contacts.length === 0 ? 'No one to message yet' : 'No conversations yet'}</p>
                 </div>
               )}
             </div>
@@ -272,6 +260,7 @@ export default function Messages() {
               conversation={selectedConversation}
               profile={profile}
               onReply={handleReply}
+              sending={sending}
             />
           ) : (
             <CardContent className="text-center py-20">
@@ -294,15 +283,15 @@ export default function Messages() {
             <div className="space-y-2">
               <Label>Recipient</Label>
               <Select
-                value={newMessage.recipient_email}
-                onValueChange={(value) => setNewMessage({ ...newMessage, recipient_email: value })}
+                value={newMessage.recipient_id}
+                onValueChange={(value) => setNewMessage({ ...newMessage, recipient_id: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select recipient" />
                 </SelectTrigger>
                 <SelectContent>
                   {contacts.map((contact) => (
-                    <SelectItem key={contact.id} value={contact.user_email}>
+                    <SelectItem key={contact.id} value={contact.id}>
                       {contact.first_name} {contact.last_name} ({contact.user_type})
                     </SelectItem>
                   ))}
@@ -328,12 +317,12 @@ export default function Messages() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowComposeDialog(false)}>
+            <Button variant="outline" onClick={() => setShowComposeDialog(false)} disabled={sending}>
               Cancel
             </Button>
-            <Button onClick={handleSendMessage}>
+            <Button onClick={handleSendMessage} disabled={sending}>
               <Send className="h-4 w-4 mr-2" />
-              Send
+              {sending ? 'Sending…' : 'Send'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -342,9 +331,9 @@ export default function Messages() {
   );
 }
 
-function MessageThread({ conversation, profile, onReply }) {
+function MessageThread({ conversation, profile, onReply, sending }) {
   const [replyContent, setReplyContent] = useState('');
-  const sortedMessages = [...conversation.messages].sort((a, b) => 
+  const sortedMessages = [...conversation.messages].sort((a, b) =>
     new Date(a.created_date) - new Date(b.created_date)
   );
 
@@ -418,7 +407,7 @@ function MessageThread({ conversation, profile, onReply }) {
             rows={2}
             className="flex-1"
           />
-          <Button onClick={handleSendReply} disabled={!replyContent.trim()}>
+          <Button onClick={handleSendReply} disabled={!replyContent.trim() || sending}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
