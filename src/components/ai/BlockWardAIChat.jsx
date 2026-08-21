@@ -6,9 +6,9 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 const PROMPTS = {
-  student: ["What's happening this week?", "How many BlockWards have I earned?", "What achievements are still pending?", "What are my current points?", "Summarise my timetable"],
-  teacher: ["Who are my top students?", "What submissions need my review?", "Suggest students to recognise", "How many BlockWards have I issued?", "Summarise my class performance"],
-  admin: ["Give me a school summary", "What's pending approval?", "Which teachers issue the most achievements?", "Which students have no BlockWards?", "Summarise school activity"],
+  student: ["What are my latest grades?", "What's happening this week?", "Show my BlockWards.", "What's my timetable tomorrow?"],
+  teacher: ["Who are my top students?", "Summarise my class.", "Show pending reviews.", "Analyse my class grades."],
+  admin: ["Give me a school summary.", "Show approval bottlenecks.", "How are grades looking this term?", "Show achievement activity."],
 };
 
 const ROLE_ACTIONS = {
