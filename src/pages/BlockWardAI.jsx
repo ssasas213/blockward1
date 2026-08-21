@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import ScheduleTab from '@/components/ai/ScheduleTab.jsx';
 import AnnouncementTab from '@/components/ai/AnnouncementTab';
+import SchoolReportTab from '@/components/ai/SchoolReportTab';
 import AIErrorBoundary from '@/components/ai/AIErrorBoundary';
-import { Calendar, Megaphone, Sparkles } from 'lucide-react';
+import { Calendar, Megaphone, Sparkles, BarChart3 } from 'lucide-react';
 
 export default function BlockWardAI() {
   const [activeTab, setActiveTab] = useState('schedule');
@@ -27,6 +28,7 @@ export default function BlockWardAI() {
   const tabs = [
     { id: 'schedule', label: 'Ask Schedule', icon: Calendar, description: 'Query school events & assemblies' },
     { id: 'announcement', label: 'Draft Announcement', icon: Megaphone, description: 'AI-powered class communication' },
+    ...(userType === 'admin' ? [{ id: 'report', label: 'School Report', icon: BarChart3, description: 'AI analyses whole school → downloadable report' }] : []),
   ];
 
   return (
@@ -78,6 +80,9 @@ export default function BlockWardAI() {
                 userType={userType}
                 schoolId={profile?.school_id ?? null}
               />
+            )}
+            {activeTab === 'report' && (
+              <SchoolReportTab userType={userType} schoolId={profile?.school_id ?? null} />
             )}
           </AIErrorBoundary>
         </div>
