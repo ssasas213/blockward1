@@ -41,6 +41,10 @@ import OrgsSignup from './pages/organisations/Signup';
 import OrgDashboard from './pages/organisations/Dashboard';
 import AcceptInvite from './pages/AcceptInvite';
 import Invitations from './pages/Invitations';
+import StudentGrades from './pages/StudentGrades';
+import Gradebook from './pages/Gradebook';
+import GradeManagement from './pages/GradeManagement';
+import AcademicSettings from './pages/AcademicSettings';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -114,6 +118,10 @@ const AuthenticatedApp = () => {
       <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
       <Route path="/invite/:token" element={<AcceptInvite />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentGrades" element={<LayoutWrapper currentPageName="StudentGrades"><ProtectedRoute><StudentGrades /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Gradebook" element={<LayoutWrapper currentPageName="Gradebook"><ProtectedRoute><Gradebook /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/GradeManagement" element={<LayoutWrapper currentPageName="GradeManagement"><ProtectedRoute><GradeManagement /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AcademicSettings" element={<LayoutWrapper currentPageName="AcademicSettings"><ProtectedRoute><AcademicSettings /></ProtectedRoute></LayoutWrapper>} />
 
       {/* Platform-specific login/signup routes */}
       <Route path="/schools/login" element={<SchoolsLogin />} />

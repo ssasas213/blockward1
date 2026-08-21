@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { averagePercentages } from '../../shared/gradeCalc.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,17 +15,103 @@ function safeJson(obj, status = 200) {
 
 const PENDING_STATUSES = ["submitted", "awaiting_teacher_signature", "awaiting_admin_signature", "changes_requested"];
 
+// ── Grade summaries (published only) for AI grounding ──
+function buildStudentGradeSummary(grades) {
+  if (!grades || !grades.length) return { has_grades: false };
+  const valid = grades.filter(g => g.percentage != null);
+  if (!valid.length) return { has_grades: false };
+  const overall = averagePercentages(valid.map(g => g.percentage));
+  const bySubject = {};
+  for (const g of valid) {
+    const k = g.subject || g.class_name || "General";
+    if (!bySubject[k]) bySubject[k] = [];
+    bySubject[k].push(g.percentage);
+  }
+  const subject_averages = Object.entries(bySubject).map(([s, p]) => ({ subject: s, average: averagePercentages(p) }));
+  const sorted = [...valid].filter(g => g.assessment_date).sort((a, b) => new Date(a.assessment_date) - new Date(b.assessment_date));
+  const latest = sorted.slice(-5).map(g => ({ title: g.assessment_title, subject: g.subject, percentage: g.percentage, grade: g.grade_value, date: g.assessment_date }));
+  const highest = valid.reduce((best, g) => (g.percentage > (best?.percentage || -1) ? g : best), null);
+  let trend = null;
+  if (sorted.length >= 4) {
+    const half = Math.floor(sorted.length / 2);
+    const first = averagePercentages(sorted.slice(0, half).map(g => g.percentage));
+    const second = averagePercentages(sorted.slice(half).map(g => g.percentage));
+    if (first != null && second != null) trend = second > first ? "improving" : (second < first ? "declining" : "stable");
+  }
+  return { has_grades: true, overall_average: overall, subject_averages, latest, highest: highest ? { title: highest.assessment_title, percentage: highest.percentage, grade: highest.grade_value } : null, trend };
+}
+
+function buildTeacherGradeSummary(assessments, grades) {
+  if (!grades || !grades.length) return { has_grades: false, assessment_count: (assessments || []).length, published_assessments: (assessments || []).filter(a => a.status === "published").length };
+  const published = grades.filter(g => g.status === "published");
+  const byStudent = {};
+  for (const g of published) {
+    if (g.percentage == null) continue;
+    if (!byStudent[g.student_email]) byStudent[g.student_email] = { name: g.student_name || g.student_email, pcts: [] };
+    byStudent[g.student_email].pcts.push(g.percentage);
+  }
+  const studentAvgs = Object.entries(byStudent).map(([email, d]) => ({ email, name: d.name, average: averagePercentages(d.pcts) })).sort((a, b) => (b.average || 0) - (a.average || 0));
+  const byClass = {};
+  for (const g of published) {
+    const k = g.class_name || "Unknown";
+    if (!byClass[k]) byClass[k] = [];
+    if (g.percentage != null) byClass[k].push(g.percentage);
+  }
+  const class_averages = Object.entries(byClass).map(([cls, pcts]) => ({ class: cls, average: averagePercentages(pcts) }));
+  return {
+    has_grades: true,
+    assessment_count: (assessments || []).length,
+    published_assessments: (assessments || []).filter(a => a.status === "published").length,
+    published_grades: published.length,
+    draft_grades: grades.length - published.length,
+    class_averages,
+    top_students: studentAvgs.slice(0, 5),
+    below_60: studentAvgs.filter(s => (s.average || 0) < 60),
+  };
+}
+
+function buildAdminGradeSummary(assessments, grades) {
+  const published = (grades || []).filter(g => g.status === "published");
+  const overall = averagePercentages(published.map(g => g.percentage));
+  const byClass = {};
+  for (const g of published) {
+    const k = g.class_name || "Unknown";
+    if (!byClass[k]) byClass[k] = [];
+    if (g.percentage != null) byClass[k].push(g.percentage);
+  }
+  const class_averages = Object.entries(byClass).map(([cls, pcts]) => ({ class: cls, average: averagePercentages(pcts) })).sort((a, b) => (b.average || 0) - (a.average || 0));
+  const bySubject = {};
+  for (const g of published) {
+    const k = g.subject || "General";
+    if (!bySubject[k]) bySubject[k] = [];
+    if (g.percentage != null) bySubject[k].push(g.percentage);
+  }
+  const subject_averages = Object.entries(bySubject).map(([s, p]) => ({ subject: s, average: averagePercentages(p) }));
+  const dist = {};
+  for (const g of published) { const gv = g.grade_value || "Ungraded"; dist[gv] = (dist[gv] || 0) + 1; }
+  return {
+    assessments: (assessments || []).length,
+    published_grades: published.length,
+    draft_grades: (grades || []).length - published.length,
+    school_average: overall,
+    grade_distribution: dist,
+    class_averages,
+    subject_averages,
+  };
+}
+
 // ── Role-specific data loaders (server-side, scoped to actor's school) ──
 
 async function loadStudentContext(svc, actor) {
   const { actor_email, school_id } = actor;
-  const [allClasses, events, announcements, points, records, blockwards] = await Promise.all([
+  const [allClasses, events, announcements, points, records, blockwards, pubGrades] = await Promise.all([
     svc.entities.Class.filter({ school_id }).catch(() => []),
     svc.entities.Event.filter({ school_id }).catch(() => []),
     svc.entities.Announcement.filter({ school_id }).catch(() => []),
     svc.entities.PointEntry.filter({ student_email: actor_email }).catch(() => []),
     svc.entities.StudentRecord.filter({ student_email: actor_email }).catch(() => []),
     svc.entities.BlockWard.filter({ student_email: actor_email }).catch(() => []),
+    svc.entities.StudentGrade.filter({ school_id, student_email: actor_email, status: "published" }).catch(() => []),
   ]);
 
   const myClasses = allClasses.filter(c => (c.student_emails || []).includes(actor_email));
@@ -59,16 +146,19 @@ async function loadStudentContext(svc, actor) {
     achievements: recentRecords.map(r => ({ title: r.title, category: r.category, status: r.status, points: r.points, date: r.date_achieved })),
     pending: pending.map(r => ({ title: r.title, status: r.status })),
     blockwards_count: blockwards.length,
+    grades: buildStudentGradeSummary(pubGrades),
   };
 }
 
 async function loadTeacherContext(svc, actor) {
   const { actor_email, school_id } = actor;
-  const [allClasses, records, points, blockwards] = await Promise.all([
+  const [allClasses, records, points, blockwards, assessments, tgrades] = await Promise.all([
     svc.entities.Class.filter({ school_id }).catch(() => []),
     svc.entities.StudentRecord.filter({ teacher_email: actor_email }).catch(() => []),
     svc.entities.PointEntry.filter({ teacher_email: actor_email }).catch(() => []),
     svc.entities.BlockWard.filter({ issuer_email: actor_email }).catch(() => []),
+    svc.entities.Assessment.filter({ school_id, teacher_email: actor_email }).catch(() => []),
+    svc.entities.StudentGrade.filter({ school_id, teacher_email: actor_email }).catch(() => []),
   ]);
 
   const myClasses = allClasses.filter(c => c.teacher_email === actor_email || (c.co_teachers || []).includes(actor_email));
@@ -110,18 +200,21 @@ async function loadTeacherContext(svc, actor) {
     top_students: topStudents,
     pending: pending.slice(0, 6).map(r => ({ title: r.title, student: r.student_name, status: r.status })),
     categories_issued: catCounts,
+    grades: buildTeacherGradeSummary(assessments, tgrades),
     note: "Attendance data is not currently tracked in BlockWard; attendance-based rankings are unavailable.",
   };
 }
 
 async function loadAdminContext(svc, actor) {
   const { school_id } = actor;
-  const [profiles, records, points, blockwards, classes] = await Promise.all([
+  const [profiles, records, points, blockwards, classes, assessments, allGrades] = await Promise.all([
     svc.entities.UserProfile.filter({ school_id }).catch(() => []),
     svc.entities.StudentRecord.filter({ school_id }).catch(() => []),
     svc.entities.PointEntry.filter({ school_id }).catch(() => []),
     svc.entities.BlockWard.filter({ school_id }).catch(() => []),
     svc.entities.Class.filter({ school_id }).catch(() => []),
+    svc.entities.Assessment.filter({ school_id }).catch(() => []),
+    svc.entities.StudentGrade.filter({ school_id }).catch(() => []),
   ]);
 
   const students = profiles.filter(p => p.user_type === "student");
@@ -171,6 +264,7 @@ async function loadAdminContext(svc, actor) {
     records_by_category: catCounts,
     top_teachers: topTeachers,
     students_no_blockward: studentsNoBlockward,
+    grades: buildAdminGradeSummary(assessments, allGrades),
     note: "Attendance data is not currently tracked in BlockWard; attendance overview is unavailable.",
   };
 }
@@ -182,9 +276,9 @@ const SYSTEM_PROMPTS = {
 };
 
 const QUICK_ACTIONS = {
-  student: ["What's happening this week?", "Summarise my timetable", "How many BlockWards have I earned?", "What achievements are still pending?", "What are my current points?"],
-  teacher: ["Who are my top students?", "Summarise my class performance", "What submissions need my review?", "Suggest students to recognise", "How many BlockWards have I issued?"],
-  admin: ["Give me a school summary", "What's pending approval?", "Which teachers issue the most achievements?", "Which students have no BlockWards?", "Summarise school activity"],
+  student: ["What's my current average?", "How am I doing in my best subject?", "What was my highest grade this term?", "Which subject am I improving in?", "Show my latest grades", "How many BlockWards have I earned?"],
+  teacher: ["Who are my top-scoring students?", "Which students are below 60%?", "Summarise my class performance", "Which students should I recognise?", "What submissions need my review?", "How many assessments have I published?"],
+  admin: ["Give me a school academic summary", "What's the school grade average?", "Which subjects need attention?", "Which classes have the highest averages?", "What's pending approval?", "Show grade trends this term"],
 };
 
 Deno.serve(async (req) => {
@@ -228,9 +322,9 @@ Deno.serve(async (req) => {
     const answer = oaiData?.choices?.[0]?.message?.content || "No response from AI.";
 
     const sourcesByRole = {
-      student: ["classes", "timetable", "events", "announcements", "points", "achievements", "BlockWards"],
-      teacher: ["my classes", "issued points", "issued achievements", "issued BlockWards", "pending submissions"],
-      admin: ["user profiles", "achievement records", "points", "BlockWards", "classes"],
+      student: ["classes", "timetable", "events", "announcements", "points", "achievements", "BlockWards", "published grades"],
+      teacher: ["my classes", "issued points", "issued achievements", "issued BlockWards", "pending submissions", "gradebook"],
+      admin: ["user profiles", "achievement records", "points", "BlockWards", "classes", "grades"],
     };
 
     return safeJson({

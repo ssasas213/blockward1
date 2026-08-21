@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import ParentContactSection from '@/components/student/ParentContactSection';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
+import GradesWidget from '@/components/grades/GradesWidget';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -113,6 +114,9 @@ function StudentDashboardContent() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Academic Performance Widget */}
+        <GradesWidget />
+
         {/* Today's Schedule */}
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">

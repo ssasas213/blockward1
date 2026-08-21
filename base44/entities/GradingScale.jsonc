@@ -1,0 +1,91 @@
+{
+  "name": "GradingScale",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "e.g. 'GCSE 9-1', 'Letter Grades', 'Percentage Bands'"
+    },
+    "grade_bands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "min_percentage": {
+            "type": "number",
+            "description": "Minimum percentage for this grade"
+          },
+          "grade": {
+            "type": "string",
+            "description": "Grade symbol e.g. 'A*', '9', 'B'"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional display label"
+          }
+        },
+        "required": [
+          "min_percentage",
+          "grade"
+        ]
+      },
+      "description": "Ordered list of grade bands. Highest min_percentage wins."
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    },
+    "created_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "school_id",
+    "name",
+    "grade_bands"
+  ],
+  "rls": {
+    "create": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "update": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    }
+  }
+}

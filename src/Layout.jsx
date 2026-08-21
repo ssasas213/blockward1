@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -63,6 +63,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Approval Queue', icon: PenLine, page: 'AdminApprovalQueue' },
         { name: 'Achievement Records', icon: Trophy, page: 'AdminRecords' },
         { name: 'Custodian Dashboard', icon: Shield, page: 'CustodianDashboard' },
+        { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
       ]},
       { label: 'Management', items: [
         { name: 'Users', icon: Users, page: 'ManageUsers' },
@@ -74,6 +75,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
         { name: 'School Settings', icon: Settings, page: 'SystemSettings' },
         { name: 'School Codes', icon: Shield, page: 'SchoolCodes' },
+        { name: 'Academic Settings', icon: Settings, page: 'AcademicSettings' },
         { name: 'Admin Permissions', icon: Shield, page: 'AdminPermissions', superAdminOnly: true },
       ]},
       { label: 'Insights', items: [
@@ -98,6 +100,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Classes', icon: BookOpen, page: 'Classes' },
         { name: 'Timetable', icon: Calendar, page: 'Timetable' },
         { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
+        { name: 'Gradebook', icon: GraduationCap, page: 'Gradebook' },
         { name: 'Resources', icon: FileText, page: 'Resources' },
       ]},
       { label: 'Communication', items: [
@@ -117,6 +120,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
         { name: 'My Achievements', icon: Trophy, page: 'StudentMyRecords' },
         { name: 'Portfolio Vault', icon: HardDrive, page: 'StudentPortfolioVault' },
+      ]},
+      { label: 'Academic', items: [
+        { name: 'Grades', icon: GraduationCap, page: 'StudentGrades' },
       ]},
       { label: 'School', items: [
         { name: 'My Classes', icon: BookOpen, page: 'Classes' },

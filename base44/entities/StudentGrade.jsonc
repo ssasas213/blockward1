@@ -1,0 +1,177 @@
+{
+  "name": "StudentGrade",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_id": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "assessment_id": {
+      "type": "string"
+    },
+    "assessment_title": {
+      "type": "string"
+    },
+    "assessment_type": {
+      "type": "string"
+    },
+    "assessment_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Issuing teacher (effective persona in Test Mode)"
+    },
+    "teacher_id": {
+      "type": "string"
+    },
+    "teacher_name": {
+      "type": "string"
+    },
+    "term_id": {
+      "type": "string"
+    },
+    "term_name": {
+      "type": "string"
+    },
+    "raw_score": {
+      "type": "number"
+    },
+    "max_score": {
+      "type": "number"
+    },
+    "percentage": {
+      "type": "number"
+    },
+    "grade_value": {
+      "type": "string",
+      "description": "Letter/number from school grading scale"
+    },
+    "teacher_comment": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "published"
+      ],
+      "default": "draft"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "published_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "school_id",
+    "student_email",
+    "assessment_id",
+    "class_id",
+    "raw_score",
+    "max_score",
+    "teacher_email"
+  ],
+  "rls": {
+    "create": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            },
+            {
+              "data.student_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

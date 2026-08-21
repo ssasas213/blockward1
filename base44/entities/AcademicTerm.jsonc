@@ -1,0 +1,81 @@
+{
+  "name": "AcademicTerm",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "academic_year": {
+      "type": "string",
+      "description": "e.g. '2025-2026'"
+    },
+    "name": {
+      "type": "string",
+      "description": "e.g. 'Term 1', 'Semester 1'"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "created_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "school_id",
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "update": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    }
+  }
+}

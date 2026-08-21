@@ -1,0 +1,114 @@
+{
+  "name": "GradeAudit",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string"
+    },
+    "grade_id": {
+      "type": "string",
+      "description": "StudentGrade.id"
+    },
+    "assessment_title": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "old_score": {
+      "type": "number"
+    },
+    "new_score": {
+      "type": "number"
+    },
+    "old_percentage": {
+      "type": "number"
+    },
+    "new_percentage": {
+      "type": "number"
+    },
+    "changed_by_email": {
+      "type": "string"
+    },
+    "changed_by_name": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "school_id",
+    "grade_id",
+    "changed_by_email",
+    "timestamp"
+  ],
+  "rls": {
+    "create": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.changed_by_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.changed_by_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        }
+      ]
+    }
+  }
+}
