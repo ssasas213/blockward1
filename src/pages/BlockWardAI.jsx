@@ -3,11 +3,12 @@ import { base44 } from '@/api/base44Client';
 import ScheduleTab from '@/components/ai/ScheduleTab.jsx';
 import AnnouncementTab from '@/components/ai/AnnouncementTab';
 import SchoolReportTab from '@/components/ai/SchoolReportTab';
+import BlockWardAIChat from '@/components/ai/BlockWardAIChat';
 import AIErrorBoundary from '@/components/ai/AIErrorBoundary';
-import { Calendar, Megaphone, Sparkles, BarChart3 } from 'lucide-react';
+import { Calendar, Megaphone, Sparkles, BarChart3, MessageSquare } from 'lucide-react';
 
 export default function BlockWardAI() {
-  const [activeTab, setActiveTab] = useState('schedule');
+  const [activeTab, setActiveTab] = useState('chat');
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
 
@@ -26,6 +27,7 @@ export default function BlockWardAI() {
   const userType = profile?.user_type || 'teacher';
 
   const tabs = [
+    { id: 'chat', label: 'Ask BlockWard AI', icon: MessageSquare, description: 'Role-aware assistant grounded in your school data' },
     { id: 'schedule', label: 'Ask Schedule', icon: Calendar, description: 'Query school events & assemblies' },
     { id: 'announcement', label: 'Draft Announcement', icon: Megaphone, description: 'AI-powered class communication' },
     ...(userType === 'admin' ? [{ id: 'report', label: 'School Report', icon: BarChart3, description: 'AI analyses whole school → downloadable report' }] : []),
@@ -73,6 +75,7 @@ export default function BlockWardAI() {
         {/* Content card */}
         <div className="bg-card rounded-2xl border border-border shadow-card p-6">
           <AIErrorBoundary key={activeTab}>
+            {activeTab === 'chat' && <BlockWardAIChat role={userType} />}
             {activeTab === 'schedule' && <ScheduleTab userType={userType} />}
             {activeTab === 'announcement' && (
               <AnnouncementTab
