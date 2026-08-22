@@ -63,11 +63,19 @@ export default function BlockWardGuide() {
   const step = steps[index];
   const mascotSize = isMobile ? MASCOT_SIZE_MOBILE : MASCOT_SIZE_DESKTOP;
 
-  // Auto-launch for first-time users
+  // Auto-launch for first-time users, or every sign-in if opted in (once per session)
   useEffect(() => {
     if (loading || !user || !profile) return;
-    if (isTourCompleted()) return;
-    const t = setTimeout(() => setActive(true), 900);
+    const tourDone = isTourCompleted();
+    const alwaysShow = profile.show_mascot_on_signin === true;
+    const SESSION_KEY = 'bw_mascot_shown_session';
+    let shownThisSession = false;
+    try { shownThisSession = sessionStorage.getItem(SESSION_KEY) === '1'; } catch {}
+    if (tourDone && (!alwaysShow || shownThisSession)) return;
+    const t = setTimeout(() => {
+      try { sessionStorage.setItem(SESSION_KEY, '1'); } catch {}
+      setActive(true);
+    }, 900);
     return () => clearTimeout(t);
   }, [loading, user, profile]);
 

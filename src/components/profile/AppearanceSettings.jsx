@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Sun, Moon, Monitor, Loader2 } from 'lucide-react';
+import { Sun, Moon, Monitor, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { applyTheme } from '@/lib/themeManager';
 import { toast } from 'sonner';
+import { Switch } from '@/components/ui/switch';
 
 const OPTIONS = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -13,6 +14,8 @@ const OPTIONS = [
 export default function AppearanceSettings({ profile, onPreferenceChange }) {
   const current = profile?.theme_preference || 'system';
   const [saving, setSaving] = useState(null);
+  const [mascotOn, setMascotOn] = useState(profile?.show_mascot_on_signin === true);
+  const [mascotSaving, setMascotSaving] = useState(false);
 
   const select = async (value) => {
     // Apply immediately — no flash, no reload
@@ -29,6 +32,24 @@ export default function AppearanceSettings({ profile, onPreferenceChange }) {
       toast.error('Failed to save theme preference');
     } finally {
       setSaving(null);
+    }
+  };
+
+  const toggleMascot = async (checked) => {
+    setMascotOn(checked);
+    setMascotSaving(true);
+    try {
+      if (profile?.id) {
+        await import('@/api/base44Client').then(({ base44 }) =>
+          base44.entities.UserProfile.update(profile.id, { show_mascot_on_signin: checked })
+        );
+        toast.success(checked ? 'Mascot will show on every sign-in' : 'Mascot set to first-time only');
+      }
+    } catch {
+      setMascotOn(!checked);
+      toast.error('Failed to save preference');
+    } finally {
+      setMascotSaving(false);
     }
   };
 
@@ -60,6 +81,24 @@ export default function AppearanceSettings({ profile, onPreferenceChange }) {
             </button>
           );
         })}
+      </div>
+
+      <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border bg-muted/20">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-lg bg-primary/10 p-2 text-primary">
+            <Sparkles className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Show mascot on every sign-in</p>
+            <p className="text-xs text-muted-foreground">Launch the BlockWard welcome tour each time you sign in.</p>
+          </div>
+        </div>
+        <Switch
+          checked={mascotOn}
+          onCheckedChange={toggleMascot}
+          disabled={mascotSaving}
+          aria-label="Show mascot on every sign-in"
+        />
       </div>
     </div>
   );

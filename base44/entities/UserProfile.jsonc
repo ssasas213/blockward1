@@ -99,6 +99,11 @@
       "default": "system",
       "description": "User's preferred UI theme"
     },
+    "show_mascot_on_signin": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the BlockWard mascot tour launches automatically on each sign-in (once per browser session)."
+    },
     "student_id": {
       "type": "string",
       "description": "Student ID number (for students)"
