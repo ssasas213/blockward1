@@ -135,6 +135,41 @@ const TOOLS = [
     },
   },
 
+  {
+    name: "getMyPoints", description: "Get the student's own achievement/behaviour point history and totals.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const entries = await svc.entities.PointEntry.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []);
+      if (!entries.length) return { has_points: false };
+      const achievement_total = entries.filter(e => e.type === "achievement").reduce((s, e) => s + (e.points || 0), 0);
+      const behaviour_total = entries.filter(e => e.type === "behaviour").reduce((s, e) => s + (e.points || 0), 0);
+      const sorted = [...entries].filter(e => e.timestamp).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const recent = sorted.slice(0, 10).map(e => ({ type: e.type, points: e.points, reason: e.reason, category: e.category_name, date: e.timestamp }));
+      return { has_points: true, achievement_total, behaviour_total, entry_count: entries.length, recent };
+    },
+  },
+  {
+    name: "getMyAnnouncements", description: "Get the student's recent school and class announcements that have been sent.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [announcements, classes] = await Promise.all([
+        svc.entities.Announcement.filter({ school_id: actor.school_id, status: "sent" }).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
+      const visible = announcements
+        .filter(a =>
+          a.scope_type === "SCHOOL" ||
+          (a.scope_type === "CLASS" && myClassIds.includes(a.class_id)) ||
+          (a.scope_type === "STUDENTS" && (a.student_emails || []).includes(actor.actor_email))
+        )
+        .sort((a, b) => new Date(b.sent_at || 0) - new Date(a.sent_at || 0))
+        .slice(0, 10)
+        .map(a => ({ title: a.title, body: a.body_short || a.body, priority: a.priority, date: a.sent_at }));
+      return { count: visible.length, announcements: visible };
+    },
+  },
+
   // ── TEACHER ──
   {
     name: "getMyClasses", description: "List the classes the teacher owns or co-teaches.", allowedRoles: ["teacher"],
@@ -154,7 +189,7 @@ const TOOLS = [
       if (!cls) return { error: "You do not teach a class with that name." };
       const emails = cls.student_emails || [];
       const profiles = emails.length ? await svc.entities.UserProfile.filter({ school_id: actor.school_id }).catch(() => []) : [];
-      const students = profiles.filter(p => emails.includes(p.user_email)).map(p => ({ name: `${p.first_name || ""} ${p.last_name || ""}`.trim(), grade_level: p.grade_level }));
+      const students = profiles.filter(p => emails.includes(p.user_email)).map(p => ({ name: `${p.first_name || ""} ${p.last_name || ""}`.trim(), email: p.user_email, grade_level: p.grade_level }));
       return { class: cls.name, student_count: students.length, students };
     },
   },
@@ -176,6 +211,52 @@ const TOOLS = [
       const recs = await svc.entities.StudentRecord.filter({ teacher_email: actor.actor_email }).catch(() => []);
       const pending = recs.filter(r => PENDING_REVIEW_STATUSES.includes(r.status));
       return { pending_count: pending.length, pending: pending.slice(0, 10).map(r => ({ title: r.title, student: r.student_name, status: r.status, date: r.submitted_at })) };
+    },
+  },
+
+  {
+    name: "getStudentSummary", description: "Get a summary of one student (grades, achievements, points) — only for a student enrolled in one of the teacher's own classes. Identify the student by email (use getClassStudents first to look up the email).", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: { student_email: { type: "string", description: "The student's exact email address" } }, required: ["student_email"] },
+    async run(args, { svc, actor }) {
+      const targetEmail = String(args?.student_email || "").trim().toLowerCase();
+      if (!targetEmail) return { error: "student_email is required." };
+      const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
+      const myClasses = classes.filter(c => c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email));
+      const inMyClass = myClasses.some(c => (c.student_emails || []).map(e => e.toLowerCase()).includes(targetEmail));
+      if (!inMyClass) return { error: "That student is not enrolled in one of your classes." };
+
+      const [profiles, grades, records, points] = await Promise.all([
+        svc.entities.UserProfile.filter({ school_id: actor.school_id, user_email: targetEmail }).catch(() => []),
+        svc.entities.StudentGrade.filter({ school_id: actor.school_id, student_email: targetEmail, status: "published" }).catch(() => []),
+        svc.entities.StudentRecord.filter({ school_id: actor.school_id, student_email: targetEmail }).catch(() => []),
+        svc.entities.PointEntry.filter({ school_id: actor.school_id, student_email: targetEmail }).catch(() => []),
+      ]);
+      const profile = profiles[0] || null;
+      const achievement_points = points.filter(p => p.type === "achievement").reduce((s, p) => s + (p.points || 0), 0);
+      const behaviour_points = points.filter(p => p.type === "behaviour").reduce((s, p) => s + (p.points || 0), 0);
+      return {
+        name: profile ? `${profile.first_name || ""} ${profile.last_name || ""}`.trim() : null,
+        grade_level: profile?.grade_level || null,
+        grades: buildStudentGradeSummary(grades),
+        achievements_total: records.length,
+        achievements_by_status: records.reduce((acc, r) => { acc[r.status || "unknown"] = (acc[r.status || "unknown"] || 0) + 1; return acc; }, {}),
+        achievement_points,
+        behaviour_points,
+      };
+    },
+  },
+  {
+    name: "getTeacherAchievementStats", description: "Get the teacher's own achievement-issuing activity stats (submissions across all their classes/students).", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const recs = await svc.entities.StudentRecord.filter({ school_id: actor.school_id, teacher_email: actor.actor_email }).catch(() => []);
+      const by_status = {};
+      const by_category = {};
+      for (const r of recs) {
+        by_status[r.status || "unknown"] = (by_status[r.status || "unknown"] || 0) + 1;
+        by_category[r.category || "other"] = (by_category[r.category || "other"] || 0) + 1;
+      }
+      return { total: recs.length, by_status, by_category };
     },
   },
 
@@ -221,12 +302,52 @@ const TOOLS = [
       return buildAdminGradeSummary(assessments, grades);
     },
   },
+  {
+    name: "getTeacherActivity", description: "Get a per-teacher breakdown of activity across the school: achievements issued and points awarded.", allowedRoles: ["admin"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [records, points] = await Promise.all([
+        svc.entities.StudentRecord.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.PointEntry.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const byTeacher = {};
+      for (const r of records) {
+        const k = r.teacher_name || r.teacher_email || "Unknown";
+        if (!byTeacher[k]) byTeacher[k] = { achievements_submitted: 0, points_awarded: 0 };
+        byTeacher[k].achievements_submitted += 1;
+      }
+      for (const p of points) {
+        const k = p.teacher_name || p.teacher_email || "Unknown";
+        if (!byTeacher[k]) byTeacher[k] = { achievements_submitted: 0, points_awarded: 0 };
+        byTeacher[k].points_awarded += (p.points || 0);
+      }
+      const teachers = Object.entries(byTeacher).map(([name, stats]) => ({ name, ...stats })).sort((a, b) => b.achievements_submitted - a.achievements_submitted);
+      return { teacher_count: teachers.length, teachers: teachers.slice(0, 20) };
+    },
+  },
+  {
+    name: "getAchievementStats", description: "Get school-wide achievement/BlockWard statistics: totals by status and category, and BlockWards delivered.", allowedRoles: ["admin"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [records, blockwards] = await Promise.all([
+        svc.entities.StudentRecord.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.BlockWard.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const by_status = {};
+      const by_category = {};
+      for (const r of records) {
+        by_status[r.status || "unknown"] = (by_status[r.status || "unknown"] || 0) + 1;
+        by_category[r.category || "other"] = (by_category[r.category || "other"] || 0) + 1;
+      }
+      return { total_records: records.length, by_status, by_category, blockwards_delivered: blockwards.length };
+    },
+  },
 ];
 
 const TOOL_LABELS = {
-  getMyGrades: "my grades", getMyEvents: "events", getMyTimetable: "timetable", getMyBlockWards: "BlockWards", getMyAchievements: "achievements",
-  getMyClasses: "my classes", getClassStudents: "class students", getClassGrades: "class grades", getPendingReviews: "pending reviews",
-  getSchoolSummary: "school summary", getApprovalStats: "approval stats", getSchoolGradeStats: "grade stats",
+  getMyGrades: "my grades", getMyEvents: "events", getMyTimetable: "timetable", getMyBlockWards: "BlockWards", getMyAchievements: "achievements", getMyPoints: "my points", getMyAnnouncements: "announcements",
+  getMyClasses: "my classes", getClassStudents: "class students", getClassGrades: "class grades", getPendingReviews: "pending reviews", getStudentSummary: "student summary", getTeacherAchievementStats: "my achievement stats",
+  getSchoolSummary: "school summary", getApprovalStats: "approval stats", getSchoolGradeStats: "grade stats", getTeacherActivity: "teacher activity", getAchievementStats: "achievement stats",
 };
 
 // ───────────────────────── System instruction ─────────────────────────
