@@ -54,7 +54,9 @@
     "type"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
     "read": {
       "data.user_email": "{{user.email}}"
     },
