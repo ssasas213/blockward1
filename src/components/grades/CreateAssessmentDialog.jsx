@@ -4,17 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ASSESSMENT_TYPES } from '@/lib/grades';
+import { ASSESSMENT_TYPES, isAssignmentType } from '@/lib/grades';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function CreateAssessmentDialog({ open, onClose, classInfo, terms, teacherEmail, teacherName, onCreated }) {
-  const [form, setForm] = useState({ title: '', assessment_type: 'test', max_score: 100, date: new Date().toISOString().slice(0, 10), term_id: '', description: '', weighting: '' });
+export default function CreateAssessmentDialog({ open, onClose, classInfo, terms, teacherEmail, teacherName, onCreated, defaultAssessmentType }) {
+  const initialType = defaultAssessmentType || 'test';
+  const [form, setForm] = useState({ title: '', assessment_type: initialType, max_score: 100, date: new Date().toISOString().slice(0, 10), due_date: '', term_id: '', description: '', weighting: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) setForm(f => ({ ...f, title: '', assessment_type: 'test', max_score: 100, date: new Date().toISOString().slice(0, 10), term_id: '', description: '', weighting: '' }));
-  }, [open]);
+    if (open) setForm(f => ({ ...f, title: '', assessment_type: initialType, max_score: 100, date: new Date().toISOString().slice(0, 10), due_date: '', term_id: '', description: '', weighting: '' }));
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!form.title.trim() || !form.max_score) { toast.error('Title and max score are required'); return; }
@@ -28,6 +29,7 @@ export default function CreateAssessmentDialog({ open, onClose, classInfo, terms
         assessment_type: form.assessment_type,
         max_score: Number(form.max_score),
         date: form.date,
+        due_date: form.due_date || null,
         term_id: form.term_id || null,
         term_name: term?.name || null,
         description: form.description.trim() || null,
@@ -80,6 +82,12 @@ export default function CreateAssessmentDialog({ open, onClose, classInfo, terms
               </select>
             </div>
           </div>
+          {isAssignmentType(form.assessment_type) && (
+            <div className="space-y-2">
+              <Label>Due Date</Label>
+              <Input type="date" value={form.due_date} onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))} />
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Weighting (optional)</Label>
             <Input type="number" value={form.weighting} onChange={e => setForm(f => ({ ...f, weighting: e.target.value }))} placeholder="e.g. 20 (weight in overall average)" />
