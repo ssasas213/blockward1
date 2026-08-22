@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 export default function JoinSchool() {
   const [profile, setProfile] = useState(null);
   const [pendingMembership, setPendingMembership] = useState(null);
+  const [wasLinked, setWasLinked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [joinCode, setJoinCode] = useState('');
@@ -29,14 +30,12 @@ export default function JoinSchool() {
           const p = profiles[0];
           setProfile(p);
 
-          // Already linked to a school — go straight to the right dashboard
-          if (p.school_id) {
-            redirectByRole(p.user_type);
-            return;
-          }
+          // Remember if they're already linked to a school — we still allow
+          // joining/switching to another school, but skip the guided onboarding.
+          if (p.school_id) setWasLinked(true);
 
-          // Teacher with no school yet — check for a pending join request so we
-          // show a "pending approval" state instead of the join form again.
+          // Teacher — check for a pending join request so we show a
+          // "pending approval" state instead of the join form again.
           if (p.user_type === 'teacher') {
             try {
               const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
@@ -77,7 +76,8 @@ export default function JoinSchool() {
         // Student (auto-approved) — linked immediately; new students go through guided setup
         setResult({ success: true, message: data.message, schoolName: data.school_name });
         setTimeout(() => {
-          if (role === 'student') {
+          // First-time student goes through guided setup; everyone else to their dashboard.
+          if (role === 'student' && !wasLinked) {
             window.location.href = createPageUrl('StudentOnboarding');
           } else {
             redirectByRole(role);
@@ -155,6 +155,12 @@ export default function JoinSchool() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {wasLinked && profile?.school_id && (
+              <div className="p-3 rounded-lg border border-info/30 bg-info/10 text-sm text-info">
+                You're currently linked to a school. Joining a new one will switch your active school
+                {isStudent ? ' immediately.' : ' after the admin approves your request.'}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>School Code</Label>
               <Input
