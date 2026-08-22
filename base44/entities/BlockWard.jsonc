@@ -130,7 +130,9 @@
     "category"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
     "read": {
       "data.school_id": "{{user.profile.school_id}}",
       "$or": [
