@@ -73,6 +73,15 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'Student profile not found for email: ' + targetEmail }, { status: 403, headers: CORS });
     }
 
+    // Cross-school guard: an admin may only view vaults for students in their own
+    // school. Without this check, an admin could pass any student_email — including
+    // one belonging to a different school — and read that student's full vault.
+    if (actor.actor_role === 'admin' && targetEmail !== normalizeEmail(actor.actor_email)) {
+      if (!profile.school_id || profile.school_id !== actor.school_id) {
+        return Response.json({ ok: false, error: 'wrong_school', message: 'This student belongs to a different organisation.' }, { status: 403, headers: CORS });
+      }
+    }
+
     const canonicalStudentId = profile.id;
 
     // ── STEP 2: Query delivered StudentRecords ──
