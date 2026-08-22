@@ -29,7 +29,8 @@
       "type": "string"
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "description": "Instructions / topics covered / notes"
     },
     "assessment_type": {
       "type": "string",
@@ -38,6 +39,8 @@
         "test",
         "quiz",
         "homework",
+        "assignment",
+        "revision",
         "coursework",
         "practical",
         "project",
@@ -48,7 +51,17 @@
     },
     "date": {
       "type": "string",
-      "format": "date"
+      "format": "date",
+      "description": "Assigned / assessment date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Due date for assignments/homework (optional for graded assessments)"
+    },
+    "attachment_url": {
+      "type": "string",
+      "description": "Optional attached resource/instructions file URL"
     },
     "term_id": {
       "type": "string"

@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, CalendarDays
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -64,12 +64,15 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Achievement Records', icon: Trophy, page: 'AdminRecords' },
         { name: 'Custodian Dashboard', icon: Shield, page: 'CustodianDashboard' },
         { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
+        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
       ]},
       { label: 'Management', items: [
         { name: 'Users', icon: Users, page: 'ManageUsers' },
         { name: 'Invitations', icon: Send, page: 'Invitations' },
         { name: 'Classes', icon: BookOpen, page: 'Classes' },
         { name: 'Announcements', icon: Bell, page: 'Announcements' },
+        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
+        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
       ]},
       { label: 'Configuration', items: [
         { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
@@ -101,6 +104,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Timetable', icon: Calendar, page: 'Timetable' },
         { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
         { name: 'Gradebook', icon: GraduationCap, page: 'Gradebook' },
+        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
+        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
+        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
         { name: 'Resources', icon: FileText, page: 'Resources' },
       ]},
       { label: 'Communication', items: [
@@ -123,10 +129,13 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Academic', items: [
         { name: 'Grades', icon: GraduationCap, page: 'StudentGrades' },
+        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
       ]},
       { label: 'School', items: [
         { name: 'My Classes', icon: BookOpen, page: 'Classes' },
         { name: 'Timetable', icon: Calendar, page: 'Timetable' },
+        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
+        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
         { name: 'My Points', icon: Award, page: 'MyPoints' },
         { name: 'Resources', icon: FileText, page: 'Resources' },
       ]},

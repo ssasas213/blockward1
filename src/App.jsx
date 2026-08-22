@@ -45,6 +45,9 @@ import StudentGrades from './pages/StudentGrades';
 import Gradebook from './pages/Gradebook';
 import GradeManagement from './pages/GradeManagement';
 import AcademicSettings from './pages/AcademicSettings';
+import Assignments from './pages/Assignments';
+import Assemblies from './pages/Assemblies';
+import SchoolCalendar from './pages/SchoolCalendar';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -122,6 +125,9 @@ const AuthenticatedApp = () => {
       <Route path="/Gradebook" element={<LayoutWrapper currentPageName="Gradebook"><ProtectedRoute><Gradebook /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/GradeManagement" element={<LayoutWrapper currentPageName="GradeManagement"><ProtectedRoute><GradeManagement /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AcademicSettings" element={<LayoutWrapper currentPageName="AcademicSettings"><ProtectedRoute><AcademicSettings /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Assignments" element={<LayoutWrapper currentPageName="Assignments"><ProtectedRoute><Assignments /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Assemblies" element={<LayoutWrapper currentPageName="Assemblies"><ProtectedRoute><Assemblies /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/SchoolCalendar" element={<LayoutWrapper currentPageName="SchoolCalendar"><ProtectedRoute><SchoolCalendar /></ProtectedRoute></LayoutWrapper>} />
 
       {/* Platform-specific login/signup routes */}
       <Route path="/schools/login" element={<SchoolsLogin />} />

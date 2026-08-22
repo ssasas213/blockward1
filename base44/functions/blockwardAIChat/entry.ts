@@ -171,7 +171,7 @@ const TOOLS = [
   },
 
   {
-    name: "getMyAssemblies", description: "Get the student's upcoming school assemblies. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["student"],
+    name: "getMyAssemblies", description: "Get the student's upcoming school assemblies. Assemblies are school Events with event_type 'assembly'.", allowedRoles: ["student"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
       const [events, classes] = await Promise.all([
@@ -179,38 +179,49 @@ const TOOLS = [
         svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
       ]);
       const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
+      const myGradeLevel = (await svc.entities.UserProfile.filter({ school_id: actor.school_id, user_email: actor.actor_email }).catch(() => []))[0]?.grade_level;
       const now = new Date();
-      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const relevant = e => {
+        if (e.audience === "whole_school" || !e.audience) return true;
+        if (e.audience === "staff") return false;
+        if (e.audience === "selected_classes") return (e.audience_classes || (e.audience_class_id ? [e.audience_class_id] : [])).some(id => myClassIds.includes(id));
+        if (e.audience === "year_group") return (e.year_group_names || []).some(n => n === myGradeLevel);
+        return false;
+      };
       const upcoming = events
-        .filter(isAssembly)
+        .filter(isAssembly).filter(e => e.status !== "cancelled")
         .filter(e => e.start_time && new Date(e.start_time) >= now)
-        .filter(e => !e.audience_class_id || myClassIds.includes(e.audience_class_id) || e.audience === "whole_school" || !e.audience)
+        .filter(relevant)
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
         .slice(0, 10)
-        .map(e => ({ title: e.title, start: e.start_time, location: e.location }));
+        .map(e => ({ title: e.title, start: e.start_time, end: e.end_time, location: e.location, organiser: e.organiser, status: e.status }));
       return { assemblies: upcoming };
     },
   },
   {
-    name: "getMyHomework", description: "Get the student's homework assignments (from the class assessment system) for their enrolled classes, with whether each has been graded yet.", allowedRoles: ["student"],
+    name: "getMyHomework", description: "Get the student's assignments and homework (from the class assessment system) for their enrolled classes, with due dates and grading status. Covers homework, assignment, revision, coursework and project types.", allowedRoles: ["student"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
       const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
       const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
       if (!myClassIds.length) return { homework: [] };
       const [assessments, grades] = await Promise.all([
-        svc.entities.Assessment.filter({ school_id: actor.school_id, assessment_type: "homework", status: "published" }).catch(() => []),
+        svc.entities.Assessment.filter({ school_id: actor.school_id }).catch(() => []),
         svc.entities.StudentGrade.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []),
       ]);
-      const mine = assessments.filter(a => myClassIds.includes(a.class_id));
+      const types = ["homework", "assignment", "revision", "coursework", "project"];
+      const mine = assessments.filter(a => types.includes(a.assessment_type) && myClassIds.includes(a.class_id) && a.status === "published");
+      const t = new Date().toISOString().slice(0, 10);
       const homework = mine
-        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-        .slice(0, 15)
+        .sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"))
+        .slice(0, 20)
         .map(a => {
           const grade = grades.find(g => g.assessment_id === a.id);
-          return { title: a.title, class_name: a.class_name, subject: a.subject, date: a.date, status: grade ? (grade.status === "published" ? "graded" : "submitted, awaiting grade") : "not yet graded" };
+          const due_status = !a.due_date ? "no due date" : a.due_date < t ? "overdue" : a.due_date === t ? "due today" : "due soon";
+          return { title: a.title, class_name: a.class_name, subject: a.subject, type: a.assessment_type, date: a.date, due_date: a.due_date, due_status, status: grade ? (grade.status === "published" ? "graded" : "submitted, awaiting grade") : "not yet graded" };
         });
-      return { homework };
+      return { homework, overdue_count: homework.filter(h => h.due_status === "overdue").length };
     },
   },
   {
@@ -312,7 +323,7 @@ const TOOLS = [
   },
 
   {
-    name: "getUpcomingAssemblies", description: "Get upcoming assemblies relevant to the teacher's classes. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["teacher"],
+    name: "getUpcomingAssemblies", description: "Get upcoming assemblies relevant to the teacher's classes. Assemblies are school Events with event_type 'assembly'.", allowedRoles: ["teacher"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
       const [events, classes] = await Promise.all([
@@ -321,32 +332,35 @@ const TOOLS = [
       ]);
       const myClassIds = classes.filter(c => c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email)).map(c => c.id);
       const now = new Date();
-      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
       const upcoming = events
-        .filter(isAssembly)
+        .filter(isAssembly).filter(e => e.status !== "cancelled")
         .filter(e => e.start_time && new Date(e.start_time) >= now)
-        .filter(e => e.audience === "whole_school" || e.audience === "staff_only" || !e.audience || (e.audience_class_id && myClassIds.includes(e.audience_class_id)))
+        .filter(e => e.audience === "whole_school" || e.audience === "staff" || !e.audience || (e.audience === "selected_classes" && (e.audience_classes || (e.audience_class_id ? [e.audience_class_id] : [])).some(id => myClassIds.includes(id))) || e.created_by === actor.actor_email)
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
         .slice(0, 10)
-        .map(e => ({ title: e.title, start: e.start_time, location: e.location, audience: e.audience }));
+        .map(e => ({ title: e.title, start: e.start_time, end: e.end_time, location: e.location, audience: e.audience, organiser: e.organiser, status: e.status }));
       return { assemblies: upcoming };
     },
   },
   {
-    name: "getClassHomework", description: "Get homework assignments for one of the teacher's own classes, identified by class name, with submission/grading completion counts.", allowedRoles: ["teacher"],
+    name: "getClassHomework", description: "Get assignments and homework for one of the teacher's own classes, identified by class name, with due dates and grading completion counts. Covers homework, assignment, revision, coursework and project types.", allowedRoles: ["teacher"],
     parameters: { type: "object", properties: { class_name: { type: "string", description: "The exact class name" } }, required: ["class_name"] },
     async run(args, { svc, actor }) {
       const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
       const cls = classes.find(c => (c.name || "").toLowerCase() === String(args?.class_name || "").toLowerCase() && (c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email)));
       if (!cls) return { error: "You do not teach a class with that name." };
       const [assessments, grades] = await Promise.all([
-        svc.entities.Assessment.filter({ school_id: actor.school_id, class_id: cls.id, assessment_type: "homework" }).catch(() => []),
+        svc.entities.Assessment.filter({ school_id: actor.school_id, class_id: cls.id }).catch(() => []),
         svc.entities.StudentGrade.filter({ school_id: actor.school_id, class_id: cls.id }).catch(() => []),
       ]);
+      const types = ["homework", "assignment", "revision", "coursework", "project"];
+      const mine = assessments.filter(a => types.includes(a.assessment_type));
       const studentCount = (cls.student_emails || []).length;
-      const homework = assessments.map(a => {
+      const t = new Date().toISOString().slice(0, 10);
+      const homework = mine.map(a => {
         const graded = grades.filter(g => g.assessment_id === a.id && g.status === "published").length;
-        return { title: a.title, date: a.date, status: a.status, graded_count: graded, student_count: studentCount };
+        return { title: a.title, type: a.assessment_type, date: a.date, due_date: a.due_date, due_status: !a.due_date ? "no due date" : a.due_date < t ? "overdue" : "due soon", status: a.status, graded_count: graded, student_count: studentCount };
       });
       return { class: cls.name, homework };
     },
@@ -442,18 +456,18 @@ const TOOLS = [
     },
   },
   {
-    name: "getAssemblySchedule", description: "Get the school's scheduled assemblies. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["admin"],
+    name: "getAssemblySchedule", description: "Get the school's scheduled assemblies. Assemblies are school Events with event_type 'assembly'.", allowedRoles: ["admin"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
       const events = await svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []);
       const now = new Date();
-      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
       const upcoming = events
         .filter(isAssembly)
         .filter(e => e.start_time && new Date(e.start_time) >= now)
         .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
         .slice(0, 20)
-        .map(e => ({ title: e.title, start: e.start_time, location: e.location, audience: e.audience }));
+        .map(e => ({ title: e.title, start: e.start_time, end: e.end_time, location: e.location, audience: e.audience, organiser: e.organiser, status: e.status }));
       return { assemblies: upcoming };
     },
   },
@@ -464,12 +478,95 @@ const TOOLS = [
       return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for this school." };
     },
   },
+
+  // ── WEEK OVERVIEW (combined) ──
+  {
+    name: "getMyWeekOverview", description: "Get a combined weekly overview for the student: upcoming assemblies, assignments due this week, school events, and today's timetable. Use this for 'what's happening this week' questions.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [events, classes, assessments, grades] = await Promise.all([
+        svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Assessment.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.StudentGrade.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []),
+      ]);
+      const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
+      const myGradeLevel = (await svc.entities.UserProfile.filter({ school_id: actor.school_id, user_email: actor.actor_email }).catch(() => []))[0]?.grade_level;
+      const now = new Date();
+      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7);
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const assemblies = events.filter(isAssembly).filter(e => e.status !== "cancelled" && e.start_time && new Date(e.start_time) >= now && new Date(e.start_time) <= weekEnd)
+        .filter(e => e.audience === "whole_school" || !e.audience || (e.audience === "selected_classes" && (e.audience_classes || (e.audience_class_id ? [e.audience_class_id] : [])).some(id => myClassIds.includes(id))) || (e.audience === "year_group" && (e.year_group_names || []).includes(myGradeLevel)))
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location }));
+      const otherEvents = events.filter(e => e.event_type !== "assembly" && !isAssembly(e) && e.start_time && new Date(e.start_time) >= now && new Date(e.start_time) <= weekEnd)
+        .filter(e => e.audience === "whole_school" || !e.audience || (e.audience === "selected_classes" && (e.audience_classes || (e.audience_class_id ? [e.audience_class_id] : [])).some(id => myClassIds.includes(id))))
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location, type: e.event_type || "event" }));
+      const types = ["homework", "assignment", "revision", "coursework", "project"];
+      const t = now.toISOString().slice(0, 10);
+      const assignmentsDue = assessments.filter(a => types.includes(a.assessment_type) && myClassIds.includes(a.class_id) && a.status === "published" && a.due_date && a.due_date >= t && a.due_date <= weekEnd.toISOString().slice(0, 10))
+        .map(a => ({ title: a.title, subject: a.subject, due_date: a.due_date }))
+        .sort((a, b) => a.due_date.localeCompare(b.due_date));
+      const overdue = assessments.filter(a => types.includes(a.assessment_type) && myClassIds.includes(a.class_id) && a.status === "published" && a.due_date && a.due_date < t)
+        .filter(a => !grades.find(g => g.assessment_id === a.id && g.status === "published"))
+        .map(a => ({ title: a.title, subject: a.subject, due_date: a.due_date }));
+      const todayIdx = now.getDay() === 0 ? 6 : now.getDay() - 1;
+      const timetable = myClassIds.length ? (await svc.entities.TimetableEntry.filter({ school_id: actor.school_id, day_of_week: todayIdx }).catch(() => [])).filter(tt => myClassIds.includes(tt.class_id)).map(tt => ({ class_name: tt.class_name, subject: tt.subject, start: tt.start_time, end: tt.end_time, room: tt.room })) : [];
+      return { week_start: t, assemblies, other_events: otherEvents, assignments_due_this_week: assignmentsDue, overdue_assignments: overdue, todays_timetable: timetable };
+    },
+  },
+  {
+    name: "getTeacherWeekOverview", description: "Get a combined weekly overview for the teacher: upcoming assemblies relevant to their classes, assignments due, and today's teaching schedule. Use this for 'what's happening this week' questions.", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [events, classes, assessments] = await Promise.all([
+        svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Assessment.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const myClasses = classes.filter(c => c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email));
+      const myClassIds = myClasses.map(c => c.id);
+      const now = new Date();
+      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7);
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const assemblies = events.filter(isAssembly).filter(e => e.status !== "cancelled" && e.start_time && new Date(e.start_time) >= now && new Date(e.start_time) <= weekEnd)
+        .filter(e => e.audience === "whole_school" || e.audience === "staff" || !e.audience || (e.audience === "selected_classes" && (e.audience_classes || (e.audience_class_id ? [e.audience_class_id] : [])).some(id => myClassIds.includes(id))) || e.created_by === actor.actor_email)
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location }));
+      const types = ["homework", "assignment", "revision", "coursework", "project"];
+      const t = now.toISOString().slice(0, 10);
+      const assignmentsDue = assessments.filter(a => types.includes(a.assessment_type) && myClassIds.includes(a.class_id) && a.status === "published" && a.due_date && a.due_date >= t && a.due_date <= weekEnd.toISOString().slice(0, 10))
+        .map(a => ({ title: a.title, class_name: a.class_name, subject: a.subject, due_date: a.due_date }))
+        .sort((a, b) => a.due_date.localeCompare(b.due_date));
+      const todayIdx = now.getDay() === 0 ? 6 : now.getDay() - 1;
+      const timetable = myClassIds.length ? (await svc.entities.TimetableEntry.filter({ school_id: actor.school_id, day_of_week: todayIdx }).catch(() => [])).filter(tt => myClassIds.includes(tt.class_id)).map(tt => ({ class_name: tt.class_name, subject: tt.subject, start: tt.start_time, end: tt.end_time, room: tt.room })) : [];
+      return { week_start: t, assemblies, assignments_due_this_week: assignmentsDue, todays_timetable: timetable, class_count: myClassIds.length };
+    },
+  },
+  {
+    name: "getSchoolWeekOverview", description: "Get a combined weekly overview for the admin: scheduled assemblies, school events, overdue assignment count, and totals. Use this for 'what's happening this week' questions.", allowedRoles: ["admin"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [events, assessments] = await Promise.all([
+        svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Assessment.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const now = new Date();
+      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7);
+      const isAssembly = e => e.event_type === "assembly" || /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const assemblies = events.filter(isAssembly).filter(e => e.status !== "cancelled" && e.start_time && new Date(e.start_time) >= now && new Date(e.start_time) <= weekEnd).map(e => ({ title: e.title, start: e.start_time, location: e.location, audience: e.audience }));
+      const otherEvents = events.filter(e => e.event_type !== "assembly" && !isAssembly(e) && e.start_time && new Date(e.start_time) >= now && new Date(e.start_time) <= weekEnd).map(e => ({ title: e.title, start: e.start_time, type: e.event_type || "event" }));
+      const types = ["homework", "assignment", "revision", "coursework", "project"];
+      const t = now.toISOString().slice(0, 10);
+      const overdueCount = assessments.filter(a => types.includes(a.assessment_type) && a.status === "published" && a.due_date && a.due_date < t).length;
+      return { week_start: t, assemblies, other_events: otherEvents, overdue_assignments: overdueCount, total_assemblies_this_week: assemblies.length, total_events_this_week: otherEvents.length };
+    },
+  },
 ];
 
 const TOOL_LABELS = {
   getMyGrades: "my grades", getMyEvents: "events", getMyTimetable: "timetable", getMyBlockWards: "BlockWards", getMyAchievements: "achievements", getMyPoints: "my points", getMyAnnouncements: "announcements", getMyAssemblies: "assemblies", getMyHomework: "homework", getMyAttendance: "attendance",
   getMyClasses: "my classes", getClassStudents: "class students", getClassGrades: "class grades", getPendingReviews: "pending reviews", getStudentSummary: "student summary", getTeacherAchievementStats: "my achievement stats", getUpcomingAssemblies: "assemblies", getClassHomework: "class homework", getClassAttendance: "class attendance",
   getSchoolSummary: "school summary", getApprovalStats: "approval stats", getSchoolGradeStats: "grade stats", getTeacherActivity: "teacher activity", getAchievementStats: "achievement stats", getAssemblySchedule: "assembly schedule", getSchoolAttendanceStats: "attendance stats",
+  getMyWeekOverview: "my week", getTeacherWeekOverview: "my week", getSchoolWeekOverview: "school week",
 };
 
 // ───────────────────────── System instruction ─────────────────────────

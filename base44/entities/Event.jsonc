@@ -10,6 +10,22 @@
       "type": "string",
       "description": "Event title"
     },
+    "description": {
+      "type": "string",
+      "description": "Optional longer description"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "event",
+        "assembly",
+        "holiday",
+        "exam_period",
+        "deadline"
+      ],
+      "default": "event",
+      "description": "Type of calendar entry. Assemblies use 'assembly'."
+    },
     "start_time": {
       "type": "string",
       "format": "date-time"
@@ -21,22 +37,46 @@
     "location": {
       "type": "string"
     },
+    "organiser": {
+      "type": "string",
+      "description": "Person or group organising the event/assembly"
+    },
     "audience": {
       "type": "string",
       "enum": [
         "whole_school",
-        "year_7",
-        "year_8",
-        "year_9",
-        "year_10",
-        "year_11",
-        "staff_only",
+        "year_group",
+        "selected_classes",
+        "staff",
         "custom"
       ],
-      "default": "whole_school"
+      "default": "whole_school",
+      "description": "Who this event is for"
     },
     "audience_class_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Single class audience (legacy) \u2014 prefer audience_classes for multi-class"
+    },
+    "audience_classes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Class IDs this event targets (when audience=selected_classes)"
+    },
+    "year_group_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Year group IDs this event targets (when audience=year_group)"
+    },
+    "year_group_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Denormalized year group names for display"
     },
     "tags": {
       "type": "array",
@@ -46,6 +86,15 @@
     },
     "notes": {
       "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "cancelled",
+        "completed"
+      ],
+      "default": "scheduled"
     },
     "created_by": {
       "type": "string"

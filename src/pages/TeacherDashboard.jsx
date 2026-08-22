@@ -15,6 +15,9 @@ import {
   Plus, ChevronRight, PenLine
 } from 'lucide-react';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
+import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidget';
+import TeacherAssignmentsWidget from '@/components/dashboard/TeacherAssignmentsWidget';
+import TeacherAssembliesWidget from '@/components/dashboard/TeacherAssembliesWidget';
 
 function TeacherDashboardContent() {
   const [user, setUser] = useState(null);
@@ -180,6 +183,13 @@ function TeacherDashboardContent() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Academic + Assignments + Assemblies */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <TeacherGradebookWidget />
+        <TeacherAssignmentsWidget />
+        <TeacherAssembliesWidget />
       </div>
 
       {/* Pending Signatures Widget */}

@@ -102,9 +102,22 @@ export const ASSESSMENT_TYPES = [
   { value: "test", label: "Test" },
   { value: "quiz", label: "Quiz" },
   { value: "homework", label: "Homework" },
+  { value: "assignment", label: "Assignment" },
+  { value: "revision", label: "Revision Task" },
   { value: "coursework", label: "Coursework" },
   { value: "practical", label: "Practical" },
   { value: "project", label: "Project" },
   { value: "presentation", label: "Presentation" },
   { value: "other", label: "Other" },
 ];
+
+// Assignment-like assessment types surfaced in the Assignments module
+export const ASSIGNMENT_TYPES = ["homework", "assignment", "revision", "coursework", "project"];
+
+export function isAssignmentType(type) {
+  return ASSIGNMENT_TYPES.includes(type);
+}
+
+export function assignmentStatusLabel(status) {
+  return { draft: "Draft", published: "Published" }[status] || status;
+}

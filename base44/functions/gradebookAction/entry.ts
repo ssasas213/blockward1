@@ -10,6 +10,15 @@ const corsHeaders = {
 };
 const safeJson = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: corsHeaders });
 
+async function notifyStudents(svc, school_id, emails, title, body, type, related_id) {
+  if (!emails?.length) return;
+  const unique = [...new Set(emails.filter(Boolean))];
+  const records = unique.map(user_email => ({
+    user_email, school_id, title, body, type: type || "message", priority: "normal", related_id: related_id || null, read: false,
+  }));
+  await svc.entities.Notification.bulkCreate(records).catch(() => {});
+}
+
 async function getActiveScale(svc, school_id) {
   const scales = await svc.entities.GradingScale.filter({ school_id, active: true }).catch(() => []);
   return scales[0] || null;
@@ -45,7 +54,7 @@ Deno.serve(async (req) => {
 
     // ── CREATE ASSESSMENT ──
     if (action === "create_assessment") {
-      const { class_id, title, assessment_type, max_score, date, term_id, term_name, description, weighting } = body;
+      const { class_id, title, assessment_type, max_score, date, due_date, attachment_url, term_id, term_name, description, weighting } = body;
       if (!class_id || !title || !assessment_type || max_score == null) {
         return safeJson({ ok: false, code: "MISSING_FIELD", message: "class_id, title, assessment_type, max_score required" }, 400);
       }
@@ -59,11 +68,39 @@ Deno.serve(async (req) => {
         teacher_email: actor_email, teacher_id: actor_id, teacher_name: teacherName,
         title, description, assessment_type,
         date: date || new Date().toISOString().slice(0, 10),
+        due_date: due_date || null,
+        attachment_url: attachment_url || null,
         term_id: term_id || null, term_name: term_name || null,
         max_score: Number(max_score), weighting: weighting != null ? Number(weighting) : null,
         status: "draft", created_by: actor_email,
       });
+
+      // Notify enrolled students of a new assignment/homework
+      if (["homework", "assignment", "revision", "coursework", "project"].includes(assessment_type) && (cls?.student_emails?.length)) {
+        await notifyStudents(svc, school_id, cls.student_emails, "New assignment", `New ${cls.subject || cls.name} assignment — ${title}${due_date ? ` due ${due_date}` : ""}.`, "announcement_important", assessment.id).catch(() => {});
+      }
       return safeJson({ ok: true, assessment });
+    }
+
+    // ── EDIT ASSESSMENT ──
+    if (action === "edit_assessment") {
+      const { assessment_id, title, description, due_date, attachment_url, date, max_score, weighting } = body;
+      if (!assessment_id) return safeJson({ ok: false, code: "MISSING_FIELD", message: "assessment_id required" }, 400);
+      const assessments = await svc.entities.Assessment.filter({ school_id }).catch(() => []);
+      const assessment = assessments.find(a => a.id === assessment_id);
+      if (!assessment) return safeJson({ ok: false, code: "NOT_FOUND", message: "Assessment not found" }, 404);
+      const own = await verifyClassOwnership(svc, actor, assessment.class_id);
+      if (!own.ok) return safeJson({ ok: false, code: "FORBIDDEN", message: own.reason }, own.status || 403);
+      const patch = {};
+      if (title != null) patch.title = title;
+      if (description != null) patch.description = description;
+      if (due_date !== undefined) patch.due_date = due_date || null;
+      if (attachment_url !== undefined) patch.attachment_url = attachment_url || null;
+      if (date != null) patch.date = date;
+      if (max_score != null) patch.max_score = Number(max_score);
+      if (weighting !== undefined) patch.weighting = weighting != null ? Number(weighting) : null;
+      const updated = await svc.entities.Assessment.update(assessment_id, patch);
+      return safeJson({ ok: true, assessment: updated });
     }
 
     // ── SAVE / EDIT GRADE ──
@@ -145,6 +182,20 @@ Deno.serve(async (req) => {
       const draftGrades = await svc.entities.StudentGrade.filter({ school_id, assessment_id, status: "draft" }).catch(() => []);
       if (draftGrades.length) {
         await svc.entities.StudentGrade.bulkUpdate(draftGrades.map(g => ({ id: g.id, status: "published", published_at: now, published_by: actor_email })));
+      }
+      // Notify each graded student that their grade has been published
+      const classes = await svc.entities.Class.filter({ school_id }).catch(() => []);
+      const cls = classes.find(c => c.id === assessment.class_id);
+      const notifiedEmails = new Set(draftGrades.map(g => g.student_email));
+      const recipientEmails = [...notifiedEmails];
+      if (recipientEmails.length && cls?.student_emails?.length) {
+        // Notify all enrolled students (even ungraded) that the assessment is published
+        for (const email of cls.student_emails) {
+          if (!recipientEmails.includes(email)) recipientEmails.push(email);
+        }
+      }
+      if (recipientEmails.length) {
+        await notifyStudents(svc, school_id, recipientEmails, "Grade published", `Your ${assessment.title} grade has been published.`, "message", assessment_id).catch(() => {});
       }
       return safeJson({ ok: true, published_grades: draftGrades.length });
     }

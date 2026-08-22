@@ -12,6 +12,9 @@ import StatCard from '@/components/ui/stat-card';
 import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
+import AdminAcademicWidget from '@/components/dashboard/AdminAcademicWidget';
+import AdminAssignmentsWidget from '@/components/dashboard/AdminAssignmentsWidget';
+import AdminAssembliesWidget from '@/components/dashboard/AdminAssembliesWidget';
 import PendingTeacherRequests from '@/components/onboarding/PendingTeacherRequests';
 import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
@@ -208,6 +211,13 @@ function AdminDashboardContent() {
         <StatCard label="BlockWards Issued" value={stats.totalBlockWards} icon={Shield} />
         <StatCard label="Drive Connected" value={stats.driveConnected} icon={HardDrive} />
         <StatCard label="Pending Archive" value={stats.recordsPendingArchive} icon={AlertCircle} />
+      </div>
+
+      {/* Academic + Assignments + Assemblies */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <AdminAcademicWidget />
+        <AdminAssignmentsWidget />
+        <AdminAssembliesWidget />
       </div>
 
       {/* Setup Checklist + Pending Teacher Requests */}

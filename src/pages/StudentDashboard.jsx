@@ -17,6 +17,8 @@ import {
 import ParentContactSection from '@/components/student/ParentContactSection';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import GradesWidget from '@/components/grades/GradesWidget';
+import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
+import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -187,6 +189,12 @@ function StudentDashboardContent() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Assignments + Assemblies */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <AssignmentsWidget />
+        <StudentAssembliesWidget />
       </div>
 
       {/* My Classes */}
