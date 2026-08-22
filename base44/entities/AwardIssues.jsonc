@@ -73,7 +73,9 @@
     "contract_address"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
     "read": {
       "user_condition": {
         "role": "admin"
