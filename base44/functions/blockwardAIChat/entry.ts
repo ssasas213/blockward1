@@ -122,7 +122,7 @@ const TOOLS = [
     name: "getMyBlockWards", description: "Get the BlockWards (verified digital credentials) the student has earned.", allowedRoles: ["student"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
-      const bws = await svc.entities.BlockWard.filter({ student_email: actor.actor_email }).catch(() => []);
+      const bws = await svc.entities.BlockWard.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []);
       return { count: bws.length, blockwards: bws.slice(-10).reverse().map(b => ({ title: b.title, category: b.category, issued_by: b.issuer_name, date: b.minted_at })) };
     },
   },
@@ -130,7 +130,7 @@ const TOOLS = [
     name: "getMyAchievements", description: "Get the student's achievement records (submitted, pending, approved).", allowedRoles: ["student"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
-      const recs = await svc.entities.StudentRecord.filter({ student_email: actor.actor_email }).catch(() => []);
+      const recs = await svc.entities.StudentRecord.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []);
       return { count: recs.length, achievements: recs.slice(-10).reverse().map(r => ({ title: r.title, category: r.category, status: r.status, points: r.points, date: r.date_achieved })) };
     },
   },
@@ -259,7 +259,7 @@ const TOOLS = [
     name: "getPendingReviews", description: "Get achievement submissions awaiting the teacher's or admin's review.", allowedRoles: ["teacher"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
-      const recs = await svc.entities.StudentRecord.filter({ teacher_email: actor.actor_email }).catch(() => []);
+      const recs = await svc.entities.StudentRecord.filter({ school_id: actor.school_id, teacher_email: actor.actor_email }).catch(() => []);
       const pending = recs.filter(r => PENDING_REVIEW_STATUSES.includes(r.status));
       return { pending_count: pending.length, pending: pending.slice(0, 10).map(r => ({ title: r.title, student: r.student_name, status: r.status, date: r.submitted_at })) };
     },
