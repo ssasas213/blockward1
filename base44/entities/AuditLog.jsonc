@@ -68,7 +68,10 @@
     "timestamp"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "{{user.profile.school_id}}",
+      "data.actor_email": "{{user.email}}"
+    },
     "read": {
       "data.school_id": "{{user.profile.school_id}}"
     },
