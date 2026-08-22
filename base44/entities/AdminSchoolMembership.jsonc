@@ -62,7 +62,9 @@
     "role"
   ],
   "rls": {
-    "create": {},
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
     "read": {
       "$or": [
         {
@@ -74,17 +76,10 @@
       ]
     },
     "update": {
-      "$or": [
-        {
-          "data.admin_email": "{{user.email}}"
-        },
-        {
-          "data.school_id": "{{user.profile.school_id}}"
-        }
-      ]
+      "data.school_id": "__service_role_only__"
     },
     "delete": {
-      "data.school_id": "{{user.profile.school_id}}"
+      "data.school_id": "__service_role_only__"
     }
   }
 }
