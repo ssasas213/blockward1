@@ -24,23 +24,67 @@ export default function SchoolSwitcher({ onClose }) {
   };
 
   if (!isAdmin) {
-    // Teachers and students — show school name. If somehow no school is linked,
-    // clicking routes to the join flow (the route guard normally prevents this state).
-    const handleClick = () => {
-      if (onClose) onClose();
-      navigate(createPageUrl(activeSchool ? 'Profile' : 'JoinSchool'));
-    };
+    // Teachers and students — dropdown showing active school + join/settings options.
     return (
-      <button onClick={handleClick} className="flex-1 min-w-0 text-left hover:opacity-80 transition-opacity">
-        <p className="font-semibold text-foreground text-sm leading-tight">BlockWard</p>
-        {loading ? (
-          <p className="text-xs text-muted-foreground truncate leading-tight">Loading school…</p>
-        ) : activeSchool ? (
-          <p className="text-xs text-primary/80 truncate leading-tight">{activeSchool.name}</p>
-        ) : (
-          <p className="text-xs text-warning truncate leading-tight">No school linked — click to join</p>
-        )}
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="w-full flex items-center gap-2.5 hover:opacity-80 transition-opacity text-left">
+            <Shield className="h-5 w-5 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-foreground text-sm leading-tight">BlockWard</p>
+              {loading ? (
+                <p className="text-xs text-muted-foreground truncate leading-tight">Loading school…</p>
+              ) : activeSchool ? (
+                <p className="text-xs text-muted-foreground truncate leading-tight flex items-center gap-1">
+                  {activeSchool.name}
+                  <ChevronDown className="h-3 w-3 flex-shrink-0" />
+                </p>
+              ) : (
+                <p className="text-xs text-warning truncate leading-tight flex items-center gap-1">
+                  No school linked
+                  <ChevronDown className="h-3 w-3 flex-shrink-0" />
+                </p>
+              )}
+            </div>
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-64">
+          {activeSchool && (
+            <>
+              <div className="px-2 py-2 flex items-center gap-2">
+                <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  {activeSchool.logo_url ? (
+                    <img src={activeSchool.logo_url} alt="" className="h-7 w-7 rounded-md object-cover" />
+                  ) : (
+                    <Building2 className="h-3.5 w-3.5 text-primary" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{activeSchool.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">Current school</p>
+                </div>
+              </div>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem
+            onClick={() => goTo(createPageUrl('JoinSchool'))}
+            className="cursor-pointer flex items-center gap-2"
+          >
+            <LogIn className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm">{activeSchool ? 'Join Another School' : 'Join a School'}</span>
+          </DropdownMenuItem>
+          {activeSchool && (
+            <DropdownMenuItem
+              onClick={() => goTo(createPageUrl('Profile'))}
+              className="cursor-pointer flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">School Settings</span>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 

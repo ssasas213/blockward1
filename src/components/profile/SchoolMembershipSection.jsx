@@ -65,7 +65,14 @@ export default function SchoolMembershipSection({ profile, user, school, onRefre
       </CardHeader>
       <CardContent>
         {hasSchool ? (
-          <LinkedSchoolView profile={profile} school={school} memberships={memberships} />
+          <>
+            <LinkedSchoolView profile={profile} school={school} memberships={memberships} />
+            {roleType !== 'admin' && (
+              <Button variant="outline" size="sm" className="mt-4 w-full" onClick={() => setJoinOpen(true)}>
+                <LogIn className="h-4 w-4 mr-2" /> Join Another School
+              </Button>
+            )}
+          </>
         ) : pendingMembership ? (
           <PendingView membership={pendingMembership} schoolName={pendingMembership.school_name} />
         ) : (
