@@ -170,6 +170,57 @@ const TOOLS = [
     },
   },
 
+  {
+    name: "getMyAssemblies", description: "Get the student's upcoming school assemblies. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [events, classes] = await Promise.all([
+        svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
+      const now = new Date();
+      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const upcoming = events
+        .filter(isAssembly)
+        .filter(e => e.start_time && new Date(e.start_time) >= now)
+        .filter(e => !e.audience_class_id || myClassIds.includes(e.audience_class_id) || e.audience === "whole_school" || !e.audience)
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .slice(0, 10)
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location }));
+      return { assemblies: upcoming };
+    },
+  },
+  {
+    name: "getMyHomework", description: "Get the student's homework assignments (from the class assessment system) for their enrolled classes, with whether each has been graded yet.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
+      const myClassIds = classes.filter(c => (c.student_emails || []).includes(actor.actor_email)).map(c => c.id);
+      if (!myClassIds.length) return { homework: [] };
+      const [assessments, grades] = await Promise.all([
+        svc.entities.Assessment.filter({ school_id: actor.school_id, assessment_type: "homework", status: "published" }).catch(() => []),
+        svc.entities.StudentGrade.filter({ school_id: actor.school_id, student_email: actor.actor_email }).catch(() => []),
+      ]);
+      const mine = assessments.filter(a => myClassIds.includes(a.class_id));
+      const homework = mine
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+        .slice(0, 15)
+        .map(a => {
+          const grade = grades.find(g => g.assessment_id === a.id);
+          return { title: a.title, class_name: a.class_name, subject: a.subject, date: a.date, status: grade ? (grade.status === "published" ? "graded" : "submitted, awaiting grade") : "not yet graded" };
+        });
+      return { homework };
+    },
+  },
+  {
+    name: "getMyAttendance", description: "Get the student's attendance record.", allowedRoles: ["student"],
+    parameters: { type: "object", properties: {} },
+    async run() {
+      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for students." };
+    },
+  },
+
   // ── TEACHER ──
   {
     name: "getMyClasses", description: "List the classes the teacher owns or co-teaches.", allowedRoles: ["teacher"],
@@ -260,6 +311,54 @@ const TOOLS = [
     },
   },
 
+  {
+    name: "getUpcomingAssemblies", description: "Get upcoming assemblies relevant to the teacher's classes. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const [events, classes] = await Promise.all([
+        svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const myClassIds = classes.filter(c => c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email)).map(c => c.id);
+      const now = new Date();
+      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const upcoming = events
+        .filter(isAssembly)
+        .filter(e => e.start_time && new Date(e.start_time) >= now)
+        .filter(e => e.audience === "whole_school" || e.audience === "staff_only" || !e.audience || (e.audience_class_id && myClassIds.includes(e.audience_class_id)))
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .slice(0, 10)
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location, audience: e.audience }));
+      return { assemblies: upcoming };
+    },
+  },
+  {
+    name: "getClassHomework", description: "Get homework assignments for one of the teacher's own classes, identified by class name, with submission/grading completion counts.", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: { class_name: { type: "string", description: "The exact class name" } }, required: ["class_name"] },
+    async run(args, { svc, actor }) {
+      const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
+      const cls = classes.find(c => (c.name || "").toLowerCase() === String(args?.class_name || "").toLowerCase() && (c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email)));
+      if (!cls) return { error: "You do not teach a class with that name." };
+      const [assessments, grades] = await Promise.all([
+        svc.entities.Assessment.filter({ school_id: actor.school_id, class_id: cls.id, assessment_type: "homework" }).catch(() => []),
+        svc.entities.StudentGrade.filter({ school_id: actor.school_id, class_id: cls.id }).catch(() => []),
+      ]);
+      const studentCount = (cls.student_emails || []).length;
+      const homework = assessments.map(a => {
+        const graded = grades.filter(g => g.assessment_id === a.id && g.status === "published").length;
+        return { title: a.title, date: a.date, status: a.status, graded_count: graded, student_count: studentCount };
+      });
+      return { class: cls.name, homework };
+    },
+  },
+  {
+    name: "getClassAttendance", description: "Get attendance for one of the teacher's own classes.", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: { class_name: { type: "string" } } },
+    async run() {
+      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for classes." };
+    },
+  },
+
   // ── ADMIN ──
   {
     name: "getSchoolSummary", description: "Get a whole-school overview: students, teachers, classes, achievements, BlockWards.", allowedRoles: ["admin"],
@@ -342,12 +441,35 @@ const TOOLS = [
       return { total_records: records.length, by_status, by_category, blockwards_delivered: blockwards.length };
     },
   },
+  {
+    name: "getAssemblySchedule", description: "Get the school's scheduled assemblies. Assemblies are stored as school Events tagged or titled 'assembly'.", allowedRoles: ["admin"],
+    parameters: { type: "object", properties: {} },
+    async run(_args, { svc, actor }) {
+      const events = await svc.entities.Event.filter({ school_id: actor.school_id }).catch(() => []);
+      const now = new Date();
+      const isAssembly = e => /assembly/i.test(e.title || "") || (e.tags || []).some(t => /assembly/i.test(t));
+      const upcoming = events
+        .filter(isAssembly)
+        .filter(e => e.start_time && new Date(e.start_time) >= now)
+        .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+        .slice(0, 20)
+        .map(e => ({ title: e.title, start: e.start_time, location: e.location, audience: e.audience }));
+      return { assemblies: upcoming };
+    },
+  },
+  {
+    name: "getSchoolAttendanceStats", description: "Get school-wide attendance statistics.", allowedRoles: ["admin"],
+    parameters: { type: "object", properties: {} },
+    async run() {
+      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for this school." };
+    },
+  },
 ];
 
 const TOOL_LABELS = {
-  getMyGrades: "my grades", getMyEvents: "events", getMyTimetable: "timetable", getMyBlockWards: "BlockWards", getMyAchievements: "achievements", getMyPoints: "my points", getMyAnnouncements: "announcements",
-  getMyClasses: "my classes", getClassStudents: "class students", getClassGrades: "class grades", getPendingReviews: "pending reviews", getStudentSummary: "student summary", getTeacherAchievementStats: "my achievement stats",
-  getSchoolSummary: "school summary", getApprovalStats: "approval stats", getSchoolGradeStats: "grade stats", getTeacherActivity: "teacher activity", getAchievementStats: "achievement stats",
+  getMyGrades: "my grades", getMyEvents: "events", getMyTimetable: "timetable", getMyBlockWards: "BlockWards", getMyAchievements: "achievements", getMyPoints: "my points", getMyAnnouncements: "announcements", getMyAssemblies: "assemblies", getMyHomework: "homework", getMyAttendance: "attendance",
+  getMyClasses: "my classes", getClassStudents: "class students", getClassGrades: "class grades", getPendingReviews: "pending reviews", getStudentSummary: "student summary", getTeacherAchievementStats: "my achievement stats", getUpcomingAssemblies: "assemblies", getClassHomework: "class homework", getClassAttendance: "class attendance",
+  getSchoolSummary: "school summary", getApprovalStats: "approval stats", getSchoolGradeStats: "grade stats", getTeacherActivity: "teacher activity", getAchievementStats: "achievement stats", getAssemblySchedule: "assembly schedule", getSchoolAttendanceStats: "attendance stats",
 };
 
 // ───────────────────────── System instruction ─────────────────────────
@@ -369,6 +491,11 @@ Rules:
 - Never claim an action happened unless the tool result confirms it.
 - Never expose internal IDs, secrets, tokens, wallet addresses or private system information.
 - Refer to people by name only when the tool data provides it.
+- Assemblies are not a separate system — they are school Events. When asked about assemblies, use the assembly tool available to your role.
+- Homework is tracked through the class assessment/grading system, not a separate task tracker. When asked about homework, use the homework tool available to your role and explain grading status using that data.
+- Attendance is not currently tracked in BlockWard. If the attendance tool reports it is unavailable, say so plainly — do not guess or estimate attendance from other data.
+- "Draft a report" / "draft a class report" / "draft a school summary": call the relevant summary tools available to your role (for a teacher: class grades, class students, pending reviews; for an admin: school summary, school grade stats, achievement stats, teacher activity), then write a short structured draft (headings like Overview / Highlights / Areas to Watch) using ONLY that data. Always start this kind of answer with the exact line "**AI Draft — Review Before Use**" on its own, and never claim the report has been sent, published, or saved anywhere — it is a draft for the user to review.
+- Ranking or "best/top student" questions must be grounded only in returned data (e.g. published grades, achievement points, BlockWards) and must say what the ranking is based on, e.g. "Based on published grades and achievement points this term...". Never fabricate a ranking when the underlying tool data is empty.
 
 Today is ${new Date().toDateString()}.`;
 }
