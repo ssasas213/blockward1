@@ -63,7 +63,7 @@
   ],
   "rls": {
     "create": {
-      "school_id": "__service_role_only__"
+      "data.school_id": "__service_role_only__"
     },
     "read": {
       "data.school_id": "{{user.profile.school_id}}"
