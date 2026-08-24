@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { useEffectiveRole } from '@/lib/useEffectiveRole';
 
 const CLASS_ACCENTS = [
   { bar: 'bg-primary', icon: 'from-primary/20 to-primary/5 text-primary' },
@@ -52,6 +53,7 @@ function ClassesContent() {
   const [newClass, setNewClass] = useState({
     name: '', subject: '', description: '', room: '', grade_level: ''
   });
+  const { effectiveRole, effectiveEmail } = useEffectiveRole();
 
   useEffect(() => {
     loadData();
@@ -71,8 +73,8 @@ function ClassesContent() {
       let classData = [];
       const schoolId = userProfile.school_id;
 
-      if (userProfile.user_type === 'teacher') {
-        const memberships = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
+      if (effectiveRole === 'teacher') {
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: effectiveEmail });
         const membership = memberships[0];
         if (membership?.class_ids?.length > 0) {
           const allClasses = schoolId
@@ -80,10 +82,10 @@ function ClassesContent() {
             : await base44.entities.Class.list();
           classData = allClasses.filter(c => membership.class_ids.includes(c.id));
         } else {
-          classData = await base44.entities.Class.filter({ teacher_email: currentUser.email });
+          classData = await base44.entities.Class.filter({ teacher_email: effectiveEmail });
         }
-      } else if (userProfile.user_type === 'student') {
-        const enrollments = await base44.entities.Enrollment.filter({ student_email: currentUser.email, status: 'active' });
+      } else if (effectiveRole === 'student') {
+        const enrollments = await base44.entities.Enrollment.filter({ student_email: effectiveEmail, status: 'active' });
         if (enrollments.length > 0) {
           const classIds = enrollments.map(e => e.class_id);
           const allClasses = schoolId
@@ -94,7 +96,7 @@ function ClassesContent() {
           const allClasses = schoolId
             ? await base44.entities.Class.filter({ school_id: schoolId })
             : await base44.entities.Class.list();
-          classData = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
+          classData = allClasses.filter(c => c.student_emails?.includes(effectiveEmail));
         }
       } else {
         classData = schoolId
@@ -123,7 +125,7 @@ function ClassesContent() {
     try {
       const classData = {
         ...newClass,
-        teacher_email: user.email,
+        teacher_email: effectiveEmail,
         join_code: generateJoinCode(),
         student_emails: [],
         status: 'active',
@@ -132,7 +134,7 @@ function ClassesContent() {
       const created = await base44.entities.Class.create(classData);
 
       try {
-        const memberships = await base44.entities.StaffMembership.filter({ user_email: user.email });
+        const memberships = await base44.entities.StaffMembership.filter({ user_email: effectiveEmail });
         if (memberships.length > 0) {
           const membership = memberships[0];
           const updatedClassIds = [...(membership.class_ids || []), created.id];
@@ -199,8 +201,8 @@ function ClassesContent() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title={profile?.user_type === 'student' ? 'My Classes' : 'Classes'}
-          description={profile?.user_type === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
+          title={effectiveRole === 'student' ? 'My Classes' : 'Classes'}
+          description={effectiveRole === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
         />
         <TableSkeleton />
       </div>
@@ -210,10 +212,10 @@ function ClassesContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={profile?.user_type === 'student' ? 'My Classes' : 'Classes'}
-        description={profile?.user_type === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
+        title={effectiveRole === 'student' ? 'My Classes' : 'Classes'}
+        description={effectiveRole === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
       >
-        {profile?.user_type === 'student' && (
+        {effectiveRole === 'student' && (
           <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -251,7 +253,7 @@ function ClassesContent() {
             </DialogContent>
           </Dialog>
         )}
-        {(profile?.user_type === 'teacher' || profile?.user_type === 'admin') && (
+        {(effectiveRole === 'teacher' || effectiveRole === 'admin') && (
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button>
@@ -354,7 +356,7 @@ function ClassesContent() {
                       <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${accent.icon} flex items-center justify-center shadow-sm`}>
                         <BookOpen className="h-7 w-7" />
                       </div>
-                      {cls.join_code && profile?.user_type === 'teacher' && (
+                      {cls.join_code && effectiveRole === 'teacher' && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -401,7 +403,7 @@ function ClassesContent() {
         <EmptyState
           icon={BookOpen}
           title="No classes yet"
-          description={profile?.user_type === 'teacher' ? 'Create your first class to get started' : 'Join a class using a class code'}
+          description={effectiveRole === 'teacher' ? 'Create your first class to get started' : 'Join a class using a class code'}
         />
       )}
     </div>

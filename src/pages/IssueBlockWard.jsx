@@ -17,6 +17,7 @@ import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
 import SignatureStep from '@/components/blockwards/SignatureStep';
 import CustomAwardForm from '@/components/blockwards/CustomAwardForm';
 import EvidenceUpload from '@/components/blockwards/EvidenceUpload';
+import { useEffectiveRole } from '@/lib/useEffectiveRole';
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
 const STEPS = [
@@ -175,6 +176,7 @@ function IssueBlockWardContent() {
   const [teacherSignature, setTeacherSignature] = useState(null);
   const [teacherSignedAt, setTeacherSignedAt] = useState(null);
   const [confirmed, setConfirmed] = useState(false);
+  const { effectiveRole, effectiveEmail, effectiveName } = useEffectiveRole();
 
   useEffect(() => { loadData(); }, []);
 
@@ -190,8 +192,12 @@ function IssueBlockWardContent() {
       const sid = p?.school_id || null;
       setSchoolId(sid);
 
+      // In Test Mode the effective teacher identity is the persona's email/name —
+      // use those so class/student/signature lookups match the persona's data.
+      const teacherEmail = effectiveEmail || currentUser.email;
+
       // Load signature profile for teacher
-      const sigProfiles = await base44.entities.SignatureProfile.filter({ user_email: currentUser.email });
+      const sigProfiles = await base44.entities.SignatureProfile.filter({ user_email: teacherEmail });
       setSigProfile(sigProfiles[0] || null);
 
       if (sid) {
@@ -201,8 +207,8 @@ function IssueBlockWardContent() {
 
       const allVisibleClasses = await base44.entities.Class.list();
       const classData = allVisibleClasses.filter(c =>
-        c.teacher_email === currentUser.email ||
-        c.co_teachers?.includes(currentUser.email)
+        c.teacher_email === teacherEmail ||
+        c.co_teachers?.includes(teacherEmail)
       );
       setTeacherClasses(classData);
 
@@ -232,7 +238,7 @@ function IssueBlockWardContent() {
       setStudents(studentList);
       setDebugInfo({
         userId: currentUser.id,
-        teacherEmail: currentUser.email,
+        teacherEmail: effectiveEmail || currentUser.email,
         schoolId: sid,
         classCount: classData.length,
         studentCount: studentList.length,
@@ -323,8 +329,11 @@ function IssueBlockWardContent() {
         student_id: selectedStudent.id,
         class_id: selectedStudent.classId || null,
         class_name: selectedStudent.className || null,
+        // teacher_email must match the controller's real email to pass create-RLS
+        // (no admin bypass on StudentRecord.create). recordWorkflow then overwrites
+        // teacher_email/name/id with the persona's values via the service role.
         teacher_email: user.email,
-        teacher_name: `${profile.first_name} ${profile.last_name}`,
+        teacher_name: effectiveName || `${profile.first_name} ${profile.last_name}`,
         title: finalTitle,
         category: finalCategory,
         description: finalDescription,
@@ -360,7 +369,7 @@ function IssueBlockWardContent() {
       if (!submitRes.data?.ok) throw new Error(submitRes.data?.error || 'Failed to submit record');
 
       // 5. Teacher signs: awaiting_teacher_signature → awaiting_admin_signature
-      const sigDisplayName = sigProfile?.display_name || `${profile.first_name} ${profile.last_name}`;
+      const sigDisplayName = sigProfile?.display_name || effectiveName || `${profile.first_name} ${profile.last_name}`;
       const sigTitle = sigProfile?.title || '';
       const signRes = await base44.functions.invoke('recordWorkflow', {
         action: 'teacherSignRecord',
@@ -409,7 +418,7 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  if (profile && profile.user_type !== 'teacher') {
+  if (effectiveRole !== 'teacher') {
     return (
       <div className="max-w-md mx-auto py-20 text-center">
         <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
@@ -717,7 +726,7 @@ function IssueBlockWardContent() {
                     {teacherSignature && (
                       <img src={teacherSignature} alt="Teacher signature" className="max-h-16 border border-slate-200 rounded-lg bg-white p-1.5 mb-2" />
                     )}
-                    <p className="text-sm text-slate-700"><span className="font-semibold">Signed By:</span> {profile?.first_name} {profile?.last_name}</p>
+                    <p className="text-sm text-slate-700"><span className="font-semibold">Signed By:</span> {effectiveName || `${profile?.first_name} ${profile?.last_name}`}</p>
                     <p className="text-sm text-slate-500"><span className="font-semibold">Signed At:</span> {teacherSignedAt ? new Date(teacherSignedAt).toLocaleString() : '—'}</p>
                   </div>
                 </div>
