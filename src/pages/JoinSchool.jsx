@@ -25,6 +25,16 @@ export default function JoinSchool() {
     try {
       const currentUser = await base44.auth.me();
       if (currentUser) {
+        // Test Super User bypass: auto-provision the test school + personas server-side,
+        // then go straight to the Admin Dashboard — never show the join form to them.
+        try {
+          const tm = await base44.functions.invoke('getTestModeStatus');
+          if (tm.data?.is_test_super_user) {
+            window.location.href = createPageUrl('AdminDashboard');
+            return;
+          }
+        } catch { /* not the test super user — fall through to normal join flow */ }
+
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
           const p = profiles[0];
