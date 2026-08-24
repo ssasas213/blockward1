@@ -54,50 +54,71 @@
   ],
   "rls": {
     "create": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "data.teacher_email": "{{user.email}}"
-    },
-    "read": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
           "data.teacher_email": "{{user.email}}"
+        }
+      ]
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "data.class_id": {
-            "$in": "{{user.profile.class_ids}}"
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "user"
+              }
+            }
+          ]
         }
       ]
     },
     "update": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "data.teacher_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "data.teacher_email": "{{user.email}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
         }
       ]
     }
