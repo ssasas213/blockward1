@@ -81,7 +81,7 @@ export default function PlatformLoginPage({ platformId }) {
       <div className="relative w-full max-w-md">
         {/* Back to platform choice */}
         <button
-          onClick={() => navigate('/ChoosePlatform')}
+          onClick={() => navigate('/Signup')}
           className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6"
         >
           <ArrowLeft className="h-4 w-4" />

@@ -26,7 +26,6 @@ import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
 import PublicPortfolio from './pages/PublicPortfolio';
 import CustodianDashboard from './pages/CustodianDashboard';
-import ChoosePlatform from './pages/ChoosePlatform';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
 import { SchoolProvider } from '@/lib/SchoolContext';
@@ -115,7 +114,6 @@ const AuthenticatedApp = () => {
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/ChoosePlatform" element={<ChoosePlatform />} />
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />
       <Route path="/StudentOnboarding" element={<StudentOnboarding />} />

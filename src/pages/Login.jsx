@@ -4,6 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
 import { Shield, Loader2, Clock, Ban, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 function GoogleIcon({ className }) {
   return (
@@ -21,6 +23,8 @@ export default function Login() {
   const [checking, setChecking] = useState(true);
   const [accountStatus, setAccountStatus] = useState(null);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -46,6 +50,25 @@ export default function Login() {
       base44.auth.loginWithProvider('google', window.location.origin + '/Login');
     } catch (err) {
       setError(err?.message || 'Google sign-in failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await base44.auth.loginViaEmailPassword(email.trim(), password);
+      const result = await handlePostLoginRedirect();
+      if (result === 'suspended') setAccountStatus('suspended');
+      else if (result === 'pending') setAccountStatus('pending');
+    } catch (err) {
+      setError(err?.message || 'Invalid email or password.');
       setLoading(false);
     }
   };
@@ -107,7 +130,7 @@ export default function Login() {
             <>
               <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in to BlockWard</h1>
               <p className="text-sm text-muted-foreground mb-6 text-center">
-                Use your Google account to continue.
+                Use your Google account or email to continue.
               </p>
 
               {error && (
@@ -130,11 +153,57 @@ export default function Login() {
                 )}
                 Continue with Google
               </Button>
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleEmailLogin} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wide">Email</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@school.ac.uk"
+                    autoComplete="email"
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="login-password" className="text-xs font-semibold uppercase tracking-wide">Password</Label>
+                    <Link to="/ForgotPassword" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                  </div>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    disabled={loading}
+                  />
+                </div>
+                <Button type="submit" disabled={loading} className="w-full font-medium py-2.5">
+                  {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
+                  Sign In
+                </Button>
+              </form>
             </>
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          New here? <Link to="/Signup" className="text-primary font-medium hover:underline">Create an account</Link>
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-4">
           © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
       </div>

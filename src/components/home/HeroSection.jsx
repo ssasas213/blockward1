@@ -21,7 +21,7 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button
             size="lg"
-            onClick={() => window.location.href = createPageUrl('Login')}
+            onClick={() => window.location.href = createPageUrl('Signup')}
           >
             Get Started
             <ArrowRight className="ml-2 h-4 w-4" />

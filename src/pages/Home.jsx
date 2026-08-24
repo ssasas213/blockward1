@@ -42,6 +42,10 @@ export default function Home() {
     window.location.href = '/Login';
   };
 
+  const handleGetStarted = () => {
+    window.location.href = '/Signup';
+  };
+
   const handleGoToDashboard = () => {
     if (profile) {
       const dashboardMap = { admin: 'AdminDashboard', teacher: 'TeacherDashboard', student: 'StudentDashboard' };
@@ -60,7 +64,7 @@ export default function Home() {
   return (
     <div className="min-h-screen font-sans antialiased">
       <DemoModal open={demoOpen} onClose={() => setDemoOpen(false)} />
-      <SiteHeader user={user} profile={profile} onSignIn={handleSignIn} onDashboard={handleGoToDashboard} />
+      <SiteHeader user={user} profile={profile} onSignIn={handleSignIn} onGetStarted={handleGetStarted} onDashboard={handleGoToDashboard} />
       <HeroSection onSignIn={handleSignIn} onWatchDemo={() => setDemoOpen(true)} />
       <TrustSection />
       <HowItWorks />
@@ -80,7 +84,7 @@ export default function Home() {
           <div className="mt-8">
             <Button
               size="lg"
-              onClick={() => window.location.href = createPageUrl('Login')}
+              onClick={() => window.location.href = createPageUrl('Signup')}
             >
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
