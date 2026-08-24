@@ -164,64 +164,20 @@ function ClassesContent() {
     if (!joinCode || !user) return;
     setJoining(true);
     try {
-      let classToJoin = null;
-      const byCode = await base44.entities.Class.filter({ join_code: joinCode.toUpperCase() });
-      if (byCode.length > 0) {
-        classToJoin = byCode[0];
-      } else {
-        const allClasses = await base44.entities.Class.list();
-        classToJoin = allClasses.find(c => c.join_code?.toUpperCase() === joinCode.toUpperCase());
-      }
-
-      if (!classToJoin) {
-        toast.error('Invalid class code');
+      const res = await base44.functions.invoke('joinClassByCode', { code: joinCode.toUpperCase() });
+      if (!res.data?.ok) {
+        toast.error(res.data?.error || 'Failed to join class');
         setJoining(false);
         return;
-      }
-
-      if (classToJoin.student_emails?.includes(user.email)) {
-        toast.error('You are already in this class');
-        setJoining(false);
-        return;
-      }
-
-      const updatedStudents = [...(classToJoin.student_emails || []), user.email];
-      await base44.entities.Class.update(classToJoin.id, { student_emails: updatedStudents });
-
-      const existingEnrollments = await base44.entities.Enrollment.filter({ class_id: classToJoin.id, student_email: user.email });
-      if (existingEnrollments.length === 0) {
-        await base44.entities.Enrollment.create({
-          school_id: classToJoin.school_id || profile?.school_id || null,
-          class_id: classToJoin.id,
-          class_name: classToJoin.name,
-          student_email: user.email,
-          student_name: profile ? `${profile.first_name} ${profile.last_name}` : user.email,
-          status: 'active'
-        });
-      }
-
-      if (profile) {
-        const hierarchyUpdate = {};
-        if (!profile.school_id && classToJoin.school_id) hierarchyUpdate.school_id = classToJoin.school_id;
-        if (!profile.primary_teacher_email && classToJoin.teacher_email) hierarchyUpdate.primary_teacher_email = classToJoin.teacher_email;
-        if (!profile.admin_email && classToJoin.school_id) {
-          try {
-            const schools = await base44.entities.School.filter({ id: classToJoin.school_id });
-            if (schools.length > 0 && schools[0].admin_email) hierarchyUpdate.admin_email = schools[0].admin_email;
-          } catch { /* best-effort */ }
-        }
-        if (Object.keys(hierarchyUpdate).length > 0) {
-          await base44.entities.UserProfile.update(profile.id, hierarchyUpdate);
-        }
       }
 
       setShowJoinDialog(false);
       setJoinCode('');
       await loadData();
-      toast.success(`Successfully joined ${classToJoin.name}!`);
+      toast.success(`Successfully joined ${res.data.class?.name || 'the class'}!`);
     } catch (error) {
       console.error('Error joining class:', error);
-      toast.error('Failed to join class');
+      toast.error(error.response?.data?.error || error.message || 'Failed to join class');
     } finally {
       setJoining(false);
     }
