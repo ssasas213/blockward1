@@ -131,13 +131,19 @@ export default async function(req) {
         total_achievement_points: 0, total_behaviour_points: 0,
       });
     } else {
-      const upd: any = {};
-      if (!controller.test_super_user) upd.test_super_user = true;
-      if (!controller.active_test_persona) upd.active_test_persona = activePersona;
-      if (!controller.school_id) { upd.school_id = school.id; upd.active_school_id = school.id; }
+      // Force-promote the controller to admin and link the test school, overwriting
+      // any stale role/school from prior onboarding (e.g. a student signup). This is
+      // idempotent and preserves the profile record + its id; only role/school/persona
+      // metadata is normalised so the super user always lands on the Admin Dashboard.
+      const upd: any = {
+        test_super_user: true,
+        user_type: 'admin',
+        active_test_persona: activePersona,
+        school_id: school.id,
+        active_school_id: school.id,
+        test_persona_ids: personaIds,
+      };
       if (controller.status !== 'active') upd.status = 'active';
-      // Always refresh persona IDs (idempotent)
-      upd.test_persona_ids = personaIds;
       controller = await svc.entities.UserProfile.update(controller.id, upd);
     }
 
