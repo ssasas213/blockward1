@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
 
     await base44.asServiceRole.entities.Vaults.create({
       user_id: userId,
+      school_id: targetProfile?.school_id || null,
       address,
       chain: 'sepolia',
       status: 'active',

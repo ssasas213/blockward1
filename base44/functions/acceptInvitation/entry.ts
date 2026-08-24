@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 
 function normalizeEmail(e) {
   return (e || '').trim().toLowerCase();
@@ -145,6 +146,7 @@ export default async function(req: Request): Promise<Response> {
           first_name: firstName,
           last_name: lastName,
           admin_level: 'basic_admin',
+          admin_permissions: defaultAdminPermissions('basic_admin'),
           status: 'active',
           school_id: school.id,
           active_school_id: school.id,

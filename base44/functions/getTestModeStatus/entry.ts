@@ -3,6 +3,7 @@ import {
   verifyTestSuperUser, TEST_SCHOOL_NAME, TEST_SCHOOL_CODE, TEST_CLASS_NAME,
   PERSONA_EMAILS, PERSONA_NAMES, isValidPersona,
 } from '../../shared/testMode.ts';
+import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 
 export default async function(req) {
   try {
@@ -45,6 +46,7 @@ export default async function(req) {
           admin_email: user.email, status: 'active',
           test_persona_of: user.email,
           total_achievement_points: 0, total_behaviour_points: 0,
+          ...(role === 'admin' ? { admin_level: 'super_admin', admin_permissions: defaultAdminPermissions('super_admin') } : {}),
         });
       } else {
         const upd: any = {};
@@ -128,6 +130,7 @@ export default async function(req) {
         school_id: school.id, active_school_id: school.id, admin_email: user.email,
         status: 'active', test_super_user: true, active_test_persona: activePersona,
         test_persona_ids: personaIds,
+        admin_level: 'super_admin', admin_permissions: defaultAdminPermissions('super_admin'),
         total_achievement_points: 0, total_behaviour_points: 0,
       });
     } else {
@@ -144,6 +147,10 @@ export default async function(req) {
         test_persona_ids: personaIds,
       };
       if (controller.status !== 'active') upd.status = 'active';
+      if (!controller.admin_level) upd.admin_level = 'super_admin';
+      if (!controller.admin_permissions || !Object.keys(controller.admin_permissions || {}).length) {
+        upd.admin_permissions = defaultAdminPermissions('super_admin');
+      }
       controller = await svc.entities.UserProfile.update(controller.id, upd);
     }
 

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 
 const UNSAFE_CHARS = /[O0I1L]/g;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -62,6 +63,7 @@ Deno.serve(async (req) => {
         first_name: nameParts[0] || 'Admin',
         last_name: nameParts.slice(1).join(' ') || '',
         admin_level: 'super_admin',
+        admin_permissions: defaultAdminPermissions('super_admin'),
         status: 'active',
         total_achievement_points: 0,
         total_behaviour_points: 0,
@@ -142,6 +144,9 @@ Deno.serve(async (req) => {
       school_id: school.id,
       active_school_id: school.id,
       admin_level: profile.admin_level || 'super_admin',
+      admin_permissions: (profile.admin_permissions && Object.keys(profile.admin_permissions).length)
+        ? profile.admin_permissions
+        : defaultAdminPermissions(profile.admin_level || 'super_admin'),
       first_name: nameParts[0] || profile.first_name,
       last_name: nameParts.slice(1).join(' ') || profile.last_name,
       department: admin_department?.trim() || profile.department,

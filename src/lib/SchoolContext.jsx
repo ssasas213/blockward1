@@ -104,15 +104,18 @@ export const SchoolProvider = ({ children }) => {
             const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
             const active = staff.find(s => s.status === 'active');
             if (active) {
+              // Set school_id FIRST so the School read rule (data.id === profile.school_id)
+              // passes, then fetch the school for its name + admin_email.
+              await base44.entities.UserProfile.update(p.id, {
+                school_id: active.school_id,
+                active_school_id: active.school_id,
+              });
               const schools = await base44.entities.School.filter({ id: active.school_id });
               if (schools.length > 0) {
                 setActiveSchool(schools[0]);
-                // Also update profile.school_id so RLS works
-                await base44.entities.UserProfile.update(p.id, {
-                  school_id: active.school_id,
-                  active_school_id: active.school_id,
-                  admin_email: schools[0].admin_email,
-                });
+                if (schools[0].admin_email) {
+                  await base44.entities.UserProfile.update(p.id, { admin_email: schools[0].admin_email });
+                }
               }
             }
           } catch { /* skip */ }
