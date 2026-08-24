@@ -36,21 +36,17 @@
         "data_manager",
         "basic_admin"
       ],
-      "description": "Access level for admin users"
+      "description": "Display label that seeds default admin_permissions on creation."
     },
     "admin_permissions": {
       "type": "object",
-      "description": "Granular permissions for admins",
+      "description": "Source of truth for what this admin may do. Seeded from admin_level on creation, then editable per-admin.",
       "properties": {
         "manage_users": {
           "type": "boolean",
           "default": false
         },
         "manage_classes": {
-          "type": "boolean",
-          "default": false
-        },
-        "issue_blockwards": {
           "type": "boolean",
           "default": false
         },
@@ -103,6 +99,14 @@
       "type": "boolean",
       "default": false,
       "description": "When true, the BlockWard mascot tour launches automatically on each sign-in (once per browser session)."
+    },
+    "class_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Class IDs this user is associated with \u2014 teachers: classes they teach (mirrored from StaffMembership); students: classes they're enrolled in (mirrored from Enrollment). Used by RLS for class-scoped reads on Enrollment/JoinRequest/Resource/TimetableEntry. Kept in sync by joinClassByCode + class creation."
     },
     "student_id": {
       "type": "string",
@@ -159,11 +163,7 @@
     },
     "wallet_address": {
       "type": "string",
-      "description": "Custodial blockchain wallet address"
-    },
-    "wallet_private_key_encrypted": {
-      "type": "string",
-      "description": "Encrypted private key (server-side only)"
+      "description": "Custodial blockchain wallet address (public). Private key lives on Vaults, never here."
     },
     "portfolio_public_id": {
       "type": "string",
@@ -203,7 +203,7 @@
     "test_super_user": {
       "type": "boolean",
       "default": false,
-      "description": "True only for the server-authorised test super user (the controller). Source of truth is the TEST_SUPER_USER_EMAIL secret; this flag is a cache set by getTestModeStatus."
+      "description": "True only for the server-authorised test super user. Source of truth is the TEST_SUPER_USER_EMAIL secret."
     },
     "active_test_persona": {
       "type": "string",
@@ -212,11 +212,11 @@
         "teacher",
         "admin"
       ],
-      "description": "For the test super user only \u2014 which persona's experience is currently active. Read server-side by resolveEffectiveActor; never trusted from frontend input."
+      "description": "For the test super user only \u2014 which persona's experience is currently active."
     },
     "test_persona_ids": {
       "type": "object",
-      "description": "For the test super user only \u2014 maps persona role \u2192 UserProfile.id of the corresponding test persona profile. Set by getTestModeStatus.",
+      "description": "For the test super user only \u2014 maps persona role \u2192 UserProfile.id of the corresponding test persona profile.",
       "properties": {
         "student": {
           "type": "string"
@@ -231,7 +231,7 @@
     },
     "test_persona_of": {
       "type": "string",
-      "description": "For test persona profiles only \u2014 the controller email that owns this persona. Null for normal users and the controller itself."
+      "description": "For test persona profiles only \u2014 the controller email that owns this persona."
     }
   },
   "required": [
@@ -239,5 +239,67 @@
     "user_type",
     "first_name",
     "last_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
 }
