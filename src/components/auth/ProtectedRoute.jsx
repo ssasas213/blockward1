@@ -20,8 +20,21 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
       if (currentUser) {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-        if (profiles.length > 0) {
-          setProfile(profiles[0]);
+        let p = profiles.length > 0 ? profiles[0] : null;
+        setProfile(p);
+
+        // If there's no profile yet or no school linked, this may be the Test Super User
+        // on first sign-in. getTestModeStatus auto-provisions the test school + personas
+        // and links the controller profile — so we must run it BEFORE deciding to redirect
+        // to Onboarding/JoinSchool. For normal users it returns false immediately (cheap).
+        if (!p || !p.school_id) {
+          try {
+            const res = await base44.functions.invoke('getTestModeStatus');
+            if (res.data?.is_test_super_user) {
+              const refreshed = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+              if (refreshed.length > 0) setProfile(refreshed[0]);
+            }
+          } catch { /* ignore — normal users just proceed to normal redirects */ }
         }
       }
     } catch (error) {

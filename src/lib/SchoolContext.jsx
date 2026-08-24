@@ -33,7 +33,9 @@ export const SchoolProvider = ({ children }) => {
       // Test Super User — server-authorised. Ensures the test environment exists
       // and returns the active persona. Source of truth is the backend secret check,
       // NOT this profile flag (which a normal user could otherwise set on themselves).
-      if (p.test_super_user) {
+      // Also probe when there's no school linked yet — the controller profile may not
+      // have the flag set until getTestModeStatus has run once (first sign-in).
+      if (p.test_super_user || !p.school_id) {
         try {
           const res = await base44.functions.invoke('getTestModeStatus');
           if (res.data?.is_test_super_user) {
