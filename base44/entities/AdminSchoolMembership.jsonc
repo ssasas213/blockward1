@@ -71,7 +71,16 @@
           "data.admin_email": "{{user.email}}"
         },
         {
-          "data.school_id": "{{user.profile.school_id}}"
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
