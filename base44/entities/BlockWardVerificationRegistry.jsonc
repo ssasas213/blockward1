@@ -169,7 +169,7 @@
     },
     "public_verification_url": {
       "type": "string",
-      "description": "Full public verification URL (https://blockward.me/verify/{verification_id})"
+      "description": "Full public verification URL"
     },
     "is_public": {
       "type": "boolean",
@@ -189,7 +189,7 @@
         "role": "admin"
       }
     },
-    "read": {},
+    "read": false,
     "update": {
       "user_condition": {
         "role": "admin"
