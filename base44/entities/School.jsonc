@@ -149,7 +149,16 @@
     "create": {
       "data.admin_email": "{{user.email}}"
     },
-    "read": {},
+    "read": {
+      "$or": [
+        {
+          "data.admin_email": "{{user.email}}"
+        },
+        {
+          "data.id": "{{user.profile.school_id}}"
+        }
+      ]
+    },
     "update": {
       "$or": [
         {
