@@ -43,7 +43,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from 'sonner';
 
-export default function ManageUsers() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function ManageUsers() { return <RoleGuard roles={['admin']}><ManageUsersImpl/></RoleGuard>; }
+function ManageUsersImpl() {
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');

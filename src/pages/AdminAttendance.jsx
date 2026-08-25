@@ -172,7 +172,9 @@ function AdminAttendanceContent() {
   );
 }
 
-export default function AdminAttendance() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function AdminAttendance() { return <RoleGuard roles={['admin']}><AdminAttendanceImpl/></RoleGuard>; }
+function AdminAttendanceImpl() {
   return (
     <ProtectedRoute>
       <AdminAttendanceContent />

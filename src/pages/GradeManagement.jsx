@@ -12,7 +12,9 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import { gradeColor } from '@/lib/grades';
 import { BarChart3, AlertTriangle, GraduationCap, BookOpen, Settings, Users, ClipboardList } from 'lucide-react';
 
-export default function GradeManagement() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function GradeManagement() { return <RoleGuard roles={['admin']}><GradeManagementImpl/></RoleGuard>; }
+function GradeManagementImpl() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 

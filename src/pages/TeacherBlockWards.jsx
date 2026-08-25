@@ -269,7 +269,9 @@ function TeacherBlockWardsContent() {
   );
 }
 
-export default function TeacherBlockWards() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function TeacherBlockWards() { return <RoleGuard roles={['teacher']}><TeacherBlockWardsImpl/></RoleGuard>; }
+function TeacherBlockWardsImpl() {
   return (
     <ProtectedRoute>
       <TeacherBlockWardsContent />

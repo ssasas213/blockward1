@@ -25,7 +25,9 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function IssuePoints() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function IssuePoints() { return <RoleGuard roles={['teacher']}><IssuePointsImpl/></RoleGuard>; }
+function IssuePointsImpl() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [classes, setClasses] = useState([]);

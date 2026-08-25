@@ -15,7 +15,9 @@ import { BookOpen, Plus, Download, Upload, Trash2, MessageSquare, Loader2, Gradu
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
 
-export default function Gradebook() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function Gradebook() { return <RoleGuard roles={['teacher']}><GradebookImpl/></RoleGuard>; }
+function GradebookImpl() {
   const { profile } = useSchool();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

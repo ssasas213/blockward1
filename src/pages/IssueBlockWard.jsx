@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import RoleGuard from '@/components/auth/RoleGuard';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -418,17 +418,7 @@ function IssueBlockWardContent() {
     </div>
   );
 
-  if (effectiveRole !== 'teacher') {
-    return (
-      <div className="max-w-md mx-auto py-20 text-center">
-        <div className="h-20 w-20 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-          <AlertTriangle className="h-10 w-10 text-red-500" />
-        </div>
-        <h2 className="text-2xl font-bold text-slate-900 mb-2">Access Denied</h2>
-        <p className="text-slate-500">Only teachers can create achievement records.</p>
-      </div>
-    );
-  }
+  /* role enforced by RoleGuard at the route layer */
 
   if (submitSuccess) return (
     <div className="max-w-2xl mx-auto py-12">
@@ -811,8 +801,8 @@ function IssueBlockWardContent() {
 
 export default function IssueBlockWard() {
   return (
-    <ProtectedRoute>
+    <RoleGuard roles={['teacher']}>
       <IssueBlockWardContent />
-    </ProtectedRoute>
+    </RoleGuard>
   );
 }

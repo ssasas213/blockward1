@@ -12,7 +12,9 @@ import { format } from 'date-fns';
 
 const ROLE_ICON = { teacher: Users, student: GraduationCap, admin: Shield };
 
-export default function Invitations() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function Invitations() { return <RoleGuard roles={['admin']}><InvitationsImpl/></RoleGuard>; }
+function InvitationsImpl() {
   const [loading, setLoading] = useState(true);
   const [invitations, setInvitations] = useState([]);
   const [school, setSchool] = useState(null);

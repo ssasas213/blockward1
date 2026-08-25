@@ -12,7 +12,9 @@ import { Mail, Send, Users, Search, Loader2, Phone } from 'lucide-react';
 const RELATIONSHIP_LABELS = { mother: 'Mother', father: 'Father', guardian: 'Guardian', other: 'Other' };
 import { toast } from 'sonner';
 
-export default function ParentComms() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function ParentComms() { return <RoleGuard roles={['teacher']}><ParentCommsImpl/></RoleGuard>; }
+function ParentCommsImpl() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [students, setStudents] = useState([]);

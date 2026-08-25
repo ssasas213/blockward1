@@ -28,7 +28,9 @@ import {
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
-export default function PointCategories() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function PointCategories() { return <RoleGuard roles={['admin']}><PointCategoriesImpl/></RoleGuard>; }
+function PointCategoriesImpl() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [showDialog, setShowDialog] = useState(false);

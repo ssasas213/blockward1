@@ -37,7 +37,9 @@ const TABS = [
   { key: 'all', label: 'All', statuses: null },
 ];
 
-export default function Records() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function Records() { return <RoleGuard roles={['admin']}><RecordsImpl/></RoleGuard>; }
+function RecordsImpl() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');

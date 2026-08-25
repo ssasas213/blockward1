@@ -33,7 +33,9 @@ const ROLE_LABELS = {
   reviewer: 'Reviewer',
 };
 
-export default function SystemSettings() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function SystemSettings() { return <RoleGuard roles={['admin']}><SystemSettingsImpl/></RoleGuard>; }
+function SystemSettingsImpl() {
   const { activeSchool, profile, refresh, loading: schoolLoading } = useSchool();
   const [form, setForm] = useState(null);
   const [members, setMembers] = useState([]);

@@ -28,7 +28,9 @@ const CATEGORY_COLORS = {
   special: 'from-violet-500 to-purple-500',
 };
 
-export default function StudentMyRecords() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function StudentMyRecords() { return <RoleGuard roles={['student']}><StudentMyRecordsImpl/></RoleGuard>; }
+function StudentMyRecordsImpl() {
   const { testMode } = useSchool();
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState(null);

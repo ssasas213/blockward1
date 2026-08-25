@@ -19,7 +19,9 @@ const TOOLTIP_STYLE = {
 
 const AXIS_TICK = { fontSize: 12, fill: 'hsl(240 8% 62%)' };
 
-export default function Analytics() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function Analytics() { return <RoleGuard roles={['admin']}><AnalyticsImpl/></RoleGuard>; }
+function AnalyticsImpl() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     pointsOverTime: [],

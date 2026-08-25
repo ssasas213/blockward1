@@ -19,7 +19,9 @@ const CHART_COLORS = [
   'hsl(142 71% 45%)', 'hsl(38 92% 50%)', 'hsl(280 60% 55%)',
 ];
 
-export default function MyPoints() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function MyPoints() { return <RoleGuard roles={['student']}><MyPointsImpl/></RoleGuard>; }
+function MyPointsImpl() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [points, setPoints] = useState([]);

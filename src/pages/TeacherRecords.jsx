@@ -14,7 +14,9 @@ import RecordStatusBadge from '@/components/records/RecordStatusBadge';
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
 
-export default function TeacherRecords() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function TeacherRecords() { return <RoleGuard roles={['teacher']}><TeacherRecordsImpl/></RoleGuard>; }
+function TeacherRecordsImpl() {
   const { testMode } = useSchool();
   const [records, setRecords] = useState([]);
   const [profile, setProfile] = useState(null);

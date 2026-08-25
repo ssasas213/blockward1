@@ -32,7 +32,9 @@ const CHART_COLORS = [
   'hsl(142 71% 45%)', 'hsl(38 92% 50%)', 'hsl(280 60% 55%)',
 ];
 
-export default function Reports() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function Reports() { return <RoleGuard roles={['admin']}><ReportsImpl/></RoleGuard>; }
+function ReportsImpl() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('week');
   const [stats, setStats] = useState({

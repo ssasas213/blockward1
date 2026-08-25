@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { useSchool } from '@/lib/SchoolContext';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import RoleGuard from '@/components/auth/RoleGuard';
 import PageHeader from '@/components/ui/page-header';
 import { Card, CardContent } from '@/components/ui/card';
 import EmptyState from '@/components/ui/empty-state';
@@ -24,16 +24,12 @@ function AttendanceContent() {
 
   useEffect(() => {
     if (loading) return;
-    if (effectiveRole === 'admin') {
-      navigate(createPageUrl('AdminAttendance'), { replace: true });
-      return;
-    }
-    if (effectiveRole === 'teacher' && activeSchool?.id && effectiveEmail) {
+    if (activeSchool?.id && effectiveEmail) {
       loadClasses();
     } else {
       setLoadingClasses(false);
     }
-  }, [effectiveRole, activeSchool, effectiveEmail, loading]);
+  }, [activeSchool, effectiveEmail, loading]);
 
   const loadClasses = async () => {
     try {
@@ -48,16 +44,7 @@ function AttendanceContent() {
     }
   };
 
-  if (loading || effectiveRole === 'admin') return null;
-
-  if (effectiveRole === 'student') {
-    return (
-      <div className="space-y-6">
-        <PageHeader title="My Attendance" description="Your attendance record and rate" />
-        <AttendanceWidget />
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
     <div className="space-y-6 pb-20">
@@ -107,8 +94,8 @@ function AttendanceContent() {
 
 export default function Attendance() {
   return (
-    <ProtectedRoute>
+    <RoleGuard roles={['teacher']}>
       <AttendanceContent />
-    </ProtectedRoute>
+    </RoleGuard>
   );
 }

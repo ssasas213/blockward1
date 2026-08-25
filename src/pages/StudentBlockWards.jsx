@@ -233,7 +233,9 @@ function StudentBlockWardsContent() {
   );
 }
 
-export default function StudentBlockWards() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function StudentBlockWards() { return <RoleGuard roles={['student']}><StudentBlockWardsImpl/></RoleGuard>; }
+function StudentBlockWardsImpl() {
   return (
     <ProtectedRoute>
       <StudentBlockWardsContent />

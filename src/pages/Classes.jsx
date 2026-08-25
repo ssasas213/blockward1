@@ -202,7 +202,7 @@ function ClassesContent() {
       <div className="space-y-6">
         <PageHeader
           title={effectiveRole === 'student' ? 'My Classes' : 'Classes'}
-          description={effectiveRole === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
+          description={effectiveRole === 'teacher' ? 'Manage your classes and students' : effectiveRole === 'student' ? 'View your enrolled classes' : 'All classes in your school'}
         />
         <TableSkeleton />
       </div>
@@ -213,7 +213,7 @@ function ClassesContent() {
     <div className="space-y-6">
       <PageHeader
         title={effectiveRole === 'student' ? 'My Classes' : 'Classes'}
-        description={effectiveRole === 'teacher' ? 'Manage your classes and students' : 'View your enrolled classes'}
+        description={effectiveRole === 'teacher' ? 'Manage your classes and students' : effectiveRole === 'student' ? 'View your enrolled classes' : 'All classes in your school'}
       >
         {effectiveRole === 'student' && (
           <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
@@ -403,7 +403,7 @@ function ClassesContent() {
         <EmptyState
           icon={BookOpen}
           title="No classes yet"
-          description={effectiveRole === 'teacher' ? 'Create your first class to get started' : 'Join a class using a class code'}
+          description={effectiveRole === 'teacher' ? 'Create your first class to get started' : effectiveRole === 'student' ? 'Join a class using a class code' : 'No classes have been created yet'}
         />
       )}
     </div>

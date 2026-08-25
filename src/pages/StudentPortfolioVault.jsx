@@ -43,7 +43,9 @@ const CATEGORY_STYLE = {
 
 const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, community: 5, special: 9, behaviour: 9 };
 
-export default function StudentPortfolioVault() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function StudentPortfolioVault() { return <RoleGuard roles={['student']}><StudentPortfolioVaultImpl/></RoleGuard>; }
+function StudentPortfolioVaultImpl() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);

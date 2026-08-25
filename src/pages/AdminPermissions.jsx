@@ -24,7 +24,9 @@ import {
 import { Shield, Edit, Search, Users, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function AdminPermissions() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function AdminPermissions() { return <RoleGuard roles={['admin']}><AdminPermissionsImpl/></RoleGuard>; }
+function AdminPermissionsImpl() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [admins, setAdmins] = useState([]);
@@ -67,11 +69,7 @@ export default function AdminPermissions() {
       if (profiles.length > 0) {
         setProfile(profiles[0]);
         
-        // Only super admins can manage permissions
-        if (profiles[0].admin_level !== 'super_admin' && profiles[0].user_type === 'admin') {
-          toast.error('Only Super Admins can manage permissions');
-          return;
-        }
+        /* role enforced by RoleGuard at the route layer */
 
         const adminUsers = await base44.entities.UserProfile.filter({ user_type: 'admin' });
         setAdmins(adminUsers);
@@ -199,17 +197,7 @@ export default function AdminPermissions() {
     );
   }
 
-  if (profile?.user_type !== 'admin' || (profile?.admin_level !== 'super_admin' && profile?.admin_level)) {
-    return (
-      <Card className="border-0 shadow-lg">
-        <CardContent className="text-center py-16">
-          <Lock className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-          <h3 className="text-xl font-semibold text-slate-900 mb-2">Access Denied</h3>
-          <p className="text-slate-500">Only Super Admins can manage permissions</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  /* role enforced by RoleGuard at the route layer */
 
   return (
     <div className="space-y-8">

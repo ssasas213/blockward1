@@ -18,7 +18,9 @@ function generateCode(prefix, roleSuffix) {
   return `${p}-${roleSuffix}-${random}`;
 }
 
-export default function SchoolCodes() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function SchoolCodes() { return <RoleGuard roles={['admin']}><SchoolCodesImpl/></RoleGuard>; }
+function SchoolCodesImpl() {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState(null);
   const [codes, setCodes] = useState([]);

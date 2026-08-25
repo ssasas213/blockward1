@@ -13,7 +13,9 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { GraduationCap, TrendingUp, BookOpen, Filter } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 
-export default function StudentGrades() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function StudentGrades() { return <RoleGuard roles={['student']}><StudentGradesImpl/></RoleGuard>; }
+function StudentGradesImpl() {
   const { profile } = useSchool();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

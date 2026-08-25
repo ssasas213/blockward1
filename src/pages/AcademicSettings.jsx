@@ -11,7 +11,9 @@ import { GRADE_PRESETS } from '@/lib/grades';
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
 
-export default function AcademicSettings() {
+import RoleGuard from '@/components/auth/RoleGuard';
+export default function AcademicSettings() { return <RoleGuard roles={['admin']}><AcademicSettingsImpl/></RoleGuard>; }
+function AcademicSettingsImpl() {
   const { activeSchool } = useSchool();
   const [scales, setScales] = useState([]);
   const [terms, setTerms] = useState([]);
