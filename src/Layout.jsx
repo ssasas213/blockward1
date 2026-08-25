@@ -62,7 +62,6 @@ export default function Layout({ children, currentPageName }) {
       { label: 'Records', items: [
         { name: 'Records', icon: FileText, page: 'Records' },
         { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
-        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
       ]},
       { label: 'Management', items: [
         { name: 'Users', icon: Users, page: 'ManageUsers' },
@@ -71,6 +70,9 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Announcements', icon: Bell, page: 'Announcements' },
         { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
         { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
+      ]},
+      { label: 'Communication', items: [
+        { name: 'Messages', icon: FileText, page: 'Messages' },
       ]},
       { label: 'Configuration', items: [
         { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
@@ -86,7 +88,6 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Tools', items: [
         { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
-        { name: 'Resources', icon: FileText, page: 'Resources' },
       ]},
     ],
     teacher: [
