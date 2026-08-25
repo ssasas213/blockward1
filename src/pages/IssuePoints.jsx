@@ -90,22 +90,13 @@ function IssuePointsImpl() {
 
   const loadClassStudents = async (classId) => {
     try {
-      const enrollments = await base44.entities.Enrollment.filter({ class_id: classId, status: 'active' });
-      if (enrollments.length > 0) {
-        const emails = enrollments.map(e => e.student_email);
-        const allProfiles = await base44.entities.UserProfile.list();
-        setStudents(allProfiles.filter(p => emails.includes(p.user_email) && p.user_type === 'student'));
-      } else {
-        const cls = classes.find(c => c.id === classId);
-        if (cls?.student_emails?.length > 0) {
-          const allProfiles = await base44.entities.UserProfile.list();
-          setStudents(allProfiles.filter(p => cls.student_emails.includes(p.user_email) && p.user_type === 'student'));
-        } else {
-          setStudents([]);
-        }
-      }
+      const res = await base44.functions.invoke('getClassStudents', { class_id: classId });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
+      setStudents(data?.students || []);
     } catch (error) {
       console.error('Error loading students:', error);
+      setStudents([]);
     }
   };
 

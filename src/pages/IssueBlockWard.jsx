@@ -205,40 +205,25 @@ function IssueBlockWardContent() {
         if (schools[0]) setSchoolName(schools[0].name);
       }
 
-      const allVisibleClasses = await base44.entities.Class.list();
-      const classData = allVisibleClasses.filter(c =>
-        c.teacher_email === teacherEmail ||
-        c.co_teachers?.includes(teacherEmail)
-      );
+      const rosterRes = await base44.functions.invoke('getMyStudents', { teacher_email: teacherEmail });
+      const rosterData = rosterRes.data || rosterRes;
+      if (rosterData?.error) throw new Error(rosterData.error);
+      const classData = rosterData?.classes || [];
       setTeacherClasses(classData);
 
-      const allStudentEmails = new Set();
-      const emailToClassInfo = {};
-      for (const cls of classData) {
-        for (const email of (cls.student_emails || [])) {
-          allStudentEmails.add(email);
-          if (!emailToClassInfo[email]) {
-            emailToClassInfo[email] = { className: cls.name, classId: cls.id };
-          }
-        }
-      }
-      const allEmailsArray = Array.from(allStudentEmails);
-      const allProfiles = await base44.entities.UserProfile.list();
-      const matchedProfiles = allProfiles.filter(p => allEmailsArray.includes(p.user_email));
-
-      const studentList = matchedProfiles.map(sp => ({
+      const studentList = (rosterData?.students || []).map(sp => ({
         id: sp.id,
         name: `${sp.first_name || ''} ${sp.last_name || ''}`.trim() || sp.user_email,
         email: sp.user_email,
-        className: emailToClassInfo[sp.user_email]?.className || 'Student',
-        classId: emailToClassInfo[sp.user_email]?.classId || null,
+        className: sp.class_name || 'Student',
+        classId: sp.class_id || null,
         avatarUrl: sp.avatar_url || null,
       }));
 
       setStudents(studentList);
       setDebugInfo({
         userId: currentUser.id,
-        teacherEmail: effectiveEmail || currentUser.email,
+        teacherEmail,
         schoolId: sid,
         classCount: classData.length,
         studentCount: studentList.length,

@@ -11,6 +11,7 @@ import { Mail, Send, Users, Search, Loader2, Phone } from 'lucide-react';
 
 const RELATIONSHIP_LABELS = { mother: 'Mother', father: 'Father', guardian: 'Guardian', other: 'Other' };
 import { toast } from 'sonner';
+import { useEffectiveRole } from '@/lib/useEffectiveRole';
 
 import RoleGuard from '@/components/auth/RoleGuard';
 export default function ParentComms() { return <RoleGuard roles={['teacher']}><ParentCommsImpl/></RoleGuard>; }
@@ -27,6 +28,8 @@ function ParentCommsImpl() {
     message: ''
   });
 
+  const { effectiveEmail } = useEffectiveRole();
+
   useEffect(() => {
     loadData();
   }, []);
@@ -38,23 +41,10 @@ function ParentCommsImpl() {
       
       if (profiles.length > 0) {
         setProfile(profiles[0]);
-        
-        const p = profiles[0];
-        // Load students based on role — always scoped to same school
-        if (p.user_type === 'teacher') {
-          const classes = await base44.entities.Class.filter({ teacher_email: user.email });
-          const studentEmails = new Set();
-          classes.forEach(cls => {
-            cls.student_emails?.forEach(email => studentEmails.add(email));
-          });
-          // Filter by school AND assigned class students
-          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student', school_id: p.school_id });
-          setStudents(studentProfiles.filter(s => studentEmails.has(s.user_email)));
-        } else if (p.user_type === 'admin') {
-          // Admins only see their own school's students
-          const studentProfiles = await base44.entities.UserProfile.filter({ user_type: 'student', school_id: p.school_id });
-          setStudents(studentProfiles);
-        }
+        const rosterRes = await base44.functions.invoke('getMyStudents', { teacher_email: effectiveEmail || user.email });
+        const rosterData = rosterRes.data || rosterRes;
+        if (rosterData?.error) throw new Error(rosterData.error);
+        setStudents(rosterData?.students || []);
       }
     } catch (error) {
       console.error('Error loading data:', error);
