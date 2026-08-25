@@ -80,7 +80,9 @@ export default function EditProfileForm({ profile, onSaved }) {
         updateData.parent_relationship = form.parent_relationship;
         if (form.parent_email) updateData.parent_contact_updated_at = new Date().toISOString();
       }
-      await base44.entities.UserProfile.update(profile.id, updateData);
+      const res = await base44.functions.invoke('updateMyProfile', updateData);
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       toast.success('Profile saved successfully');
       if (onSaved) onSaved();
     } catch (e) {

@@ -160,10 +160,13 @@ export default function AdminPermissions() {
 
   const handleSavePermissions = async () => {
     try {
-      await base44.entities.UserProfile.update(selectedAdmin.id, {
+      const res = await base44.functions.invoke('setAdminPermissions', {
+        target_email: selectedAdmin.user_email,
         admin_level: editForm.admin_level,
-        admin_permissions: editForm.admin_permissions
+        admin_permissions: editForm.admin_permissions,
       });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       
       toast.success('Permissions updated');
       setEditDialog(false);

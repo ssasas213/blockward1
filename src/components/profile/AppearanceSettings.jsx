@@ -23,9 +23,11 @@ export default function AppearanceSettings({ profile, onPreferenceChange }) {
     setSaving(value);
     try {
       if (profile?.id) {
-        await import('@/api/base44Client').then(({ base44 }) =>
-          base44.entities.UserProfile.update(profile.id, { theme_preference: value })
-        );
+        await import('@/api/base44Client').then(async ({ base44 }) => {
+          const res = await base44.functions.invoke('updateMyProfile', { theme_preference: value });
+          const data = res.data || res;
+          if (data?.error) throw new Error(data.error);
+        });
       }
       if (onPreferenceChange) onPreferenceChange(value);
     } catch {
@@ -40,9 +42,11 @@ export default function AppearanceSettings({ profile, onPreferenceChange }) {
     setMascotSaving(true);
     try {
       if (profile?.id) {
-        await import('@/api/base44Client').then(({ base44 }) =>
-          base44.entities.UserProfile.update(profile.id, { show_mascot_on_signin: checked })
-        );
+        await import('@/api/base44Client').then(async ({ base44 }) => {
+          const res = await base44.functions.invoke('updateMyProfile', { show_mascot_on_signin: checked });
+          const data = res.data || res;
+          if (data?.error) throw new Error(data.error);
+        });
         toast.success(checked ? 'Mascot will show on every sign-in' : 'Mascot set to first-time only');
       }
     } catch {

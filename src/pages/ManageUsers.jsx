@@ -75,30 +75,42 @@ export default function ManageUsers() {
 
   const handleUpdateStatus = async (user, status) => {
     try {
-      await base44.entities.UserProfile.update(user.id, { status });
+      const res = await base44.functions.invoke('adminUpdateUser', { target_email: user.user_email, updates: { status } });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       loadUsers();
       toast.success(`User status updated to ${status}`);
     } catch (error) {
-      toast.error('Failed to update status');
+      toast.error(error.message || 'Failed to update status');
     }
   };
 
   const handleUpdateUser = async () => {
     if (!selectedUser) return;
     try {
-      await base44.entities.UserProfile.update(selectedUser.id, {
-        user_type: selectedUser.user_type,
-        first_name: selectedUser.first_name,
-        last_name: selectedUser.last_name,
-        department: selectedUser.department,
-        grade_level: selectedUser.grade_level,
-        student_id: selectedUser.student_id,
+      const original = users.find(u => u.id === selectedUser.id);
+      if (original?.user_type !== selectedUser.user_type) {
+        const roleRes = await base44.functions.invoke('changeUserRole', { target_email: selectedUser.user_email, new_role: selectedUser.user_type });
+        const roleData = roleRes.data || roleRes;
+        if (roleData?.error) throw new Error(roleData.error);
+      }
+      const updateRes = await base44.functions.invoke('adminUpdateUser', {
+        target_email: selectedUser.user_email,
+        updates: {
+          first_name: selectedUser.first_name,
+          last_name: selectedUser.last_name,
+          department: selectedUser.department,
+          grade_level: selectedUser.grade_level,
+          student_id: selectedUser.student_id,
+        },
       });
+      const updateData = updateRes.data || updateRes;
+      if (updateData?.error) throw new Error(updateData.error);
       setShowEditDialog(false);
       loadUsers();
       toast.success('User updated successfully');
     } catch (error) {
-      toast.error('Failed to update user');
+      toast.error(error.message || 'Failed to update user');
     }
   };
 

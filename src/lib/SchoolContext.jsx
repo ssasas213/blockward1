@@ -99,24 +99,15 @@ export const SchoolProvider = ({ children }) => {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length > 0) setActiveSchool(schools[0]);
         } else if (p.user_type === 'teacher') {
-          // Teachers may have an active StaffMembership without school_id on profile yet
+          // Teachers may have an active StaffMembership without school_id on profile yet —
+          // provisioned server-side (school_id is a membership field, not client-writable).
           try {
-            const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-            const active = staff.find(s => s.status === 'active');
-            if (active) {
-              // Set school_id FIRST so the School read rule (data.id === profile.school_id)
-              // passes, then fetch the school for its name + admin_email.
-              await base44.entities.UserProfile.update(p.id, {
-                school_id: active.school_id,
-                active_school_id: active.school_id,
-              });
-              const schools = await base44.entities.School.filter({ id: active.school_id });
-              if (schools.length > 0) {
-                setActiveSchool(schools[0]);
-                if (schools[0].admin_email) {
-                  await base44.entities.UserProfile.update(p.id, { admin_email: schools[0].admin_email });
-                }
-              }
+            const res = await base44.functions.invoke('activateTeacherSchool');
+            const data = res.data || res;
+            const sid = data?.school_id;
+            if (!data?.error && sid) {
+              const schools = await base44.entities.School.filter({ id: sid });
+              if (schools.length > 0) setActiveSchool(schools[0]);
             }
           } catch { /* skip */ }
         }
@@ -134,11 +125,10 @@ export const SchoolProvider = ({ children }) => {
 
   const switchSchool = useCallback(async (schoolId) => {
     if (!profile) return;
-    // Update both school_id (used by RLS) and active_school_id (explicit)
-    await base44.entities.UserProfile.update(profile.id, {
-      school_id: schoolId,
-      active_school_id: schoolId,
-    });
+    // school_id / active_school_id are membership fields — updated server-side only.
+    const res = await base44.functions.invoke('switchActiveSchool', { school_id: schoolId });
+    const data = res.data || res;
+    if (data?.error) throw new Error(data.error);
     // Full reload ensures every page re-fetches data scoped to the new school
     window.location.reload();
   }, [profile]);

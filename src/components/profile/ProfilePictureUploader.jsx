@@ -36,7 +36,9 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
       // Center-crop to square via canvas
       const croppedFile = await cropToSquare(file);
       const { file_url } = await base44.integrations.Core.UploadFile({ file: croppedFile });
-      await base44.entities.UserProfile.update(profile.id, { avatar_url: file_url });
+      const res = await base44.functions.invoke('updateMyProfile', { avatar_url: file_url });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       toast.success('Profile picture updated');
       if (onUpdated) onUpdated({ ...profile, avatar_url: file_url });
     } catch (err) {
@@ -49,7 +51,9 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
   const handleRemove = async () => {
     setUploading(true);
     try {
-      await base44.entities.UserProfile.update(profile.id, { avatar_url: '' });
+      const res = await base44.functions.invoke('updateMyProfile', { avatar_url: '' });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       toast.success('Profile picture removed');
       if (onUpdated) onUpdated({ ...profile, avatar_url: '' });
     } catch (err) {
@@ -63,7 +67,9 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
     if (!avatarUrlInput.trim()) return;
     setUploading(true);
     try {
-      await base44.entities.UserProfile.update(profile.id, { avatar_url: avatarUrlInput.trim() });
+      const res = await base44.functions.invoke('updateMyProfile', { avatar_url: avatarUrlInput.trim() });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       toast.success('Avatar URL saved');
       if (onUpdated) onUpdated({ ...profile, avatar_url: avatarUrlInput.trim() });
     } catch (err) {
