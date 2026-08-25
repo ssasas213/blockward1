@@ -185,9 +185,9 @@ function AdminDashboardContent() {
             <Send className="h-4 w-4 mr-2" /> Invite People
           </Button>
           <Button asChild>
-            <Link to={createPageUrl('AdminApprovalQueue')}>
+            <Link to={createPageUrl('Records')}>
               <PenLine className="h-4 w-4 mr-2" />
-              Open Approval Queue
+              Open Records
             </Link>
           </Button>
         </div>
@@ -231,7 +231,7 @@ function AdminDashboardContent() {
         userEmail={userProfile?.user_email}
         schoolId={userProfile?.school_id}
         role="admin"
-        targetPage="AdminApprovalQueue"
+        targetPage="Records"
       />
 
       {/* Records & Approval */}
@@ -242,23 +242,17 @@ function AdminDashboardContent() {
               <PenLine className="h-4 w-4 text-muted-foreground" />
             </div>
             <div>
-              <CardTitle className="text-sm">Digital Custodian Records</CardTitle>
+              <CardTitle className="text-sm">Achievement Records</CardTitle>
               <p className="text-xs text-muted-foreground mt-0.5">Review, sign, and approve student award records</p>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={createPageUrl('AdminRecords')}>
-                <FileText className="h-4 w-4 mr-2" />
-                All Records
-              </Link>
-            </Button>
             <Button size="sm" asChild>
-              <Link to={createPageUrl('AdminApprovalQueue')}>
+              <Link to={createPageUrl('Records')}>
                 <PenLine className="h-4 w-4 mr-2" />
-                Approval Queue
+                Open Records
               </Link>
             </Button>
           </div>
@@ -371,7 +365,7 @@ function AdminDashboardContent() {
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
-                <Link to={createPageUrl('AdminRecords')}>
+                <Link to={createPageUrl('Records')}>
                   <FileText className="h-4 w-4 mr-2" />
                   Achievement Records
                 </Link>
@@ -442,7 +436,7 @@ function AdminDashboardContent() {
                   ))}
                 </div>
                 <Button variant="ghost" size="sm" className="mt-2" asChild>
-                  <Link to={createPageUrl('AdminRecords')}>
+                  <Link to={createPageUrl('Records')}>
                     View all records <ChevronRight className="h-3 w-3 ml-1" />
                   </Link>
                 </Button>

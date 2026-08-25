@@ -17,15 +17,13 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
-import AdminApprovalQueue from './pages/AdminApprovalQueue';
 import AdminApprovalPage from './pages/AdminApprovalPage';
-import AdminRecords from './pages/AdminRecords';
+import Records from './pages/Records';
 import TeacherRecords from './pages/TeacherRecords';
 import StudentMyRecords from './pages/StudentMyRecords';
 import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
 import PublicPortfolio from './pages/PublicPortfolio';
-import CustodianDashboard from './pages/CustodianDashboard';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
 import { SchoolProvider } from '@/lib/SchoolContext';
@@ -106,16 +104,17 @@ const AuthenticatedApp = () => {
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><ProtectedRoute><RecordDetail /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AdminApprovalQueue" element={<LayoutWrapper currentPageName="AdminApprovalQueue"><ProtectedRoute><AdminApprovalQueue /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminApprovalQueue" element={<Navigate to="/Records" replace />} />
       <Route path="/admin/approve/:recordId" element={<LayoutWrapper currentPageName="AdminApprovalPage"><ProtectedRoute><AdminApprovalPage /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AdminRecords" element={<LayoutWrapper currentPageName="AdminRecords"><ProtectedRoute><AdminRecords /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminRecords" element={<Navigate to="/Records" replace />} />
+      <Route path="/Records" element={<LayoutWrapper currentPageName="Records"><ProtectedRoute><Records /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><ProtectedRoute><StudentMyRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
-      <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/CustodianDashboard" element={<Navigate to="/Records" replace />} />
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
       <Route path="/JoinClass" element={<JoinClass />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />

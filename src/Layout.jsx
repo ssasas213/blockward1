@@ -60,9 +60,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Dashboard', icon: LayoutDashboard, page: 'AdminDashboard' },
       ]},
       { label: 'Records', items: [
-        { name: 'Approval Queue', icon: PenLine, page: 'AdminApprovalQueue' },
-        { name: 'Achievement Records', icon: Trophy, page: 'AdminRecords' },
-        { name: 'Custodian Dashboard', icon: Shield, page: 'CustodianDashboard' },
+        { name: 'Records', icon: FileText, page: 'Records' },
         { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
         { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
       ]},

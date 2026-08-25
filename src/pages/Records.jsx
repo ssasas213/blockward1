@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
 import StatusBadge from '@/components/ui/status-badge';
@@ -14,10 +13,9 @@ import { getNextAction } from '@/lib/recordWorkflow';
 import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import {
-  Clock, CheckCircle2, Search,
-  PenLine, Award, Eye, AlertTriangle
+  Clock, CheckCircle2, Search, PenLine, Award, Eye, AlertTriangle, ShieldCheck, Archive,
 } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from '@/lib/utils';
 
 const CATEGORY_COLORS = {
   academic: 'bg-blue-50 text-blue-700',
@@ -30,12 +28,20 @@ const CATEGORY_COLORS = {
   behaviour: 'bg-slate-50 text-slate-600',
 };
 
-function AdminApprovalQueueContent() {
+const TABS = [
+  { key: 'awaiting_teacher', label: 'Awaiting Teacher', statuses: ['draft', 'awaiting_teacher_signature', 'changes_requested'] },
+  { key: 'awaiting_admin', label: 'Awaiting Admin', statuses: ['awaiting_admin_signature'] },
+  { key: 'approved', label: 'Approved', statuses: ['approved', 'minted', 'delivering'] },
+  { key: 'delivered', label: 'Delivered', statuses: ['delivered_to_vault', 'archived'] },
+  { key: 'rejected', label: 'Rejected', statuses: ['rejected'] },
+  { key: 'all', label: 'All', statuses: null },
+];
+
+export default function Records() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState(null);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('awaiting_admin_signature');
+  const [activeTab, setActiveTab] = useState('awaiting_admin');
 
   useEffect(() => { loadData(); }, []);
 
@@ -44,9 +50,7 @@ function AdminApprovalQueueContent() {
       const user = await base44.auth.me();
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       const p = profiles[0];
-      setProfile(p);
-      if (!p?.school_id) return;
-
+      if (!p?.school_id) { setLoading(false); return; }
       const recs = await base44.entities.StudentRecord.filter({ school_id: p.school_id }, '-created_date');
       setRecords(recs);
     } catch (e) {
@@ -56,49 +60,41 @@ function AdminApprovalQueueContent() {
     }
   };
 
+  const counts = TABS.reduce((acc, t) => {
+    acc[t.key] = t.statuses ? records.filter(r => t.statuses.includes(r.status)).length : records.length;
+    return acc;
+  }, {});
+
+  const activeTabDef = TABS.find(t => t.key === activeTab) || TABS[0];
   const filtered = records.filter(r => {
-    const matchesStatus = filterStatus === 'all' || r.status === filterStatus;
+    const inTab = !activeTabDef.statuses || activeTabDef.statuses.includes(r.status);
     const q = search.toLowerCase();
     const matchesSearch = !q ||
       r.student_name?.toLowerCase().includes(q) ||
       r.title?.toLowerCase().includes(q) ||
       r.teacher_name?.toLowerCase().includes(q);
-    return matchesStatus && matchesSearch;
+    return inTab && matchesSearch;
   });
 
-  const awaitingAdmin = records.filter(r => r.status === 'awaiting_admin_signature').length;
-  const changesRequested = records.filter(r => r.status === 'changes_requested').length;
-  const approvedReady = records.filter(r => r.status === 'approved').length;
-  const delivered = records.filter(r => r.status === 'delivered_to_vault').length;
-  const rejected = records.filter(r => r.status === 'rejected').length;
-
-  const filterTabs = [
-    { key: 'awaiting_admin_signature', label: 'Awaiting Approval', count: awaitingAdmin },
-    { key: 'changes_requested', label: 'Changes Requested', count: changesRequested },
-    { key: 'approved', label: 'Approved / Ready for Vault', count: approvedReady },
-    { key: 'delivered_to_vault', label: 'Delivered', count: delivered },
-    { key: 'rejected', label: 'Rejected', count: rejected },
-    { key: 'all', label: 'All Records', count: records.length },
-  ];
+  const awaitingAdmin = counts.awaiting_admin;
+  const vaultDelivered = records.filter(r => r.vault_status === 'delivered' || r.status === 'delivered_to_vault' || r.status === 'archived').length;
+  const verified = records.filter(r => r.verify_id).length;
+  const dualSigned = records.filter(r => r.teacher_signed && r.admin_signed).length;
+  const withEvidence = records.filter(r => r.file_url).length;
 
   if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <PageHeader
-        title="Approval Queue"
-        description="Review and sign student achievement records"
-      />
+      <PageHeader title="Records" description="Every student achievement record — review, sign, deliver and verify in one place" />
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Awaiting Approval" value={awaitingAdmin} icon={PenLine} hint={awaitingAdmin > 0 ? 'Action required' : undefined} />
-        <StatCard label="Changes Requested" value={changesRequested} icon={AlertTriangle} hint={changesRequested > 0 ? 'Tracking — with student/teacher' : undefined} />
-        <StatCard label="Ready to Deliver" value={approvedReady} icon={Award} hint={approvedReady > 0 ? 'Awaiting delivery' : undefined} />
-        <StatCard label="Total Records" value={records.length} icon={Award} />
+        <StatCard label="Awaiting Teacher" value={counts.awaiting_teacher} icon={Clock} />
+        <StatCard label="Awaiting Admin" value={counts.awaiting_admin} icon={PenLine} hint={counts.awaiting_admin > 0 ? 'Action required' : undefined} />
+        <StatCard label="Approved" value={counts.approved} icon={Award} />
+        <StatCard label="Delivered" value={counts.delivered} icon={Archive} />
       </div>
 
-      {/* Urgent Alert */}
       {awaitingAdmin > 0 && (
         <div className="flex items-start gap-3 p-3 bg-warning/5 border border-warning/20 rounded-lg">
           <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
@@ -106,20 +102,46 @@ function AdminApprovalQueueContent() {
             <p className="text-sm font-medium text-foreground">
               {awaitingAdmin} record{awaitingAdmin !== 1 ? 's' : ''} awaiting your signature
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Review teacher-endorsed submissions and apply your digital signature to authorise minting.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Review teacher-endorsed submissions and apply your digital signature to authorise delivery.</p>
           </div>
         </div>
       )}
 
-      {/* Filter Tabs */}
+      <Card className="border-border bg-card/60">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <ShieldCheck className="h-4 w-4 text-primary" />
+            <p className="text-sm font-medium text-foreground">Archive & verification</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'With evidence', value: withEvidence, total: records.length },
+              { label: 'Dual-signed', value: dualSigned, total: records.length },
+              { label: 'Verified (ID issued)', value: verified, total: records.length },
+              { label: 'Vault delivered', value: vaultDelivered, total: records.length },
+            ].map(s => (
+              <div key={s.label}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-muted-foreground">{s.label}</span>
+                  <span className="font-semibold text-foreground">{s.value}/{s.total}</span>
+                </div>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-primary rounded-full" style={{ width: s.total > 0 ? `${Math.round((s.value / s.total) * 100)}%` : '0%' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-1.5">
-        {filterTabs.map(tab => (
+        {TABS.map(tab => (
           <button
             key={tab.key}
-            onClick={() => setFilterStatus(tab.key)}
+            onClick={() => setActiveTab(tab.key)}
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              filterStatus === tab.key
+              activeTab === tab.key
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card border border-border text-muted-foreground hover:bg-muted'
             )}
@@ -127,15 +149,14 @@ function AdminApprovalQueueContent() {
             {tab.label}
             <span className={cn(
               "ml-1.5 px-1.5 py-0.5 rounded text-xs tabular-nums",
-              filterStatus === tab.key ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'
+              activeTab === tab.key ? 'bg-primary-foreground/20' : 'bg-muted text-muted-foreground'
             )}>
-              {tab.count}
+              {counts[tab.key]}
             </span>
           </button>
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
@@ -147,7 +168,6 @@ function AdminApprovalQueueContent() {
         />
       </div>
 
-      {/* Records List */}
       <Card className="shadow-sm">
         <CardContent className="p-0">
           {filtered.length === 0 ? (
@@ -161,7 +181,7 @@ function AdminApprovalQueueContent() {
               {filtered.map(record => {
                 const catColor = CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600';
                 const needsAction = record.status === 'awaiting_admin_signature';
-                const readyToDeliver = record.status === 'approved';
+                const readyToDeliver = record.status === 'approved' || record.status === 'minted';
                 const isTracking = record.status === 'changes_requested';
 
                 return (
@@ -205,7 +225,6 @@ function AdminApprovalQueueContent() {
                           )}
                         </div>
 
-                        {/* Changes Requested — tracking detail (this is a tracking view, not an approval action) */}
                         {isTracking && (
                           <div className="mt-3 rounded-lg p-3 bg-accent/5 border border-accent/20">
                             <p className="text-xs font-medium text-accent mb-1.5 flex items-center gap-1.5">
@@ -250,8 +269,4 @@ function AdminApprovalQueueContent() {
       </Card>
     </div>
   );
-}
-
-export default function AdminApprovalQueue() {
-  return <AdminApprovalQueueContent />;
 }

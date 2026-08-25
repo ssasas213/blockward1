@@ -10,6 +10,7 @@ import {
   Settings, Building2, Users, Shield, Loader2, Save, Upload, Crown, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PermissionMatrix from '@/components/settings/PermissionMatrix';
 
 const ORG_TYPES = [
   { value: 'school', label: 'School' },
@@ -322,6 +323,8 @@ export default function SystemSettings() {
           )}
         </CardContent>
       </Card>
+
+      <PermissionMatrix />
 
       {!canEdit && (
         <p className="text-xs text-muted-foreground text-center">
