@@ -44,14 +44,7 @@
   ],
   "rls": {
     "create": {
-      "$and": [
-        {
-          "data.school_id": "{{user.profile.school_id}}"
-        },
-        {
-          "data.teacher_email": "{{user.email}}"
-        }
-      ]
+      "data.school_id": "__service_role_only__"
     },
     "read": {
       "$and": [
