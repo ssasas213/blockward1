@@ -4,6 +4,9 @@ import { parseEmails, resolveAppUrl, runInvitationFlow } from '../../shared/invi
 
 // Sends school invitations by email — the People-page canonical entry. Sole
 // write path for SchoolInvitation (entity create/update locked to
+// __service_role_only__). Email delivery uses Resend via shared/invitations.ts.
+// (rebuilt to pick up Resend sendInviteEmail)
+// write path for SchoolInvitation (entity create/update locked to
 // __service_role_only__). Verifies user_type === 'admin' and school scope.
 //
 // Body: { action, role, emails, school_id?, resend?, invitation_id? }

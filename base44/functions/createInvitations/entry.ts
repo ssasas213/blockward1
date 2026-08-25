@@ -3,6 +3,8 @@ import { getCallerProfile, requireStaff, requireSameSchool } from '../../shared/
 import { parseEmails, resolveAppUrl, runInvitationFlow } from '../../shared/invitations.ts';
 
 // Sends school invitations by email. Sole write path for SchoolInvitation
+// (entity create/update locked to __service_role_only__). Email delivery uses
+// Resend via shared/invitations.ts. (rebuilt to pick up Resend sendInviteEmail)
 // (entity create/update locked to __service_role_only__). Verifies
 // user_type === 'admin' and school scope in server code.
 //

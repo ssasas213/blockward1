@@ -55,7 +55,12 @@ export function renderInviteEmail(schoolName: string, inviterName: string, email
 export async function sendInviteEmail(svc, to: string, subject: string, body: string): Promise<{ delivered: boolean; error?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("RESEND_FROM_EMAIL");
+  console.log("[invite-email] RESEND path active", {
+    apiKeyPresent: !!apiKey, apiKeyLen: apiKey ? apiKey.length : 0,
+    from: from || null, to,
+  });
   if (!apiKey || !from) {
+    console.log("[invite-email] MISSING_SECRET — Resend not configured");
     return { delivered: false, error: "Resend not configured (RESEND_API_KEY / RESEND_FROM_EMAIL missing)" };
   }
   try {
@@ -65,9 +70,14 @@ export async function sendInviteEmail(svc, to: string, subject: string, body: st
       body: JSON.stringify({ from, to, subject, html: body }),
     });
     const data = await res.json().catch(() => null);
+    console.log("[invite-email] Resend response", {
+      status: res.status, ok: res.ok, from, to,
+      resendId: data?.id || null, resendError: data?.message || null,
+    });
     if (res.ok) return { delivered: true };
     return { delivered: false, error: data?.message || res.statusText || `Resend error ${res.status}` };
   } catch (e) {
+    console.log("[invite-email] Resend fetch threw", { error: e?.message });
     return { delivered: false, error: e?.message || String(e) };
   }
 }
