@@ -212,6 +212,30 @@ export default function ClassDetail() {
         )}
       </div>
 
+      {isTeacher && classData.join_code && (
+        <Card className="border-border bg-card/60">
+          <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-5">
+            <div className="flex-shrink-0">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=8&data=${encodeURIComponent(`${window.location.origin}/JoinClass?code=${classData.join_code}`)}`}
+                alt="Class join QR code"
+                className="h-40 w-40 rounded-lg bg-white p-1"
+              />
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+              <h3 className="font-semibold text-foreground">Class join code</h3>
+              <p className="text-sm text-muted-foreground mt-1">Students scan the QR or enter the code to join this class. Scanning opens a join confirmation (or sign-up first if logged out).</p>
+              <div className="flex items-center gap-2 mt-3 justify-center sm:justify-start">
+                <code className="px-3 py-2 rounded-lg bg-muted/50 text-base font-mono font-semibold text-foreground tracking-wider">{classData.join_code}</code>
+                <Button variant="outline" size="icon" onClick={copyJoinCode}>
+                  {copiedCode ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <Card className="border-0 shadow-lg">

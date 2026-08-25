@@ -11,6 +11,7 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { ensureVault } from '../../shared/vault.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -87,10 +88,12 @@ Deno.serve(async (req) => {
     const profile = profiles[0] || null;
     if (profile) {
       const patch = {};
-      if (!profile.school_id && cls.school_id) patch.school_id = cls.school_id;
-      if (!profile.active_school_id && cls.school_id) patch.active_school_id = cls.school_id;
-      if (!profile.primary_teacher_email && cls.teacher_email) patch.primary_teacher_email = cls.teacher_email;
-      if (!profile.admin_email && cls.school_id) {
+      if (cls.school_id) {
+        patch.school_id = cls.school_id;
+        patch.active_school_id = cls.school_id;
+      }
+      if (cls.teacher_email) patch.primary_teacher_email = cls.teacher_email;
+      if (cls.school_id) {
         try {
           const schools = await svc.entities.School.filter({ id: cls.school_id }).catch(() => []);
           if (schools[0]?.admin_email) patch.admin_email = schools[0].admin_email;
@@ -98,6 +101,13 @@ Deno.serve(async (req) => {
       }
       if (Object.keys(patch).length) {
         await svc.entities.UserProfile.update(profile.id, patch);
+      }
+
+      // Provision a vault for the student if they don't have one — students receive BlockWards.
+      try {
+        await ensureVault(svc, actor.controller_user_id, profile);
+      } catch (e) {
+        console.error('joinClassByCode: ensureVault failed (non-fatal):', e);
       }
     }
 

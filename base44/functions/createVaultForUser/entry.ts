@@ -6,7 +6,7 @@
  * (and teachers who can issue BlockWards) get vaults.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { generatePrivateKey, privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
+import { ensureVault } from '../../shared/vault.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -45,53 +45,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Generate new EVM private key
-    const privateKey = generatePrivateKey();
-    const account = privateKeyToAccount(privateKey);
-    const address = account.address;
-
-    // Encrypt private key
-    const encoder = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(Deno.env.get('ISSUER_PRIVATE_KEY').slice(0, 32)),
-      { name: 'AES-GCM' },
-      false,
-      ['encrypt']
-    );
-
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const encrypted = await crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
-      keyMaterial,
-      encoder.encode(privateKey)
-    );
-
-    const encryptedHex = Array.from(new Uint8Array(encrypted))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-    const ivHex = Array.from(iv)
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-    const encryptedKey = `${ivHex}:${encryptedHex}`;
-
-    await base44.asServiceRole.entities.Vaults.create({
-      user_id: userId,
-      school_id: targetProfile?.school_id || null,
-      address,
-      chain: 'sepolia',
-      status: 'active',
-      private_key_encrypted: encryptedKey
-    });
-
-    // Also update the user profile with the wallet address + a public portfolio
-    // identifier (used in shareable /portfolio/:id links so the raw id is never exposed).
-    if (targetProfile) {
-      const update = { wallet_address: address };
-      if (!targetProfile.portfolio_public_id) {
-        update.portfolio_public_id = 'prt-' + Math.random().toString(36).substring(2, 10);
-      }
-      await base44.asServiceRole.entities.UserProfile.update(targetProfile.id, update);
-    }
-
+    const address = await ensureVault(base44.asServiceRole, userId, targetProfile);
     return Response.json({ success: true, vaultAddress: address });
 
   } catch (error) {

@@ -47,7 +47,6 @@ export default function AdminPermissions() {
   const permissionsList = [
     { key: 'manage_users', label: 'Manage Users', desc: 'Create, edit, and suspend users' },
     { key: 'manage_classes', label: 'Manage Classes', desc: 'Create and configure classes' },
-    { key: 'issue_blockwards', label: 'Issue BlockWards', desc: 'Mint achievement NFTs' },
     { key: 'view_all_points', label: 'View All Points', desc: 'See all student point data' },
     { key: 'edit_points', label: 'Edit Points', desc: 'Modify and delete point entries' },
     { key: 'view_reports', label: 'View Reports', desc: 'Access analytics and reports' },
@@ -98,7 +97,7 @@ export default function AdminPermissions() {
       super_admin: {
         manage_users: true,
         manage_classes: true,
-        issue_blockwards: true,
+
         view_all_points: true,
         edit_points: true,
         view_reports: true,
@@ -109,7 +108,7 @@ export default function AdminPermissions() {
       head_of_year: {
         manage_users: false,
         manage_classes: true,
-        issue_blockwards: true,
+
         view_all_points: true,
         edit_points: true,
         view_reports: true,
@@ -120,7 +119,7 @@ export default function AdminPermissions() {
       head_of_department: {
         manage_users: false,
         manage_classes: true,
-        issue_blockwards: true,
+
         view_all_points: true,
         edit_points: false,
         view_reports: true,
@@ -131,7 +130,7 @@ export default function AdminPermissions() {
       data_manager: {
         manage_users: false,
         manage_classes: false,
-        issue_blockwards: false,
+
         view_all_points: true,
         edit_points: false,
         view_reports: true,
@@ -142,7 +141,7 @@ export default function AdminPermissions() {
       basic_admin: {
         manage_users: false,
         manage_classes: false,
-        issue_blockwards: false,
+
         view_all_points: false,
         edit_points: false,
         view_reports: false,

@@ -48,6 +48,7 @@ import Assignments from './pages/Assignments';
 import Assemblies from './pages/Assemblies';
 import SchoolCalendar from './pages/SchoolCalendar';
 import AdminAttendance from './pages/AdminAttendance';
+import JoinClass from './pages/JoinClass';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -116,6 +117,7 @@ const AuthenticatedApp = () => {
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/CustodianDashboard" element={<LayoutWrapper currentPageName="CustodianDashboard"><ProtectedRoute><CustodianDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
+      <Route path="/JoinClass" element={<JoinClass />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />
       <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
       <Route path="/invite/:token" element={<AcceptInvite />} />

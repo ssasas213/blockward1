@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, RefreshCw, Users, GraduationCap, Shield, Check, Loader2, Power } from 'lucide-react';
+import { Copy, RefreshCw, Users, GraduationCap, Shield, Check, Loader2, Power, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -36,7 +36,6 @@ export default function SchoolCodes() {
       const user = await base44.auth.me();
       const roleDefs = [
         { role_type: 'teacher', suffix: 'TEACH', label: 'Teacher Join Code' },
-        { role_type: 'student', suffix: 'STUDENT', label: 'Student Join Code' },
         { role_type: 'admin', suffix: 'ADMIN', label: 'Admin Join Code' },
       ];
       const created = [];
@@ -53,7 +52,7 @@ export default function SchoolCodes() {
         });
         created.push(rec);
       }
-      const order = { teacher: 0, student: 1, admin: 2 };
+      const order = { teacher: 0, admin: 1 };
       created.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
       setCodes(created);
       toast.success('Join codes created');
@@ -74,9 +73,9 @@ export default function SchoolCodes() {
       const schools = await base44.entities.School.filter({ id: profile.school_id });
       if (schools.length > 0) setSchool(schools[0]);
 
-      const allCodes = await base44.entities.SchoolCode.filter({ school_id: profile.school_id });
-      // Sort by role_type: teacher, student, admin
-      const order = { teacher: 0, student: 1, admin: 2 };
+      const allCodes = (await base44.entities.SchoolCode.filter({ school_id: profile.school_id }))
+        .filter(c => c.role_type !== 'student');
+      const order = { teacher: 0, admin: 1 };
       allCodes.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
       setCodes(allCodes);
     } catch (error) {
@@ -96,7 +95,7 @@ export default function SchoolCodes() {
   const regenerateCode = async (codeRecord) => {
     setRegenerating({ ...regenerating, [codeRecord.id]: true });
     try {
-      const roleSuffix = codeRecord.role_type === 'teacher' ? 'TEACH' : codeRecord.role_type === 'student' ? 'STUDENT' : 'ADMIN';
+      const roleSuffix = codeRecord.role_type === 'teacher' ? 'TEACH' : 'ADMIN';
       const newCodeStr = generateCode(school?.name, roleSuffix);
 
       // Deactivate old code
@@ -149,7 +148,6 @@ export default function SchoolCodes() {
 
   const codeConfig = {
     teacher: { title: 'Teacher Join Code', description: 'Share with teachers to request access', icon: Users, color: 'text-primary', bgIcon: 'bg-primary/10' },
-    student: { title: 'Student Join Code', description: 'Students can also join via class codes', icon: GraduationCap, color: 'text-info', bgIcon: 'bg-info/10' },
     admin: { title: 'Admin Join Code', description: 'Highly restricted — requires owner approval', icon: Shield, color: 'text-accent', bgIcon: 'bg-accent/10' },
   };
 
@@ -160,12 +158,24 @@ export default function SchoolCodes() {
         <p className="text-muted-foreground mt-1">Manage codes for {school?.name || 'your school'}</p>
       </div>
 
+      <Card className="border-border bg-info/5">
+        <CardContent className="p-4 flex items-start gap-3">
+          <div className="h-8 w-8 rounded-lg bg-info/15 flex items-center justify-center flex-shrink-0">
+            <Send className="h-4 w-4 text-info" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">Email invitations are the recommended way to add people</p>
+            <p className="text-xs text-muted-foreground mt-0.5">They're instant and don't need approval. Use these codes as a fallback when a teacher or admin can't be emailed. Students join a class with a class code, not a school code.</p>
+          </div>
+        </CardContent>
+      </Card>
+
       {codes.length === 0 ? (
         <Card className="border-border bg-card/60">
           <CardContent className="py-12 text-center">
             <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-5">
-              No join codes found for {school?.name || 'this school'}. Generate them now so teachers and students can join.
+              No join codes found for {school?.name || 'this school'}. Generate them now so teachers can join.
             </p>
             <Button onClick={generateInitialCodes} disabled={generating || !school}>
               {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}

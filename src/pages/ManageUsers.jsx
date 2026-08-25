@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -33,10 +34,7 @@ import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
 import EmptyState from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
-import {
-  Users, Search, Shield, GraduationCap, UserPlus,
-  MoreVertical, Check, X, Edit,
-} from 'lucide-react';
+import { Users, Search, Shield, GraduationCap, MoreVertical, Check, X, Edit, Send } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,18 +50,6 @@ export default function ManageUsers() {
   const [filterType, setFilterType] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newUser, setNewUser] = useState({
-    user_type: 'student',
-    first_name: '',
-    last_name: '',
-    username: '',
-    password: '',
-    student_id: '',
-    grade_level: '',
-    department: ''
-  });
-  const [generatedCredentials, setGeneratedCredentials] = useState(null);
 
   useEffect(() => {
     loadUsers();
@@ -87,20 +73,6 @@ export default function ManageUsers() {
     }
   };
 
-  const handleToggleBlockWardPermission = async (user) => {
-    try {
-      const newValue = !user.can_issue_blockwards;
-      await base44.entities.UserProfile.update(user.id, {
-        can_issue_blockwards: newValue
-      });
-      loadUsers();
-      toast.success(`BlockWard minting ${newValue ? 'enabled' : 'disabled'}`);
-    } catch (error) {
-      console.error('Error updating permission:', error);
-      toast.error('Failed to update permission');
-    }
-  };
-
   const handleUpdateStatus = async (user, status) => {
     try {
       await base44.entities.UserProfile.update(user.id, { status });
@@ -115,11 +87,12 @@ export default function ManageUsers() {
     if (!selectedUser) return;
     try {
       await base44.entities.UserProfile.update(selectedUser.id, {
+        user_type: selectedUser.user_type,
         first_name: selectedUser.first_name,
         last_name: selectedUser.last_name,
         department: selectedUser.department,
         grade_level: selectedUser.grade_level,
-        student_id: selectedUser.student_id
+        student_id: selectedUser.student_id,
       });
       setShowEditDialog(false);
       loadUsers();
@@ -127,95 +100,6 @@ export default function ManageUsers() {
     } catch (error) {
       toast.error('Failed to update user');
     }
-  };
-
-  const generateCredentials = () => {
-    const username = `${newUser.first_name.toLowerCase()}${newUser.last_name.toLowerCase()}`.replace(/\s/g, '');
-    const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-4).toUpperCase();
-    const studentId = newUser.user_type === 'student' ? `STU${Date.now().toString().slice(-6)}` : '';
-
-    setNewUser({
-      ...newUser,
-      username,
-      password,
-      student_id: studentId || newUser.student_id
-    });
-  };
-
-  const generateWallet = () => {
-    const chars = '0123456789abcdef';
-    let address = '0x';
-    for (let i = 0; i < 40; i++) {
-      address += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return address;
-  };
-
-  const handleCreateUser = async () => {
-    if (!newUser.first_name || !newUser.last_name || !newUser.username) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      const currentUser = await base44.auth.me();
-      const currentProfile = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      const school_id = currentProfile[0]?.school_id;
-
-      const walletAddress = generateWallet();
-      const userEmail = `${newUser.username}@${school_id || 'school'}.blockward.local`;
-
-      const profileData = {
-        user_email: userEmail,
-        user_type: newUser.user_type,
-        first_name: newUser.first_name,
-        last_name: newUser.last_name,
-        wallet_address: walletAddress,
-        blockchain_role: newUser.user_type.toUpperCase(),
-        status: 'active',
-        school_id: school_id
-      };
-
-      if (newUser.user_type === 'student') {
-        profileData.student_id = newUser.student_id;
-        profileData.grade_level = newUser.grade_level;
-        profileData.total_achievement_points = 0;
-        profileData.total_behaviour_points = 0;
-      } else if (newUser.user_type === 'teacher') {
-        profileData.department = newUser.department;
-        profileData.can_issue_blockwards = true;
-      }
-
-      await base44.entities.UserProfile.create(profileData);
-
-      setGeneratedCredentials({
-        username: newUser.username,
-        password: newUser.password,
-        student_id: newUser.student_id,
-        name: `${newUser.first_name} ${newUser.last_name}`
-      });
-
-      toast.success('User created successfully');
-      loadUsers();
-    } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Failed to create user');
-    }
-  };
-
-  const resetCreateForm = () => {
-    setNewUser({
-      user_type: 'student',
-      first_name: '',
-      last_name: '',
-      username: '',
-      password: '',
-      student_id: '',
-      grade_level: '',
-      department: ''
-    });
-    setGeneratedCredentials(null);
-    setShowCreateDialog(false);
   };
 
   const getUserTypeIcon = (type) => {
@@ -260,7 +144,7 @@ export default function ManageUsers() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Manage Users" description="Manage teachers, students, and permissions" />
+        <PageHeader title="Manage Users" description="View, edit role, and suspend users" />
         <TableSkeleton />
       </div>
     );
@@ -268,21 +152,21 @@ export default function ManageUsers() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Manage Users" description="Manage teachers, students, and permissions">
-        <Button onClick={() => setShowCreateDialog(true)}>
-          <UserPlus className="h-4 w-4 mr-2" />
-          Create User
+      <PageHeader title="Manage Users" description="View, edit role, and suspend users">
+        <Button asChild>
+          <Link to={createPageUrl('Invitations')}>
+            <Send className="h-4 w-4 mr-2" />
+            Invite People
+          </Link>
         </Button>
       </PageHeader>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Admins" value={admins.length} icon={Shield} accentColor="destructive" />
         <StatCard label="Teachers" value={teachers.length} icon={Users} accentColor="primary" />
         <StatCard label="Students" value={students.length} icon={GraduationCap} accentColor="blue" />
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -306,9 +190,8 @@ export default function ManageUsers() {
         </Select>
       </div>
 
-      {/* Users Table */}
       {filteredUsers.length === 0 ? (
-        <EmptyState icon={Users} title="No users found" description="Try adjusting your search or filters." />
+        <EmptyState icon={Users} title="No users found" description="Try adjusting your search or filters, or invite people to join." />
       ) : (
         <Card>
           <CardContent className="p-0">
@@ -319,8 +202,6 @@ export default function ManageUsers() {
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Wallet</TableHead>
-                  <TableHead>BlockWard Permission</TableHead>
                   <TableHead className="w-20"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -353,19 +234,6 @@ export default function ManageUsers() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {user.wallet_address?.slice(0, 6)}...{user.wallet_address?.slice(-4)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {user.user_type === 'teacher' && (
-                        <Switch
-                          checked={user.can_issue_blockwards}
-                          onCheckedChange={() => handleToggleBlockWardPermission(user)}
-                        />
-                      )}
-                    </TableCell>
-                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon">
@@ -395,163 +263,11 @@ export default function ManageUsers() {
         </Card>
       )}
 
-      {/* Create User Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>
-              Create a new teacher or student account with credentials
-            </DialogDescription>
-          </DialogHeader>
-
-          {!generatedCredentials ? (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>User Type</Label>
-                <Select value={newUser.user_type} onValueChange={(value) => setNewUser({ ...newUser, user_type: value })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="teacher">Teacher</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name *</Label>
-                  <Input
-                    value={newUser.first_name}
-                    onChange={(e) => setNewUser({ ...newUser, first_name: e.target.value })}
-                    placeholder="John"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name *</Label>
-                  <Input
-                    value={newUser.last_name}
-                    onChange={(e) => setNewUser({ ...newUser, last_name: e.target.value })}
-                    placeholder="Doe"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label>Username *</Label>
-                  <Button variant="ghost" size="sm" onClick={generateCredentials}>
-                    Generate Credentials
-                  </Button>
-                </div>
-                <Input
-                  value={newUser.username}
-                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                  placeholder="johndoe"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Password *</Label>
-                <Input
-                  value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="Enter password"
-                  type="text"
-                />
-              </div>
-
-              {newUser.user_type === 'student' && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Student ID</Label>
-                    <Input
-                      value={newUser.student_id}
-                      onChange={(e) => setNewUser({ ...newUser, student_id: e.target.value })}
-                      placeholder="STU001"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Grade Level</Label>
-                    <Input
-                      value={newUser.grade_level}
-                      onChange={(e) => setNewUser({ ...newUser, grade_level: e.target.value })}
-                      placeholder="Year 9"
-                    />
-                  </div>
-                </>
-              )}
-
-              {newUser.user_type === 'teacher' && (
-                <div className="space-y-2">
-                  <Label>Department</Label>
-                  <Input
-                    value={newUser.department}
-                    onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                    placeholder="Mathematics"
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="py-6">
-              <div className="bg-success/10 border border-success/30 rounded-lg p-6 space-y-4">
-                <div className="flex items-center gap-2 text-success">
-                  <Check className="h-5 w-5" />
-                  <h3 className="font-semibold">User Created Successfully!</h3>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Name</p>
-                    <p className="font-medium text-foreground">{generatedCredentials.name}</p>
-                  </div>
-                  {generatedCredentials.student_id && (
-                    <div>
-                      <p className="text-sm text-muted-foreground">Student ID</p>
-                      <p className="font-medium text-foreground">{generatedCredentials.student_id}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm text-muted-foreground">Username</p>
-                    <p className="font-mono font-medium text-foreground">{generatedCredentials.username}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Password</p>
-                    <p className="font-mono font-medium text-foreground">{generatedCredentials.password}</p>
-                  </div>
-                </div>
-                <div className="pt-3 border-t border-success/20">
-                  <p className="text-sm text-success">
-                    ⚠️ Save these credentials! Share them with the user for login.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            {!generatedCredentials ? (
-              <>
-                <Button variant="outline" onClick={resetCreateForm}>Cancel</Button>
-                <Button onClick={handleCreateUser}>Create User</Button>
-              </>
-            ) : (
-              <Button onClick={resetCreateForm}>Done</Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit User Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information
-            </DialogDescription>
+            <DialogDescription>Update role and profile information</DialogDescription>
           </DialogHeader>
           {selectedUser && (
             <div className="space-y-4 py-4">
@@ -559,17 +275,33 @@ export default function ManageUsers() {
                 <div className="space-y-2">
                   <Label>First Name</Label>
                   <Input
-                    value={selectedUser.first_name}
+                    value={selectedUser.first_name || ''}
                     onChange={(e) => setSelectedUser({ ...selectedUser, first_name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Last Name</Label>
                   <Input
-                    value={selectedUser.last_name}
+                    value={selectedUser.last_name || ''}
                     onChange={(e) => setSelectedUser({ ...selectedUser, last_name: e.target.value })}
                   />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select
+                  value={selectedUser.user_type}
+                  onValueChange={(value) => setSelectedUser({ ...selectedUser, user_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="teacher">Teacher</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {selectedUser.user_type === 'teacher' && (
                 <div className="space-y-2">

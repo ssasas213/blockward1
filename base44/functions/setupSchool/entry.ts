@@ -105,7 +105,6 @@ Deno.serve(async (req) => {
 
     // 3. Generate codes for teacher, student, admin
     const teacherCode = generateCode(name, 'TEACH');
-    const studentCode = generateCode(name, 'STUDENT');
     const adminCode = generateCode(name, 'ADMIN');
 
     const codeRecords = await Promise.all([
@@ -117,15 +116,6 @@ Deno.serve(async (req) => {
         status: 'active',
         created_by: user.email,
         label: 'Teacher Join Code',
-      }),
-      base44.asServiceRole.entities.SchoolCode.create({
-        school_id: school.id,
-        school_name: school.name,
-        code: studentCode,
-        role_type: 'student',
-        status: 'active',
-        created_by: user.email,
-        label: 'Student Join Code',
       }),
       base44.asServiceRole.entities.SchoolCode.create({
         school_id: school.id,
@@ -176,7 +166,6 @@ Deno.serve(async (req) => {
       },
       codes: {
         teacher: teacherCode,
-        student: studentCode,
         admin: adminCode,
       },
       code_ids: codeRecords.map(c => c.id),
