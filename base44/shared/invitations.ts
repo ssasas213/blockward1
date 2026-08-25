@@ -50,11 +50,23 @@ export function renderInviteEmail(schoolName: string, inviterName: string, email
   return { subject: `You've been invited to join ${schoolName} on BlockWard`, body: bodyHtml };
 }
 
-// Awaits the send (does not swallow) so the caller can record delivery status.
+// Sends the invite via Resend (delivers to non-registered recipients reliably).
+// Reads RESEND_API_KEY + RESEND_FROM_EMAIL from the backend runtime env.
 export async function sendInviteEmail(svc, to: string, subject: string, body: string): Promise<{ delivered: boolean; error?: string }> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const from = Deno.env.get("RESEND_FROM_EMAIL");
+  if (!apiKey || !from) {
+    return { delivered: false, error: "Resend not configured (RESEND_API_KEY / RESEND_FROM_EMAIL missing)" };
+  }
   try {
-    await svc.integrations.Core.SendEmail({ to, subject, body });
-    return { delivered: true };
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject, html: body }),
+    });
+    const data = await res.json().catch(() => null);
+    if (res.ok) return { delivered: true };
+    return { delivered: false, error: data?.message || res.statusText || `Resend error ${res.status}` };
   } catch (e) {
     return { delivered: false, error: e?.message || String(e) };
   }
