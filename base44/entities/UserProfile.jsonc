@@ -264,23 +264,7 @@
       ]
     },
     "update": {
-      "$or": [
-        {
-          "data.user_email": "{{user.email}}"
-        },
-        {
-          "$and": [
-            {
-              "data.school_id": "{{user.profile.school_id}}"
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
-        }
-      ]
+      "data.school_id": "__service_role_only__"
     },
     "delete": {
       "$or": [
