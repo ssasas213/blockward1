@@ -147,7 +147,7 @@
   ],
   "rls": {
     "create": {
-      "data.admin_email": "{{user.email}}"
+      "data.admin_email": "__service_role_only__"
     },
     "read": {
       "$or": [
