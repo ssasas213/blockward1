@@ -47,6 +47,7 @@ import AcademicSettings from './pages/AcademicSettings';
 import Assignments from './pages/Assignments';
 import Assemblies from './pages/Assemblies';
 import SchoolCalendar from './pages/SchoolCalendar';
+import AdminAttendance from './pages/AdminAttendance';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -126,6 +127,7 @@ const AuthenticatedApp = () => {
       <Route path="/Assignments" element={<LayoutWrapper currentPageName="Assignments"><ProtectedRoute><Assignments /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Assemblies" element={<LayoutWrapper currentPageName="Assemblies"><ProtectedRoute><Assemblies /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/SchoolCalendar" element={<LayoutWrapper currentPageName="SchoolCalendar"><ProtectedRoute><SchoolCalendar /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminAttendance" element={<LayoutWrapper currentPageName="AdminAttendance"><ProtectedRoute><AdminAttendance /></ProtectedRoute></LayoutWrapper>} />
 
       {/* Platform-specific login/signup routes */}
       <Route path="/schools/login" element={<SchoolsLogin />} />

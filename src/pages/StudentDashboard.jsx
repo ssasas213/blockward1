@@ -17,6 +17,7 @@ import {
 import ParentContactSection from '@/components/student/ParentContactSection';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
 import GradesWidget from '@/components/grades/GradesWidget';
+import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
 import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
 import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
 
@@ -118,6 +119,9 @@ function StudentDashboardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Academic Performance Widget */}
         <GradesWidget />
+
+        {/* My Attendance */}
+        <AttendanceWidget />
 
         {/* Today's Schedule */}
         <Card className="shadow-sm">

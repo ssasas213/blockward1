@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, CalendarDays
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -83,6 +83,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Insights', items: [
         { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
+        { name: 'Attendance', icon: ClipboardCheck, page: 'AdminAttendance' },
         { name: 'Reports', icon: FileText, page: 'Reports' },
       ]},
       { label: 'Tools', items: [
@@ -102,6 +103,7 @@ export default function Layout({ children, currentPageName }) {
       { label: 'Teaching', items: [
         { name: 'Classes', icon: BookOpen, page: 'Classes' },
         { name: 'Timetable', icon: Calendar, page: 'Timetable' },
+        { name: 'Attendance', icon: ClipboardCheck, page: 'Attendance' },
         { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
         { name: 'Gradebook', icon: GraduationCap, page: 'Gradebook' },
         { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },

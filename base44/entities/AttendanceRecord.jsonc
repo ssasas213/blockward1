@@ -1,0 +1,95 @@
+{
+  "name": "AttendanceRecord",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this record belongs to (RLS scope)."
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class the register was taken for."
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalized class name for display."
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Student this mark belongs to."
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Denormalized student name for display."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Register date (yyyy-MM-dd). Unique per (class_id, student_email, date)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "present",
+        "absent",
+        "late",
+        "excused"
+      ],
+      "description": "Attendance status."
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional note for the mark."
+    },
+    "marked_by_email": {
+      "type": "string",
+      "description": "Teacher/admin who marked it (effective persona in Test Mode)."
+    },
+    "marked_by_name": {
+      "type": "string",
+      "description": "Display name of the marker."
+    },
+    "marked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the mark was last set."
+    }
+  },
+  "required": [
+    "school_id",
+    "class_id",
+    "student_email",
+    "date",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.student_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}
