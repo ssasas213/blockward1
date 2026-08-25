@@ -53,16 +53,16 @@ export default function SignatureSetup({ profile, userEmail, onComplete }) {
     setSaving(true);
     try {
       const sigValue = tab === 'typed' ? typedSig.trim() : canvasRef.current.toDataURL('image/png');
-      const sigProfile = await base44.entities.SignatureProfile.create({
-        user_email: userEmail,
+      const res = await base44.functions.invoke('createSignatureProfile', {
         school_id: profile.school_id,
-        user_role: profile.user_type,
         display_name: displayName.trim(),
         title: title.trim(),
         signature_type: tab,
         signature_value: sigValue,
-        created_at: new Date().toISOString()
       });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
+      const sigProfile = data.signature_profile;
       toast.success('Signature profile created! You can now sign records.');
       onComplete(sigProfile);
     } catch (e) {

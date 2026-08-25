@@ -159,7 +159,7 @@ export default function Announcements() {
 
     setSaving(true);
     try {
-      const created = await base44.entities.Announcement.create({
+      const res = await base44.functions.invoke('createAnnouncement', {
         title: form.title,
         body: form.body,
         body_short: form.body.slice(0, 200),
@@ -173,11 +173,12 @@ export default function Announcements() {
         student_emails: aud.studentEmails || undefined,
         student_names: aud.studentNames || undefined,
         status: statusOverride,
-        created_by: user?.email,
-        school_id: profile?.school_id || undefined,
-        sent_at: statusOverride === 'sent' ? new Date().toISOString() : undefined,
+        school_id: profile?.school_id,
         scheduled_at: statusOverride === 'scheduled' ? form.scheduled_at : undefined,
       });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
+      const created = data.announcement;
       // Dispatch notifications for urgent/important announcements when sent
       if (statusOverride === 'sent' && (form.priority === 'urgent' || form.priority === 'important')) {
         base44.functions.invoke('dispatchAnnouncementNotifications', {

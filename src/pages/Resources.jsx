@@ -124,17 +124,19 @@ export default function Resources() {
       
       const selectedClass = classes.find(c => c.id === newResource.class_id);
 
-      const resourceData = {
-        ...newResource,
+      const res = await base44.functions.invoke('createResource', {
+        class_id: newResource.class_id,
+        class_name: selectedClass?.name,
+        title: newResource.title,
+        description: newResource.description,
+        category: newResource.category,
         file_url,
         file_type: getFileType(selectedFile.name),
         file_size: selectedFile.size,
-        class_name: selectedClass?.name,
-        teacher_email: user.email,
-        school_id: profile?.school_id
-      };
-
-      await base44.entities.Resource.create(resourceData);
+        school_id: profile?.school_id,
+      });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       
       setShowUploadDialog(false);
       setNewResource({ class_id: preselectedClass || '', title: '', description: '', category: '' });

@@ -100,15 +100,18 @@ export default function Timetable() {
       const user = await base44.auth.me();
       const selectedClass = classes.find(c => c.id === newEntry.class_id);
 
-      const entryData = {
-        ...newEntry,
-        teacher_email: user.email,
+      const res = await base44.functions.invoke('createTimetableEntry', {
+        class_id: newEntry.class_id,
+        day_of_week: newEntry.day_of_week,
+        start_time: newEntry.start_time,
+        end_time: newEntry.end_time,
+        room: newEntry.room,
         subject: selectedClass?.subject,
         class_name: selectedClass?.name,
-        school_id: profile?.school_id
-      };
-
-      await base44.entities.TimetableEntry.create(entryData);
+        school_id: profile?.school_id,
+      });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
       setShowAddDialog(false);
       setNewEntry({ class_id: '', day_of_week: 0, start_time: '', end_time: '', room: '' });
       loadData();

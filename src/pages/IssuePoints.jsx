@@ -118,40 +118,22 @@ export default function IssuePoints() {
 
     setSubmitting(true);
     try {
-      const user = await base44.auth.me();
       const points = customPoints ? parseInt(customPoints) : selectedCategory.default_points;
       const classData = classes.find(c => c.id === selectedClass);
 
-      const pointEntry = {
-        school_id: profile?.school_id,
+      const res = await base44.functions.invoke('issuePoints', {
         student_email: selectedStudent.user_email,
         student_name: `${selectedStudent.first_name} ${selectedStudent.last_name}`,
-        teacher_email: user.email,
-        teacher_name: `${profile?.first_name} ${profile?.last_name}`,
         class_id: selectedClass,
         class_name: classData?.name,
         category_id: selectedCategory.id,
         category_name: selectedCategory.name,
         type: selectedCategory.type,
-        points: selectedCategory.type === 'achievement' ? Math.abs(points) : -Math.abs(points),
+        points,
         reason,
-        timestamp: new Date().toISOString()
-      };
-
-      await base44.entities.PointEntry.create(pointEntry);
-
-      const currentAchievement = selectedStudent.total_achievement_points || 0;
-      const currentBehaviour = selectedStudent.total_behaviour_points || 0;
-
-      if (selectedCategory.type === 'achievement') {
-        await base44.entities.UserProfile.update(selectedStudent.id, {
-          total_achievement_points: currentAchievement + Math.abs(points)
-        });
-      } else {
-        await base44.entities.UserProfile.update(selectedStudent.id, {
-          total_behaviour_points: currentBehaviour + Math.abs(points)
-        });
-      }
+      });
+      const data = res.data || res;
+      if (data?.error) throw new Error(data.error);
 
       setSuccessAnimation(true);
       setTimeout(() => {

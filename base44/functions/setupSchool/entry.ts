@@ -55,6 +55,10 @@ Deno.serve(async (req) => {
     const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
     if (profiles.length > 0) {
       profile = profiles[0];
+      // Only an existing admin may create a school — a student/teacher must not.
+      if (profile.user_type !== 'admin') {
+        return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
+      }
     } else {
       const nameParts = (admin_full_name || user.full_name || user.email || 'Admin').trim().split(/\s+/);
       profile = await base44.asServiceRole.entities.UserProfile.create({
