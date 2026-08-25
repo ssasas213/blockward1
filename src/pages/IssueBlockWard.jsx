@@ -344,7 +344,12 @@ function IssueBlockWardContent() {
         recordData.is_custom_award = false;
       }
 
-      const record = await base44.entities.StudentRecord.create(recordData);
+      // Create the draft via the service-role function (entity create is locked to
+      // service role so admins can't bypass it). The function sets teacher fields
+      // from the effective actor and validates the student.
+      const createRes = await base44.functions.invoke('createStudentRecord', recordData);
+      if (!createRes.data?.ok) throw new Error(createRes.data?.error || 'Failed to create record');
+      const record = createRes.data.record;
 
       // 4. Teacher submits on behalf of student: draft → awaiting_teacher_signature
       const submitRes = await base44.functions.invoke('recordWorkflow', {

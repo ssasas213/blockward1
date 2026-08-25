@@ -122,19 +122,15 @@ function StudentMyRecordsImpl() {
         if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to create record');
         record = res.data.record;
       } else {
-        record = await base44.entities.StudentRecord.create({
-          school_id: profile.school_id,
-          student_id: profile.id,
-          student_email: user.email,
-          student_name: `${profile.first_name} ${profile.last_name}`,
-          owner_student_id: profile.id,
-          owner_student_email: user.email,
-          owner_school_id: profile.school_id,
+        // Entity create is locked to service role — route through the function
+        // (validates the chosen teacher, sets student/owner fields from the caller).
+        const createRes = await base44.functions.invoke('createStudentRecord', {
           title: form.title, category: form.category, description: form.description,
           date_achieved: form.date_achieved || null, file_url: fileUrl,
-          teacher_email: form.teacher_email, teacher_name: teacherName,
-          status: 'draft',
+          teacher_email: form.teacher_email,
         });
+        if (!createRes.data?.ok) throw new Error(createRes.data?.error || 'Failed to create record');
+        record = createRes.data.record;
       }
 
       // Submit through the workflow — creates the audit log server-side, no client-side audit

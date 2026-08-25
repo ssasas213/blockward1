@@ -54,33 +54,19 @@ export default function CreateRecordDialog({ open, onOpenChange, teacherProfile,
         setUploading(false);
       }
 
-      const record = await base44.entities.StudentRecord.create({
-        school_id: teacherProfile.school_id,
+      // Entity create is locked to service role — route through the function
+      // (sets teacher fields from the effective actor, validates the student).
+      const createRes = await base44.functions.invoke('createStudentRecord', {
+        student_email: student?.user_email,
         class_id: form.class_id || null,
         class_name: cls?.name || null,
-        teacher_id: teacherProfile.id,
-        teacher_email: teacherProfile.user_email,
-        teacher_name: `${teacherProfile.first_name} ${teacherProfile.last_name}`,
-        student_id: student?.id,
-        student_email: student?.user_email,
-        student_name: `${student?.first_name} ${student?.last_name}`,
         title: form.title,
         category: form.category,
         description: form.description,
         file_url: fileUrl,
-        status: 'draft'
       });
-
-      await base44.entities.AuditLog.create({
-        record_id: record.id,
-        school_id: teacherProfile.school_id,
-        actor_email: teacherProfile.user_email,
-        actor_name: `${teacherProfile.first_name} ${teacherProfile.last_name}`,
-        actor_role: 'teacher',
-        action: 'created',
-        new_status: 'draft',
-        timestamp: new Date().toISOString()
-      });
+      if (!createRes.data?.ok) throw new Error(createRes.data?.error || 'Failed to create record');
+      const record = createRes.data.record;
 
       toast.success('Record created!');
       onCreated?.();
