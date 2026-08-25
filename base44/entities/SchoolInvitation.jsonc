@@ -64,6 +64,19 @@
     "accepted_by_email": {
       "type": "string",
       "description": "Email that actually accepted (should match invited_email)"
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed",
+        "pending"
+      ],
+      "description": "Outcome of the last SendEmail attempt for this invitation. Surfaced in the UI so silent delivery failures are visible."
+    },
+    "email_error": {
+      "type": "string",
+      "description": "Error message from the last failed SendEmail attempt, when email_status is 'failed'."
     }
   },
   "required": [

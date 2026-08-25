@@ -99,19 +99,30 @@ function PeopleImpl() {
     }
   };
 
-  const sendInvite = async () => {
-    if (!emails.trim()) { toast.error('Enter at least one email'); return; }
-    setSending(true);
+  const sendInvite = async (resendInv = null) => {
+    const isResend = !!resendInv;
+    const payloadEmails = isResend ? resendInv.invited_email : emails;
+    const payloadRole = isResend ? resendInv.role : role;
+    if (!payloadEmails || !payloadEmails.trim()) { toast.error('Enter at least one email'); return; }
+    if (isResend) setBusy(b => ({ ...b, [`send-${resendInv.id}`]: true })); else setSending(true);
     try {
-      const res = await base44.functions.invoke('sendSchoolInvitations', { action: 'send', role, emails });
+      const res = await base44.functions.invoke('sendSchoolInvitations', {
+        action: 'send', role: payloadRole, emails: payloadEmails, resend: isResend,
+      });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Failed');
-      toast.success(`${res.data.sent_count} invitation${res.data.sent_count === 1 ? '' : 's'} sent`);
-      setEmails('');
+      const { sent_count, skipped_count, failed_count } = res.data;
+      const parts = [`${sent_count} sent`];
+      if (skipped_count) parts.push(`${skipped_count} skipped (already pending)`);
+      if (failed_count) parts.push(`${failed_count} email failed`);
+      if (failed_count > 0) toast.error(parts.join(' · '));
+      else if (skipped_count > 0) toast.warning(parts.join(' · '));
+      else toast.success(parts.join(' · '));
+      if (!isResend) setEmails('');
       loadData();
     } catch (e) {
       toast.error(e.message || 'Failed to send');
     } finally {
-      setSending(false);
+      if (isResend) setBusy(b => ({ ...b, [`send-${resendInv.id}`]: false })); else setSending(false);
     }
   };
 
@@ -192,7 +203,7 @@ function PeopleImpl() {
                 <div>
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pending ({pending.length})</p>
                   <div className="divide-y divide-border rounded-lg border border-border">
-                    {pending.map(inv => <InvitationRow key={inv.id} inv={inv} busy={busy} onRevoke={revoke} onCopy={copy} copied={copied} />)}
+                    {pending.map(inv => <InvitationRow key={inv.id} inv={inv} busy={busy} onRevoke={revoke} onResend={sendInvite} onCopy={copy} copied={copied} />)}
                   </div>
                 </div>
               )}
@@ -300,7 +311,7 @@ function PeopleImpl() {
   );
 }
 
-function InvitationRow({ inv, busy, onRevoke, onCopy, copied }) {
+function InvitationRow({ inv, busy, onRevoke, onResend, onCopy, copied }) {
   const Icon = inv.role === 'admin' ? Shield : Users;
   const link = `${window.location.origin}/invite/${inv.token}`;
   return (
@@ -309,12 +320,18 @@ function InvitationRow({ inv, busy, onRevoke, onCopy, copied }) {
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground truncate">{inv.invited_email}</p>
         <p className="text-xs text-muted-foreground capitalize">{inv.role} · sent {inv.invited_at ? format(new Date(inv.invited_at), 'dd MMM yyyy') : ''}</p>
+        {inv.email_status === 'failed' && <p className="text-xs text-destructive mt-0.5">Email failed to send — use Resend</p>}
       </div>
       <Badge variant="outline" className={`text-xs ${inv.status === 'accepted' ? 'border-success/30 bg-success/10 text-success' : inv.status === 'revoked' ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-warning/30 bg-warning/10 text-warning'}`}>{inv.status}</Badge>
       <div className="flex items-center gap-1">
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onCopy(link, `inv-${inv.id}`)} title="Copy invite link">
           {copied[`inv-${inv.id}`] ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
         </Button>
+        {inv.status === 'pending' && onResend && (
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onResend(inv)} disabled={busy[`send-${inv.id}`]} title="Resend">
+            {busy[`send-${inv.id}`] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          </Button>
+        )}
         {inv.status === 'pending' && onRevoke && (
           <Button variant="outline" size="icon" className="h-8 w-8 text-destructive" onClick={() => onRevoke(inv)} disabled={busy[`rev-${inv.id}`]} title="Cancel">
             {busy[`rev-${inv.id}`] ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}

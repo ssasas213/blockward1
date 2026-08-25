@@ -35,28 +35,9 @@ function SchoolCodesImpl() {
     if (!school) { toast.error('No school linked'); return; }
     setGenerating(true);
     try {
-      const user = await base44.auth.me();
-      const roleDefs = [
-        { role_type: 'teacher', suffix: 'TEACH', label: 'Teacher Join Code' },
-        { role_type: 'admin', suffix: 'ADMIN', label: 'Admin Join Code' },
-      ];
-      const created = [];
-      for (const def of roleDefs) {
-        const codeStr = generateCode(school.name, def.suffix);
-        const rec = await base44.entities.SchoolCode.create({
-          school_id: school.id,
-          school_name: school.name,
-          code: codeStr,
-          role_type: def.role_type,
-          status: 'active',
-          created_by: user.email,
-          label: def.label,
-        });
-        created.push(rec);
-      }
-      const order = { teacher: 0, admin: 1 };
-      created.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
-      setCodes(created);
+      const res = await base44.functions.invoke('generateSchoolCodes', { action: 'generate' });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to generate codes');
+      setCodes(res.data.codes);
       toast.success('Join codes created');
     } catch (error) {
       toast.error(error.message || 'Failed to generate codes');
@@ -97,30 +78,12 @@ function SchoolCodesImpl() {
   const regenerateCode = async (codeRecord) => {
     setRegenerating({ ...regenerating, [codeRecord.id]: true });
     try {
-      const roleSuffix = codeRecord.role_type === 'teacher' ? 'TEACH' : 'ADMIN';
-      const newCodeStr = generateCode(school?.name, roleSuffix);
-
-      // Deactivate old code
-      await base44.entities.SchoolCode.update(codeRecord.id, {
-        status: 'disabled',
-      });
-
-      // Create new code
-      const newCode = await base44.entities.SchoolCode.create({
-        school_id: codeRecord.school_id,
-        school_name: codeRecord.school_name,
-        code: newCodeStr,
-        role_type: codeRecord.role_type,
-        status: 'active',
-        created_by: school?.admin_email || '',
-        label: codeRecord.label || `${codeRecord.role_type} Join Code`,
-      });
-
-      // Replace in state
-      setCodes(prev => prev.map(c => c.id === codeRecord.id ? newCode : c));
+      const res = await base44.functions.invoke('generateSchoolCodes', { action: 'regenerate', code_id: codeRecord.id });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to regenerate code');
+      setCodes(prev => prev.map(c => c.id === codeRecord.id ? res.data.code : c));
       toast.success(`New ${codeRecord.role_type} code generated. Old code deactivated.`);
     } catch (error) {
-      toast.error('Failed to regenerate code');
+      toast.error(error.message || 'Failed to regenerate code');
     } finally {
       setRegenerating({ ...regenerating, [codeRecord.id]: false });
     }
@@ -129,12 +92,12 @@ function SchoolCodesImpl() {
   const toggleCodeStatus = async (codeRecord) => {
     setToggling({ ...toggling, [codeRecord.id]: true });
     try {
-      const newStatus = codeRecord.status === 'active' ? 'disabled' : 'active';
-      await base44.entities.SchoolCode.update(codeRecord.id, { status: newStatus });
-      setCodes(prev => prev.map(c => c.id === codeRecord.id ? { ...c, status: newStatus } : c));
-      toast.success(`Code ${newStatus === 'active' ? 'activated' : 'deactivated'}`);
+      const res = await base44.functions.invoke('generateSchoolCodes', { action: 'toggle', code_id: codeRecord.id });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to update code status');
+      setCodes(prev => prev.map(c => c.id === codeRecord.id ? res.data.code : c));
+      toast.success(`Code ${res.data.code.status === 'active' ? 'activated' : 'deactivated'}`);
     } catch (error) {
-      toast.error('Failed to update code status');
+      toast.error(error.message || 'Failed to update code status');
     } finally {
       setToggling({ ...toggling, [codeRecord.id]: false });
     }
