@@ -75,31 +75,16 @@
   ],
   "rls": {
     "create": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "data.school_id": "__service_role_only__"
     },
     "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "data.invited_email": "{{user.email}}"
-        }
-      ]
+      "data.school_id": "{{user.profile.school_id}}"
     },
     "update": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "data.school_id": "__service_role_only__"
     },
     "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "data.school_id": "__service_role_only__"
     }
   }
 }
