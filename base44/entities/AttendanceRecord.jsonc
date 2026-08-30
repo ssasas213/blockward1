@@ -53,6 +53,14 @@
       "type": "string",
       "format": "date-time",
       "description": "When the mark was last set."
+    },
+    "attendance_session_id": {
+      "type": "string",
+      "description": "AttendanceSession.id this mark belongs to. Links the record to a canonical lesson session."
+    },
+    "academic_term_id": {
+      "type": "string",
+      "description": "AcademicTerm.id this mark falls within (denormalized for analytics)."
     }
   },
   "required": [

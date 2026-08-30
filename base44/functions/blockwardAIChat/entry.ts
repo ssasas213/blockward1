@@ -225,10 +225,16 @@ const TOOLS = [
     },
   },
   {
-    name: "getMyAttendance", description: "Get the student's attendance record.", allowedRoles: ["student"],
+    name: "getMyAttendance", description: "Get the student's own attendance: overall rate, present/absent/late/excused counts, recent marks, and times late this term.", allowedRoles: ["student"],
     parameters: { type: "object", properties: {} },
-    async run() {
-      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for students." };
+    async run(_args, { svc, actor }) {
+      const records = await svc.entities.AttendanceRecord.filter({ school_id: actor.school_id, student_email: actor.actor_email }, '-date', 500).catch(() => []);
+      if (!records.length) return { has_attendance: false };
+      const counts = { present: 0, absent: 0, late: 0, excused: 0 };
+      for (const r of records) { if (counts[r.status] != null) counts[r.status]++; }
+      const rate = records.length ? Math.round(((counts.present + counts.late) / records.length) * 100) : null;
+      const recent = records.slice(0, 10).map(r => ({ date: r.date, class: r.class_name, status: r.status }));
+      return { has_attendance: true, total: records.length, rate, counts, late_this_term: counts.late, recent };
     },
   },
 
@@ -366,10 +372,25 @@ const TOOLS = [
     },
   },
   {
-    name: "getClassAttendance", description: "Get attendance for one of the teacher's own classes.", allowedRoles: ["teacher"],
-    parameters: { type: "object", properties: { class_name: { type: "string" } } },
-    async run() {
-      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for classes." };
+    name: "getClassAttendance", description: "Get attendance for one of the teacher's own classes, identified by class name: overall rate, who was absent today, and the students with the lowest attendance.", allowedRoles: ["teacher"],
+    parameters: { type: "object", properties: { class_name: { type: "string", description: "The exact class name" } }, required: ["class_name"] },
+    async run(args, { svc, actor }) {
+      const classes = await svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
+      const cls = classes.find(c => (c.name || "").toLowerCase() === String(args?.class_name || "").toLowerCase() && (c.teacher_email === actor.actor_email || (c.co_teachers || []).includes(actor.actor_email)));
+      if (!cls) return { error: "You do not teach a class with that name." };
+      const today = new Date().toISOString().slice(0, 10);
+      const [recs, sessions] = await Promise.all([
+        svc.entities.AttendanceRecord.filter({ school_id: actor.school_id, class_id: cls.id }, '-date', 500).catch(() => []),
+        svc.entities.AttendanceSession.filter({ school_id: actor.school_id, class_id: cls.id }, '-date', 20).catch(() => []),
+      ]);
+      const counts = { present: 0, absent: 0, late: 0, excused: 0 };
+      for (const r of recs) { if (counts[r.status] != null) counts[r.status]++; }
+      const rate = recs.length ? Math.round(((counts.present + counts.late) / recs.length) * 100) : null;
+      const absentToday = recs.filter(r => r.date === today && r.status === 'absent').map(r => ({ student: r.student_name, email: r.student_email }));
+      const byStudent = {};
+      for (const r of recs) { const k = r.student_email; if (!byStudent[k]) byStudent[k] = { name: r.student_name, recs: 0, attended: 0 }; byStudent[k].recs++; if (r.status === 'present' || r.status === 'late') byStudent[k].attended++; }
+      const lowest = Object.values(byStudent).map(s => ({ name: s.name, rate: s.recs ? Math.round((s.attended / s.recs) * 100) : null })).sort((a, b) => (a.rate ?? 999) - (b.rate ?? 999)).slice(0, 5);
+      return { class: cls.name, rate, counts, absent_today: absentToday, lowest_attendance: lowest, recent_sessions: sessions.slice(0, 8).map(s => ({ date: s.date, present: s.present_count, absent: s.absent_count, late: s.late_count, excused: s.excused_count })) };
     },
   },
 
@@ -472,10 +493,22 @@ const TOOLS = [
     },
   },
   {
-    name: "getSchoolAttendanceStats", description: "Get school-wide attendance statistics.", allowedRoles: ["admin"],
+    name: "getSchoolAttendanceStats", description: "Get today's school-wide attendance summary: present/absent/late counts today, school average rate, and per-class rates (lowest first).", allowedRoles: ["admin"],
     parameters: { type: "object", properties: {} },
-    async run() {
-      return { available: false, message: "Attendance tracking is not currently recorded in BlockWard for this school." };
+    async run(_args, { svc, actor }) {
+      const today = new Date().toISOString().slice(0, 10);
+      const [records, classes] = await Promise.all([
+        svc.entities.AttendanceRecord.filter({ school_id: actor.school_id }, '-date', 2000).catch(() => []),
+        svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+      ]);
+      const todayRecs = records.filter(r => r.date === today);
+      const counts = { present: 0, absent: 0, late: 0, excused: 0 };
+      for (const r of todayRecs) { if (counts[r.status] != null) counts[r.status]++; }
+      const schoolAvg = records.length ? Math.round((records.filter(r => r.status === 'present' || r.status === 'late').length / records.length) * 100) : null;
+      const byClass = {};
+      for (const r of records) { const k = r.class_id; if (!byClass[k]) byClass[k] = { attended: 0, total: 0 }; byClass[k].total++; if (r.status === 'present' || r.status === 'late') byClass[k].attended++; }
+      const classRates = Object.entries(byClass).map(([id, v]) => ({ class: classes.find(c => c.id === id)?.name || 'Unknown', rate: v.total ? Math.round((v.attended / v.total) * 100) : null })).sort((a, b) => (a.rate ?? 999) - (b.rate ?? 999));
+      return { today: { date: today, present: counts.present, absent: counts.absent, late: counts.late, excused: counts.excused, total: todayRecs.length }, school_average: schoolAvg, class_rates: classRates };
     },
   },
 
@@ -590,7 +623,7 @@ Rules:
 - Refer to people by name only when the tool data provides it.
 - Assemblies are not a separate system — they are school Events. When asked about assemblies, use the assembly tool available to your role.
 - Homework is tracked through the class assessment/grading system, not a separate task tracker. When asked about homework, use the homework tool available to your role and explain grading status using that data.
-- Attendance is not currently tracked in BlockWard. If the attendance tool reports it is unavailable, say so plainly — do not guess or estimate attendance from other data.
+- Attendance is tracked in BlockWard through the class register system. Use the attendance tools available to your role to answer attendance questions with real data. A student's "attendance" means their present/late/absent/excused marks across recorded lessons.
 - "Draft a report" / "draft a class report" / "draft a school summary": call the relevant summary tools available to your role (for a teacher: class grades, class students, pending reviews; for an admin: school summary, school grade stats, achievement stats, teacher activity), then write a short structured draft (headings like Overview / Highlights / Areas to Watch) using ONLY that data. Always start this kind of answer with the exact line "**AI Draft — Review Before Use**" on its own, and never claim the report has been sent, published, or saved anywhere — it is a draft for the user to review.
 - Ranking or "best/top student" questions must be grounded only in returned data (e.g. published grades, achievement points, BlockWards) and must say what the ranking is based on, e.g. "Based on published grades and achievement points this term...". Never fabricate a ranking when the underlying tool data is empty.
 
