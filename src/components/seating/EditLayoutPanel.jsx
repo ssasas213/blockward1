@@ -17,6 +17,7 @@ const ELEMENT_TYPES = [
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 export default function EditLayoutPanel({ layout, onLayout, onAddElement, onDeleteElement, onApplyTemplate, onClearSeats, isMobile }) {
+  if (!layout) return null;
   if (isMobile) {
     return (
       <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
@@ -44,11 +45,11 @@ export default function EditLayoutPanel({ layout, onLayout, onAddElement, onDele
         </div>
         <div className="flex items-center gap-3 pt-2">
           <label className="text-xs text-muted-foreground">Room width</label>
-          <input type="number" min={6} max={20} value={layout.room?.width || 12} onChange={e => onLayout({ ...layout, room: { ...layout.room, width: Number(e.target.value) } })} className="w-16 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
+          <input type="number" min={6} max={20} value={layout.room?.width || 12} onChange={e => onLayout({ ...layout, room: { ...(layout.room || {}), width: Number(e.target.value) } })} className="w-16 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
           <label className="text-xs text-muted-foreground">height</label>
-          <input type="number" min={5} max={16} value={layout.room?.height || 9} onChange={e => onLayout({ ...layout, room: { ...layout.room, height: Number(e.target.value) } })} className="w-16 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
+          <input type="number" min={5} max={16} value={layout.room?.height || 9} onChange={e => onLayout({ ...layout, room: { ...(layout.room || {}), height: Number(e.target.value) } })} className="w-16 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
           <label className="text-xs text-muted-foreground">label</label>
-          <input type="text" value={layout.room?.label || ''} onChange={e => onLayout({ ...layout, room: { ...layout.room, label: e.target.value } })} placeholder="B204" className="w-24 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
+          <input type="text" value={layout.room?.label || ''} onChange={e => onLayout({ ...layout, room: { ...(layout.room || {}), label: e.target.value } })} placeholder="B204" className="w-24 h-8 rounded-md bg-background border border-border px-2 text-sm text-foreground" />
         </div>
       </div>
 
