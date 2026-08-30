@@ -19,6 +19,7 @@
  *   rejected                                → student             (deep link: record review)
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { sendResendEmail } from '../../shared/resendEmail.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,9 +60,8 @@ Deno.serve(async (req) => {
     const schoolId = data.school_id || '';
 
     const sendEmail = async (to, subject, html) => {
-      try {
-        await base44.asServiceRole.integrations.Core.SendEmail({ to, subject, body: html });
-      } catch (e) { /* isolated — one bad recipient never fails the batch */ }
+      const { delivered, error } = await sendResendEmail(to, subject, html);
+      if (!delivered) console.log('[notify] email not delivered', { to, error });
     };
 
     const notifyInApp = async (userEmail, title, bodyText, priority) => {

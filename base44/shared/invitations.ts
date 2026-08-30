@@ -2,6 +2,8 @@
 // createInvitations and sendSchoolInvitations so the token/email/dedupe
 // logic lives in one place.
 
+import { sendResendEmail } from './resendEmail.ts';
+
 export function makeToken(): string {
   const a = crypto.randomUUID().replace(/-/g, '');
   const b = crypto.randomUUID().replace(/-/g, '');
@@ -52,34 +54,10 @@ export function renderInviteEmail(schoolName: string, inviterName: string, email
 
 // Sends the invite via Resend (delivers to non-registered recipients reliably).
 // Reads RESEND_API_KEY + RESEND_FROM_EMAIL from the backend runtime env.
+// Delegates to the shared Resend dispatcher in resendEmail.ts so every
+// backend email flow uses one implementation.
 export async function sendInviteEmail(svc, to: string, subject: string, body: string): Promise<{ delivered: boolean; error?: string }> {
-  const apiKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("RESEND_FROM_EMAIL");
-  console.log("[invite-email] RESEND path active", {
-    apiKeyPresent: !!apiKey, apiKeyLen: apiKey ? apiKey.length : 0,
-    from: from || null, to,
-  });
-  if (!apiKey || !from) {
-    console.log("[invite-email] MISSING_SECRET — Resend not configured");
-    return { delivered: false, error: "Resend not configured (RESEND_API_KEY / RESEND_FROM_EMAIL missing)" };
-  }
-  try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html: body }),
-    });
-    const data = await res.json().catch(() => null);
-    console.log("[invite-email] Resend response", {
-      status: res.status, ok: res.ok, from, to,
-      resendId: data?.id || null, resendError: data?.message || null,
-    });
-    if (res.ok) return { delivered: true };
-    return { delivered: false, error: data?.message || res.statusText || `Resend error ${res.status}` };
-  } catch (e) {
-    console.log("[invite-email] Resend fetch threw", { error: e?.message });
-    return { delivered: false, error: e?.message || String(e) };
-  }
+  return sendResendEmail(to, subject, body);
 }
 
 // Core invitation flow shared by both function entries.
