@@ -1,0 +1,95 @@
+{
+  "name": "AttendanceAuditLog",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School (RLS scope)"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "AttendanceSession.id this event relates to"
+    },
+    "student_email": {
+      "type": "string"
+    },
+    "student_name": {
+      "type": "string"
+    },
+    "actor_email": {
+      "type": "string",
+      "description": "Who made the change"
+    },
+    "actor_name": {
+      "type": "string"
+    },
+    "actor_role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "teacher",
+        "student"
+      ]
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "seating_plan_created",
+        "seating_plan_updated",
+        "seating_plan_deleted",
+        "attendance_saved",
+        "attendance_edited",
+        "admin_override"
+      ],
+      "description": "What happened"
+    },
+    "old_status": {
+      "type": "string",
+      "description": "Previous attendance status, if applicable"
+    },
+    "new_status": {
+      "type": "string",
+      "description": "New attendance status, if applicable"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Reason for the correction, if provided"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "school_id",
+    "actor_email",
+    "action",
+    "timestamp"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

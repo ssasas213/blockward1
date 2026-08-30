@@ -1,0 +1,107 @@
+{
+  "name": "AttendanceSession",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this session belongs to (RLS scope)"
+    },
+    "class_id": {
+      "type": "string"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalized class name for display"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Teacher who took the register. Used for RLS."
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Register date (yyyy-MM-dd). One session per (class_id, date) by default."
+    },
+    "timetable_entry_id": {
+      "type": "string",
+      "description": "Optional link to the TimetableEntry this session was taken from."
+    },
+    "session_start_time": {
+      "type": "string",
+      "description": "Start time of the lesson (HH:MM or ISO)."
+    },
+    "session_end_time": {
+      "type": "string",
+      "description": "End time of the lesson (HH:MM or ISO)."
+    },
+    "academic_term_id": {
+      "type": "string"
+    },
+    "academic_term_name": {
+      "type": "string"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by_email": {
+      "type": "string"
+    },
+    "marks_count": {
+      "type": "number",
+      "default": 0
+    },
+    "present_count": {
+      "type": "number",
+      "default": 0
+    },
+    "absent_count": {
+      "type": "number",
+      "default": 0
+    },
+    "late_count": {
+      "type": "number",
+      "default": 0
+    },
+    "excused_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "school_id",
+    "class_id",
+    "teacher_email",
+    "date"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

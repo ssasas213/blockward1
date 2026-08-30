@@ -1,0 +1,155 @@
+{
+  "name": "SeatingPlan",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this plan belongs to (RLS scope)"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class this seating plan is for"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalized class name for display"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Teacher who owns this plan (class's primary/co teacher). Used for RLS."
+    },
+    "name": {
+      "type": "string",
+      "description": "Plan name e.g. Default, Exam Layout, Group Work"
+    },
+    "layout_json": {
+      "type": "object",
+      "description": "Visual classroom layout: room dimensions + placed elements (whiteboard, desks, teacher desk, door, window) and seat\u2192student assignments. Purely positional data, never attendance.",
+      "properties": {
+        "room": {
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string"
+            }
+          }
+        },
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "desk",
+                  "whiteboard",
+                  "teacherDesk",
+                  "door",
+                  "window",
+                  "empty"
+                ]
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "type": "number"
+              },
+              "h": {
+                "type": "number"
+              },
+              "seats": {
+                "type": "number",
+                "description": "Number of seats (1,2,4,6) for desk type"
+              },
+              "seatLayout": {
+                "type": "string",
+                "enum": [
+                  "row",
+                  "group"
+                ],
+                "description": "How seats are arranged on the desk"
+              },
+              "label": {
+                "type": "string"
+              },
+              "assignments": {
+                "type": "array",
+                "items": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "description": "student_email per seat index, or null"
+              }
+            }
+          }
+        }
+      }
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this plan loads by default for the class"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "school_id",
+    "class_id",
+    "teacher_email",
+    "name",
+    "layout_json"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.teacher_email": "{{user.email}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}
