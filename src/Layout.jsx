@@ -138,6 +138,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
         { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
         { name: 'My Points', icon: Award, page: 'MyPoints' },
+        { name: 'My Attendance', icon: ClipboardCheck, page: 'StudentAttendance' },
         { name: 'Resources', icon: FileText, page: 'Resources' },
       ]},
       { label: 'Communication', items: [

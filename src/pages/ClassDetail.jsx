@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import SeatingPlanTab from '@/components/seating/SeatingPlanTab';
 
 export default function ClassDetail() {
   const [loading, setLoading] = useState(true);
@@ -277,6 +278,7 @@ export default function ClassDetail() {
       <Tabs defaultValue="students" className="space-y-6">
         <TabsList className="bg-slate-100">
           <TabsTrigger value="students">Students</TabsTrigger>
+          {isTeacher && <TabsTrigger value="seating">Seating Plan</TabsTrigger>}
           <TabsTrigger value="announcements">
             Announcements
             {announcements.length > 0 && (
@@ -372,6 +374,14 @@ export default function ClassDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="seating">
+          {isTeacher ? (
+            <SeatingPlanTab classId={classId} canEdit={isTeacher} />
+          ) : (
+            <Card><CardContent className="py-12 text-center text-muted-foreground">Seating plans are managed by your teacher.</CardContent></Card>
+          )}
         </TabsContent>
 
         <TabsContent value="announcements">
