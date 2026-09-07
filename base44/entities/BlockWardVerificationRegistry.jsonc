@@ -175,6 +175,16 @@
       "type": "boolean",
       "default": true,
       "description": "Whether this record is visible on the public verification page"
+    },
+    "visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "link_only",
+        "private"
+      ],
+      "default": "public",
+      "description": "Student-set visibility on the public /@handle profile grid. Set through the updatePublicProfile function (registry writes are service-role only)."
     }
   },
   "required": [
