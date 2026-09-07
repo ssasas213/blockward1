@@ -3,7 +3,10 @@ import { base44 } from '@/api/base44Client';
 import FeedItem from '@/components/feed/FeedItem';
 import LeaderboardPanel from '@/components/feed/LeaderboardPanel';
 import EndorseDialog from '@/components/endorsements/EndorseDialog';
-import { Loader2, Rss, Quote, AlertCircle } from 'lucide-react';
+import EndorseBalanceWidget from '@/components/endorsements/EndorseBalanceWidget';
+import Opportunities from '@/pages/Opportunities';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Loader2, Rss, AlertCircle, Trophy } from 'lucide-react';
 
 const LAST_VISIT_KEY = 'bw_feed_last_visit';
 
@@ -89,68 +92,77 @@ export default function Feed() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Activity Feed</h1>
+        <h1 className="text-2xl font-bold text-foreground">Explore</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Verified achievements from people you follow, your organisations, and the organisations they compete with.
+          Verified achievements from people you follow, opportunities, and leaderboards.
         </p>
       </div>
 
-      <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
-        {/* The feed — calm, reverse chronological, no infinite scroll */}
-        <div className="space-y-3">
-          {feed.length === 0 ? (
-            <div className="rounded-xl border border-border bg-card/40 p-12 text-center">
-              <Rss className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm font-medium text-foreground">Nothing in your feed yet</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-                Follow people from their profiles, or earn verified achievements in your organisation — new ones appear here.
-              </p>
-            </div>
-          ) : (
-            feed.map((item, idx) => {
-              const isNew = firstNewItemIdx !== -1 && idx >= firstNewItemIdx;
-              const showMarker = isNew && !newMarked;
-              if (showMarker) newMarked = true;
-              return (
-                <React.Fragment key={item.registry_id}>
-                  {showMarker && (
-                    <div className="flex items-center gap-3 py-2">
-                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                      <span className="text-[11px] font-semibold text-primary uppercase tracking-wide">New since your last visit</span>
-                      <div className="h-px flex-1 bg-primary/20" />
-                    </div>
-                  )}
-                  <FeedItem item={item} isNew={isNew} canEndorse={canEndorse} onEndorse={onEndorse} />
-                </React.Fragment>
-              );
-            })
-          )}
-        </div>
+      <Tabs defaultValue="feed">
+        <TabsList>
+          <TabsTrigger value="feed">Feed</TabsTrigger>
+          <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
+          <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+        </TabsList>
 
-        {/* Right rail — endorsement budget + leaderboards */}
-        <aside className="space-y-4 lg:sticky lg:top-20">
-          {budget && (
-            <div className="rounded-xl border border-border bg-card/60 p-4">
-              <div className="flex items-center gap-2">
-                <Quote className="h-4 w-4 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Endorsements left this term</p>
-              </div>
-              <p className="text-2xl font-bold text-foreground mt-2">
-                {budget.remaining}
-                <span className="text-sm text-muted-foreground font-medium"> of {budget.budget}</span>
-              </p>
-              {budget.term_end && (
-                <p className="text-xs text-tertiary mt-1">
-                  Resets {new Date(budget.term_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                </p>
+        {/* The feed — calm, reverse chronological, no infinite scroll */}
+        <TabsContent value="feed" className="mt-6">
+          <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
+            <div className="space-y-3">
+              {feed.length === 0 ? (
+                <div className="rounded-xl border border-border bg-card/40 p-12 text-center">
+                  <Rss className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-medium text-foreground">Nothing in your feed yet</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    Follow people from their profiles, or earn verified achievements in your organisation — new ones appear here.
+                  </p>
+                </div>
+              ) : (
+                feed.map((item, idx) => {
+                  const isNew = firstNewItemIdx !== -1 && idx >= firstNewItemIdx;
+                  const showMarker = isNew && !newMarked;
+                  if (showMarker) newMarked = true;
+                  return (
+                    <React.Fragment key={item.registry_id}>
+                      {showMarker && (
+                        <div className="flex items-center gap-3 py-2">
+                          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                          <span className="text-[11px] font-semibold text-primary uppercase tracking-wide">New since your last visit</span>
+                          <div className="h-px flex-1 bg-primary/20" />
+                        </div>
+                      )}
+                      <FeedItem item={item} isNew={isNew} canEndorse={canEndorse} onEndorse={onEndorse} />
+                    </React.Fragment>
+                  );
+                })
               )}
             </div>
-          )}
-          {data?.leaderboard && (
+
+            {/* Right rail — endorsement balance (moved from the dashboard) */}
+            <aside className="space-y-4 lg:sticky lg:top-20">
+              <EndorseBalanceWidget />
+            </aside>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="opportunities" className="mt-6">
+          <Opportunities />
+        </TabsContent>
+
+        <TabsContent value="leaderboard" className="mt-6">
+          {data?.leaderboard ? (
             <LeaderboardPanel leaderboard={data.leaderboard} optOut={data.leaderboard_opt_out} />
+          ) : (
+            <div className="rounded-xl border border-border bg-card/40 p-12 text-center">
+              <Trophy className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-sm font-medium text-foreground">No leaderboard yet</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                Join an organisation to appear on its weekly and monthly leaderboards.
+              </p>
+            </div>
           )}
-        </aside>
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <EndorseDialog
         open={endorseOpen}

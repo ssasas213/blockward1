@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
+import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
 import { Button } from '@/components/ui/button';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
@@ -79,33 +80,12 @@ export default function Layout({ children, currentPageName }) {
       ]},
     ],
     student: [
-      { label: 'Overview', items: [
-        { name: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
-        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
-      ]},
-      { label: 'Achievements', items: [
+      { items: [
+        { name: 'Home', icon: LayoutDashboard, page: 'StudentDashboard' },
         { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
-        { name: 'Request Achievement', icon: Send, page: 'AchievementRequests' },
-        { name: 'Opportunities', icon: Briefcase, page: 'Opportunities' },
-        { name: 'My Achievements', icon: Trophy, page: 'StudentMyRecords' },
-        { name: 'Portfolio Vault', icon: HardDrive, page: 'StudentPortfolioVault' },
-      ]},
-      { label: 'Academic', items: [
-        { name: 'Grades', icon: GraduationCap, page: 'StudentGrades' },
-        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
-      ]},
-      { label: 'School', items: [
-        { name: 'My Classes', icon: BookOpen, page: 'Classes' },
-        { name: 'Timetable', icon: Calendar, page: 'Timetable' },
-        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
-        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
-        { name: 'My Points', icon: Award, page: 'MyPoints' },
-        { name: 'My Attendance', icon: ClipboardCheck, page: 'StudentAttendance' },
-        { name: 'Resources', icon: FileText, page: 'Resources' },
-      ]},
-      { label: 'Communication', items: [
-        { name: 'Announcements', icon: Megaphone, page: 'Announcements' },
-        { name: 'Messages', icon: FileText, page: 'Messages' },
+        { name: 'Explore', icon: Rss, page: 'Feed' },
+        { name: 'School', icon: BookOpen, page: 'MySchool' },
+        { name: 'Inbox', icon: Inbox, page: 'Messages' },
       ]},
     ],
   };
@@ -123,9 +103,34 @@ export default function Layout({ children, currentPageName }) {
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-14 glass border-b border-border z-50 px-4 flex items-center justify-between">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-hover rounded-md transition-colors" aria-label="Open menu">
-          <Menu className="h-5 w-5 text-muted-foreground" />
-        </button>
+        {userType === 'student' ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1 rounded-full" aria-label="Account menu">
+                <InitialsAvatar name={displayName} src={profile?.avatar_url} size="sm" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <TestModeMenuItems />
+              <ThemeToggle />
+              <DropdownMenuItem asChild>
+                <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
+                  <UserCircle className="h-4 w-4" />
+                  Profile & Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={logout} className="text-destructive">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-hover rounded-md transition-colors" aria-label="Open menu">
+            <Menu className="h-5 w-5 text-muted-foreground" />
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-primary" />
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
@@ -142,7 +147,7 @@ export default function Layout({ children, currentPageName }) {
       </header>
 
       {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
+      {sidebarOpen && userType !== 'student' && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="absolute left-0 top-0 bottom-0 w-64 surface-sidebar border-r border-sidebar-border shadow-2xl">
@@ -201,11 +206,13 @@ export default function Layout({ children, currentPageName }) {
       </header>
 
       {/* Main Content */}
-      <main className="lg:pl-64 lg:pt-14 pt-14 min-h-screen">
+      <main className={cn("lg:pl-64 lg:pt-14 pt-14 min-h-screen", userType === 'student' && "pb-16 lg:pb-0")}>
         <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-page-in">
           {children}
         </div>
       </main>
+
+      {userType === 'student' && <StudentBottomTabs currentPageName={currentPageName} />}
 
       <BlockWardGuide />
     </div>

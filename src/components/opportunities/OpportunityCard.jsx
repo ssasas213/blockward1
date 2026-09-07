@@ -61,7 +61,7 @@ export default function OpportunityCard({ opportunity, onApply }) {
             {firstMissing && (
               <p className="text-xs text-muted-foreground mt-1">
                 Still needed: <span className="font-medium text-foreground">{firstMissing.label}</span> —{' '}
-                <Link to="/AchievementRequests" className="text-primary underline-offset-2 hover:underline">
+                <Link to="/StudentBlockWards" className="text-primary underline-offset-2 hover:underline">
                   request verification
                 </Link>
               </p>

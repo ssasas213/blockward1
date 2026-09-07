@@ -20,8 +20,6 @@ import RecordDetail from './pages/RecordDetail';
 import AdminApprovalPage from './pages/AdminApprovalPage';
 import Records from './pages/Records';
 import TeacherRecords from './pages/TeacherRecords';
-import StudentMyRecords from './pages/StudentMyRecords';
-import StudentPortfolioVault from './pages/StudentPortfolioVault';
 import Verify from './pages/Verify';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -48,12 +46,12 @@ import SchoolCalendar from './pages/SchoolCalendar';
 import AdminAttendance from './pages/AdminAttendance';
 import JoinClass from './pages/JoinClass';
 import StudentAttendance from './pages/StudentAttendance';
-import AchievementRequests from './pages/AchievementRequests';
 import PendingSignoffs from './pages/PendingSignoffs';
 import MyTeaching from './pages/MyTeaching';
 import ManageSchool from './pages/ManageSchool';
 import Insights from './pages/Insights';
 import SchoolSettings from './pages/SchoolSettings';
+import MySchool from './pages/MySchool';
 import ExternalVerify from './pages/ExternalVerify';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
@@ -125,8 +123,8 @@ const AuthenticatedApp = () => {
       <Route path="/AdminRecords" element={<Navigate to="/Records" replace />} />
       <Route path="/Records" element={<LayoutWrapper currentPageName="Records"><ProtectedRoute><Records /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentMyRecords" element={<LayoutWrapper currentPageName="StudentMyRecords"><ProtectedRoute><StudentMyRecords /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentPortfolioVault" element={<LayoutWrapper currentPageName="StudentPortfolioVault"><ProtectedRoute><StudentPortfolioVault /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentMyRecords" element={<Navigate to="/StudentBlockWards" replace />} />
+      <Route path="/StudentPortfolioVault" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
@@ -146,12 +144,13 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolCalendar" element={<LayoutWrapper currentPageName="SchoolCalendar"><ProtectedRoute><SchoolCalendar /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminAttendance" element={<LayoutWrapper currentPageName="AdminAttendance"><ProtectedRoute><AdminAttendance /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentAttendance" element={<LayoutWrapper currentPageName="StudentAttendance"><ProtectedRoute><StudentAttendance /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AchievementRequests" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MyTeaching" element={<LayoutWrapper currentPageName="MyTeaching"><ProtectedRoute><MyTeaching /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageSchool" element={<LayoutWrapper currentPageName="ManageSchool"><ProtectedRoute><ManageSchool /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Insights" element={<LayoutWrapper currentPageName="Insights"><ProtectedRoute><Insights /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/MySchool" element={<LayoutWrapper currentPageName="MySchool"><ProtectedRoute><MySchool /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
       <Route path="/GradeBook" element={<Navigate to="/Gradebook" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />

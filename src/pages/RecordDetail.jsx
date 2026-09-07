@@ -275,7 +275,7 @@ export default function RecordDetail() {
                 status updates live there.
               </p>
               <Button size="sm" variant="outline" className="mt-2" asChild>
-                <Link to={profile?.user_type === 'student' ? '/AchievementRequests' : '/PendingSignoffs'}>
+                <Link to={profile?.user_type === 'student' ? '/StudentBlockWards' : '/PendingSignoffs'}>
                   {profile?.user_type === 'student' ? 'View my requests' : 'Open the review queue'}
                 </Link>
               </Button>
