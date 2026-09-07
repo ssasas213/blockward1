@@ -121,7 +121,7 @@ export default async function (req: Request): Promise<Response> {
       const record = mine.find((r) => r.id === registry_id);
       if (!record) return Response.json({ error: 'Achievement not found' }, { status: 404 });
       await svc.entities.BlockWardVerificationRegistry.update(registry_id, { visibility });
-      record.visibility = visibility;
+      if (achievementsById[registry_id]) achievementsById[registry_id].visibility = visibility;
       achievementUpdated = registry_id;
     }
 
@@ -150,7 +150,7 @@ export default async function (req: Request): Promise<Response> {
         avatar_url: fresh.avatar_url || null,
         grade_level: fresh.grade_level || null,
       },
-      achievements: myAchievements,
+      achievements: Object.values(achievementsById),
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
