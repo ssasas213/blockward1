@@ -39,6 +39,8 @@ export default function PublicProfile() {
   const [shareOpen, setShareOpen] = useState(false);
   const [viewerEmail, setViewerEmail] = useState(null);
   const [endorseOpen, setEndorseOpen] = useState(false);
+  const [followState, setFollowState] = useState({ known: false, following: false });
+  const [followBusy, setFollowBusy] = useState(false);
   const [reload, setReload] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [chip, setChip] = useState('all');
@@ -55,6 +57,35 @@ export default function PublicProfile() {
     });
     return () => { active = false; };
   }, []);
+
+  // Follow state for signed-in viewers (one-directional, public — no approval).
+  useEffect(() => {
+    let active = true;
+    if (!viewerEmail || !data?.ok || data.private || !data.student?.handle || data.is_owner) return;
+    base44.functions.invoke('socialAction', { action: 'follow_state', handle: data.student.handle })
+      .then((res) => {
+        if (active && res.data?.ok) setFollowState({ known: true, following: !!res.data.following });
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [viewerEmail, data]);
+
+  const toggleFollow = async () => {
+    if (!data?.student?.handle) return;
+    setFollowBusy(true);
+    try {
+      const res = await base44.functions.invoke('socialAction', {
+        action: followState.following ? 'unfollow' : 'follow',
+        handle: data.student.handle,
+      });
+      if (res.data?.ok) setFollowState({ known: true, following: !!res.data.following });
+      else throw new Error(res.data?.error);
+    } catch (e) {
+      toast.error('Could not update — try again');
+    } finally {
+      setFollowBusy(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -212,6 +243,16 @@ export default function PublicProfile() {
             <span className="font-semibold text-foreground">BlockWard</span>
           </a>
           <div className="flex items-center gap-2">
+            {viewerEmail && !is_owner && (
+              <Button
+                size="sm"
+                variant={followState.following ? 'secondary' : 'default'}
+                onClick={toggleFollow}
+                disabled={followBusy}
+              >
+                {followState.following ? 'Following' : 'Follow'}
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={exportPdf} disabled={exporting}>
               {exporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
               Export PDF

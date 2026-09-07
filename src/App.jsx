@@ -53,18 +53,12 @@ import PendingSignoffs from './pages/PendingSignoffs';
 import ExternalVerify from './pages/ExternalVerify';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
-import VerifyLanding from './pages/VerifyLanding';
-import About from './pages/marketing/About';
-import Contact from './pages/marketing/Contact';
-import Documentation from './pages/marketing/Documentation';
-import Security from './pages/marketing/Security';
-import Privacy from './pages/marketing/Privacy';
-import Terms from './pages/marketing/Terms';
 import TeamPage from './pages/TeamPage';
 import TeamJoin from './pages/TeamJoin';
 import PublicProfile from './pages/PublicProfile';
 import Opportunities from './pages/Opportunities';
 import ManageOpportunities from './pages/ManageOpportunities';
+import Feed from './pages/Feed';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -156,14 +150,8 @@ const AuthenticatedApp = () => {
       <Route path="/@:handle" element={<PublicProfile />} />
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Feed" element={<LayoutWrapper currentPageName="Feed"><ProtectedRoute><Feed /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
-      <Route path="/verify" element={<VerifyLanding />} />
-      <Route path="/about" element={<About />} />
-      <Route path="/contact" element={<Contact />} />
-      <Route path="/documentation" element={<Documentation />} />
-      <Route path="/security" element={<Security />} />
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/terms" element={<Terms />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
 
       {/* Platform-specific login/signup routes */}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Bell, X, Check, CheckCheck, AlertCircle, Megaphone, Clock, MessageSquare } from 'lucide-react';
+import { Bell, X, Check, CheckCheck, AlertCircle, Megaphone, Clock, MessageSquare, Heart, UserPlus, BadgeCheck, PenLine, Users, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 
@@ -9,6 +9,12 @@ const TYPE_ICONS = {
   announcement_important: Megaphone,
   announcement_scheduled_reminder: Clock,
   message: MessageSquare,
+  endorsement: Heart,
+  follow: UserPlus,
+  request_signed_off: BadgeCheck,
+  request_changes: PenLine,
+  team_accepted: Users,
+  opportunity_match: Briefcase,
 };
 
 export default function NotificationBell({ userEmail }) {

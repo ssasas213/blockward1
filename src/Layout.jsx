@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -58,6 +58,7 @@ export default function Layout({ children, currentPageName }) {
     admin: [
       { label: 'Overview', items: [
         { name: 'Dashboard', icon: LayoutDashboard, page: 'AdminDashboard' },
+        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
       ]},
       { label: 'Records', items: [
         { name: 'Records', icon: FileText, page: 'Records' },
@@ -95,6 +96,7 @@ export default function Layout({ children, currentPageName }) {
     teacher: [
       { label: 'Overview', items: [
         { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
+        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
       ]},
       { label: 'Achievements', items: [
         { name: 'Pending Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs' },
@@ -125,6 +127,7 @@ export default function Layout({ children, currentPageName }) {
     student: [
       { label: 'Overview', items: [
         { name: 'Dashboard', icon: LayoutDashboard, page: 'StudentDashboard' },
+        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
       ]},
       { label: 'Achievements', items: [
         { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
