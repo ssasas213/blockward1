@@ -1,0 +1,125 @@
+{
+  "name": "SelfReportedAchievement",
+  "type": "object",
+  "properties": {
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the student"
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Student email \u2014 ownership key for RLS"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Display name of the student"
+    },
+    "title": {
+      "type": "string",
+      "description": "What the student says they achieved"
+    },
+    "description": {
+      "type": "string",
+      "description": "Details in the student's own words"
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sport",
+        "martial_arts",
+        "music",
+        "chess",
+        "esports",
+        "community",
+        "professional",
+        "other"
+      ],
+      "default": "academic",
+      "description": "Portfolio category this achievement belongs to"
+    },
+    "date_achieved": {
+      "type": "string",
+      "format": "date"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "link"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Optional evidence attached by the student"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "verification_requested",
+        "verified"
+      ],
+      "default": "unverified",
+      "description": "unverified: self-declared only. verification_requested: linked AchievementRequest in review. verified: minted to the registry (no longer self-reported)."
+    },
+    "verification_request_id": {
+      "type": "string",
+      "description": "AchievementRequest.id created when the student asked for verification"
+    },
+    "registry_id": {
+      "type": "string",
+      "description": "BlockWardVerificationRegistry.id once verified and published"
+    },
+    "organisation_name": {
+      "type": "string",
+      "description": "Optional self-declared organisation context (e.g. the club where it happened)"
+    }
+  },
+  "required": [
+    "student_email",
+    "student_id",
+    "title",
+    "domain",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.student_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.student_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.student_email": "{{user.email}}"
+    }
+  }
+}

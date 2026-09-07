@@ -11,6 +11,29 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { normalizeHandle, validateHandle } from '../../shared/handles.ts';
 
+// Derives the portfolio domain of a registry record: the issuing
+// organisation's type first (BJJ belt → martial arts academy, chess rating →
+// chess organisation…), falling back to the credential category.
+const ORG_TYPE_DOMAIN: Record<string, string> = {
+  martial_arts_academy: 'martial_arts',
+  chess_organisation: 'chess',
+  chess_club: 'chess',
+  esports_organisation: 'esports',
+  music_academy: 'music',
+};
+const CATEGORY_DOMAIN: Record<string, string> = {
+  academic: 'academic',
+  sports: 'sport',
+  arts: 'music',
+  leadership: 'professional',
+  community: 'community',
+  behaviour: 'community',
+  special: 'professional',
+};
+function domainOf(r: any): string {
+  return ORG_TYPE_DOMAIN[r.organisation_type] || CATEGORY_DOMAIN[r.achievement_category] || 'other';
+}
+
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -55,13 +78,38 @@ export default async function (req: Request): Promise<Response> {
       });
     }
 
-    // 3. Affiliations — current school / club.
+    // 3. Affiliations — EVERY organisation this student belongs to: their home
+    // school plus approved cross-org memberships (clubs, academies…).
     let school = null;
     if (profile.school_id) {
       try {
         const schools = await svc.entities.School.filter({ id: profile.school_id });
         school = schools[0] || null;
       } catch (e) { /* ignore */ }
+    }
+
+    let memberships: any[] = [];
+    try { memberships = await svc.entities.StudentOrgMembership.filter({ student_email: profile.user_email, status: 'active' }); } catch (e) { /* empty */ }
+
+    const orgs: any[] = [];
+    const orgLogos: Record<string, string | null> = {};
+    if (school) {
+      orgs.push({ id: school.id, name: school.name, org_type: school.org_type, city: school.city || null, country: school.country || null, logo_url: school.logo_url || null });
+      if (school.logo_url) orgLogos[school.id] = school.logo_url;
+    }
+    for (const m of memberships) {
+      if (orgs.some((o) => o.id === m.school_id)) continue;
+      let org = null;
+      try { const rows = await svc.entities.School.filter({ id: m.school_id }); org = rows[0] || null; } catch (e) { /* ignore */ }
+      orgs.push({
+        id: m.school_id,
+        name: (org && org.name) || m.school_name || 'Organisation',
+        org_type: (org && org.org_type) || m.org_type || 'other',
+        city: org?.city || null,
+        country: org?.country || null,
+        logo_url: org?.logo_url || null,
+      });
+      if (org?.logo_url) orgLogos[org.id] = org.logo_url;
     }
 
     // 4. Verified achievements from the permanent registry.
@@ -77,9 +125,9 @@ export default async function (req: Request): Promise<Response> {
       new Date(a.date_delivered || a.date_approved || a.date_achieved || a.updated_date || 0)
     );
 
-    // Org logos: batch-resolve the unique school_ids in the achievements.
-    const orgIds = [...new Set(visible.map((r) => r.school_id).filter(Boolean))];
-    const orgLogos = {};
+    // Org logos: resolve remaining school_ids referenced by achievements but
+    // not covered by the orgs list above.
+    const orgIds = [...new Set(visible.map((r) => r.school_id).filter(Boolean))].filter((oid) => !(oid in orgLogos));
     for (const oid of orgIds) {
       try {
         const s = await svc.entities.School.filter({ id: oid });
@@ -93,6 +141,9 @@ export default async function (req: Request): Promise<Response> {
       title: r.achievement_title,
       description: r.achievement_description,
       category: r.achievement_category,
+      domain: domainOf(r),
+      participant_role: r.participant_role || null,
+      team_slug: r.team_slug || null,
       image_url: r.achievement_image || null,
       evidence_url: (r.visibility === 'public' || r.visibility === 'link_only') ? (r.evidence_file_url || null) : null,
       certificate_url: r.certificate_url || null,
@@ -141,6 +192,31 @@ export default async function (req: Request): Promise<Response> {
        new Date(a.date_delivered || a.date_approved || a.date_achieved || 0))
     );
 
+    // Self-reported achievements — shown in a clearly separate, unverified
+    // section. Verified ones live in the registry and are dropped here.
+    let selfReported: any[] = [];
+    try { selfReported = await svc.entities.SelfReportedAchievement.filter({ student_email: profile.user_email }); } catch (e) { /* empty */ }
+    const self_reported = selfReported
+      .filter((s) => (s.status || 'unverified') !== 'verified')
+      .map((s) => ({
+        id: s.id,
+        title: s.title,
+        description: s.description || null,
+        domain: s.domain || 'other',
+        date_achieved: s.date_achieved || null,
+        evidence: s.evidence || [],
+        status: s.status || 'unverified',
+      }))
+      .sort((a, b) => new Date(b.date_achieved || 0).getTime() - new Date(a.date_achieved || 0).getTime());
+
+    // Highlights — pinned registry ids (only visible ones), max 6.
+    const visibleIds = new Set(visible.map((r) => r.id));
+    const pinned = (profile.pinned_achievement_ids || []).filter((id: string) => visibleIds.has(id)).slice(0, 6);
+
+    // Owner flag: the signed-in viewer is the profile owner (enables pinning).
+    const is_owner = !!body.viewer_email &&
+      String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
+
     return Response.json({
       ok: true,
       student: {
@@ -159,7 +235,11 @@ export default async function (req: Request): Promise<Response> {
         country: school.country || null,
         logo_url: school.logo_url || null,
       } : null,
+      orgs,
       achievements,
+      pinned,
+      self_reported,
+      is_owner,
       endorsements_unattached: unattached,
       count: achievements.length,
     });

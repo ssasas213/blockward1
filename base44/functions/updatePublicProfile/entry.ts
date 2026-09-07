@@ -111,6 +111,14 @@ export default async function (req: Request): Promise<Response> {
       updates.og_image_url = body.og_image_url || null;
     }
 
+    // ── Highlights — up to 6 pinned verified achievements ──────────────────
+    if (Array.isArray(body.pinned_achievement_ids)) {
+      const ids = [...new Set(body.pinned_achievement_ids)]
+        .filter((id: string) => mine.some((r) => r.id === id))
+        .slice(0, 6);
+      updates.pinned_achievement_ids = ids;
+    }
+
     // ── Per-achievement visibility ───────────────────────────────────────────
     let achievementUpdated = null;
     if (body.achievement_visibility && typeof body.achievement_visibility === 'object') {
@@ -146,6 +154,7 @@ export default async function (req: Request): Promise<Response> {
         bio: fresh.bio || null,
         profile_visibility: fresh.profile_visibility || 'public',
         og_image_url: fresh.og_image_url || null,
+        pinned_achievement_ids: fresh.pinned_achievement_ids || [],
         name: `${fresh.first_name || ''} ${fresh.last_name || ''}`.trim(),
         avatar_url: fresh.avatar_url || null,
         grade_level: fresh.grade_level || null,

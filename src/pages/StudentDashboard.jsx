@@ -21,6 +21,8 @@ import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
 import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
 import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
 import EndorseBalanceWidget from '@/components/endorsements/EndorseBalanceWidget';
+import CrossOrgAchievementsCard from '@/components/dashboard/CrossOrgAchievementsCard';
+import SelfAchievementsCard from '@/components/dashboard/SelfAchievementsCard';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -118,6 +120,12 @@ function StudentDashboardContent() {
 
       {/* Peer endorsement balance — prominent, per term, no roll-over */}
       <EndorseBalanceWidget />
+
+      {/* Aggregated achievements across every organisation the student belongs to */}
+      <CrossOrgAchievementsCard profile={userProfile} userEmail={user?.email} />
+
+      {/* Self-reported achievements — instant, verifiable later */}
+      <SelfAchievementsCard profile={userProfile} userEmail={user?.email} />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

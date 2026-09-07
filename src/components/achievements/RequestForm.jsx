@@ -59,7 +59,10 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
 
   if (!meta) return null;
 
-  const selectedTemplate = meta.templates.find((t) => t.id === form.credentialTypeId);
+  // With multiple organisations, templates and staff are scoped per org.
+  const orgTemplates = meta.templates.filter((t) => !t.school_id || t.school_id === form.orgId);
+  const orgStaff = meta.staff.filter((s) => !s.school_id || s.school_id === form.orgId);
+  const selectedTemplate = orgTemplates.find((t) => t.id === form.credentialTypeId);
   const isCustom = form.credentialTypeId === 'other';
   const effectiveTier = isCustom ? Number(form.tier) || 0 : selectedTemplate?.verification_tier || 0;
 
@@ -140,7 +143,22 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
           {/* Organisation */}
           <div className="space-y-1.5">
             <Label>Organisation</Label>
-            <Select value={form.orgId} onValueChange={(v) => set('orgId', v)} disabled={isEdit}>
+            <Select
+              value={form.orgId}
+              onValueChange={(v) => {
+                set('orgId', v);
+                // Reset picks that belong to a different organisation.
+                if (form.credentialTypeId && form.credentialTypeId !== 'other' &&
+                    !meta.templates.some((t) => t.id === form.credentialTypeId && (!t.school_id || t.school_id === v))) {
+                  set('credentialTypeId', '');
+                }
+                if (form.verifierEmail &&
+                    !meta.staff.some((s) => s.email === form.verifierEmail && (!s.school_id || s.school_id === v))) {
+                  set('verifierEmail', '');
+                }
+              }}
+              disabled={isEdit}
+            >
               <SelectTrigger><SelectValue placeholder="Pick an organisation" /></SelectTrigger>
               <SelectContent>
                 {meta.orgs.map((o) => (
@@ -159,7 +177,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
             >
               <SelectTrigger><SelectValue placeholder="Pick a type" /></SelectTrigger>
               <SelectContent>
-                {meta.templates.map((t) => (
+                {orgTemplates.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.title} · Tier {t.verification_tier || 1}
                   </SelectItem>
@@ -232,7 +250,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
             <Select value={form.verifierEmail} onValueChange={(v) => set('verifierEmail', v)}>
               <SelectTrigger><SelectValue placeholder="Pick a staff member" /></SelectTrigger>
               <SelectContent>
-                {meta.staff.map((s) => (
+                {orgStaff.map((s) => (
                   <SelectItem key={s.id} value={s.email}>
                     {s.name} · {s.user_type === 'admin' ? 'Admin' : 'Teacher'}
                   </SelectItem>

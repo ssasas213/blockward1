@@ -15,7 +15,7 @@ import PendingTeacherRequests from '@/components/onboarding/PendingTeacherReques
 import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
 import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
-import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
+import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle, Briefcase } from 'lucide-react';
 
 function AdminDashboardContent() {
   const [userProfile, setUserProfile] = useState(null);
@@ -92,6 +92,12 @@ function AdminDashboardContent() {
             <Link to={createPageUrl('Records')}>
               <PenLine className="h-4 w-4 mr-2" />
               Open Records
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to={createPageUrl('ManageOpportunities')}>
+              <Briefcase className="h-4 w-4 mr-2" />
+              Post Opportunity
             </Link>
           </Button>
         </div>

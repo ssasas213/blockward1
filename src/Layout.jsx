@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -71,6 +71,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Announcements', icon: Bell, page: 'Announcements' },
         { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
         { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
+        { name: 'Opportunities', icon: Briefcase, page: 'ManageOpportunities' },
       ]},
       { label: 'Communication', items: [
         { name: 'Messages', icon: FileText, page: 'Messages' },
@@ -128,6 +129,7 @@ export default function Layout({ children, currentPageName }) {
       { label: 'Achievements', items: [
         { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
         { name: 'Request Achievement', icon: Send, page: 'AchievementRequests' },
+        { name: 'Opportunities', icon: Briefcase, page: 'Opportunities' },
         { name: 'My Achievements', icon: Trophy, page: 'StudentMyRecords' },
         { name: 'Portfolio Vault', icon: HardDrive, page: 'StudentPortfolioVault' },
       ]},

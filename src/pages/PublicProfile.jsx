@@ -1,14 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert, Quote } from 'lucide-react';
+import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import AchievementTile from '@/components/publicProfile/AchievementTile';
 import AchievementDetailModal from '@/components/publicProfile/AchievementDetailModal';
 import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
 import EndorseDialog from '@/components/endorsements/EndorseDialog';
 import EndorsementList from '@/components/endorsements/EndorsementList';
+import ProfileControls from '@/components/publicProfile/ProfileControls';
+import ProfileTimeline from '@/components/publicProfile/ProfileTimeline';
+import SelfReportedSection from '@/components/publicProfile/SelfReportedSection';
+import HighlightsRow from '@/components/publicProfile/HighlightsRow';
+import { exportPortfolioPdf } from '@/lib/portfolioPdf';
+import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 import { createPageUrl } from '@/utils';
 
 const DEFAULT_OG = 'https://media.base44.com/images/public/6936b840baa53bb465f68d09/3c961351d_generated_image.png';
@@ -30,16 +37,20 @@ export default function PublicProfile() {
   const [notFound, setNotFound] = useState(false);
   const [selected, setSelected] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
-  const [viewer, setViewer] = useState(null);
+  const [viewerEmail, setViewerEmail] = useState(null);
   const [endorseOpen, setEndorseOpen] = useState(false);
   const [reload, setReload] = useState(0);
+  const [exporting, setExporting] = useState(false);
+  const [chip, setChip] = useState('all');
+  const [sort, setSort] = useState('endorsements');
+  const [view, setView] = useState('grid');
 
-  // Who is looking at this profile (endorsement is signed-in only).
+  // Who is looking at this profile (endorsement is signed-in only; pinning is owner-only).
   useEffect(() => {
     let active = true;
     base44.auth.isAuthenticated().then(async (authed) => {
       if (authed && active) {
-        try { setViewer(await base44.auth.me()); } catch (e) { /* stay anonymous */ }
+        try { setViewerEmail((await base44.auth.me()).email); } catch (e) { /* stay anonymous */ }
       }
     });
     return () => { active = false; };
@@ -50,7 +61,7 @@ export default function PublicProfile() {
     setLoading(true);
     setNotFound(false);
     setData(null);
-    base44.functions.invoke('publicProfileData', { handle })
+    base44.functions.invoke('publicProfileData', { handle, viewer_email: viewerEmail })
       .then((res) => {
         if (!active) return;
         if (res.data?.ok) setData(res.data);
@@ -59,7 +70,7 @@ export default function PublicProfile() {
       .catch(() => { if (active) setNotFound(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [handle, reload]);
+  }, [handle, reload, viewerEmail]);
 
   // Social preview meta tags — injected client-side (best effort for
   // JS-executing crawlers; static fallback lives in index.html).
@@ -132,7 +143,64 @@ export default function PublicProfile() {
     );
   }
 
-  const { student, school, achievements, count } = data;
+  const { student, school, orgs = [], achievements, self_reported = [], pinned = [], is_owner } = data;
+  const count = data.count;
+
+  // Category counts for the filter chips.
+  const counts = { all: achievements.length };
+  for (const a of achievements) {
+    const d = a.domain || 'other';
+    counts[d] = (counts[d] || 0) + 1;
+  }
+
+  const byDate = (a, b) =>
+    new Date(b.date_achieved || b.date_delivered || b.date_approved || 0) -
+    new Date(a.date_achieved || a.date_delivered || a.date_approved || 0);
+
+  const filtered = chip === 'all' ? achievements : achievements.filter((a) => (a.domain || 'other') === chip);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    if (sort === 'endorsements') arr.sort((a, b) => (b.endorsement_count - a.endorsement_count) || byDate(a, b));
+    else if (sort === 'date') arr.sort(byDate);
+    else arr.sort((a, b) => DOMAIN_ORDER.indexOf(a.domain || 'other') - DOMAIN_ORDER.indexOf(b.domain || 'other') || byDate(a, b));
+    return arr;
+  }, [filtered, sort]);
+
+  const grouped = useMemo(() => {
+    const groups = {};
+    for (const a of sorted) {
+      const d = a.domain || 'other';
+      (groups[d] = groups[d] || []).push(a);
+    }
+    return DOMAIN_ORDER.filter((d) => groups[d]).map((d) => ({ domain: d, items: groups[d] }));
+  }, [sorted]);
+
+  const pinnedItems = pinned.map((id) => achievements.find((a) => a.registry_id === id)).filter(Boolean);
+
+  const togglePin = async (id) => {
+    const next = pinned.includes(id) ? pinned.filter((x) => x !== id) : [...pinned, id].slice(-6);
+    try {
+      const res = await base44.functions.invoke('updatePublicProfile', { pinned_achievement_ids: next });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not update highlights');
+      setReload(Date.now());
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e.message);
+    }
+  };
+
+  const exportPdf = async () => {
+    setExporting(true);
+    try {
+      await exportPortfolioPdf(data, window.location.href);
+    } catch (e) {
+      toast.error('Export failed — try again');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openAchievement = (a) => setSelected(a);
 
   return (
     <div className="min-h-screen bg-background font-sans antialiased">
@@ -143,9 +211,15 @@ export default function PublicProfile() {
             <Shield className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">BlockWard</span>
           </a>
-          <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
-            <Share2 className="h-4 w-4 mr-1.5" /> Share
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={exportPdf} disabled={exporting}>
+              {exporting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
+              Export PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-4 w-4 mr-1.5" /> Share
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -165,48 +239,84 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          {school && (
-            <div className="mt-5 flex items-center gap-2.5">
-              {school.logo_url ? (
-                <img src={school.logo_url} alt="" className="h-6 w-6 rounded object-cover" />
-              ) : (
-                <InitialsAvatar name={school.name} size="xs" />
-              )}
-              <span className="text-sm text-foreground font-medium">{school.name}</span>
-              {(school.city || school.country) && (
-                <span className="text-xs text-muted-foreground">
-                  · {[school.city, school.country].filter(Boolean).join(', ')}
+          {/* Every organisation this person belongs to */}
+          {orgs.length > 0 && (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {orgs.map((o) => (
+                <span key={o.id || o.name} className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1">
+                  {o.logo_url ? (
+                    <img src={o.logo_url} alt="" className="h-4 w-4 rounded object-cover" />
+                  ) : (
+                    <InitialsAvatar name={o.name} size="xs" />
+                  )}
+                  <span className="text-xs font-medium text-foreground">{o.name}</span>
+                  {(o.city || o.country) && (
+                    <span className="text-[11px] text-tertiary hidden sm:inline">
+                      · {[o.city, o.country].filter(Boolean).join(', ')}
+                    </span>
+                  )}
                 </span>
-              )}
+              ))}
             </div>
           )}
         </div>
 
-        {/* Achievements grid */}
+        {/* Highlights — pinned by the student (max 6) */}
+        <HighlightsRow items={pinnedItems} onOpen={openAchievement} />
+
         {achievements.length > 0 ? (
           <>
-            <div className="flex items-center gap-2 mt-10 mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Verified achievements</h2>
-              <BadgeCheck className="h-4 w-4 text-success" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {achievements.map((a) => (
-                <AchievementTile key={a.registry_id} achievement={a} onClick={() => setSelected(a)} />
-              ))}
-            </div>
+            <ProfileControls
+              counts={counts}
+              chip={chip}
+              setChip={setChip}
+              sort={sort}
+              setSort={setSort}
+              view={view}
+              setView={setView}
+            />
+
+            {view === 'timeline' ? (
+              <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
+            ) : sort === 'category' ? (
+              <div className="space-y-10">
+                {grouped.map(({ domain, items }) => (
+                  <section key={domain}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <h2 className="text-base font-semibold text-foreground">{DOMAIN_LABELS[domain] || domain}</h2>
+                      <BadgeCheck className="h-4 w-4 text-success" />
+                      <span className="text-xs text-tertiary">{items.length}</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {items.map((a) => (
+                        <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                {sorted.map((a) => (
+                  <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                ))}
+              </div>
+            )}
           </>
-        ) : (
+        ) : self_reported.length === 0 ? (
           <div className="mt-10 rounded-xl border border-border bg-card/40 p-8 text-center">
             <p className="text-sm text-muted-foreground">No achievements published on this profile yet.</p>
           </div>
-        )}
+        ) : null}
+
+        {/* Self-reported — visually distinct, clearly unverified */}
+        <SelfReportedSection items={self_reported} />
 
         {/* Endorsements waiting for a published achievement (invite-claimed) */}
         {data.endorsements_unattached?.length > 0 && (
           <div className="mt-10">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-semibold text-foreground">What peers say</h2>
-              <Quote className="h-4 w-4 text-primary" />
               <span className="text-xs text-tertiary">signed · scarce · never anonymous</span>
             </div>
             <EndorsementList endorsements={data.endorsements_unattached} showAchievementTitle />
@@ -230,8 +340,12 @@ export default function PublicProfile() {
         open={!!selected}
         onOpenChange={(o) => !o && setSelected(null)}
         endorsements={selected?.endorsements}
-        canEndorse={!!viewer}
+        canEndorse={!!viewerEmail}
         onEndorse={() => setEndorseOpen(true)}
+        isOwner={is_owner}
+        isPinned={!!selected && pinned.includes(selected.registry_id)}
+        canPin={pinned.length < 6}
+        onTogglePin={() => togglePin(selected.registry_id)}
       />
       <EndorseDialog
         open={endorseOpen}

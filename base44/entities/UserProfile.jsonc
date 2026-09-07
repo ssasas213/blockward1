@@ -106,6 +106,14 @@
       "type": "string",
       "description": "One-line public bio shown on the public profile (max 120 characters)."
     },
+    "pinned_achievement_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Up to 6 BlockWardVerificationRegistry ids pinned as Highlights at the top of the public profile."
+    },
     "profile_visibility": {
       "type": "string",
       "enum": [

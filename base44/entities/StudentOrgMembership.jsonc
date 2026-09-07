@@ -1,0 +1,106 @@
+{
+  "name": "StudentOrgMembership",
+  "type": "object",
+  "properties": {
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the student member"
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Email of the student member"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Display name of the student"
+    },
+    "school_id": {
+      "type": "string",
+      "description": "Organisation (School.id) this membership is for \u2014 RLS scope"
+    },
+    "school_name": {
+      "type": "string",
+      "description": "Denormalised organisation name"
+    },
+    "org_type": {
+      "type": "string",
+      "description": "Denormalised organisation type"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "declined"
+      ],
+      "default": "pending",
+      "description": "Membership state. Students request, the organisation approves."
+    },
+    "origin": {
+      "type": "string",
+      "enum": [
+        "student_request",
+        "org_invite"
+      ],
+      "default": "student_request",
+      "description": "How this membership started: the student found the org in search, or invited the org to BlockWard themselves"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "responded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the organisation approved or declined"
+    },
+    "approved_by_email": {
+      "type": "string",
+      "description": "Admin who approved"
+    },
+    "approved_by_name": {
+      "type": "string",
+      "description": "Display name of the approving admin"
+    },
+    "decline_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "student_email",
+    "student_id",
+    "school_id",
+    "school_name",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

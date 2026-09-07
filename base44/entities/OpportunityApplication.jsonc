@@ -1,0 +1,139 @@
+{
+  "name": "OpportunityApplication",
+  "type": "object",
+  "properties": {
+    "opportunity_id": {
+      "type": "string",
+      "description": "Opportunity.id applied to"
+    },
+    "opportunity_title": {
+      "type": "string",
+      "description": "Denormalized opportunity title"
+    },
+    "organisation_id": {
+      "type": "string",
+      "description": "Posting organisation (School.id)"
+    },
+    "organisation_name": {
+      "type": "string",
+      "description": "Posting organisation display name"
+    },
+    "student_profile_id": {
+      "type": "string",
+      "description": "UserProfile.id of the applicant"
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Applicant email"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Applicant display name"
+    },
+    "student_handle": {
+      "type": "string",
+      "description": "Applicant public handle (links to /@handle)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "applied",
+        "shortlisted",
+        "interviewing",
+        "offered",
+        "rejected"
+      ],
+      "default": "applied",
+      "description": "Applicant tracking pipeline stage"
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "default": [],
+      "description": "Applicant's answers to the opportunity's application questions"
+    },
+    "verified_credential_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Snapshot of the applicant's verified credential count at apply time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the posting organisation recorded that the student completed the opportunity"
+    },
+    "credential_issued": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once the organisation has issued the completion credential through the achievement request flow"
+    },
+    "credential_request_id": {
+      "type": "string",
+      "description": "AchievementRequest.id created when the completion credential was issued"
+    },
+    "messages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sender": {
+            "type": "string",
+            "enum": [
+              "organisation",
+              "student"
+            ]
+          },
+          "sender_name": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "sender",
+          "text",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "In-platform message thread between the applicant and the posting organisation"
+    }
+  },
+  "required": [
+    "opportunity_id",
+    "student_email",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "data.organisation_id": "__service_role_only__"
+    },
+    "create": {
+      "data.organisation_id": "__service_role_only__"
+    },
+    "update": {
+      "data.organisation_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.organisation_id": "__service_role_only__"
+    }
+  }
+}

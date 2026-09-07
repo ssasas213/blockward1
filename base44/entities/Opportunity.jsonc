@@ -1,0 +1,166 @@
+{
+  "name": "Opportunity",
+  "type": "object",
+  "properties": {
+    "organisation_id": {
+      "type": "string",
+      "description": "School.id of the posting organisation"
+    },
+    "organisation_name": {
+      "type": "string",
+      "description": "Posting organisation display name"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Admin email who created this listing"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Display name of the creating admin"
+    },
+    "title": {
+      "type": "string",
+      "description": "Opportunity title"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "internship",
+        "competition",
+        "volunteering",
+        "scholarship",
+        "trial",
+        "workshop",
+        "part_time_role"
+      ],
+      "default": "internship",
+      "description": "Kind of opportunity"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "behaviour",
+        "special"
+      ],
+      "default": "special",
+      "description": "Achievement category this opportunity relates to"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the opportunity involves"
+    },
+    "location": {
+      "type": "string",
+      "description": "Where it takes place (city, venue\u2026)"
+    },
+    "is_remote": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the opportunity can be done remotely"
+    },
+    "application_deadline": {
+      "type": "string",
+      "format": "date",
+      "description": "Application deadline (yyyy-MM-dd). Null = rolling."
+    },
+    "required_credentials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "What credential is required, e.g. 'Regional 400m final win'"
+          },
+          "category": {
+            "type": "string",
+            "description": "Achievement category used for matching against verified credentials"
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "default": [],
+      "description": "Credentials an applicant must have verified on BlockWard. Drives the match indicator."
+    },
+    "preferred_credentials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label"
+        ]
+      },
+      "default": [],
+      "description": "Credentials that strengthen an application but aren't required"
+    },
+    "min_age": {
+      "type": "number",
+      "description": "Minimum age for applicants (displayed on the listing)"
+    },
+    "application_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "default": [],
+      "description": "Questions the applicant answers when applying"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "open",
+        "closed"
+      ],
+      "default": "open",
+      "description": "Listing state. Only 'open' listings appear in the student feed."
+    }
+  },
+  "required": [
+    "organisation_id",
+    "organisation_name",
+    "title",
+    "type",
+    "description",
+    "status"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "data.organisation_id": "__service_role_only__"
+    },
+    "update": {
+      "data.organisation_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.organisation_id": "__service_role_only__"
+    }
+  }
+}

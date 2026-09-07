@@ -40,16 +40,44 @@ Deno.serve(async (req) => {
       }
       const schoolRows = await svc.entities.School.filter({ id: schoolId });
       const school = schoolRows?.[0] || null;
-      const templates = await svc.entities.AwardTypes.filter({ school_id: schoolId });
-      const staffRows = await svc.entities.UserProfile.filter({ school_id: schoolId });
-      const staff = staffRows
-        .filter((p) => ['teacher', 'admin'].includes(p.user_type) && p.status !== 'suspended')
-        .map((p) => ({
-          id: p.id,
-          email: p.user_email,
-          name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.user_email,
-          user_type: p.user_type,
-        }));
+
+      // Every organisation the student belongs to: home school + approved
+      // cross-org memberships. Requests can target any of them.
+      let memberships: any[] = [];
+      try { memberships = await svc.entities.StudentOrgMembership.filter({ student_email: email }); } catch (e) { /* empty */ }
+      const orgIds = [schoolId, ...memberships.filter((m) => m.status === 'active').map((m) => m.school_id)]
+        .filter(Boolean)
+        .filter((id, i, arr) => arr.indexOf(id) === i);
+
+      const orgs: any[] = [];
+      const templates: any[] = [];
+      const staff: any[] = [];
+      for (const oid of orgIds) {
+        let org = null;
+        try { const rows = await svc.entities.School.filter({ id: oid }); org = rows?.[0] || null; } catch (e) { /* ignore */ }
+        if (!org) continue;
+        orgs.push(org);
+        try {
+          const t = await svc.entities.AwardTypes.filter({ school_id: oid });
+          for (const x of t) {
+            if (x.is_active !== false) {
+              templates.push({ id: x.id, title: x.title, category: x.category, verification_tier: x.verification_tier || 1, school_id: oid });
+            }
+          }
+        } catch (e) { /* ignore */ }
+        try {
+          const rows = await svc.entities.UserProfile.filter({ school_id: oid });
+          for (const p of rows.filter((x) => ['teacher', 'admin'].includes(x.user_type) && x.status !== 'suspended')) {
+            staff.push({
+              id: p.id,
+              email: p.user_email,
+              name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || p.user_email,
+              user_type: p.user_type,
+              school_id: oid,
+            });
+          }
+        } catch (e) { /* ignore */ }
+      }
       const myRequests = await svc.entities.AchievementRequest.filter({ student_email: email }, '-created_date', 100);
 
       const now = Date.now();
@@ -63,7 +91,7 @@ Deno.serve(async (req) => {
         ok: true,
         mode: 'student',
         student: { email, name: actorName },
-        orgs: school ? [{ id: school.id, name: school.name, org_type: school.org_type }] : [],
+        orgs: orgs.map((o) => ({ id: o.id, name: o.name, org_type: o.org_type })),
         templates: templates
           .filter((t) => t.is_active !== false)
           .map((t) => ({ id: t.id, title: t.title, category: t.category, verification_tier: t.verification_tier || 1 })),

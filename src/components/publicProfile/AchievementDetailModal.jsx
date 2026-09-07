@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText, Quote } from 'lucide-react';
+import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText, Quote, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EndorsementList from '@/components/endorsements/EndorsementList';
 import {
@@ -18,7 +18,7 @@ const fmt = (iso) => {
  * verification chain (teacher → admin → delivered), plus a link to the
  * permanent public verification page.
  */
-export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed }) {
+export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed, isOwner, isPinned, canPin, onTogglePin }) {
   if (!achievement) return null;
   const verifyUrl = achievement.verification_id
     ? `${window.location.origin}/verify/${achievement.verification_id}`
@@ -92,6 +92,14 @@ export default function AchievementDetailModal({ achievement, open, onOpenChange
               </Button>
             )}
           </div>
+        )}
+
+        {/* Owner-only: pin/unpin to Highlights (max 6) */}
+        {isOwner && (
+          <Button variant="outline" className="w-full" onClick={onTogglePin} disabled={!isPinned && !canPin}>
+            <Pin className="h-4 w-4 mr-2" />
+            {isPinned ? 'Unpin from highlights' : canPin ? 'Pin to highlights' : 'Highlights are full (6 max)'}
+          </Button>
         )}
 
         {verifyUrl && (
