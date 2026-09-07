@@ -77,7 +77,6 @@ import SchoolEvents from './pages/SchoolEvents';
 import StudentBlockWards from './pages/StudentBlockWards';
 import StudentDashboard from './pages/StudentDashboard';
 import SystemSettings from './pages/SystemSettings';
-import TeacherBlockWards from './pages/TeacherBlockWards';
 import TeacherDashboard from './pages/TeacherDashboard';
 import Timetable from './pages/Timetable';
 import Web3BlockWards from './pages/Web3BlockWards';
@@ -116,7 +115,6 @@ export const PAGES = {
     "StudentBlockWards": StudentBlockWards,
     "StudentDashboard": StudentDashboard,
     "SystemSettings": SystemSettings,
-    "TeacherBlockWards": TeacherBlockWards,
     "TeacherDashboard": TeacherDashboard,
     "Timetable": Timetable,
     "Web3BlockWards": Web3BlockWards,

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,11 @@ import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 
-function TeacherBlockWardsContent() {
+/**
+ * IssuedTab — the BlockWards this teacher issued, queried by issuer_email
+ * exactly as TeacherBlockWards did. Carried over unchanged.
+ */
+export default function IssuedTab() {
   const [loading, setLoading] = useState(true);
   const [issuedBlockWards, setIssuedBlockWards] = useState([]);
   const [activityTimeline, setActivityTimeline] = useState([]);
@@ -55,7 +58,7 @@ function TeacherBlockWardsContent() {
   };
 
   const filteredBlockWards = issuedBlockWards.filter(bw => {
-    const matchesSearch = 
+    const matchesSearch =
       bw.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       bw.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || bw.status === statusFilter;
@@ -78,23 +81,6 @@ function TeacherBlockWardsContent() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">BlockWards</h1>
-          <p className="text-slate-500 mt-1">Issue and manage student achievements</p>
-        </div>
-        <Button 
-          className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700"
-          asChild
-        >
-          <Link to={createPageUrl('IssueBlockWard')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Issue a BlockWard
-          </Link>
-        </Button>
-      </div>
-
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <motion.div
@@ -168,7 +154,7 @@ function TeacherBlockWardsContent() {
             <div>
               <h3 className="font-semibold text-slate-900 mb-1">About BlockWards</h3>
               <p className="text-sm text-slate-600">
-                BlockWards are permanent achievements that are securely stored and cannot be transferred. 
+                BlockWards are permanent achievements that are securely stored and cannot be transferred.
                 Each award is uniquely tied to the student who earned it.
               </p>
             </div>
@@ -266,15 +252,5 @@ function TeacherBlockWardsContent() {
       {/* Activity Timeline */}
       <ActivityTimeline activities={activityTimeline} />
     </div>
-  );
-}
-
-import RoleGuard from '@/components/auth/RoleGuard';
-export default function TeacherBlockWards() { return <RoleGuard roles={['teacher']}><TeacherBlockWardsImpl/></RoleGuard>; }
-function TeacherBlockWardsImpl() {
-  return (
-    <ProtectedRoute>
-      <TeacherBlockWardsContent />
-    </ProtectedRoute>
   );
 }

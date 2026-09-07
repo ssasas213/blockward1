@@ -50,6 +50,7 @@ import JoinClass from './pages/JoinClass';
 import StudentAttendance from './pages/StudentAttendance';
 import AchievementRequests from './pages/AchievementRequests';
 import PendingSignoffs from './pages/PendingSignoffs';
+import MyTeaching from './pages/MyTeaching';
 import ExternalVerify from './pages/ExternalVerify';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
@@ -144,6 +145,8 @@ const AuthenticatedApp = () => {
       <Route path="/StudentAttendance" element={<LayoutWrapper currentPageName="StudentAttendance"><ProtectedRoute><StudentAttendance /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/MyTeaching" element={<LayoutWrapper currentPageName="MyTeaching"><ProtectedRoute><MyTeaching /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />

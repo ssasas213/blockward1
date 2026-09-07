@@ -14,7 +14,7 @@ import {
   Users, BookOpen, Award, Calendar,
   Plus, ChevronRight, PenLine, ClipboardCheck
 } from 'lucide-react';
-import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
+import SignoffQueueWidget from '@/components/dashboard/SignoffQueueWidget';
 import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidget';
 import TeacherAssignmentsWidget from '@/components/dashboard/TeacherAssignmentsWidget';
 import TeacherAssembliesWidget from '@/components/dashboard/TeacherAssembliesWidget';
@@ -101,6 +101,9 @@ function TeacherDashboardContent() {
           </Button>
         )}
       </PageHeader>
+
+      {/* Pending sign-off queue — first block, clearable without leaving the dashboard */}
+      <SignoffQueueWidget />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -198,13 +201,6 @@ function TeacherDashboardContent() {
         <TeacherAssembliesWidget />
       </div>
 
-      {/* Pending Signatures Widget */}
-      <PendingSignaturesWidget
-        userEmail={user?.email}
-        schoolId={userProfile?.school_id}
-        role="teacher"
-        targetPage="TeacherRecords"
-      />
     </div>
   );
 }

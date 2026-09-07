@@ -8,6 +8,8 @@ import {
   Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
+import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
+import { Button } from '@/components/ui/button';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
@@ -94,34 +96,13 @@ export default function Layout({ children, currentPageName }) {
       ]},
     ],
     teacher: [
-      { label: 'Overview', items: [
-        { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
-        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
-      ]},
-      { label: 'Achievements', items: [
-        { name: 'Pending Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs' },
-        { name: 'Create Achievement', icon: Trophy, page: 'IssueBlockWard' },
-        { name: 'My Submissions', icon: Shield, page: 'TeacherRecords' },
-        { name: 'My BlockWards', icon: Award, page: 'TeacherBlockWards' },
-      ]},
-      { label: 'Teaching', items: [
-        { name: 'Classes', icon: BookOpen, page: 'Classes' },
-        { name: 'Timetable', icon: Calendar, page: 'Timetable' },
-        { name: 'Attendance', icon: ClipboardCheck, page: 'Attendance' },
-        { name: 'Issue Points', icon: Award, page: 'IssuePoints' },
-        { name: 'Gradebook', icon: GraduationCap, page: 'Gradebook' },
-        { name: 'Assignments', icon: ClipboardList, page: 'Assignments' },
-        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
-        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
-        { name: 'Resources', icon: FileText, page: 'Resources' },
-      ]},
-      { label: 'Communication', items: [
-        { name: 'Announcements', icon: Bell, page: 'Announcements' },
-        { name: 'Messages', icon: FileText, page: 'Messages' },
-        { name: 'Parent Comms', icon: FileText, page: 'ParentComms' },
-      ]},
-      { label: 'Tools', items: [
-        { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
+      { items: [
+        { name: 'Home', icon: LayoutDashboard, page: 'TeacherDashboard' },
+        { name: 'Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
+        { name: 'Achievements', icon: Trophy, page: 'TeacherRecords' },
+        { name: 'Teaching', icon: BookOpen, page: 'MyTeaching' },
+        { name: 'Explore', icon: Rss, page: 'Feed' },
+        { name: 'Inbox', icon: FileText, page: 'Messages' },
       ]},
     ],
     student: [
@@ -190,6 +171,13 @@ export default function Layout({ children, currentPageName }) {
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
         <TestModeBanner />
+        {userType === 'teacher' && (
+          <Button variant="ghost" size="icon" asChild className="h-9 w-9 p-2" title="BlockWard AI">
+            <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
+              <Sparkles className="h-4 w-4" />
+            </Link>
+          </Button>
+        )}
         <NotificationBell userEmail={testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email} />
       </header>
 
@@ -238,6 +226,13 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
         <div className="flex items-center gap-1">
+          {userType === 'teacher' && (
+            <Button variant="ghost" size="icon" asChild title="BlockWard AI">
+              <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
+                <Sparkles className="h-4 w-4" />
+              </Link>
+            </Button>
+          )}
           <TestModeBanner />
           <ThemeToggleCompact />
           <div className="h-6 w-px bg-border mx-1" />
@@ -274,8 +269,10 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 overflow-y-auto">
         {groups.map((group, gIdx) => (
-          <div key={gIdx} className="mb-5">
-            <p className="px-3 mb-1.5 text-[11px] font-semibold text-tertiary uppercase tracking-wider">{group.label}</p>
+          <div key={gIdx} className={group.label ? 'mb-5' : ''}>
+            {group.label && (
+              <p className="px-3 mb-1.5 text-[11px] font-semibold text-tertiary uppercase tracking-wider">{group.label}</p>
+            )}
             <div className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive = currentPageName === item.page;
@@ -292,7 +289,8 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
                     )}
                   >
                     <item.icon className={cn("h-4 w-4 flex-shrink-0 transition-colors", isActive ? "text-primary" : "text-sidebar-foreground")} />
-                    {item.name}
+                    <span className="flex-1">{item.name}</span>
+                    {item.badge === 'signoffs' && <SignoffCountBadge />}
                   </Link>
                 );
               })}
