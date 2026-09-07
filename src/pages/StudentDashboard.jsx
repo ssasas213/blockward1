@@ -12,7 +12,7 @@ import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Award, Shield, Calendar, BookOpen,
-  ChevronRight, Star, FileText
+  ChevronRight, Star, FileText, Send
 } from 'lucide-react';
 import ParentContactSection from '@/components/student/ParentContactSection';
 import BlockWardCard from '@/components/blockwards/BlockWardCard';
@@ -99,6 +99,12 @@ function StudentDashboardContent() {
           <Link to={createPageUrl('Timetable')}>
             <Calendar className="h-4 w-4 mr-2" />
             Timetable
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to={createPageUrl('AchievementRequests')}>
+            <Send className="h-4 w-4 mr-2" />
+            Request an achievement
           </Link>
         </Button>
         <Button asChild>

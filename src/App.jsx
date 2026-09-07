@@ -48,6 +48,9 @@ import SchoolCalendar from './pages/SchoolCalendar';
 import AdminAttendance from './pages/AdminAttendance';
 import JoinClass from './pages/JoinClass';
 import StudentAttendance from './pages/StudentAttendance';
+import AchievementRequests from './pages/AchievementRequests';
+import PendingSignoffs from './pages/PendingSignoffs';
+import ExternalVerify from './pages/ExternalVerify';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
 
@@ -133,6 +136,9 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolCalendar" element={<LayoutWrapper currentPageName="SchoolCalendar"><ProtectedRoute><SchoolCalendar /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminAttendance" element={<LayoutWrapper currentPageName="AdminAttendance"><ProtectedRoute><AdminAttendance /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentAttendance" element={<LayoutWrapper currentPageName="StudentAttendance"><ProtectedRoute><StudentAttendance /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
 

@@ -12,7 +12,7 @@ import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Users, BookOpen, Award, Calendar,
-  Plus, ChevronRight, PenLine
+  Plus, ChevronRight, PenLine, ClipboardCheck
 } from 'lucide-react';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
 import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidget';
@@ -80,6 +80,12 @@ function TeacherDashboardContent() {
         title={`${userProfile?.first_name || 'Teacher'}'s Dashboard`}
         description="Your teaching overview"
       >
+        <Button variant="outline" asChild>
+          <Link to={createPageUrl('PendingSignoffs')}>
+            <ClipboardCheck className="h-4 w-4 mr-2" />
+            Pending Sign-offs
+          </Link>
+        </Button>
         <Button variant="outline" asChild>
           <Link to={createPageUrl('IssuePoints')}>
             <Award className="h-4 w-4 mr-2" />

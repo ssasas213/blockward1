@@ -61,6 +61,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Records', items: [
         { name: 'Records', icon: FileText, page: 'Records' },
+        { name: 'Pending Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs' },
         { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
       ]},
       { label: 'Management', items: [
@@ -95,6 +96,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Dashboard', icon: LayoutDashboard, page: 'TeacherDashboard' },
       ]},
       { label: 'Achievements', items: [
+        { name: 'Pending Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs' },
         { name: 'Create Achievement', icon: Trophy, page: 'IssueBlockWard' },
         { name: 'My Submissions', icon: Shield, page: 'TeacherRecords' },
         { name: 'My BlockWards', icon: Award, page: 'TeacherBlockWards' },
@@ -125,6 +127,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'Achievements', items: [
         { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
+        { name: 'Request Achievement', icon: Send, page: 'AchievementRequests' },
         { name: 'My Achievements', icon: Trophy, page: 'StudentMyRecords' },
         { name: 'Portfolio Vault', icon: HardDrive, page: 'StudentPortfolioVault' },
       ]},
