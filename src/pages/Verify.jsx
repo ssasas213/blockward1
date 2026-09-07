@@ -7,10 +7,14 @@ import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
-  Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool
+  Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
+  UserCheck, History
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { METHOD_OPTIONS } from '@/lib/achievementRequests';
+
+const METHOD_LABELS = Object.fromEntries(METHOD_OPTIONS.map((m) => [m.value, m.label]));
 
 const CATEGORY_ACCENT = {
   academic: 'text-accent-blue',
@@ -190,6 +194,11 @@ export default function Verify() {
                       <Network className="h-3 w-3" /> Secured
                     </span>
                   )}
+                  {record.student_requested && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-accent/10 border border-accent/20 text-xs font-medium text-accent">
+                      <UserCheck className="h-3 w-3" /> Requested by student
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-2">{record.achievement_title}</h1>
                 {record.achievement_description && <p className="text-muted-foreground text-sm leading-relaxed">{record.achievement_description}</p>}
@@ -261,6 +270,44 @@ export default function Verify() {
                       : <p className="text-xl italic text-foreground mt-1" style={{ fontFamily: 'Georgia, serif' }}>{adminSignature.signature_value}</p>}
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Student-requested verification chain */}
+        {isVerified && record.signer_chain?.length > 0 && (
+          <Card className="surface-card">
+            <CardContent className="p-6">
+              <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-4 flex items-center gap-2">
+                <History className="h-4 w-4" /> Verification chain
+              </h2>
+              <div className="space-y-0">
+                {record.signer_chain.map((signer, i) => (
+                  <div key={i} className="relative flex gap-4 pb-5 last:pb-0">
+                    {i < record.signer_chain.length - 1 && (
+                      <span className="absolute left-[13px] top-8 bottom-0 w-px bg-border" />
+                    )}
+                    <div className="h-7 w-7 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 z-10">
+                      <CheckCircle2 className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2">
+                        <p className="text-sm font-semibold text-foreground">{signer.name || 'Signer'}</p>
+                        <span className="text-xs text-tertiary">{signer.role}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {METHOD_LABELS[signer.method] || signer.method?.replace(/_/g, ' ') || 'Verified'}
+                        {signer.method_note && ` — ${signer.method_note}`}
+                      </p>
+                      <p className="text-xs text-tertiary mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        {signer.attestation && <><CheckCircle2 className="h-3 w-3 text-success" /> Attested</>}
+                        {signer.timestamp && `· ${format(new Date(signer.timestamp), 'd MMM yyyy, HH:mm')}`}
+                        {signer.ip_country && ` · ${signer.ip_country}`}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

@@ -96,6 +96,16 @@ Deno.serve(async (req) => {
           transaction_hash: reg.transaction_hash,
           certificate_url: reg.certificate_url,
           public_verification_url: reg.public_verification_url,
+          student_requested: reg.student_requested === true,
+          signer_chain: (reg.signer_chain || []).map((s) => ({
+            role: s.role,
+            name: s.name,
+            method: s.method,
+            method_note: s.method_note || null,
+            attestation: s.attestation === true,
+            ip_country: s.ip_country || null,
+            timestamp: s.timestamp,
+          })),
         },
         teacherSignature: teacherSig ? {
           signer_name: teacherSig.signer_name,
