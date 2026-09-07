@@ -85,6 +85,41 @@
     "avatar_url": {
       "type": "string"
     },
+    "handle": {
+      "type": "string",
+      "description": "Globally unique public handle for the /@handle profile page. 3-20 chars, lowercase letters, numbers and underscores. Uniqueness (including reserved history) enforced server-side."
+    },
+    "handle_history": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Previous handles kept permanently reserved \u2014 old /@handle URLs redirect to the current one."
+    },
+    "handle_changed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the handle was last claimed or changed \u2014 enforces the 30-day change cooldown."
+    },
+    "bio": {
+      "type": "string",
+      "description": "One-line public bio shown on the public profile (max 120 characters)."
+    },
+    "profile_visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "link_only",
+        "private"
+      ],
+      "default": "public",
+      "description": "Global visibility of the public /@handle profile page."
+    },
+    "og_image_url": {
+      "type": "string",
+      "description": "Generated square share-card image used as the Open Graph image for the public profile."
+    },
     "theme_preference": {
       "type": "string",
       "enum": [
