@@ -4,6 +4,7 @@
 // entry — plus the student-requested provenance (student_requested + full
 // signer chain). Idempotent: safe to retry if a step fails partway.
 import { appUrl, buildSignerChain } from './achievementRequests.ts';
+import { ensureTeamCredential, generateTeamSlug } from './teamCredentials.ts';
 
 export async function mintRequestCredential(svc: any, request: any) {
   const now = new Date().toISOString();
@@ -96,6 +97,7 @@ export async function mintRequestCredential(svc: any, request: any) {
   }
 
   // ── 3. Public verification registry (idempotent, with signer chain) ──
+  const teamSlug = request.is_team ? generateTeamSlug(request.title) : null;
   let verificationId: string = request.verification_id || null;
   let publicVerificationUrl: string | null = null;
   const existingRegs = await svc.entities.BlockWardVerificationRegistry.filter({ student_record_id: record.id });
@@ -110,6 +112,11 @@ export async function mintRequestCredential(svc: any, request: any) {
       vault_status: 'delivered',
       evidence_file_url: evidenceFile?.url || existingRegs[0].evidence_file_url || null,
       date_delivered: now,
+      ...(teamSlug ? {
+        team_slug: existingRegs[0].team_slug || teamSlug,
+        participant_role: existingRegs[0].participant_role || request.my_team_role || 'Member',
+        is_team_credential: true,
+      } : {}),
     });
   } else {
     const schools = await svc.entities.School.filter({ id: request.school_id });
@@ -151,6 +158,11 @@ export async function mintRequestCredential(svc: any, request: any) {
       nft_status: 'pending',
       public_verification_url: publicVerificationUrl,
       is_public: true,
+      ...(teamSlug ? {
+        team_slug: teamSlug,
+        participant_role: request.my_team_role || 'Member',
+        is_team_credential: true,
+      } : {}),
     });
   }
 
@@ -173,11 +185,20 @@ export async function mintRequestCredential(svc: any, request: any) {
     student_record_id: record.id,
   });
 
+  // ── 6. Team credential: shared group record + participant claim emails ──
+  let team: any = null;
+  if (request.is_team) {
+    const tc = await ensureTeamCredential(svc, request, { teamSlug, verificationId, requesterProfile: studentProfile });
+    team = tc.team || null;
+  }
+
   return {
     ok: true,
     blockWardId: blockWard.id,
     verificationId,
     publicVerificationUrl,
     studentRecordId: record.id,
+    teamSlug,
+    team,
   };
 }

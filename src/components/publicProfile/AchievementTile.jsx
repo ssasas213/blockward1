@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users } from 'lucide-react';
+import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Quote } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 
 const CATEGORY_STYLE = {
@@ -42,6 +42,11 @@ export default function AchievementTile({ achievement, onClick }) {
         <span className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-success/40">
           <BadgeCheck className="h-4 w-4 text-success" />
         </span>
+        {achievement.endorsement_count > 0 && (
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-background/80 backdrop-blur-sm border border-primary/30 text-[11px] font-medium text-primary">
+            <Quote className="h-3 w-3" /> {achievement.endorsement_count}
+          </span>
+        )}
       </div>
 
       <div className="p-3.5">

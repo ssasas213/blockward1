@@ -106,6 +106,9 @@ Deno.serve(async (req) => {
             ip_country: s.ip_country || null,
             timestamp: s.timestamp,
           })),
+          is_team_credential: reg.is_team_credential === true,
+          participant_role: reg.participant_role || null,
+          team_slug: reg.team_slug || null,
         },
         teacherSignature: teacherSig ? {
           signer_name: teacherSig.signer_name,

@@ -1,6 +1,7 @@
 import React from 'react';
-import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText } from 'lucide-react';
+import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import EndorsementList from '@/components/endorsements/EndorsementList';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -17,7 +18,7 @@ const fmt = (iso) => {
  * verification chain (teacher → admin → delivered), plus a link to the
  * permanent public verification page.
  */
-export default function AchievementDetailModal({ achievement, open, onOpenChange }) {
+export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed }) {
   if (!achievement) return null;
   const verifyUrl = achievement.verification_id
     ? `${window.location.origin}/verify/${achievement.verification_id}`
@@ -73,6 +74,23 @@ export default function AchievementDetailModal({ achievement, open, onOpenChange
               <FileText className="h-3.5 w-3.5 text-primary" /> Evidence
             </p>
             <img src={achievement.evidence_url} alt="Evidence" className="w-full rounded-xl border border-border" />
+          </div>
+        )}
+
+        {/* Peer endorsements — count on the tile expands to the full list here */}
+        {(endorsements?.length > 0 || canEndorse) && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Quote className="h-3.5 w-3.5 text-primary" />
+              Peer endorsements{endorsements?.length ? ` (${endorsements.length})` : ''}
+            </p>
+            {endorsements?.length > 0 && <EndorsementList endorsements={endorsements} />}
+            {canEndorse && (
+              <Button variant="outline" className="w-full" onClick={onEndorse} disabled={hasEndorsed}>
+                <Quote className="h-4 w-4 mr-2" />
+                {hasEndorsed ? 'You endorsed this' : 'Endorse this achievement'}
+              </Button>
+            )}
           </div>
         )}
 

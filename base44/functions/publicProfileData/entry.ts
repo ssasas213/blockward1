@@ -67,6 +67,12 @@ export default async function (req: Request): Promise<Response> {
     // 4. Verified achievements from the permanent registry.
     let registry = [];
     try { registry = await svc.entities.BlockWardVerificationRegistry.filter({ student_id: profile.id }); } catch (e) { /* empty */ }
+    // Team credentials minted before the student joined are keyed by email — merge them in.
+    try {
+      const byEmail = await svc.entities.BlockWardVerificationRegistry.filter({ student_email: profile.user_email });
+      const seen = new Set(registry.map((r) => r.id));
+      for (const r of byEmail) if (!seen.has(r.id)) registry.push(r);
+    } catch (e) { /* empty */ }
 
     const visible = registry.filter((r) =>
       r.approval_status === 'approved' &&
@@ -107,6 +113,8 @@ export default async function (req: Request): Promise<Response> {
       blockchain_network: r.blockchain_network || null,
       token_id: r.token_id || null,
       public_verification_url: r.public_verification_url || null,
+      participant_role: r.participant_role || null,
+      team_slug: r.team_slug || null,
     }));
 
     return Response.json({

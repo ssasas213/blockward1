@@ -1,0 +1,138 @@
+{
+  "name": "Endorsement",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Organisation this endorsement belongs to (RLS scope) \u2014 the endorser's org"
+    },
+    "term_id": {
+      "type": "string",
+      "description": "EndorsementTerm.id this endorsement was spent from. Budget is scoped per term and never rolls over."
+    },
+    "term_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "term_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "endorser_id": {
+      "type": "string",
+      "description": "UserProfile.id of the endorser \u2014 never anonymous"
+    },
+    "endorser_email": {
+      "type": "string",
+      "description": "Endorser email (private, never shown publicly)"
+    },
+    "endorser_name": {
+      "type": "string",
+      "description": "Endorser display name (public)"
+    },
+    "endorser_handle": {
+      "type": "string",
+      "description": "Endorser public handle (public)"
+    },
+    "endorser_affiliation": {
+      "type": "string",
+      "description": "Endorser affiliation, e.g. 'Student at Riverside High' (public)"
+    },
+    "recipient_id": {
+      "type": "string",
+      "description": "UserProfile.id of the endorsed person"
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "Recipient email (private)"
+    },
+    "recipient_name": {
+      "type": "string",
+      "description": "Recipient display name"
+    },
+    "recipient_handle": {
+      "type": "string",
+      "description": "Recipient public handle"
+    },
+    "registry_id": {
+      "type": "string",
+      "description": "BlockWardVerificationRegistry.id of the endorsed achievement. Null for invite-claimed endorsements that vouch for a named achievement the recipient hasn't published yet."
+    },
+    "achievement_title": {
+      "type": "string",
+      "description": "Title of the endorsed achievement (denormalized for display)"
+    },
+    "achievement_verification_id": {
+      "type": "string",
+      "description": "Public verification ID of the endorsed achievement, when attached"
+    },
+    "text": {
+      "type": "string",
+      "description": "What the endorser personally saw \u2014 20 to 200 characters"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active",
+      "description": "Revoked endorsements free up the endorser's term budget slot and disappear from profiles"
+    },
+    "via_invite_id": {
+      "type": "string",
+      "description": "EndorsementInvite.id when this endorsement was created by the invitee claiming their invite"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoked_reason": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "school_id",
+    "endorser_id",
+    "endorser_email",
+    "endorser_name",
+    "recipient_id",
+    "recipient_email",
+    "recipient_name",
+    "text",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.endorser_email": "{{user.email}}"
+        },
+        {
+          "data.recipient_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

@@ -12,6 +12,7 @@ import {
   logEvent, appendEvent, rejectionStatsFor, requestEmailHtml, notifyRequest, appUrl,
 } from '../../shared/achievementRequests.ts';
 import { mintRequestCredential } from '../../shared/credentialDelivery.ts';
+import { MAX_TEAM_PARTICIPANTS } from '../../shared/teamCredentials.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -90,6 +91,9 @@ Deno.serve(async (req) => {
         nominated_verifier_name: form.data.nominated_verifier_name,
         verification_tier: form.data.verification_tier,
         external_verifier_email: form.data.external_verifier_email || null,
+        is_team: form.data.is_team,
+        my_team_role: form.data.my_team_role,
+        team_participants: form.data.team_participants,
       };
 
       if (action !== 'save_draft') {
@@ -441,6 +445,23 @@ async function normalizeForm(svc, actor, form) {
     .filter((e) => e && e.url && ['file', 'link'].includes(e.type))
     .map((e) => ({ type: e.type, url: e.url, name: (e.name || '').trim() || e.url }));
 
+  // ── Team achievement participants ──
+  const creatorEmail = (actor.actor_email || '').toLowerCase();
+  const isTeam = form.is_team === true;
+  let teamParticipants: any[] = [];
+  if (isTeam) {
+    const seenEmails = new Set<string>();
+    teamParticipants = (form.team_participants || [])
+      .map((p) => ({
+        email: String(p?.email || '').trim().toLowerCase(),
+        name: String(p?.name || '').trim() || null,
+        role: String(p?.role || '').trim().slice(0, 40) || 'Member',
+      }))
+      .filter((p) => p.email && p.email.includes('@') && p.email !== creatorEmail && !seenEmails.has(p.email) && seenEmails.add(p.email));
+    if (teamParticipants.length === 0) errors.push('Add at least one teammate for a team achievement');
+    if (teamParticipants.length > MAX_TEAM_PARTICIPANTS) errors.push(`A team achievement can list at most ${MAX_TEAM_PARTICIPANTS} teammates`);
+  }
+
   let schoolName = null;
   if (schoolId) {
     const schools = await svc.entities.School.filter({ id: schoolId });
@@ -466,6 +487,9 @@ async function normalizeForm(svc, actor, form) {
       nominated_verifier_name: `${verifier.first_name || ''} ${verifier.last_name || ''}`.trim() || verifier.user_email,
       verification_tier: tier || 1,
       external_verifier_email: externalEmail,
+      is_team: isTeam,
+      my_team_role: isTeam ? (String(form.my_team_role || '').trim().slice(0, 40) || 'Member') : null,
+      team_participants: isTeam ? teamParticipants : [],
     },
   };
 }

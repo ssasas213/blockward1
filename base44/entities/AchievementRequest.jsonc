@@ -89,6 +89,49 @@
       "default": [],
       "description": "Evidence attachments \u2014 uploaded files and external links"
     },
+    "is_team": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this is a group achievement \u2014 one verification and sign-off covers every listed participant, and each gets their own credential with their role once they consent."
+    },
+    "my_team_role": {
+      "type": "string",
+      "description": "The requesting student's own role in the team (e.g. captain, lead developer, first board)"
+    },
+    "team_participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "Teammate email \u2014 an existing BlockWard member or someone not yet on BlockWard"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name entered by the creator (or resolved from their profile)"
+          },
+          "profile_id": {
+            "type": "string",
+            "description": "UserProfile.id when the email matches an existing member"
+          },
+          "handle": {
+            "type": "string",
+            "description": "Public handle when the email matches an existing member"
+          },
+          "role": {
+            "type": "string",
+            "description": "This teammate's role in the achievement (e.g. striker, designer, second violin)"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ]
+      },
+      "default": [],
+      "description": "Teammates listed by the creator for a team achievement. Each is emailed a private claim link when the credential is approved, and only appears on the public team record after accepting."
+    },
     "nominated_verifier_id": {
       "type": "string",
       "description": "UserProfile.id of the nominated staff verifier"

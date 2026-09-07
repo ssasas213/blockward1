@@ -1,0 +1,157 @@
+{
+  "name": "EndorsementInvite",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Organisation the inviter belongs to (RLS scope)"
+    },
+    "term_id": {
+      "type": "string",
+      "description": "EndorsementTerm.id the invite consumed budget from"
+    },
+    "token": {
+      "type": "string",
+      "description": "Secure one-time token for /endorsement-invite/:token. Never expose the database id."
+    },
+    "endorser_id": {
+      "type": "string",
+      "description": "UserProfile.id of the inviter (the existing member endorsing someone without an account)"
+    },
+    "endorser_email": {
+      "type": "string",
+      "description": "Inviter email (private)"
+    },
+    "endorser_name": {
+      "type": "string",
+      "description": "Inviter display name \u2014 always shown, never anonymous"
+    },
+    "endorser_handle": {
+      "type": "string",
+      "description": "Inviter public handle"
+    },
+    "endorser_affiliation": {
+      "type": "string",
+      "description": "Inviter affiliation, e.g. 'Student at Riverside High'"
+    },
+    "inviter_id": {
+      "type": "string",
+      "description": "UserProfile.id of the inviting member \u2014 doubles as the 'invited by them' eligibility anchor when the invitee later endorses back"
+    },
+    "inviter_email": {
+      "type": "string",
+      "description": "Email of the inviting member"
+    },
+    "invitee_email": {
+      "type": "string",
+      "description": "Email address of the person being invited (their signup email must match to auto-claim)"
+    },
+    "invitee_phone": {
+      "type": "string",
+      "description": "Phone number of the person being invited (claim link is returned to the inviter to text)"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "phone"
+      ],
+      "default": "email"
+    },
+    "achievement_title": {
+      "type": "string",
+      "description": "The named achievement the inviter vouched for ('[Name] vouched for your work on [achievement]')"
+    },
+    "text": {
+      "type": "string",
+      "description": "What the inviter personally saw \u2014 20 to 200 characters"
+    },
+    "claim_url": {
+      "type": "string",
+      "description": "Full claim URL for the inviter to share when channel is phone"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "claimed",
+        "expired",
+        "revoked"
+      ],
+      "default": "sent",
+      "description": "Lifecycle of the invite. Claimed invites convert into an active Endorsement on the invitee's first dashboard load."
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed"
+      ],
+      "description": "Outcome of the Resend delivery attempt, when channel is email"
+    },
+    "email_error": {
+      "type": "string",
+      "description": "Error message from the failed email attempt"
+    },
+    "invited_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the invite expires (default 14 days)"
+    },
+    "claimed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "claimed_profile_id": {
+      "type": "string",
+      "description": "UserProfile.id of the invitee who claimed this invite"
+    }
+  },
+  "required": [
+    "school_id",
+    "token",
+    "endorser_id",
+    "endorser_email",
+    "endorser_name",
+    "achievement_title",
+    "text",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.endorser_email": "{{user.email}}"
+        },
+        {
+          "data.invitee_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

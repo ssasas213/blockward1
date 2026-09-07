@@ -14,6 +14,7 @@ import AdminAssembliesWidget from '@/components/dashboard/AdminAssembliesWidget'
 import PendingTeacherRequests from '@/components/onboarding/PendingTeacherRequests';
 import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
+import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
 import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
 
 function AdminDashboardContent() {
@@ -144,6 +145,9 @@ function AdminDashboardContent() {
             role="admin"
             targetPage="Records"
           />
+
+          {/* Peer endorsement programme: invite funnel + scarcity settings */}
+          <EndorsementAdminPanel />
         </>
       )}
     </div>

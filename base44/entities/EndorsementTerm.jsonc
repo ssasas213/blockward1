@@ -1,0 +1,62 @@
+{
+  "name": "EndorsementTerm",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Organisation this term belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name, e.g. 'Term 1'"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Term start (ISO). Budget resets here."
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Term end (ISO). Unused endorsements never roll over past this point."
+    },
+    "period_days": {
+      "type": "number",
+      "default": 90,
+      "description": "Configurable term length in days for this organisation. Defaults to 90; carried into each newly created term."
+    },
+    "budget": {
+      "type": "number",
+      "default": 3,
+      "description": "Endorsements each member may spend during this term"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "closed"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "school_id",
+    "name",
+    "start_date",
+    "end_date"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "data.school_id": "{{user.profile.school_id}}"
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

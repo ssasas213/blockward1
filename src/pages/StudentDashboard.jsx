@@ -20,6 +20,7 @@ import GradesWidget from '@/components/grades/GradesWidget';
 import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
 import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
 import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
+import EndorseBalanceWidget from '@/components/endorsements/EndorseBalanceWidget';
 
 function StudentDashboardContent() {
   const [user, setUser] = useState(null);
@@ -114,6 +115,9 @@ function StudentDashboardContent() {
           </Link>
         </Button>
       </PageHeader>
+
+      {/* Peer endorsement balance — prominent, per term, no roll-over */}
+      <EndorseBalanceWidget />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

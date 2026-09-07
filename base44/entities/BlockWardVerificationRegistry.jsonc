@@ -58,7 +58,7 @@
     },
     "student_email": {
       "type": "string",
-      "description": "Student email (PRIVATE \u2014 never exposed on public page)"
+      "description": "Student email (PRIVATE \u2014 never exposed on public page). Also keys team credentials minted before the student joined BlockWard."
     },
     "achievement_title": {
       "type": "string"
@@ -172,6 +172,19 @@
       },
       "default": [],
       "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. Displayed on the credential detail page."
+    },
+    "is_team_credential": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this personal credential belongs to a group achievement \u2014 links to the shared team record via team_slug."
+    },
+    "team_slug": {
+      "type": "string",
+      "description": "Slug of the shared team credential page (/team/:slug) when this is a team achievement"
+    },
+    "participant_role": {
+      "type": "string",
+      "description": "This participant's role in the team achievement (captain, striker, lead developer, first board, designer\u2026)"
     },
     "approval_status": {
       "type": "string",

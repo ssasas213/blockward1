@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert } from 'lucide-react';
+import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert, Quote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import AchievementTile from '@/components/publicProfile/AchievementTile';
 import AchievementDetailModal from '@/components/publicProfile/AchievementDetailModal';
 import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
+import EndorseDialog from '@/components/endorsements/EndorseDialog';
+import EndorsementList from '@/components/endorsements/EndorsementList';
 import { createPageUrl } from '@/utils';
 
 const DEFAULT_OG = 'https://media.base44.com/images/public/6936b840baa53bb465f68d09/3c961351d_generated_image.png';
@@ -28,6 +30,20 @@ export default function PublicProfile() {
   const [notFound, setNotFound] = useState(false);
   const [selected, setSelected] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [viewer, setViewer] = useState(null);
+  const [endorseOpen, setEndorseOpen] = useState(false);
+  const [reload, setReload] = useState(0);
+
+  // Who is looking at this profile (endorsement is signed-in only).
+  useEffect(() => {
+    let active = true;
+    base44.auth.isAuthenticated().then(async (authed) => {
+      if (authed && active) {
+        try { setViewer(await base44.auth.me()); } catch (e) { /* stay anonymous */ }
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -43,7 +59,7 @@ export default function PublicProfile() {
       .catch(() => { if (active) setNotFound(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [handle]);
+  }, [handle, reload]);
 
   // Social preview meta tags — injected client-side (best effort for
   // JS-executing crawlers; static fallback lives in index.html).
@@ -185,6 +201,18 @@ export default function PublicProfile() {
           </div>
         )}
 
+        {/* Endorsements waiting for a published achievement (invite-claimed) */}
+        {data.endorsements_unattached?.length > 0 && (
+          <div className="mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-foreground">What peers say</h2>
+              <Quote className="h-4 w-4 text-primary" />
+              <span className="text-xs text-tertiary">signed · scarce · never anonymous</span>
+            </div>
+            <EndorsementList endorsements={data.endorsements_unattached} showAchievementTitle />
+          </div>
+        )}
+
         {/* Recruiter CTA */}
         <div className="mt-16 rounded-2xl border border-primary/20 bg-primary/5 p-8 text-center">
           <h2 className="text-xl sm:text-2xl font-bold text-foreground">Your achievements deserve receipts too.</h2>
@@ -197,7 +225,21 @@ export default function PublicProfile() {
         </div>
       </main>
 
-      <AchievementDetailModal achievement={selected} open={!!selected} onOpenChange={(o) => !o && setSelected(null)} />
+      <AchievementDetailModal
+        achievement={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+        endorsements={selected?.endorsements}
+        canEndorse={!!viewer}
+        onEndorse={() => setEndorseOpen(true)}
+      />
+      <EndorseDialog
+        open={endorseOpen}
+        onOpenChange={setEndorseOpen}
+        achievement={selected}
+        mode="achievement"
+        onDone={() => setReload(Date.now())}
+      />
       <ProfileShareDialog
         open={shareOpen}
         onOpenChange={setShareOpen}

@@ -51,6 +51,7 @@ import StudentAttendance from './pages/StudentAttendance';
 import AchievementRequests from './pages/AchievementRequests';
 import PendingSignoffs from './pages/PendingSignoffs';
 import ExternalVerify from './pages/ExternalVerify';
+import EndorsementInvite from './pages/EndorsementInvite';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
 
@@ -139,6 +140,7 @@ const AuthenticatedApp = () => {
       <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
+      <Route path="/endorsement-invite/:token" element={<EndorsementInvite />} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
 
