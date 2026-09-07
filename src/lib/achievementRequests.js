@@ -1,15 +1,18 @@
 // Frontend display helpers for the student achievement request flow.
+// STATUS_LABELS are the STUDENT-FACING plain-English statuses — internal
+// workflow values never surface to students.
 export const STATUS_LABELS = {
   draft: 'Draft',
-  submitted: 'Submitted',
-  under_review: 'Under review',
-  changes_requested: 'Changes requested',
-  verifier_signed: 'Verifier signed',
-  awaiting_second_approval: 'Awaiting approval',
-  awaiting_external_verification: 'External verification',
-  approved: 'Approved',
-  minted: 'Published',
-  rejected: 'Rejected',
+  submitted: 'Waiting on your teacher',
+  under_review: 'Waiting on your teacher',
+  changes_requested: 'Needs changes',
+  verifier_signed: 'Waiting on approval',
+  awaiting_second_approval: 'Waiting on approval',
+  awaiting_external_verification: 'Waiting on approval',
+  approved: 'Verified',
+  minted: 'Verified',
+  archived: 'Verified',
+  rejected: 'Not approved',
   expired: 'Expired',
 };
 
@@ -23,6 +26,7 @@ export const STATUS_BADGE_VARIANTS = {
   awaiting_external_verification: 'info',
   approved: 'success',
   minted: 'success',
+  archived: 'success',
   rejected: 'destructive',
   expired: 'secondary',
 };

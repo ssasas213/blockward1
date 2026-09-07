@@ -180,13 +180,16 @@ export default function RecordDetail() {
     toast.success('Verification link copied!');
   };
 
-  const canSubmit = record?.status === 'draft' && profile?.user_type === 'student' && record?.student_email === user?.email;
-  const canTeacherSign = record?.status === 'awaiting_teacher_signature' && profile?.user_type === 'teacher';
-  const canAdminSign = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
+  // Legacy student submissions migrated to the achievement-request flow no
+  // longer act through the record workflow — review continues on the request.
+  const isMigrated = !!record?.migrated_request_id;
+  const canSubmit = !isMigrated && record?.status === 'draft' && profile?.user_type === 'student' && record?.student_email === user?.email;
+  const canTeacherSign = !isMigrated && record?.status === 'awaiting_teacher_signature' && profile?.user_type === 'teacher';
+  const canAdminSign = !isMigrated && record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
   const canReject = (canTeacherSign || canAdminSign);
-  const canSendToVault = record?.status === 'approved' && profile?.user_type === 'admin';
-  const canRequestChanges = record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
-  const canEditResubmit = record?.status === 'changes_requested' && (
+  const canSendToVault = !isMigrated && record?.status === 'approved' && profile?.user_type === 'admin';
+  const canRequestChanges = !isMigrated && record?.status === 'awaiting_admin_signature' && profile?.user_type === 'admin';
+  const canEditResubmit = !isMigrated && record?.status === 'changes_requested' && (
     (profile?.user_type === 'student' && record?.student_email === user?.email) ||
     (profile?.user_type === 'teacher' && record?.teacher_email === user?.email)
   );
@@ -250,7 +253,7 @@ export default function RecordDetail() {
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-semibold text-foreground">{record.title}</h1>
-            <StatusBadge status={record.status} />
+            <StatusBadge status={record.status} student={profile?.user_type === 'student'} />
             <NextActionBadge status={record.status} record={record} />
             <span className={`text-xs px-2 py-0.5 rounded font-medium capitalize ${CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600'}`}>
               {record.category}
@@ -259,6 +262,27 @@ export default function RecordDetail() {
           <p className="text-muted-foreground mt-1 text-sm">Submitted {format(new Date(record.created_date), 'MMM d, yyyy')}</p>
         </div>
       </div>
+
+      {/* Migrated-submission banner — the review continues on the achievement request */}
+      {isMigrated && (
+        <div className="rounded-lg p-4 bg-primary/5 border border-primary/20">
+          <div className="flex items-start gap-3">
+            <SendHorizonal className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-primary">This submission is now an achievement request</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Student-initiated achievements are reviewed through the achievement request flow, so all the latest
+                status updates live there.
+              </p>
+              <Button size="sm" variant="outline" className="mt-2" asChild>
+                <Link to={profile?.user_type === 'student' ? '/AchievementRequests' : '/PendingSignoffs'}>
+                  {profile?.user_type === 'student' ? 'View my requests' : 'Open the review queue'}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Status + lifecycle stepper */}
       <Card className="surface-card">

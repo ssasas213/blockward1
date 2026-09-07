@@ -166,11 +166,12 @@
         "awaiting_external_verification",
         "approved",
         "minted",
+        "archived",
         "rejected",
         "expired"
       ],
       "default": "draft",
-      "description": "Lifecycle status"
+      "description": "Lifecycle status. The canonical TERMINAL state is 'archived' (verified and published). 'minted' is a deprecated legacy terminal kept only for pre-migration rows \u2014 never set it in new code."
     },
     "external_verifier_email": {
       "type": "string",
@@ -362,7 +363,7 @@
     },
     "student_record_id": {
       "type": "string",
-      "description": "StudentRecord created on final approval \u2014 the credential's source of truth"
+      "description": "StudentRecord created on final approval \u2014 the credential's source of truth. Also set by the one-time migration for converted legacy submissions."
     },
     "blockward_id": {
       "type": "string",
@@ -379,7 +380,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | changes_requested | rejected | reminded | expired | minted"
+            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | changes_requested | rejected | reminded | expired | minted | migrated"
           },
           "actor_email": {
             "type": "string"

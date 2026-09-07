@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
           `<strong>${request.title}</strong> was approved by ${actorName} and is now live on your profile.`,
         ], `${appUrl()}/StudentBlockWards`, 'View my credentials'),
       });
-      return Response.json({ ok: true, status: 'minted', verification_id: mint.verificationId }, { headers: CORS });
+      return Response.json({ ok: true, status: 'archived', verification_id: mint.verificationId }, { headers: CORS });
     }
 
     if (action === 'request_changes') {
@@ -305,7 +305,7 @@ Deno.serve(async (req) => {
 
     if (action === 'reject') {
       if (!reviewerCanAct) return bad('Only the nominated verifier or an organisation admin can review this request', 403);
-      if (['draft', 'approved', 'minted', 'rejected', 'expired'].includes(request.status)) {
+      if (['draft', 'approved', 'minted', 'archived', 'rejected', 'expired'].includes(request.status)) {
         return bad('This request can no longer be rejected');
       }
       const reason = (body.reason || '').trim();
@@ -354,7 +354,7 @@ Deno.serve(async (req) => {
       if (request.status !== 'approved') return bad('Only approved requests can be published');
       const mint = await mintRequestCredential(svc, request);
       if (!mint.ok) return Response.json({ ok: false, error: mint.error }, { status: 500, headers: CORS });
-      return Response.json({ ok: true, status: 'minted', verification_id: mint.verificationId }, { headers: CORS });
+      return Response.json({ ok: true, status: 'archived', verification_id: mint.verificationId }, { headers: CORS });
     }
 
     return bad('Unknown action');
@@ -620,5 +620,5 @@ async function handleExternal(svc, body, req) {
     related_id: request.id,
   });
 
-  return Response.json({ ok: true, status: 'minted', verification_id: mint.verificationId }, { headers: CORS });
+  return Response.json({ ok: true, status: 'archived', verification_id: mint.verificationId }, { headers: CORS });
 }

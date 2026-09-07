@@ -1,6 +1,7 @@
 import { Clock, PenLine, CheckCircle2, XCircle, Sparkles, Archive, FileCheck, Shield, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Technical status vocabulary — teacher and admin views.
 const STATUS_CONFIG = {
   draft:                        { label: 'Draft',                      icon: Clock,         class: 'bg-muted text-muted-foreground' },
   submitted:                    { label: 'Submitted',                  icon: Clock,         class: 'bg-primary/10 text-primary' },
@@ -16,8 +17,24 @@ const STATUS_CONFIG = {
   awaiting_student_signature:   { label: 'Awaiting Student Signature', icon: PenLine,       class: 'bg-warning/10 text-warning' },
 };
 
-export default function RecordStatusBadge({ status }) {
-  const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+// Plain-English student-facing statuses — internal values never shown to students.
+const STUDENT_STATUS_CONFIG = {
+  draft:                        { label: 'Draft',                    icon: Clock,       class: 'bg-muted text-muted-foreground' },
+  submitted:                    { label: 'Waiting on your teacher',  icon: Clock,       class: 'bg-primary/10 text-primary' },
+  awaiting_teacher_signature:   { label: 'Waiting on your teacher',  icon: Clock,       class: 'bg-primary/10 text-primary' },
+  awaiting_admin_signature:     { label: 'Waiting on approval',      icon: PenLine,     class: 'bg-warning/10 text-warning' },
+  changes_requested:            { label: 'Needs changes',            icon: PenLine,     class: 'bg-warning/10 text-warning' },
+  approved:                     { label: 'Verified',                 icon: CheckCircle2, class: 'bg-success/10 text-success' },
+  delivering:                   { label: 'Verified',                 icon: Shield,      class: 'bg-success/10 text-success' },
+  delivered_to_vault:           { label: 'Verified',                 icon: Shield,      class: 'bg-success/10 text-success' },
+  minted:                       { label: 'Verified',                 icon: Shield,      class: 'bg-success/10 text-success' },
+  archived:                     { label: 'Verified',                 icon: Shield,      class: 'bg-success/10 text-success' },
+  rejected:                     { label: 'Not approved',             icon: XCircle,     class: 'bg-destructive/10 text-destructive' },
+  expired:                      { label: 'Expired',                  icon: Clock,       class: 'bg-muted text-muted-foreground' },
+};
+
+export default function RecordStatusBadge({ status, student }) {
+  const cfg = (student ? STUDENT_STATUS_CONFIG[status] : null) || STATUS_CONFIG[status] || STATUS_CONFIG.draft;
   const Icon = cfg.icon;
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium", cfg.class)}>

@@ -63,8 +63,10 @@ function TeacherRecordsImpl() {
   });
 
   const effEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : profile?.user_email;
-  const pendingReview = records.filter(r => r.status === 'awaiting_teacher_signature').length;
-  const sentToMe = records.filter(r => r.teacher_email === effEmail && r.status === 'awaiting_teacher_signature').length;
+  // Migrated legacy submissions are reviewed through the achievement-request
+  // flow (Pending Sign-offs) — never twice through the record queue.
+  const pendingReview = records.filter(r => r.status === 'awaiting_teacher_signature' && !r.migrated_request_id).length;
+  const sentToMe = records.filter(r => r.teacher_email === effEmail && r.status === 'awaiting_teacher_signature' && !r.migrated_request_id).length;
   const myApproved = records.filter(r => r.teacher_email === effEmail && r.teacher_signed).length;
   const minted = records.filter(r => r.status === 'minted' || r.status === 'archived').length;
 
@@ -191,10 +193,10 @@ function TeacherRecordsImpl() {
                     {r.created_date ? format(new Date(r.created_date), 'MMM d, yyyy') : '—'}
                   </TableCell>
                   <TableCell>
-                    <Button variant={r.status === 'awaiting_teacher_signature' ? 'default' : 'ghost'} size="sm" asChild
-                      className={r.status === 'awaiting_teacher_signature' ? 'bg-violet-600 hover:bg-violet-700' : ''}>
+                    <Button variant={r.status === 'awaiting_teacher_signature' && !r.migrated_request_id ? 'default' : 'ghost'} size="sm" asChild
+                      className={r.status === 'awaiting_teacher_signature' && !r.migrated_request_id ? 'bg-violet-600 hover:bg-violet-700' : ''}>
                       <Link to={createPageUrl(`RecordDetail?id=${r.id}`)}>
-                        {r.status === 'awaiting_teacher_signature' ? 'Review' : <ChevronRight className="h-4 w-4" />}
+                        {r.status === 'awaiting_teacher_signature' && !r.migrated_request_id ? 'Review' : <ChevronRight className="h-4 w-4" />}
                       </Link>
                     </Button>
                   </TableCell>

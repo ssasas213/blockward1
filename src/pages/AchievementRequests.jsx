@@ -130,7 +130,7 @@ export default function AchievementRequests() {
                         {r.status === 'draft' ? 'Edit & submit' : 'Edit & resubmit'}
                       </Button>
                     )}
-                    {r.status === 'minted' && r.verification_id && (
+                    {['minted', 'archived'].includes(r.status) && r.verification_id && (
                       <Button size="sm" variant="outline" asChild>
                         <Link to={`/verify/${r.verification_id}`}>
                           <ShieldCheck className="h-4 w-4 mr-1.5" /> View credential

@@ -62,14 +62,23 @@ function RecordsImpl() {
     }
   };
 
+  // Migrated legacy submissions are reviewed through the achievement-request
+  // flow — keep them out of the actionable record queues so nothing is
+  // reviewed twice. They stay visible in the historical tabs and "All".
+  const ACTIONABLE_TABS = ['awaiting_teacher', 'awaiting_admin', 'approved'];
+
   const counts = TABS.reduce((acc, t) => {
-    acc[t.key] = t.statuses ? records.filter(r => t.statuses.includes(r.status)).length : records.length;
+    const actionable = ACTIONABLE_TABS.includes(t.key);
+    acc[t.key] = t.statuses
+      ? records.filter(r => t.statuses.includes(r.status) && !(actionable && r.migrated_request_id)).length
+      : records.length;
     return acc;
   }, {});
 
   const activeTabDef = TABS.find(t => t.key === activeTab) || TABS[0];
+  const activeTabActionable = ACTIONABLE_TABS.includes(activeTabDef.key);
   const filtered = records.filter(r => {
-    const inTab = !activeTabDef.statuses || activeTabDef.statuses.includes(r.status);
+    const inTab = !activeTabDef.statuses || (activeTabDef.statuses.includes(r.status) && !(activeTabActionable && r.migrated_request_id));
     const q = search.toLowerCase();
     const matchesSearch = !q ||
       r.student_name?.toLowerCase().includes(q) ||
@@ -182,8 +191,8 @@ function RecordsImpl() {
             <div className="divide-y divide-border">
               {filtered.map(record => {
                 const catColor = CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600';
-                const needsAction = record.status === 'awaiting_admin_signature';
-                const readyToDeliver = record.status === 'approved' || record.status === 'minted';
+                const needsAction = record.status === 'awaiting_admin_signature' && !record.migrated_request_id;
+                const readyToDeliver = !record.migrated_request_id && (record.status === 'approved' || record.status === 'minted');
                 const isTracking = record.status === 'changes_requested';
 
                 return (

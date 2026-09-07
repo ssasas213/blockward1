@@ -9,7 +9,9 @@ import { ensureTeamCredential, generateTeamSlug } from './teamCredentials.ts';
 export async function mintRequestCredential(svc: any, request: any) {
   const now = new Date().toISOString();
 
-  if (request.status === 'minted') {
+  // Canonical terminal state is 'archived' ('minted' is the deprecated legacy
+  // name kept only so pre-migration rows still match).
+  if (request.status === 'minted' || request.status === 'archived') {
     return { ok: true, idempotent: true, blockWardId: request.blockward_id, verificationId: request.verification_id };
   }
   if (request.status !== 'approved') {
@@ -178,7 +180,7 @@ export async function mintRequestCredential(svc: any, request: any) {
 
   // ── 5. Commit the request ──
   await svc.entities.AchievementRequest.update(request.id, {
-    status: 'minted',
+    status: 'archived',
     minted_at: now,
     blockward_id: blockWard.id,
     verification_id: verificationId,

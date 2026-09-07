@@ -275,6 +275,15 @@
     "blockward_id": {
       "type": "string",
       "description": "BlockWard.id created when delivered to vault"
+    },
+    "migrated_request_id": {
+      "type": "string",
+      "description": "AchievementRequest.id this legacy student submission was converted to by the one-time migration. The record itself is NOT deleted \u2014 it stays queryable as the source-of-truth history; review actions now happen on the request."
+    },
+    "migrated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this legacy student submission was converted to the achievement-request flow"
     }
   },
   "required": [

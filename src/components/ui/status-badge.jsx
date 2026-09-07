@@ -30,6 +30,22 @@ const STATUS_CONFIG = {
   inactive: { label: "Inactive", tone: "muted", dot: "bg-muted-foreground" },
 };
 
+// Plain-English student-facing statuses — internal values never shown to students.
+const STUDENT_STATUS_CONFIG = {
+  draft: { label: "Draft", tone: "muted", dot: "bg-muted-foreground" },
+  submitted: { label: "Waiting on your teacher", tone: "primary", dot: "bg-primary" },
+  awaiting_teacher_signature: { label: "Waiting on your teacher", tone: "primary", dot: "bg-primary" },
+  awaiting_admin_signature: { label: "Waiting on approval", tone: "primary", dot: "bg-primary" },
+  changes_requested: { label: "Needs changes", tone: "warning", dot: "bg-warning" },
+  approved: { label: "Verified", tone: "success", dot: "bg-success" },
+  delivering: { label: "Verified", tone: "success", dot: "bg-success" },
+  delivered_to_vault: { label: "Verified", tone: "success", dot: "bg-success" },
+  minted: { label: "Verified", tone: "success", dot: "bg-success" },
+  archived: { label: "Verified", tone: "success", dot: "bg-success" },
+  rejected: { label: "Not approved", tone: "destructive", dot: "bg-destructive" },
+  expired: { label: "Expired", tone: "muted", dot: "bg-muted-foreground" },
+};
+
 const TONE_CLASS = {
   muted: "bg-muted/60 text-muted-foreground border-border",
   primary: "bg-primary/10 text-primary border-primary/15",
@@ -39,8 +55,11 @@ const TONE_CLASS = {
   destructive: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-export default function StatusBadge({ status, className, label }) {
-  const config = STATUS_CONFIG[status] || { label: label || status, tone: "muted", dot: "bg-muted-foreground" };
+export default function StatusBadge({ status, className, label, student }) {
+  const config =
+    (student ? STUDENT_STATUS_CONFIG[status] : STATUS_CONFIG[status]) ||
+    STATUS_CONFIG[status] ||
+    { label: label || status, tone: "muted", dot: "bg-muted-foreground" };
   return (
     <span
       className={cn(
