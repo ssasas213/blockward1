@@ -1,0 +1,44 @@
+{
+  "name": "Achievement Request Maintenance",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "achievement_request_maintenance",
+      "version": "1",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sweep_requests": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "achievementRequestMaintenance"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Sweep achievement requests",
+            "description": "Send reminders, expire stale requests"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 8 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Dubai",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "description": "Daily sweep of student achievement requests: reminder emails after 7 and 21 days of reviewer inactivity, auto-expiry at 30 days."
+}

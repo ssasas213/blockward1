@@ -37,7 +37,7 @@ export async function mintRequestCredential(svc: any, request: any) {
       school_id: request.school_id,
       student_id: studentId,
       student_email: request.student_email,
-      student_name: request.student_name || studentProfile ? request.student_name : null,
+      student_name: request.student_name || null,
       owner_student_id: studentId,
       owner_student_email: request.student_email,
       owner_school_id: request.school_id,
