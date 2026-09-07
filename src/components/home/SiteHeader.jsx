@@ -3,7 +3,7 @@ import { Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function SiteHeader({ user, profile, onSignIn, onGetStarted, onDashboard }) {
+export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get Started', onSignIn, onGetStarted, onDashboard }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -11,13 +11,6 @@ export default function SiteHeader({ user, profile, onSignIn, onGetStarted, onDa
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  const navLinks = [
-    { label: 'How it works', href: '#how-it-works' },
-    { label: 'Industries', href: '#industries' },
-    { label: 'Features', href: '#features' },
-    { label: 'Demo', href: '#demo' },
-  ];
 
   return (
     <header className={cn(
@@ -64,8 +57,8 @@ export default function SiteHeader({ user, profile, onSignIn, onGetStarted, onDa
               >
                 Sign In
               </button>
-              <Button onClick={onGetStarted || onSignIn} size="sm" variant={scrolled ? "default" : "default"}>
-                Get Started <ArrowRight className="ml-1.5 h-4 w-4" />
+              <Button onClick={onGetStarted || onSignIn} size="sm">
+                {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </>
           )}

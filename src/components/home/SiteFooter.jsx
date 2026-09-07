@@ -1,5 +1,8 @@
 import React from 'react';
 import { Shield } from 'lucide-react';
+import { createPageUrl } from '@/utils';
+
+const ORG_URL = createPageUrl('ForOrganisations');
 
 export default function SiteFooter() {
   return (
@@ -12,21 +15,30 @@ export default function SiteFooter() {
               <span className="font-semibold text-foreground">BlockWard</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              The digital custodian for verified achievements.
+              Verified achievements that last forever — owned by you.
             </p>
           </div>
 
           {[
-            { title: 'Platform', links: ['How it works', 'Features', 'Industries', 'Demo'] },
-            { title: 'Company', links: ['About', 'Careers', 'Press', 'Contact'] },
-            { title: 'Resources', links: ['Documentation', 'Verification', 'Security', 'Status'] },
+            { title: 'For students', links: [
+              { label: 'Example profile', href: createPageUrl('DemoProfile') },
+              { label: 'Benefits', href: createPageUrl('Home') + '#benefits' },
+            ]},
+            { title: 'For organisations', links: [
+              { label: 'Overview', href: ORG_URL },
+              { label: 'How it works', href: ORG_URL + '#how-it-works' },
+              { label: 'Features', href: ORG_URL + '#features' },
+              { label: 'Industries', href: ORG_URL + '#industries' },
+            ]},
+            { title: 'Company', links: [{ label: 'About', href: '#top' }, { label: 'Contact', href: '#top' }]},
+            { title: 'Resources', links: [{ label: 'Verification', href: ORG_URL + '#demo' }, { label: 'Security', href: '#top' }]},
           ].map((col) => (
             <div key={col.title}>
               <h4 className="text-sm font-medium text-foreground mb-3">{col.title}</h4>
               <ul className="space-y-2">
                 {col.links.map((link) => (
-                  <li key={link}>
-                    <a href="#top" className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link}</a>
+                  <li key={link.label}>
+                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</a>
                   </li>
                 ))}
               </ul>
