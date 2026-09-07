@@ -153,6 +153,7 @@ const AuthenticatedApp = () => {
       <Route path="/Insights" element={<LayoutWrapper currentPageName="Insights"><ProtectedRoute><Insights /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
+      <Route path="/GradeBook" element={<Navigate to="/Gradebook" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />

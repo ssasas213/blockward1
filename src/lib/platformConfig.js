@@ -60,7 +60,7 @@ export const PLATFORMS = {
         { name: 'Timetable', icon: 'Calendar', path: '/Timetable' },
         { name: 'School Events', icon: 'Calendar', path: '/SchoolEvents' },
         { name: 'Attendance', icon: 'UserCircle', path: '/Attendance' },
-        { name: 'Grade Book', icon: 'BookOpen', path: '/GradeBook' },
+        { name: 'Grade Book', icon: 'BookOpen', path: '/Gradebook' },
         { name: 'Announcements', icon: 'Bell', path: '/Announcements' },
         { name: 'Approval Queue', icon: 'PenLine', path: '/AdminApprovalQueue' },
         { name: 'Achievement Records', icon: 'Trophy', path: '/AdminRecords' },
@@ -80,7 +80,7 @@ export const PLATFORMS = {
         { name: 'Create Achievement', icon: 'Trophy', path: '/IssueBlockWard' },
         { name: 'My Submissions', icon: 'Shield', path: '/TeacherRecords' },
         { name: 'Parent Comms', icon: 'FileText', path: '/ParentComms' },
-        { name: 'My BlockWards', icon: 'Award', path: '/TeacherBlockWards' },
+        { name: 'Achievements', icon: 'Award', path: '/TeacherRecords' },
         { name: 'Resources', icon: 'FileText', path: '/Resources' },
       ],
       student: [

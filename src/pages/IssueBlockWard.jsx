@@ -459,7 +459,7 @@ function IssueBlockWardContent() {
     <div className="space-y-6 max-w-4xl mx-auto pb-12">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('TeacherBlockWards'))} className="hover:bg-slate-100 rounded-xl">
+        <Button variant="ghost" size="icon" onClick={() => navigate(createPageUrl('TeacherRecords'))} className="hover:bg-slate-100 rounded-xl">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>

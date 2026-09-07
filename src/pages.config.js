@@ -59,7 +59,6 @@ import BlockWards from './pages/BlockWards';
 import BlockchainDocs from './pages/BlockchainDocs';
 import ClassDetail from './pages/ClassDetail';
 import Classes from './pages/Classes';
-import GradeBook from './pages/GradeBook';
 import Home from './pages/Home';
 import IssueBlockWard from './pages/IssueBlockWard';
 import IssuePoints from './pages/IssuePoints';
@@ -97,7 +96,6 @@ export const PAGES = {
     "BlockchainDocs": BlockchainDocs,
     "ClassDetail": ClassDetail,
     "Classes": Classes,
-    "GradeBook": GradeBook,
     "Home": Home,
     "IssueBlockWard": IssueBlockWard,
     "IssuePoints": IssuePoints,
