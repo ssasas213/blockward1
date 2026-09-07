@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert, Download } from 'lucide-react';
@@ -159,22 +159,22 @@ export default function PublicProfile() {
 
   const filtered = chip === 'all' ? achievements : achievements.filter((a) => (a.domain || 'other') === chip);
 
-  const sorted = useMemo(() => {
+  const sorted = (() => {
     const arr = [...filtered];
     if (sort === 'endorsements') arr.sort((a, b) => (b.endorsement_count - a.endorsement_count) || byDate(a, b));
     else if (sort === 'date') arr.sort(byDate);
     else arr.sort((a, b) => DOMAIN_ORDER.indexOf(a.domain || 'other') - DOMAIN_ORDER.indexOf(b.domain || 'other') || byDate(a, b));
     return arr;
-  }, [filtered, sort]);
+  })();
 
-  const grouped = useMemo(() => {
+  const grouped = (() => {
     const groups = {};
     for (const a of sorted) {
       const d = a.domain || 'other';
       (groups[d] = groups[d] || []).push(a);
     }
     return DOMAIN_ORDER.filter((d) => groups[d]).map((d) => ({ domain: d, items: groups[d] }));
-  }, [sorted]);
+  })();
 
   const pinnedItems = pinned.map((id) => achievements.find((a) => a.registry_id === id)).filter(Boolean);
 

@@ -15,7 +15,8 @@ import PendingTeacherRequests from '@/components/onboarding/PendingTeacherReques
 import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
 import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
-import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle, Briefcase } from 'lucide-react';
+import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipRequestsWidget';
+import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
 
 function AdminDashboardContent() {
   const [userProfile, setUserProfile] = useState(null);
@@ -94,12 +95,6 @@ function AdminDashboardContent() {
               Open Records
             </Link>
           </Button>
-          <Button asChild variant="outline">
-            <Link to={createPageUrl('ManageOpportunities')}>
-              <Briefcase className="h-4 w-4 mr-2" />
-              Post Opportunity
-            </Link>
-          </Button>
         </div>
       </PageHeader>
 
@@ -112,6 +107,9 @@ function AdminDashboardContent() {
           Admins review, approve, and sign achievement records. Only teachers can create and submit achievement records.
         </p>
       </div>
+
+      {/* Cross-org membership requests awaiting this organisation's approval */}
+      <OrgMembershipRequestsWidget />
 
       {isEmpty ? (
         /* Empty school — the Setup Checklist is the hero; it encodes the correct onboarding order. */
