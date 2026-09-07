@@ -14,7 +14,9 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
-import { getVerifiedCredentials, notifyUser, isDeadlineOpen } from '../../shared/opportunities.ts';
+import { getVerifiedCredentials, notifyUser, isDeadlineOpen, computeMatch } from '../../shared/opportunities.ts';
+import { notifyEvent } from '../../shared/eventNotifications.ts';
+import { requestEmailHtml, appUrl } from '../../shared/achievementRequests.ts';
 
 const TYPES = ['internship', 'competition', 'volunteering', 'scholarship', 'trial', 'workshop', 'part_time_role'];
 const CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'behaviour', 'special'];
@@ -117,6 +119,44 @@ export default async function (req: Request): Promise<Response> {
           application_questions: cleanQuestions(o.application_questions),
           status: o.status === 'draft' ? 'draft' : 'open',
         });
+
+        // Best-effort: notify students whose verified credentials match the
+        // new listing (per-type preferences apply). Never blocks the create.
+        try {
+          if (created.status === 'open' && (created.required_credentials || []).length > 0) {
+            const regRows = await svc.entities.BlockWardVerificationRegistry.filter({}, '-created_date', 500);
+            const credsByEmail = new Map<string, any[]>();
+            for (const r of regRows) {
+              if ((r.approval_status || 'approved') !== 'approved' || !r.student_email) continue;
+              if (!credsByEmail.has(r.student_email)) credsByEmail.set(r.student_email, []);
+              credsByEmail.get(r.student_email)!.push(r);
+            }
+            const oppUrl = `${appUrl()}/Opportunities`;
+            let notified = 0;
+            for (const [email, creds] of credsByEmail) {
+              if (notified >= 50) break;
+              const match = computeMatch(created, creds);
+              if (match.matched_count === 0) continue;
+              await notifyEvent(svc, {
+                to_email: email,
+                school_id: null,
+                event_type: 'opportunity_match',
+                title: `New opportunity matching your credentials: ${created.title}`,
+                body: `${created.organisation_name} posted "${created.title}" — ${match.matched_count} of your verified credential${match.matched_count === 1 ? '' : 's'} match${match.matched_count === 1 ? 'es' : ''}.`,
+                related_id: created.id,
+                email_subject: `A new opportunity matches your verified credentials`,
+                email_html: requestEmailHtml(`A new opportunity matches your credentials`, [
+                  `<strong>${created.organisation_name}</strong> posted <strong>${created.title}</strong> (${created.type.replace(/_/g, ' ')}).`,
+                  `${match.matched_count} of your verified credential${match.matched_count === 1 ? '' : 's'} match${match.matched_count === 1 ? 'es' : ''} what they're looking for.`,
+                ], oppUrl, 'View the opportunity'),
+              });
+              notified++;
+            }
+          }
+        } catch (e: any) {
+          console.log('[opportunityAction] match notifications failed:', e?.message || e);
+        }
+
         return Response.json({ ok: true, opportunity_id: created.id });
       }
 

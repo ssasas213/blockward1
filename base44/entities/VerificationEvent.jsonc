@@ -1,0 +1,35 @@
+{
+  "name": "VerificationEvent",
+  "type": "object",
+  "properties": {
+    "verification_id": {
+      "type": "string",
+      "description": "The public verification ID (BW-\u2026) that was checked"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "registry",
+        "legacy"
+      ],
+      "description": "Which registry branch served the check"
+    }
+  },
+  "required": [
+    "verification_id"
+  ],
+  "rls": {
+    "create": {
+      "data.verification_id": "__service_role_only__"
+    },
+    "read": {
+      "data.verification_id": "__service_role_only__"
+    },
+    "update": {
+      "data.verification_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.verification_id": "__service_role_only__"
+    }
+  }
+}

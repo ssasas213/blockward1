@@ -19,6 +19,8 @@ import {
   INVITE_EXPIRY_DAYS,
 } from '../../shared/endorsements.ts';
 import { sendResendEmail } from '../../shared/resendEmail.ts';
+import { notifyEvent } from '../../shared/eventNotifications.ts';
+import { requestEmailHtml, appUrl } from '../../shared/achievementRequests.ts';
 
 const bad = (msg: string, status = 400) => Response.json({ ok: false, error: msg }, { status });
 
@@ -110,6 +112,21 @@ export default async function (req: Request): Promise<Response> {
         achievement_verification_id: reg.verification_id || null,
         text: body.text.trim(),
         status: 'active',
+      });
+
+      // Per-type notification to the recipient (respects their preferences).
+      await notifyEvent(svc, {
+        to_email: recipient.user_email,
+        school_id: actorProfile.school_id,
+        event_type: 'endorsement',
+        title: `${actorName} endorsed "${reg.achievement_title}"`,
+        body: body.text.trim().slice(0, 140),
+        related_id: registryId,
+        email_subject: `${actorName} endorsed your achievement`,
+        email_html: requestEmailHtml('You received a peer endorsement', [
+          `<strong>${actorName}</strong> (${affiliation}) endorsed your achievement <strong>${reg.achievement_title}</strong>:`,
+          `<blockquote style="border-left:3px solid #7c3aed;padding-left:12px;color:#64748b;">${body.text.trim()}</blockquote>`,
+        ], `${appUrl()}/@${recipient.handle || ''}`, 'View my profile'),
       });
 
       return Response.json({

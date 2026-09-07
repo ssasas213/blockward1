@@ -124,6 +124,11 @@
       "default": "public",
       "description": "Global visibility of the public /@handle profile page."
     },
+    "leaderboard_opt_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, this member is hidden from the organisation's weekly and monthly leaderboards."
+    },
     "og_image_url": {
       "type": "string",
       "description": "Generated square share-card image used as the Open Graph image for the public profile."

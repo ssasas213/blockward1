@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { label: 'Benefits', href: '#benefits' },
   { label: 'For organisations', href: createPageUrl('ForOrganisations') },
   { label: 'Example profile', href: createPageUrl('DemoProfile') },
+  { label: 'Verify a credential', href: '/verify' },
 ];
 
 export default function Home() {

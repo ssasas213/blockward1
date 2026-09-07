@@ -1,0 +1,62 @@
+{
+  "name": "ContactMessage",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Submitter's name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Submitter's reply-to email"
+    },
+    "organisation": {
+      "type": "string",
+      "description": "Organisation they represent, if any"
+    },
+    "topic": {
+      "type": "string",
+      "enum": [
+        "organisations",
+        "student_support",
+        "verification_support",
+        "partnerships"
+      ],
+      "default": "organisations",
+      "description": "What the message is about"
+    },
+    "message": {
+      "type": "string",
+      "description": "The message body"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewed",
+        "closed"
+      ],
+      "default": "new",
+      "description": "Handling status"
+    }
+  },
+  "required": [
+    "name",
+    "email",
+    "message"
+  ],
+  "rls": {
+    "create": {
+      "data.email": "__service_role_only__"
+    },
+    "read": {
+      "data.email": "__service_role_only__"
+    },
+    "update": {
+      "data.email": "__service_role_only__"
+    },
+    "delete": {
+      "data.email": "__service_role_only__"
+    }
+  }
+}

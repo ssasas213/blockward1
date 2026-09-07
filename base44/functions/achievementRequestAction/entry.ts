@@ -13,6 +13,7 @@ import {
 } from '../../shared/achievementRequests.ts';
 import { mintRequestCredential } from '../../shared/credentialDelivery.ts';
 import { MAX_TEAM_PARTICIPANTS } from '../../shared/teamCredentials.ts';
+import { notifyEvent } from '../../shared/eventNotifications.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -251,6 +252,18 @@ Deno.serve(async (req) => {
         });
         return Response.json({ ok: false, error: 'Signed off, but publishing failed: ' + mint.error }, { status: 500, headers: CORS });
       }
+      await notifyEvent(svc, {
+        to_email: request.student_email,
+        school_id: request.school_id,
+        event_type: 'request_signed_off',
+        title: `"${request.title}" was approved`,
+        body: `Your achievement was approved by ${actorName} — it's now live on your profile.`,
+        related_id: request.id,
+        email_subject: `Verified: "${request.title}"`,
+        email_html: requestEmailHtml('Your achievement has been verified and published', [
+          `<strong>${request.title}</strong> was approved by ${actorName} and is now live on your profile.`,
+        ], `${appUrl()}/StudentBlockWards`, 'View my credentials'),
+      });
       return Response.json({ ok: true, status: 'minted', verification_id: mint.verificationId }, { headers: CORS });
     }
 
@@ -278,6 +291,15 @@ Deno.serve(async (req) => {
         'Edit my request'
       );
       await notifyRequest(request.student_email, `Changes requested on "${request.title}"`, html);
+      // In-app notification (per-type preferences apply); the email above already covers this event.
+      await notifyEvent(svc, {
+        to_email: request.student_email,
+        school_id: request.school_id,
+        event_type: 'request_changes',
+        title: `Changes requested on "${request.title}"`,
+        body: comment,
+        related_id: request.id,
+      });
       return Response.json({ ok: true, status: 'changes_requested' }, { headers: CORS });
     }
 
@@ -385,6 +407,19 @@ async function signAndAdvance(svc, request, kind, body, email, actorName, countr
       });
       throw new Error(mint.error);
     }
+    // Per-type "signed off" notification to the student (in-app + email, per preferences).
+    await notifyEvent(svc, {
+      to_email: request.student_email,
+      school_id: request.school_id,
+      event_type: 'request_signed_off',
+      title: `"${request.title}" was signed off`,
+      body: `${actorName} verified your achievement — it's now live on your profile.`,
+      related_id: request.id,
+      email_subject: `Verified: "${request.title}"`,
+      email_html: requestEmailHtml('Your achievement has been verified and published', [
+        `<strong>${request.title}</strong> was verified by ${actorName} and is now live on your profile.`,
+      ], `${appUrl()}/StudentBlockWards`, 'View my credentials'),
+    });
     return mint;
   }
   return { ok: true };
@@ -575,6 +610,15 @@ async function handleExternal(svc, body, req) {
     'View my credentials'
   );
   await notifyRequest(request.student_email, `Verified: "${request.title}"`, html);
+  // In-app record for the same event (the email above already covered this).
+  await notifyEvent(svc, {
+    to_email: request.student_email,
+    school_id: request.school_id,
+    event_type: 'request_signed_off',
+    title: `Verified: "${request.title}"`,
+    body: 'Your achievement has been fully verified and published to your profile.',
+    related_id: request.id,
+  });
 
   return Response.json({ ok: true, status: 'minted', verification_id: mint.verificationId }, { headers: CORS });
 }

@@ -13,6 +13,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { requestEmailHtml, notifyRequest, appUrl } from '../../shared/achievementRequests.ts';
 import { mintTeamParticipantCredential } from '../../shared/teamCredentials.ts';
+import { notifyEvent } from '../../shared/eventNotifications.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -156,6 +157,25 @@ Deno.serve(async (req) => {
         'View the team record'
       );
       await notifyRequest(me.email, `Your credential for "${team.title}" is live`, html);
+
+      // Tell the person who added them — each acceptance strengthens the shared record.
+      const creator = participants[0];
+      if (creator?.email && creator.email !== me.email) {
+        const acceptedCount = participants.filter((p) => p.status === 'accepted').length;
+        await notifyEvent(svc, {
+          to_email: creator.email,
+          school_id: team.school_id,
+          event_type: 'team_accepted',
+          title: `${displayName} accepted "${team.title}"`,
+          body: `They joined as ${me.role || 'a member'} — ${acceptedCount} teammate${acceptedCount === 1 ? '' : 's'} on the shared record.`,
+          related_id: team.id,
+          email_subject: `${displayName} joined "${team.title}"`,
+          email_html: requestEmailHtml(`${displayName} is on the team record`, [
+            `They accepted their part in <strong>${team.title}</strong> as <strong>${me.role || 'a member'}</strong>.`,
+            `${acceptedCount} teammate${acceptedCount === 1 ? ' is' : 's are'} now on the shared record:`,
+          ], teamUrl, 'View the team record'),
+        });
+      }
 
       return Response.json({
         ok: true,

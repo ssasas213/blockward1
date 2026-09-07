@@ -44,6 +44,11 @@ Deno.serve(async (req) => {
         return Response.json({ ok: false, error: 'This achievement is not publicly available' }, { status: 403, headers: CORS });
       }
 
+      // Count this public verification check (best-effort — never blocks the check).
+      try {
+        await base44.asServiceRole.entities.VerificationEvent.create({ verification_id: reg.verification_id, source: 'registry' });
+      } catch (e) { /* metrics only */ }
+
       if (reg.approval_status === 'revoked') {
         return Response.json({
           ok: true,
@@ -135,6 +140,11 @@ Deno.serve(async (req) => {
 
     const record = records[0];
     const verifiedStatuses = ['delivered_to_vault', 'archived'];
+    if (record.verify_id) {
+      try {
+        await base44.asServiceRole.entities.VerificationEvent.create({ verification_id: record.verify_id, source: 'legacy' });
+      } catch (e) { /* metrics only */ }
+    }
     if (!verifiedStatuses.includes(record.status)) {
       return Response.json({
         ok: true,
