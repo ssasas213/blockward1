@@ -67,12 +67,6 @@ export default async function (req: Request): Promise<Response> {
     // 4. Verified achievements from the permanent registry.
     let registry = [];
     try { registry = await svc.entities.BlockWardVerificationRegistry.filter({ student_id: profile.id }); } catch (e) { /* empty */ }
-    // Team credentials minted before the student joined are keyed by email — merge them in.
-    try {
-      const byEmail = await svc.entities.BlockWardVerificationRegistry.filter({ student_email: profile.user_email });
-      const seen = new Set(registry.map((r) => r.id));
-      for (const r of byEmail) if (!seen.has(r.id)) registry.push(r);
-    } catch (e) { /* empty */ }
 
     const visible = registry.filter((r) =>
       r.approval_status === 'approved' &&
@@ -113,9 +107,39 @@ export default async function (req: Request): Promise<Response> {
       blockchain_network: r.blockchain_network || null,
       token_id: r.token_id || null,
       public_verification_url: r.public_verification_url || null,
-      participant_role: r.participant_role || null,
-      team_slug: r.team_slug || null,
     }));
+
+    // Peer endorsements on this student's achievements. Never anonymous —
+    // each carries the endorser's name, handle and affiliation only.
+    let endorsements = [];
+    try { endorsements = await svc.entities.Endorsement.filter({ recipient_id: profile.id, status: 'active' }); } catch (e) { /* entity not present yet */ }
+    const byRegistry = {};
+    const unattached = [];
+    for (const e of endorsements) {
+      const pub = {
+        id: e.id,
+        text: e.text,
+        achievement_title: e.achievement_title || null,
+        endorser: {
+          name: e.endorser_name,
+          handle: e.endorser_handle || null,
+          affiliation: e.endorser_affiliation || null,
+        },
+        created_date: e.created_date || null,
+      };
+      if (e.registry_id) (byRegistry[e.registry_id] = byRegistry[e.registry_id] || []).push(pub);
+      else unattached.push(pub);
+    }
+    for (const a of achievements) {
+      a.endorsements = byRegistry[a.registry_id] || [];
+      a.endorsement_count = a.endorsements.length;
+    }
+    // Achievements with endorsements sort higher by default, then by recency.
+    achievements.sort((a, b) =>
+      (b.endorsement_count - a.endorsement_count) ||
+      (new Date(b.date_delivered || b.date_approved || b.date_achieved || 0) -
+       new Date(a.date_delivered || a.date_approved || a.date_achieved || 0))
+    );
 
     return Response.json({
       ok: true,
@@ -136,6 +160,7 @@ export default async function (req: Request): Promise<Response> {
         logo_url: school.logo_url || null,
       } : null,
       achievements,
+      endorsements_unattached: unattached,
       count: achievements.length,
     });
   } catch (error) {
