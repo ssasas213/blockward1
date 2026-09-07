@@ -232,7 +232,7 @@ export default function PublicPortfolio() {
                       {a.token_id && (
                         <div className="flex items-center gap-1.5">
                           <Hash className="h-3.5 w-3.5" />
-                          <span className="font-mono truncate">Token #{a.token_id}</span>
+                          <span className="font-mono truncate">Record #{a.token_id}</span>
                         </div>
                       )}
                     </div>

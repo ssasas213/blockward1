@@ -117,6 +117,17 @@ export default function Verify() {
   const accent = CATEGORY_ACCENT[record.achievement_category] || 'text-primary';
   const evidenceIsImage = record.evidence_file_url && record.evidence_file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
   const hasBlockchain = record.token_id || record.transaction_hash;
+  const networkKey = (record.blockchain_network || '').toLowerCase();
+  const explorer = networkKey.includes('amoy')
+    ? { base: 'https://amoy.polygonscan.com', name: 'PolygonScan (Amoy testnet)' }
+    : networkKey.includes('polygon')
+      ? { base: 'https://polygonscan.com', name: 'PolygonScan' }
+      : { base: 'https://sepolia.etherscan.io', name: 'Etherscan (Sepolia testnet)' };
+  const explorerUrl = record.transaction_hash
+    ? `${explorer.base}/tx/${record.transaction_hash}`
+    : record.contract_address
+      ? `${explorer.base}/address/${record.contract_address}`
+      : null;
   const achievedDate = record.date_achieved ? format(new Date(record.date_achieved), 'MMMM d, yyyy') : null;
   const approvedDate = record.date_approved ? format(new Date(record.date_approved), 'MMMM d, yyyy') : null;
 
@@ -357,17 +368,31 @@ export default function Verify() {
           </Card>
         )}
 
-        {/* Blockchain */}
+        {/* Blockchain record — full technical detail for employers and universities */}
         {isVerified && hasBlockchain && (
           <Card className="surface-card">
             <CardContent className="p-6">
-              <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Network className="h-4 w-4" /> Blockchain Anchor
+              <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-2 flex items-center gap-2">
+                <Network className="h-4 w-4" /> Blockchain record
               </h2>
+              <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                This credential is anchored to a public ledger. The entry below is permanent — it cannot be
+                edited, deleted or faked by anyone, including the issuing organisation or BlockWard.
+              </p>
               <Field icon={Network} label="Network" value={record.blockchain_network} />
-              <Field icon={Hash} label="Contract Address" value={record.contract_address} mono />
-              <Field icon={Hash} label="Token ID" value={record.token_id} mono />
               {record.transaction_hash && <Field icon={Hash} label="Transaction Hash" value={record.transaction_hash} mono />}
+              <Field icon={Hash} label="Token ID" value={record.token_id ? `#${record.token_id}` : null} mono />
+              <Field icon={Hash} label="Contract Address" value={record.contract_address} mono />
+              {record.date_delivered && (
+                <Field icon={Calendar} label="Recorded At" value={format(new Date(record.date_delivered), 'PPP p')} />
+              )}
+              {explorerUrl && (
+                <Button asChild variant="outline" size="sm" className="mt-2">
+                  <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+                    <ExternalLink className="h-3.5 w-3.5" /> View on {explorer.name}
+                  </a>
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

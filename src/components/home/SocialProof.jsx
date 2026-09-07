@@ -14,7 +14,7 @@ const testimonials = [
     role: 'Head Instructor, Apex Martial Arts',
   },
   {
-    quote: "The blockchain verification gives employers confidence that a candidate's certifications are genuine. It's a game changer.",
+    quote: "The independent verification gives employers confidence that a candidate's certifications are genuine. It's a game changer.",
     name: 'Priya Nair',
     role: 'Director, Global Training Institute',
   },

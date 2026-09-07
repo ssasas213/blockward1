@@ -9,12 +9,14 @@ import HowItWorks from '@/components/home/HowItWorks';
 import IndustriesSection from '@/components/home/IndustriesSection';
 import FeaturesSection from '@/components/home/FeaturesSection';
 import InteractiveDemo from '@/components/home/InteractiveDemo';
+import BlockchainGuaranteesSection from '@/components/home/BlockchainGuaranteesSection';
 import SiteFooter from '@/components/home/SiteFooter';
 
 const ORG_NAV = [
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Industries', href: '#industries' },
   { label: 'Features', href: '#features' },
+  { label: 'Security', href: '#security' },
   { label: 'Demo', href: '#demo' },
 ];
 
@@ -35,6 +37,7 @@ export default function ForOrganisations() {
       <IndustriesSection />
       <FeaturesSection />
       <InteractiveDemo />
+      <BlockchainGuaranteesSection />
 
       {/* Final CTA */}
       <section className="relative py-24 px-4 sm:px-6 lg:px-8 border-t border-border">

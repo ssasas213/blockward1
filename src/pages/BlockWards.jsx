@@ -102,9 +102,9 @@ export default function BlockWards() {
           <p className="text-slate-500 mt-1 flex items-center gap-1.5">
             <Lock className="h-3.5 w-3.5" />
             {profile?.user_type === 'student'
-              ? 'Your blockchain-verified achievements'
+              ? 'Your verified achievements'
               : profile?.user_type === 'admin'
-                ? 'View minted achievement tokens — created via the approval workflow'
+                ? 'Verified achievement records — created via the approval workflow'
                 : 'Your issued achievement tokens — created via the approval workflow'}
           </p>
         </div>
@@ -233,7 +233,7 @@ export default function BlockWards() {
                     <p className="font-medium">{selectedBlockWard.issuer_name}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-slate-500">Date Minted</p>
+                    <p className="text-sm text-slate-500">Date Recorded</p>
                     <p className="font-medium">
                       {selectedBlockWard.minted_at && format(new Date(selectedBlockWard.minted_at), 'PPP')}
                     </p>

@@ -7,7 +7,7 @@ const stages = [
   { icon: FileText, title: 'Achievement Created', desc: 'A record is created with evidence attached.' },
   { icon: PenLine, title: 'Teacher Signs', desc: 'The verifier reviews and digitally signs the record.' },
   { icon: ShieldCheck, title: 'Admin Approves', desc: 'The organisation authorises the achievement.' },
-  { icon: HardDrive, title: 'Archived', desc: 'Permanently stored in Google Drive and on-chain.' },
+  { icon: HardDrive, title: 'Archived', desc: 'Permanently stored — it cannot be edited or deleted.' },
   { icon: Link2, title: 'Verified', desc: 'Anyone can verify authenticity via a public link.' },
 ];
 

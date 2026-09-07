@@ -14,8 +14,9 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
         </h1>
 
         <p className="text-base sm:text-lg text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-          BlockWard helps schools, organisations, and clubs verify achievements, secure records,
-          and preserve accomplishments permanently on the blockchain.
+          BlockWard helps schools, organisations, and clubs verify achievements and keep them
+          permanently recorded. Once verified, your achievement is written to a public ledger —
+          which means it cannot be changed, deleted or faked by anyone, including us.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

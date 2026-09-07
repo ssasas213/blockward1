@@ -45,14 +45,14 @@ const teacherSteps = [
           </div>
           <div className="flex items-center gap-1.5 bg-green-500/30 border border-green-400/40 px-2.5 py-1 rounded-full">
             <div className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-xs text-green-300 font-medium">Minting...</span>
+            <span className="text-xs text-green-300 font-medium">Recording...</span>
           </div>
         </div>
         <p className="text-sm text-white/60 mb-1">Awarded to</p>
         <p className="text-xl font-bold mb-1">Sarah Johnson</p>
         <p className="text-sm text-white/70 mb-4">Academic Excellence · Algebra Test</p>
         <div className="bg-white/10 rounded-xl p-3 font-mono text-xs text-white/60">
-          Recording on Ethereum Sepolia...
+          Permanently recording this achievement...
         </div>
       </div>
     )
@@ -60,7 +60,7 @@ const teacherSteps = [
   {
     icon: Bell,
     title: "Student gets notified instantly",
-    description: "Sarah receives a notification — her BlockWard is live on the blockchain and added to her portfolio.",
+    description: "Sarah receives a notification — her BlockWard is verified and permanently recorded, and added to her portfolio.",
     visual: (
       <div className="space-y-3">
         <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100 flex items-start gap-3">
@@ -70,7 +70,7 @@ const teacherSteps = [
           <div>
             <p className="font-semibold text-slate-900 text-sm">New BlockWard Received! 🎉</p>
             <p className="text-xs text-slate-500 mt-0.5">Academic Excellence from Mrs. Ahmed</p>
-            <p className="text-xs text-violet-600 mt-1 font-medium">View on blockchain →</p>
+            <p className="text-xs text-violet-600 mt-1 font-medium">View achievement →</p>
           </div>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-lg border border-slate-100">
@@ -120,7 +120,7 @@ const studentSteps = [
   {
     icon: Star,
     title: "Student earns a BlockWard",
-    description: "James shows leadership during a group project. His teacher awards him a Leadership BlockWard — permanently recorded on-chain.",
+    description: "James shows leadership during a group project. His teacher awards him a Leadership BlockWard — permanently recorded, so it cannot be changed or faked.",
     visual: (
       <div className="bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-5 text-white shadow-xl">
         <div className="flex items-center gap-3 mb-4">
@@ -134,16 +134,16 @@ const studentSteps = [
         </div>
         <div className="flex items-center gap-2 bg-white/10 rounded-xl p-3 mb-3">
           <CheckCircle2 className="h-4 w-4 text-green-400" />
-          <span className="text-sm text-white/80">Confirmed on Ethereum · Block #19,284,731</span>
+          <span className="text-sm text-white/80">Verified · Permanently recorded</span>
         </div>
-        <p className="text-xs text-white/50 font-mono">0x4f7c...3a9e</p>
+        <p className="text-xs text-white/50">Cannot be edited or deleted by anyone</p>
       </div>
     )
   },
   {
     icon: Sparkles,
     title: "Student builds university portfolio",
-    description: "James's BlockWards are stored permanently on-chain — a verified achievement record he shares directly with universities.",
+    description: "James's BlockWards are stored permanently — a verified achievement record he shares directly with universities.",
     visual: (
       <div className="bg-white rounded-2xl p-5 shadow-lg border border-slate-100">
         <p className="text-sm font-semibold text-slate-900 mb-4">James's Achievement Portfolio</p>
@@ -162,7 +162,7 @@ const studentSteps = [
                 <p className="text-xs text-slate-500">{bw.cat}</p>
               </div>
               {bw.verified ? (
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">On-Chain ✓</span>
+                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Verified ✓</span>
               ) : (
                 <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">Pending</span>
               )}

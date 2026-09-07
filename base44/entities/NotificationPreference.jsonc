@@ -14,12 +14,97 @@
     "notify_important": {
       "type": "boolean",
       "default": true,
-      "description": "Notify for important announcements"
+      "description": "Notify for important school news and updates"
     },
     "notify_scheduled_reminder": {
       "type": "boolean",
       "default": false,
       "description": "Notify before scheduled announcements are sent"
+    },
+    "prefs": {
+      "type": "object",
+      "description": "Per-event-type preferences for the social & credential event stream. Each key is an event type (endorsement, follow, request_signed_off, request_changes, team_accepted, opportunity_match); each value has in_app and email booleans. A missing key or missing channel defaults to ON.",
+      "properties": {
+        "endorsement": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "follow": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "request_signed_off": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "request_changes": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "team_accepted": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "opportunity_match": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      },
+      "default": {}
     }
   },
   "required": [

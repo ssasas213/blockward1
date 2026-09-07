@@ -1,0 +1,56 @@
+{
+  "name": "Follow",
+  "type": "object",
+  "properties": {
+    "follower_id": {
+      "type": "string",
+      "description": "UserProfile.id of the follower"
+    },
+    "follower_email": {
+      "type": "string",
+      "description": "Follower email (private)"
+    },
+    "follower_name": {
+      "type": "string",
+      "description": "Follower display name (public)"
+    },
+    "follower_handle": {
+      "type": "string",
+      "description": "Follower public handle \u2014 links to their /@handle profile"
+    },
+    "followed_id": {
+      "type": "string",
+      "description": "UserProfile.id of the person being followed"
+    },
+    "followed_email": {
+      "type": "string",
+      "description": "Followed person's email (private)"
+    },
+    "followed_name": {
+      "type": "string",
+      "description": "Followed person's display name (public)"
+    },
+    "followed_handle": {
+      "type": "string",
+      "description": "Followed person's public handle"
+    }
+  },
+  "required": [
+    "follower_id",
+    "follower_email",
+    "followed_id",
+    "followed_email"
+  ],
+  "rls": {
+    "create": {
+      "data.follower_email": "__service_role_only__"
+    },
+    "read": false,
+    "update": {
+      "data.follower_email": "__service_role_only__"
+    },
+    "delete": {
+      "data.follower_email": "__service_role_only__"
+    }
+  }
+}

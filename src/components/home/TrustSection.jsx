@@ -5,7 +5,7 @@ const trustItems = [
   { icon: ShieldCheck, title: 'Tamper-Proof Records', desc: 'Every credential is cryptographically secured and can never be altered or erased.' },
   { icon: PenLine, title: 'Digital Signatures', desc: 'Verifiers and approvers sign with legally-binding digital signatures.' },
   { icon: HardDrive, title: 'Drive Archiving', desc: 'Records are permanently archived to each participant\'s own Google Drive.' },
-  { icon: Lock, title: 'Blockchain Verification', desc: 'Credentials are minted on-chain, creating an immutable public record.' },
+  { icon: Lock, title: 'Permanent Public Record', desc: 'Once verified, a credential is permanently recorded and cannot be changed, deleted or faked by anyone.' },
   { icon: Link2, title: 'Public Verification', desc: 'Universities and employers verify authenticity instantly via a unique link.' },
   { icon: History, title: 'Permanent History', desc: 'A portable, verified portfolio that travels with participants for life.' },
 ];

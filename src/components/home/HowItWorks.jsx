@@ -6,7 +6,7 @@ const steps = [
   { icon: Search, title: 'Verification', desc: 'Evidence is reviewed and validated by the responsible verifier.' },
   { icon: PenLine, title: 'Digital Signatures', desc: 'Authorised individuals sign the record with their digital signature.' },
   { icon: ShieldCheck, title: 'Approval', desc: 'The organisation authorises the achievement, completing the trust chain.' },
-  { icon: HardDrive, title: 'Permanent Archive', desc: 'Stored securely in Google Drive and on the BlockWard blockchain.' },
+  { icon: HardDrive, title: 'Permanent Archive', desc: 'Stored securely in Google Drive and permanently recorded — it cannot be edited or deleted.' },
   { icon: Link2, title: 'Public Verification', desc: 'Universities, employers, and organisations can verify authenticity instantly.' },
 ];
 

@@ -6,6 +6,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { format } from 'date-fns';
 import { Calendar, User, Award } from 'lucide-react';
 
@@ -90,20 +96,24 @@ export default function BlockWardDetailModal({ blockWard, open, onClose }) {
               </div>
             )}
             {blockWard.transaction_hash && (
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                <Award className="h-5 w-5 text-violet-600" />
-                <div className="min-w-0">
-                  <p className="text-xs text-slate-500">Token ID #{blockWard.token_id}</p>
-                  <a
-                    href={`https://sepolia.etherscan.io/tx/${blockWard.transaction_hash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-violet-600 hover:underline font-mono break-all"
-                  >
-                    {blockWard.transaction_hash.slice(0, 20)}...
-                  </a>
-                </div>
-              </div>
+              <Accordion type="single" collapsible className="rounded-lg border border-slate-200 px-3">
+                <AccordionItem value="technical" className="border-0">
+                  <AccordionTrigger className="py-3 text-sm font-medium text-slate-700 hover:no-underline">
+                    Technical details
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-3 space-y-1">
+                    <p className="text-xs text-slate-500">Record ID #{blockWard.token_id}</p>
+                    <a
+                      href={`https://sepolia.etherscan.io/tx/${blockWard.transaction_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block text-xs text-violet-600 hover:underline font-mono break-all"
+                    >
+                      {blockWard.transaction_hash}
+                    </a>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
           </div>
 

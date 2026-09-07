@@ -9,8 +9,8 @@ const features = [
   { icon: PenLine, title: 'Digital Signatures', desc: 'Typed or drawn signatures with full signer attribution.' },
   { icon: FileText, title: 'Evidence Management', desc: 'Upload, attach, and review supporting evidence for each record.' },
   { icon: HardDrive, title: 'Drive Archiving', desc: 'Permanent archival to each participant\'s personal Drive.' },
-  { icon: Award, title: 'NFT Credentials', desc: 'Achievements minted as non-fungible tokens on-chain.' },
-  { icon: Lock, title: 'Blockchain Verification', desc: 'Immutable, transparent records on the Polygon network.' },
+  { icon: Award, title: 'Verified Credentials', desc: 'Achievements verified and permanently recorded — they cannot be edited or deleted.' },
+  { icon: Lock, title: 'Tamper-Proof Verification', desc: 'Once verified, a record cannot be changed, deleted or faked by anyone.' },
   { icon: Link2, title: 'Public Verification Links', desc: 'Shareable links for instant third-party verification.' },
   { icon: History, title: 'Audit Trails', desc: 'A complete, timestamped history of every action taken.' },
   { icon: Building2, title: 'School Management', desc: 'Classes, timetables, attendance, and gradebook tools.' },
@@ -29,7 +29,7 @@ export default function FeaturesSection() {
             One platform. Zero compromise.
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-            From blockchain credentials to AI-powered workflows — everything a modern organisation needs.
+            From verified credentials to AI-powered workflows — everything a modern organisation needs.
           </p>
         </div>
 

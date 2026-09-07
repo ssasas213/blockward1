@@ -67,7 +67,7 @@ export default function StudentVaultView() {
             <div className="text-sm text-slate-600">
               <p className="font-medium text-slate-900 mb-1">No wallet setup required</p>
               <p>
-                Unlike traditional blockchain systems, you don't need to install any software, 
+                Unlike traditional certificate systems, you don't need to install any software,
                 manage passwords, or worry about losing access. Your BlockWard Vault is managed 
                 securely by your school.
               </p>

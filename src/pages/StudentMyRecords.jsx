@@ -169,7 +169,7 @@ function StudentMyRecordsImpl() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">My Achievements</h1>
-          <p className="text-slate-500 mt-1">Submit your achievements to get them verified and minted as NFTs</p>
+          <p className="text-slate-500 mt-1">Submit your achievements to get them verified and permanently recorded</p>
         </div>
         <Button onClick={() => setShowSubmit(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
           <Plus className="h-4 w-4 mr-2" /> Submit Achievement
@@ -181,7 +181,7 @@ function StudentMyRecordsImpl() {
         {[
           { label: 'Total', value: records.length, color: 'bg-slate-100 text-slate-600' },
           { label: 'In Progress', value: pendingRecords.length, color: 'bg-amber-100 text-amber-700' },
-          { label: 'Minted NFTs', value: mintedRecords.length, color: 'bg-violet-100 text-violet-700' },
+          { label: 'Verified Records', value: mintedRecords.length, color: 'bg-violet-100 text-violet-700' },
           { label: 'Rejected', value: records.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-600' },
         ].map(s => (
           <Card key={s.label} className="border-0 shadow-md">
@@ -197,7 +197,7 @@ function StudentMyRecordsImpl() {
       {mintedRecords.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-slate-800 mb-3 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-violet-600" /> My NFT Achievements
+            <Sparkles className="h-5 w-5 text-violet-600" /> My Verified Achievements
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {mintedRecords.map(r => (
@@ -233,7 +233,7 @@ function StudentMyRecordsImpl() {
             <CardContent className="py-16 text-center text-slate-400">
               <Trophy className="h-12 w-12 mx-auto mb-3 opacity-40" />
               <p className="font-medium text-slate-600">No achievements yet</p>
-              <p className="text-sm mb-4">Submit your first achievement to get it verified and minted as an NFT</p>
+              <p className="text-sm mb-4">Submit your first achievement to get it verified and permanently recorded</p>
               <Button onClick={() => setShowSubmit(true)} className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700">
                 <Plus className="h-4 w-4 mr-2" /> Submit Achievement
               </Button>

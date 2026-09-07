@@ -1,0 +1,62 @@
+{
+  "name": "Reaction",
+  "type": "object",
+  "properties": {
+    "registry_id": {
+      "type": "string",
+      "description": "BlockWardVerificationRegistry.id of the public achievement reacted to"
+    },
+    "verification_id": {
+      "type": "string",
+      "description": "Public verification ID (BW-\u2026) of the achievement"
+    },
+    "achievement_title": {
+      "type": "string",
+      "description": "Denormalized achievement title for display"
+    },
+    "reactor_id": {
+      "type": "string",
+      "description": "UserProfile.id of the person reacting"
+    },
+    "reactor_email": {
+      "type": "string",
+      "description": "Reactor email (private)"
+    },
+    "reactor_name": {
+      "type": "string",
+      "description": "Reactor display name (public)"
+    },
+    "reactor_handle": {
+      "type": "string",
+      "description": "Reactor public handle"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "celebrate",
+        "clap",
+        "heart",
+        "star"
+      ],
+      "description": "Fixed reaction set \u2014 celebrate \ud83c\udf89, clap \ud83d\udc4f, heart \u2764\ufe0f, star \u2b50. No free-text comments in v1."
+    }
+  },
+  "required": [
+    "registry_id",
+    "reactor_id",
+    "reactor_email",
+    "type"
+  ],
+  "rls": {
+    "create": {
+      "data.reactor_email": "__service_role_only__"
+    },
+    "read": false,
+    "update": {
+      "data.reactor_email": "__service_role_only__"
+    },
+    "delete": {
+      "data.reactor_email": "__service_role_only__"
+    }
+  }
+}

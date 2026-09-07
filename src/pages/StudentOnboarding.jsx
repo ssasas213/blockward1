@@ -195,7 +195,7 @@ export default function StudentOnboarding() {
                   <h2 className="text-base font-semibold text-foreground">Link your portfolio vault</h2>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Your vault is a secure blockchain wallet that permanently stores your verified BlockWards.
+                  Your vault securely and permanently stores your verified BlockWards.
                   Create it now so you're ready to receive achievements.
                 </p>
 

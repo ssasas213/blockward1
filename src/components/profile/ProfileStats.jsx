@@ -23,9 +23,9 @@ export default function ProfileStats({ profile, userEmail }) {
         const pending = records.filter(r => !['minted', 'archived', 'rejected'].includes(r.status));
         const archived = records.filter(r => r.status === 'archived');
         setStats([
-          { label: 'NFTs Received', value: blockWards.length, icon: Shield, accent: 'text-primary' },
+          { label: 'Verified Records', value: blockWards.length, icon: Shield, accent: 'text-primary' },
           { label: 'Records Created', value: records.length, icon: FileText, accent: 'text-primary' },
-          { label: 'Minted Achievements', value: minted.length, icon: Trophy, accent: 'text-accent' },
+          { label: 'Permanently Recorded', value: minted.length, icon: Trophy, accent: 'text-accent' },
           { label: 'Drive Documents', value: archived.length, icon: HardDrive, accent: 'text-success' },
           { label: 'Pending Review', value: pending.length, icon: CheckCircle2, accent: 'text-warning' },
         ]);

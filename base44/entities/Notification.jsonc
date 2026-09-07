@@ -21,7 +21,13 @@
         "announcement_urgent",
         "announcement_important",
         "announcement_scheduled_reminder",
-        "message"
+        "message",
+        "endorsement",
+        "follow",
+        "request_signed_off",
+        "request_changes",
+        "team_accepted",
+        "opportunity_match"
       ],
       "description": "Notification type"
     },
@@ -36,7 +42,7 @@
     },
     "related_id": {
       "type": "string",
-      "description": "ID of the related entity (e.g. announcement ID, message ID)"
+      "description": "ID of the related entity (e.g. announcement ID, message ID, registry ID)"
     },
     "read": {
       "type": "boolean",
