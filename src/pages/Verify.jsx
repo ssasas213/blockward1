@@ -8,7 +8,7 @@ import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
   Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
-  UserCheck, History
+  UserCheck, History, Users
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -199,6 +199,11 @@ export default function Verify() {
                       <UserCheck className="h-3 w-3" /> Requested by student
                     </span>
                   )}
+                  {record.is_team_credential && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-secondary border border-border text-xs font-medium text-muted-foreground">
+                      <Users className="h-3 w-3" /> Team achievement{record.participant_role ? ` · ${record.participant_role}` : ''}
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-2">{record.achievement_title}</h1>
                 {record.achievement_description && <p className="text-muted-foreground text-sm leading-relaxed">{record.achievement_description}</p>}
@@ -206,6 +211,11 @@ export default function Verify() {
                   <p className="text-xs text-tertiary flex items-center gap-1.5 mt-3">
                     <Calendar className="h-3.5 w-3.5" /> Achieved {achievedDate}
                   </p>
+                )}
+                {record.team_slug && (
+                  <Link to={`/team/${record.team_slug}`} className="text-sm text-primary hover:underline flex items-center gap-1.5 mt-3">
+                    <Users className="h-4 w-4" /> View the shared team record
+                  </Link>
                 )}
               </div>
             </div>

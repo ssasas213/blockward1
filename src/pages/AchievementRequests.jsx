@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import RequestForm from '@/components/achievements/RequestForm';
 import { toast } from 'sonner';
-import { Plus, Trophy, ShieldCheck, AlertTriangle, FileText, LinkIcon, ChevronRight } from 'lucide-react';
+import { Plus, Trophy, ShieldCheck, AlertTriangle, FileText, LinkIcon, ChevronRight, Users } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import { Link } from 'react-router-dom';
 import {
@@ -110,6 +110,11 @@ export default function AchievementRequests() {
                       <h3 className="text-base font-semibold text-foreground">{r.title}</h3>
                       <Badge variant={STATUS_BADGE_VARIANTS[r.status] || 'secondary'}>{STATUS_LABELS[r.status] || r.status}</Badge>
                       <Badge variant="outline">{TIER_SHORT[r.verification_tier] || 'Tier ?'}</Badge>
+                      {r.is_team && (
+                        <Badge variant="outline" className="gap-1">
+                          <Users className="h-3 w-3" />Team · {(r.team_participants || []).length + 1} people
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-1">
                       {r.credential_type_title} · {CATEGORY_LABELS[r.category] || r.category} · {r.school_name}

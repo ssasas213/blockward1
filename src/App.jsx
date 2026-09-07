@@ -51,9 +51,11 @@ import StudentAttendance from './pages/StudentAttendance';
 import AchievementRequests from './pages/AchievementRequests';
 import PendingSignoffs from './pages/PendingSignoffs';
 import ExternalVerify from './pages/ExternalVerify';
-import EndorsementInvite from './pages/EndorsementInvite';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
+import TeamPage from './pages/TeamPage';
+import TeamJoin from './pages/TeamJoin';
+import PublicProfile from './pages/PublicProfile';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -140,7 +142,9 @@ const AuthenticatedApp = () => {
       <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
-      <Route path="/endorsement-invite/:token" element={<EndorsementInvite />} />
+      <Route path="/team/:slug" element={<TeamPage />} />
+      <Route path="/team-join/:token" element={<TeamJoin />} />
+      <Route path="/@:handle" element={<PublicProfile />} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
 

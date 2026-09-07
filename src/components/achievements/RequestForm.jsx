@@ -10,7 +10,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Upload, LinkIcon, X, Shield, FileText } from 'lucide-react';
+import { Loader2, Upload, LinkIcon, X, Shield, FileText, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import TeamParticipantsEditor from '@/components/achievements/TeamParticipantsEditor';
 import { base44 } from '@/api/base44Client';
 import { CATEGORY_LABELS, TIER_LABELS } from '@/lib/achievementRequests';
 
@@ -18,6 +20,7 @@ const EMPTY = {
   orgId: '', credentialTypeId: '', customLabel: '', category: '', tier: '',
   title: '', description: '', date: '', verifierEmail: '', externalEmail: '',
   evidence: [], linkUrl: '', linkName: '',
+  isTeam: false, myRole: '', participants: [],
 };
 
 // Student-facing form for creating / editing an achievement request.
@@ -44,6 +47,9 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
         verifierEmail: initial.nominated_verifier_email || '',
         externalEmail: initial.external_verifier_email || '',
         evidence: initial.evidence || [],
+        isTeam: !!initial.is_team,
+        myRole: initial.my_team_role || '',
+        participants: initial.team_participants || [],
         linkUrl: '', linkName: '',
       });
     } else {
@@ -95,6 +101,11 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
     evidence: form.evidence,
     nominated_verifier_email: form.verifierEmail,
     external_verifier_email: effectiveTier === 3 ? form.externalEmail : null,
+    is_team: form.isTeam,
+    my_team_role: form.isTeam ? form.myRole : null,
+    team_participants: form.isTeam
+      ? form.participants.map((p) => ({ email: p.email, name: p.name || null, role: p.role }))
+      : [],
   });
 
   const handleSave = (submit) => {
@@ -108,6 +119,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
       if (!form.verifierEmail) { toast.error('Nominate a verifier'); return; }
       if (effectiveTier === 3 && !form.externalEmail.trim()) { toast.error('Add an external verifier contact email'); return; }
       if (form.evidence.length === 0) { toast.error('Attach at least one piece of evidence'); return; }
+      if (form.isTeam && form.participants.length === 0) { toast.error('Add at least one teammate'); return; }
     }
     onSubmit(buildPayload(), { submit, resubmit: resubmitting });
   };
@@ -273,6 +285,30 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
                 <Button type="button" variant="outline" onClick={addLink}>Add</Button>
               </div>
             </div>
+          </div>
+
+          {/* Team achievement */}
+          <div className="sm:col-span-2 rounded-lg border border-border bg-secondary/50 p-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <Label className="text-foreground flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-primary" /> This was a team achievement
+                </Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  One verification covers the whole team — everyone gets their own credential with their role.
+                </p>
+              </div>
+              <Switch checked={form.isTeam} onCheckedChange={(v) => set('isTeam', v)} />
+            </div>
+            {form.isTeam && (
+              <div className="space-y-3 pt-3 border-t border-border">
+                <div className="space-y-1.5">
+                  <Label>Your role in the team</Label>
+                  <Input value={form.myRole} onChange={(e) => set('myRole', e.target.value)} placeholder="e.g. Captain, lead developer, first board" />
+                </div>
+                <TeamParticipantsEditor participants={form.participants} onChange={(v) => set('participants', v)} />
+              </div>
+            )}
           </div>
         </div>
 
