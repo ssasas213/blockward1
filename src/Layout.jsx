@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
@@ -58,41 +58,14 @@ export default function Layout({ children, currentPageName }) {
 
   const navigationGroups = {
     admin: [
-      { label: 'Overview', items: [
-        { name: 'Dashboard', icon: LayoutDashboard, page: 'AdminDashboard' },
-        { name: 'Activity Feed', icon: Rss, page: 'Feed' },
-      ]},
-      { label: 'Records', items: [
+      { items: [
+        { name: 'Home', icon: LayoutDashboard, page: 'AdminDashboard' },
+        { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
         { name: 'Records', icon: FileText, page: 'Records' },
-        { name: 'Pending Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs' },
-        { name: 'Grade Management', icon: BarChart3, page: 'GradeManagement' },
-      ]},
-      { label: 'Management', items: [
-        { name: 'Users', icon: Users, page: 'ManageUsers' },
-        { name: 'Invitations', icon: Send, page: 'Invitations' },
-        { name: 'Classes', icon: BookOpen, page: 'Classes' },
-        { name: 'Announcements', icon: Bell, page: 'Announcements' },
-        { name: 'Assemblies', icon: Megaphone, page: 'Assemblies' },
-        { name: 'School Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
-        { name: 'Opportunities', icon: Briefcase, page: 'ManageOpportunities' },
-      ]},
-      { label: 'Communication', items: [
-        { name: 'Messages', icon: FileText, page: 'Messages' },
-      ]},
-      { label: 'Configuration', items: [
-        { name: 'Point Categories', icon: Settings, page: 'PointCategories' },
-        { name: 'School Settings', icon: Settings, page: 'SystemSettings' },
-        { name: 'School Codes', icon: Shield, page: 'SchoolCodes' },
-        { name: 'Academic Settings', icon: Settings, page: 'AcademicSettings' },
-        { name: 'Admin Permissions', icon: Shield, page: 'AdminPermissions', superAdminOnly: true },
-      ]},
-      { label: 'Insights', items: [
-        { name: 'Analytics', icon: BarChart3, page: 'Analytics' },
-        { name: 'Attendance', icon: ClipboardCheck, page: 'AdminAttendance' },
-        { name: 'Reports', icon: FileText, page: 'Reports' },
-      ]},
-      { label: 'Tools', items: [
-        { name: 'BlockWard AI', icon: Sparkles, page: 'BlockWardAI' },
+        { name: 'School', icon: BookOpen, page: 'ManageSchool' },
+        { name: 'Insights', icon: BarChart3, page: 'Insights' },
+        { name: 'Inbox', icon: Inbox, page: 'Messages' },
+        { name: 'Settings', icon: Settings, page: 'SchoolSettings' },
       ]},
     ],
     teacher: [
@@ -138,21 +111,8 @@ export default function Layout({ children, currentPageName }) {
   };
 
   let groups = navigationGroups[userType] || navigationGroups.student;
-
-  if (userType === 'admin' && profile) {
-    groups = groups.map(group => ({
-      ...group,
-      items: group.items.filter(item => {
-        if (item.superAdminOnly) return profile.admin_level === 'super_admin' || !profile.admin_level;
-        if (item.permission) {
-          if (!profile.admin_level) return true;
-          if (profile.admin_level === 'super_admin') return true;
-          return profile.admin_permissions?.[item.permission] === true;
-        }
-        return true;
-      })
-    })).filter(group => group.items.length > 0);
-  }
+  // Admin permission filtering now happens at the tab level inside the
+  // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 
   const orgType = school?.org_type || 'school';
   const orgRoleLabels = school?.settings?.role_labels;
@@ -171,7 +131,7 @@ export default function Layout({ children, currentPageName }) {
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
         <TestModeBanner />
-        {userType === 'teacher' && (
+        {(userType === 'teacher' || userType === 'admin') && (
           <Button variant="ghost" size="icon" asChild className="h-9 w-9 p-2" title="BlockWard AI">
             <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
               <Sparkles className="h-4 w-4" />
@@ -226,7 +186,7 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
         <div className="flex items-center gap-1">
-          {userType === 'teacher' && (
+          {(userType === 'teacher' || userType === 'admin') && (
             <Button variant="ghost" size="icon" asChild title="BlockWard AI">
               <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
                 <Sparkles className="h-4 w-4" />

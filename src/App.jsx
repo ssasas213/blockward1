@@ -51,6 +51,9 @@ import StudentAttendance from './pages/StudentAttendance';
 import AchievementRequests from './pages/AchievementRequests';
 import PendingSignoffs from './pages/PendingSignoffs';
 import MyTeaching from './pages/MyTeaching';
+import ManageSchool from './pages/ManageSchool';
+import Insights from './pages/Insights';
+import SchoolSettings from './pages/SchoolSettings';
 import ExternalVerify from './pages/ExternalVerify';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
@@ -146,6 +149,9 @@ const AuthenticatedApp = () => {
       <Route path="/AchievementRequests" element={<LayoutWrapper currentPageName="AchievementRequests"><ProtectedRoute><AchievementRequests /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MyTeaching" element={<LayoutWrapper currentPageName="MyTeaching"><ProtectedRoute><MyTeaching /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/ManageSchool" element={<LayoutWrapper currentPageName="ManageSchool"><ProtectedRoute><ManageSchool /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Insights" element={<LayoutWrapper currentPageName="Insights"><ProtectedRoute><Insights /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/team/:slug" element={<TeamPage />} />
