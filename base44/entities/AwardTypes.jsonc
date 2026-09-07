@@ -27,6 +27,16 @@
         "special"
       ]
     },
+    "verification_tier": {
+      "type": "number",
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "default": 1,
+      "description": "Verification required for credentials of this type: 1 = nominated verifier only, 2 = verifier + organisation admin, 3 = verifier + admin + external verifier. Organisations override by editing the template."
+    },
     "is_active": {
       "type": "boolean",
       "default": true

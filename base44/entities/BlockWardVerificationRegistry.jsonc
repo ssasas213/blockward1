@@ -121,6 +121,58 @@
       "type": "string",
       "description": "Foreign key to DigitalSignature.id"
     },
+    "student_requested": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this credential originated from a student achievement request rather than a staff-issued award. Shown on the public credential page."
+    },
+    "signer_chain": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "description": "e.g. Nominated verifier, Organisation admin, External verifier"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "witnessed_in_person",
+              "reviewed_evidence",
+              "official_records",
+              "third_party",
+              "other"
+            ]
+          },
+          "method_note": {
+            "type": "string"
+          },
+          "attestation": {
+            "type": "boolean"
+          },
+          "ip_country": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "role",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. Displayed on the credential detail page."
+    },
     "approval_status": {
       "type": "string",
       "enum": [

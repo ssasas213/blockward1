@@ -1,0 +1,406 @@
+{
+  "name": "AchievementRequest",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "Target organisation for this request (RLS scope)"
+    },
+    "school_name": {
+      "type": "string",
+      "description": "Denormalised organisation name"
+    },
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the requesting student"
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Requesting student email"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Denormalised student display name"
+    },
+    "credential_type_id": {
+      "type": "string",
+      "description": "AwardTypes.id of the picked credential template \u2014 null for a custom 'Other' type"
+    },
+    "credential_type_title": {
+      "type": "string",
+      "description": "Display title of the credential type (template title or student-typed label)"
+    },
+    "is_custom_credential": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when the student chose 'Other' and typed their own credential type"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "arts",
+        "leadership",
+        "community",
+        "behaviour",
+        "special"
+      ],
+      "default": "academic",
+      "description": "Achievement category"
+    },
+    "title": {
+      "type": "string",
+      "description": "Achievement title"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the student did, in their words"
+    },
+    "date_achieved": {
+      "type": "string",
+      "format": "date",
+      "description": "When the achievement occurred (yyyy-MM-dd)"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "link"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Evidence attachments \u2014 uploaded files and external links"
+    },
+    "nominated_verifier_id": {
+      "type": "string",
+      "description": "UserProfile.id of the nominated staff verifier"
+    },
+    "nominated_verifier_email": {
+      "type": "string",
+      "description": "Staff member the student nominated to verify this"
+    },
+    "nominated_verifier_name": {
+      "type": "string",
+      "description": "Denormalised verifier display name"
+    },
+    "verification_tier": {
+      "type": "number",
+      "enum": [
+        1,
+        2,
+        3
+      ],
+      "default": 1,
+      "description": "1: verifier only. 2: verifier + org admin (different people). 3: verifier + admin + external verifier via expiring link. Set by the credential type, overridable by the organisation."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "submitted",
+        "under_review",
+        "changes_requested",
+        "verifier_signed",
+        "awaiting_second_approval",
+        "awaiting_external_verification",
+        "approved",
+        "minted",
+        "rejected",
+        "expired"
+      ],
+      "default": "draft",
+      "description": "Lifecycle status"
+    },
+    "external_verifier_email": {
+      "type": "string",
+      "description": "Contact email for the Tier 3 external verifier (examiner, referee, federation officer, event organiser)"
+    },
+    "external_token": {
+      "type": "string",
+      "description": "One-time expiring token for the external verification link. Cleared after use."
+    },
+    "external_token_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verifier_signoff": {
+      "type": "object",
+      "description": "Nominated verifier's sign-off",
+      "properties": {
+        "signer_id": {
+          "type": "string"
+        },
+        "signer_email": {
+          "type": "string"
+        },
+        "signer_name": {
+          "type": "string"
+        },
+        "signer_role": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "witnessed_in_person",
+            "reviewed_evidence",
+            "official_records",
+            "third_party",
+            "other"
+          ]
+        },
+        "method_note": {
+          "type": "string"
+        },
+        "attestation": {
+          "type": "boolean"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Typed signature (full name)"
+        },
+        "ip_country": {
+          "type": "string",
+          "description": "Country derived from the signer's IP at sign-off time"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "admin_signoff": {
+      "type": "object",
+      "description": "Organisation admin's second approval (Tier 2 & 3)",
+      "properties": {
+        "signer_id": {
+          "type": "string"
+        },
+        "signer_email": {
+          "type": "string"
+        },
+        "signer_name": {
+          "type": "string"
+        },
+        "signer_role": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "witnessed_in_person",
+            "reviewed_evidence",
+            "official_records",
+            "third_party",
+            "other"
+          ]
+        },
+        "method_note": {
+          "type": "string"
+        },
+        "attestation": {
+          "type": "boolean"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "ip_country": {
+          "type": "string"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "external_signoff": {
+      "type": "object",
+      "description": "External verifier's confirmation (Tier 3) \u2014 recorded without a BlockWard account",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "organisation": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "witnessed_in_person",
+            "reviewed_evidence",
+            "official_records",
+            "third_party",
+            "other"
+          ]
+        },
+        "method_note": {
+          "type": "string"
+        },
+        "attestation": {
+          "type": "boolean"
+        },
+        "signature": {
+          "type": "string"
+        },
+        "ip_country": {
+          "type": "string"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "changes_requested_reason": {
+      "type": "string",
+      "description": "Reviewer's comment when sending the request back to the student"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "description": "Required reason when a reviewer rejects. Visible to the student, never shown on the public profile."
+    },
+    "student_flagged": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set when this student's rejection rate crossed 40% across 5+ requests \u2014 surfaces to organisation admins."
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resubmitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_reviewer_action_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last reviewer sign-off / changes / rejection \u2014 anchors the 7/21-day reminders and 30-day auto-expiry clock"
+    },
+    "reminder_1_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reminder_2_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "minted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "student_record_id": {
+      "type": "string",
+      "description": "StudentRecord created on final approval \u2014 the credential's source of truth"
+    },
+    "blockward_id": {
+      "type": "string",
+      "description": "BlockWard created when the credential minted"
+    },
+    "verification_id": {
+      "type": "string",
+      "description": "Public verification ID (BW-\u2026) once minted"
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | changes_requested | rejected | reminded | expired | minted"
+          },
+          "actor_email": {
+            "type": "string"
+          },
+          "actor_name": {
+            "type": "string"
+          },
+          "actor_role": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Timestamped audit trail of everything that happened to this request"
+    }
+  },
+  "required": [
+    "school_id",
+    "student_email",
+    "title",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "data.nominated_verifier_email": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}
