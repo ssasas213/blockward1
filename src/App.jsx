@@ -58,7 +58,7 @@ import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
 import TeamPage from './pages/TeamPage';
 import TeamJoin from './pages/TeamJoin';
-import PublicProfile from './pages/PublicProfile';
+import HandleRoute from '@/components/HandleRoute';
 import OrgPage from './pages/OrgPage';
 import Opportunities from './pages/Opportunities';
 import ManageOpportunities from './pages/ManageOpportunities';
@@ -160,10 +160,7 @@ const AuthenticatedApp = () => {
       <Route path="/guardian-consent/:token" element={<GuardianConsent />} />
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />
-      {/* Public /@handle profiles — a splat route: React Router v6 can't mix a
-          literal "@" with a dynamic segment in the same path segment, so the
-          handle arrives as the '*' param and PublicProfile normalises it. */}
-      <Route path="/@*" element={<PublicProfile />} />
+
       <Route path="/org/:slug" element={<OrgPage />} />
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
@@ -183,6 +180,12 @@ const AuthenticatedApp = () => {
         <Route path="dashboard" element={<OrgDashboard />} />
       </Route>
 
+      {/* Public /@handle profiles — a FULL-SEGMENT dynamic route (a literal
+          "@" prefix inside a segment never matches in React Router v6).
+          HandleRoute splits the "@handle" segment and renders the public
+          profile, or 404s for non-@ single-segment paths. Static routes rank
+          above dynamic ones, so every declared page still wins. */}
+      <Route path="/:handleSegment" element={<HandleRoute />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

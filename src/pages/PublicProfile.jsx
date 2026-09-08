@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Shield, Share2, BadgeCheck, Loader2, Lock, ArrowRight, ShieldAlert, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,13 +34,9 @@ function setMeta(attr, key, content) {
   el.setAttribute('content', content);
 }
 
-export default function PublicProfile() {
-  // Splat route ("/@*") — React Router v6 can't bind a literal "@" prefix and
-  // a dynamic segment in the same path segment, so the handle arrives as the
-  // '*' param. Normalise before lookup: strip any trailing slash, trim,
-  // lowercase.
-  const params = useParams();
-  const handle = (params['*'] || '').replace(/\/+$/, '').trim().toLowerCase();
+export default function PublicProfile({ handle }) {
+  // The handle arrives as a prop from HandleRoute, which owns all route-shape
+  // coupling — this page never reads the URL itself.
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
