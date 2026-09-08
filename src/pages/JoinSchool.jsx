@@ -4,16 +4,19 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, Plus, Clock, GraduationCap, Users } from 'lucide-react';
+import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import SchoolSearchCard from '@/components/join/SchoolSearchCard';
 import CodeJoinCard from '@/components/join/CodeJoinCard';
+import SchoolSearchCard from '@/components/join/SchoolSearchCard';
+import InviteOrganisationCard from '@/components/join/InviteOrganisationCard';
 
 /**
- * JoinSchool — the "join or create a school" hub. Three paths, never a dead
- * end: search for your school and request to join, enter a join code, or
- * create a new school. Users with user_type 'pending' (signed up with no code
- * or invitation) land here after signup.
+ * AddSchoolOrClub (JoinSchool) — the optional "Add your school or club" hub.
+ * BlockWard is fully usable without an organisation, so nothing here blocks:
+ * join with a code (fastest), search for an organisation and request to
+ * join, invite one that isn't on BlockWard yet, or create a new school
+ * (admin path). Students can always come back later — a school-less student
+ * is a complete account.
  */
 export default function JoinSchool() {
   const [profile, setProfile] = useState(null);
@@ -94,6 +97,7 @@ export default function JoinSchool() {
 
   const role = profile?.user_type || 'pending';
   const canSearch = role === 'student' || role === 'pending';
+  const canInvite = role === 'student';
   const canCreateSchool = role === 'pending' || role === 'admin';
 
   const handleJoined = (data) => {
@@ -110,13 +114,17 @@ export default function JoinSchool() {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             {role === 'teacher' ? <Users className="h-7 w-7 text-primary" /> : <GraduationCap className="h-7 w-7 text-primary" />}
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">Join a school</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Add your school or club</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Search for your school, enter a join code, or create a new school.
+            Optional — you can use BlockWard without one. Schools, clubs, academies, dojos and teams can all verify your achievements.
           </p>
         </div>
 
         <div className="space-y-4">
+          {/* 1 — Join code: the fastest path, first */}
+          <CodeJoinCard onJoined={handleJoined} />
+
+          {/* 2 — Search for your organisation, request to join */}
           {canSearch ? (
             <SchoolSearchCard />
           ) : (
@@ -134,8 +142,10 @@ export default function JoinSchool() {
             </Card>
           )}
 
-          <CodeJoinCard onJoined={handleJoined} />
+          {/* 3 — Invite an organisation that isn't on BlockWard yet */}
+          {canInvite && <InviteOrganisationCard />}
 
+          {/* 4 — Create a new school: admin path, unchanged */}
           {canCreateSchool && (
             <Card className="border-border bg-card/60 backdrop-blur-md">
               <CardContent className="p-5 flex items-center gap-4">
@@ -157,6 +167,16 @@ export default function JoinSchool() {
             </Card>
           )}
         </div>
+
+        {/* Never trap anyone on this page — students can always come back later */}
+        {role === 'student' && (
+          <button
+            onClick={() => { window.location.href = createPageUrl('StudentDashboard'); }}
+            className="mx-auto mt-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            I'll do this later <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

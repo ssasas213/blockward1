@@ -92,6 +92,11 @@ export default function Layout({ children, currentPageName }) {
   };
 
   let groups = navigationGroups[userType] || navigationGroups.student;
+  // The School nav is meaningless without an active membership — hide it
+  // entirely until the student has one. Joining an organisation is optional.
+  if (userType === 'student' && !profile?.school_id) {
+    groups = groups.map((g) => ({ ...g, items: g.items.filter((i) => i.page !== 'MySchool') }));
+  }
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 
@@ -222,7 +227,7 @@ export default function Layout({ children, currentPageName }) {
         </div>
       </main>
 
-      {userType === 'student' && <StudentBottomTabs currentPageName={currentPageName} />}
+      {userType === 'student' && <StudentBottomTabs currentPageName={currentPageName} hasSchool={!!profile?.school_id} />}
 
       <BlockWardGuide />
     </div>

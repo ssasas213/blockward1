@@ -13,14 +13,16 @@ const TABS = [
 ];
 
 /**
- * StudentBottomTabs — the five student nav items as a mobile bottom tab bar
- * (students get no slide-in sidebar on mobile; desktop keeps the sidebar).
+ * StudentBottomTabs — the student nav as a mobile bottom tab bar (students
+ * get no slide-in sidebar on mobile; desktop keeps the sidebar). The School
+ * tab only appears once the student has an active organisation membership.
  */
-export default function StudentBottomTabs({ currentPageName }) {
+export default function StudentBottomTabs({ currentPageName, hasSchool }) {
+  const tabs = hasSchool ? TABS : TABS.filter((t) => t.page !== 'MySchool');
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 glass border-t border-border">
-      <div className="grid grid-cols-5">
-        {TABS.map(t => {
+      <div className={cn('grid', tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4')}>
+        {tabs.map(t => {
           const active = currentPageName === t.page;
           return (
             <Link

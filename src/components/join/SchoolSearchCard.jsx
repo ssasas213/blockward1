@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Search, Send, Check, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { InviteOrgForm } from '@/components/join/InviteOrganisationCard';
 
 /**
  * SchoolSearchCard — the no-code fallback's "find your school" path. The user
@@ -57,8 +58,8 @@ export default function SchoolSearchCard() {
   return (
     <Card className="border-border bg-card/60 backdrop-blur-md">
       <CardHeader>
-        <CardTitle className="text-lg text-foreground">Find your school</CardTitle>
-        <CardDescription>Search for your school and request to join — an admin will approve you.</CardDescription>
+        <CardTitle className="text-lg text-foreground">Search for your organisation</CardTitle>
+        <CardDescription>Find your school, club, academy or team and request to join — an admin will approve you.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex gap-2">
@@ -66,7 +67,7 @@ export default function SchoolSearchCard() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && search()}
-            placeholder="Search by school name or city…"
+            placeholder="Search by organisation name or city…"
             disabled={searching}
           />
           <Button onClick={search} disabled={searching} className="flex-shrink-0">
@@ -78,9 +79,12 @@ export default function SchoolSearchCard() {
         {results !== null && (
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {results.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No schools found{query ? ` for “${query}”` : ''}. Ask your school for a join code, or create the school below.
-              </p>
+              <div className="rounded-xl border border-dashed border-border p-4 space-y-3">
+                <p className="text-sm text-muted-foreground text-center">
+                  No organisations found{query ? ` for “${query}”` : ''}. Is yours not on BlockWard yet?
+                </p>
+                <InviteOrgForm compact />
+              </div>
             )}
             {results.map((org) => {
               const isRequested = requested[org.id];
