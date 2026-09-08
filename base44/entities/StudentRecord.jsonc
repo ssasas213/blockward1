@@ -329,49 +329,82 @@
       "data.school_id": "__service_role_only__"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "data.owner_student_email": "{{user.email}}"
         },
         {
           "data.teacher_email": "{{user.email}}"
         },
         {
-          "data.student_email": "{{user.email}}"
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
     "update": {
-      "data.school_id": "{{user.profile.school_id}}",
       "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
         {
           "data.teacher_email": "{{user.email}}"
         },
         {
-          "data.student_email": "{{user.email}}",
-          "data.status": "draft"
+          "$and": [
+            {
+              "data.student_email": "{{user.email}}"
+            },
+            {
+              "data.status": "draft"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "data.school_id": "{{user.profile.school_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "$and": [
+            {
+              "data.student_email": "{{user.email}}"
+            },
+            {
+              "data.status": "draft"
+            }
+          ]
         },
         {
-          "data.student_email": "{{user.email}}",
-          "data.status": "draft"
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     }
