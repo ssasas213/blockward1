@@ -79,6 +79,12 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    // Newly provisioned account with no school yet — join or create a school
+    if (requireProfile && profile && profile.user_type === 'pending') {
+      window.location.href = createPageUrl('JoinSchool');
+      return;
+    }
+
     // Profile pending approval - redirect to login (shows pending message)
     if (requireProfile && profile && profile.status === 'pending_approval') {
       window.location.href = '/Login';
@@ -133,6 +139,11 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Student with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
+    return null;
+  }
+
+  // Unplaced 'pending' account — redirect to join/create school in progress
+  if (requireProfile && profile && profile.user_type === 'pending') {
     return null;
   }
 

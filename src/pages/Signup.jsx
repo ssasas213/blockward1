@@ -5,11 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, ArrowRight, ArrowLeft, Loader2, AlertCircle, Mail } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { createPageUrl } from '@/utils';
-import RolePicker, { ROLES } from '@/components/auth/RolePicker';
 
 function GoogleIcon({ className }) {
   return (
@@ -23,34 +21,35 @@ function GoogleIcon({ className }) {
 }
 
 const SIGNUP_STORAGE_KEYS = {
-  role: 'blockward_signup_role',
   first: 'blockward_signup_first',
   last: 'blockward_signup_last',
+  code: 'blockward_signup_code',
 };
 
-function routeAfterProfile(role) {
-  window.location.href = role === 'admin' ? createPageUrl('SchoolSetup') : createPageUrl('JoinSchool');
-}
+// Where to go after the server provisions the profile. Role and school are
+// decided server-side (provisionProfile) — the client just follows the map.
+const NEXT_URL = {
+  awaiting_approval: '/Login', // Login shows the "Awaiting Approval" holding screen
+  student_setup: '/StudentOnboarding',
+  teacher_dashboard: '/TeacherDashboard',
+  admin_dashboard: '/AdminDashboard',
+  join_school: '/JoinSchool',
+  login: '/Login',
+};
 
-// Same UserProfile shape Onboarding.jsx creates — so no downstream code changes.
-async function createProfile(user, role, firstName, lastName) {
-  await base44.entities.UserProfile.create({
-    user_email: user.email,
-    user_type: role,
-    first_name: firstName.trim(),
-    last_name: lastName.trim(),
-    status: 'active',
-    total_achievement_points: 0,
-    total_behaviour_points: 0,
-  });
+async function provisionAccount(payload) {
+  const res = await base44.functions.invoke('provisionProfile', payload);
+  const data = res.data;
+  if (!data?.ok) throw new Error(data?.error || 'Failed to create account');
+  window.location.href = NEXT_URL[data.next] || '/JoinSchool';
 }
 
 export default function Signup() {
   const [authChecking, setAuthChecking] = useState(true);
-  const [step, setStep] = useState('role'); // 'role' | 'details' | 'otp'
-  const [selectedRole, setSelectedRole] = useState(null);
+  const [step, setStep] = useState('details'); // 'details' | 'otp'
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
@@ -63,7 +62,7 @@ export default function Signup() {
         const currentUser = await base44.auth.me();
         if (!currentUser) { setAuthChecking(false); return; }
 
-        // Authenticated — check whether this is a Google return with a pending role.
+        // Authenticated — check whether this is a Google return with pending details.
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
           // Already has an account — hand off to the normal post-login router.
@@ -71,25 +70,26 @@ export default function Signup() {
           return;
         }
 
-        const pendingRole = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.role);
-        if (pendingRole) {
-          const pf = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.first) || '';
-          const pl = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.last) || '';
-          sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.role);
+        const pf = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.first);
+        const pl = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.last);
+        const pc = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.code);
+        if (pf) {
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.first);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.last);
+          sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.code);
           try {
-            await createProfile(currentUser, pendingRole, pf, pl);
-            routeAfterProfile(pendingRole);
+            // The server derives role/school from the code (or leaves the
+            // account unplaced until they join a school).
+            await provisionAccount({ first_name: pf, last_name: pl, join_code: pc || undefined });
           } catch (e) {
-            console.error('Profile creation failed:', e);
+            console.error('Profile provisioning failed:', e);
             setError(e.message || 'Failed to create account');
             setAuthChecking(false);
           }
           return;
         }
 
-        // Authenticated but no profile and no pending role → Onboarding is the fallback.
+        // Authenticated but no profile and no pending details → Onboarding is the fallback.
         window.location.href = '/Onboarding';
       } catch {
         // Not authenticated — show the signup form.
@@ -99,14 +99,14 @@ export default function Signup() {
   }, []);
 
   const handleGoogleSignup = () => {
-    if (!selectedRole || !firstName.trim() || !lastName.trim()) {
-      toast.error('Please choose a role and enter your name.');
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error('Please enter your name.');
       return;
     }
-    // Stash the chosen role + names so we can finish profile creation after the Google redirect.
-    sessionStorage.setItem(SIGNUP_STORAGE_KEYS.role, selectedRole);
+    // Stash the details so we can finish provisioning after the Google redirect.
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.first, firstName.trim());
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.last, lastName.trim());
+    if (joinCode.trim()) sessionStorage.setItem(SIGNUP_STORAGE_KEYS.code, joinCode.trim());
     setLoading(true);
     setError('');
     try {
@@ -119,8 +119,8 @@ export default function Signup() {
 
   const handleEmailRegister = async (e) => {
     e?.preventDefault();
-    if (!selectedRole || !firstName.trim() || !lastName.trim()) {
-      setError('Please choose a role and enter your name.');
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Please enter your name.');
       return;
     }
     if (!email.trim() || !password) {
@@ -159,9 +159,11 @@ export default function Signup() {
     try {
       await base44.auth.verifyOtp({ email: email.trim(), otpCode: otpCode.trim() });
       await base44.auth.loginViaEmailPassword(email.trim(), password);
-      const user = await base44.auth.me();
-      await createProfile(user, selectedRole, firstName, lastName);
-      routeAfterProfile(selectedRole);
+      await provisionAccount({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        join_code: joinCode.trim() || undefined,
+      });
     } catch (err) {
       setError(err?.message || 'Verification failed. Check the code and try again.');
       setLoading(false);
@@ -185,8 +187,6 @@ export default function Signup() {
     );
   }
 
-  const roleLabel = ROLES.find((r) => r.key === selectedRole)?.title;
-
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
       <Card className="w-full max-w-lg border-border bg-card/60 backdrop-blur-md">
@@ -197,31 +197,16 @@ export default function Signup() {
             </div>
             <CardTitle className="text-2xl">Create your BlockWard account</CardTitle>
             <CardDescription>
-              {step === 'role' ? 'How will you use BlockWard?' : `Signing up as a ${roleLabel}`}
+              {step === 'details'
+                ? 'Your school decides your role when you join'
+                : 'Verify your email to finish'}
             </CardDescription>
           </Link>
         </CardHeader>
         <CardContent>
           <AnimatePresence mode="wait">
-            {step === 'role' && (
-              <motion.div key="role" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-                <RolePicker selectedRole={selectedRole} onSelect={setSelectedRole} />
-                <Button onClick={() => setStep('details')} disabled={!selectedRole} className="w-full">
-                  Continue <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </motion.div>
-            )}
-
             {step === 'details' && (
               <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => setStep('role')}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" /> Back to role selection
-                </button>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>First Name</Label>
@@ -231,6 +216,21 @@ export default function Signup() {
                     <Label>Last Name</Label>
                     <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" /> School code (optional)
+                  </Label>
+                  <Input
+                    value={joinCode}
+                    onChange={(e) => setJoinCode(e.target.value)}
+                    placeholder="Have a code from your school? Enter it here"
+                    className="font-mono uppercase"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    With a code you join your school straight away. Without one you'll choose a school next.
+                  </p>
                 </div>
 
                 <Button onClick={handleGoogleSignup} disabled={loading} variant="outline" className="w-full font-medium py-2.5">
@@ -310,7 +310,7 @@ export default function Signup() {
 
                 <div className="flex items-center justify-between text-sm">
                   <button type="button" onClick={() => setStep('details')} className="text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="h-3.5 w-3.5 inline mr-1" /> Back
+                    <ArrowRight className="h-3.5 w-3.5 inline mr-1 rotate-180" /> Back
                   </button>
                   <button type="button" onClick={handleResendOtp} className="text-primary hover:underline">
                     Resend code

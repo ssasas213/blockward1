@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
+import { provisionProfile, logRoleGrant } from '../../shared/profileProvisioning.ts';
 
 const UNSAFE_CHARS = /[O0I1L]/g;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -13,7 +14,12 @@ function generateCode(prefix, roleSuffix) {
   return `${p}-${roleSuffix}-${random}`;
 }
 
-Deno.serve(async (req) => {
+// Create a school. The caller becomes the owner-admin of the NEW school only
+// (super_admin scoped to it). Schools created here start verification_status
+// 'unverified'. Only an existing admin — or an account still in the 'pending'
+// holding state (no school yet) — may create a school; a teacher/student
+// cannot. Profile creation goes through the shared provisionProfile path.
+export default async function(req: Request): Promise<Response> {
   try {
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204 });
@@ -38,8 +44,10 @@ Deno.serve(async (req) => {
     if (!name?.trim()) return Response.json({ error: 'School name is required' }, { status: 400 });
     if (!contact_email?.trim()) return Response.json({ error: 'Contact email is required' }, { status: 400 });
 
+    const svc = base44.asServiceRole;
+
     // Check for duplicate school owned by this admin
-    const existingSchools = await base44.asServiceRole.entities.School.filter({
+    const existingSchools = await svc.entities.School.filter({
       admin_email: user.email,
       status: 'active'
     });
@@ -50,33 +58,27 @@ Deno.serve(async (req) => {
       return Response.json({ error: `You already own a school named "${duplicate.name}"` }, { status: 409 });
     }
 
-    // Ensure UserProfile exists
+    // Resolve the caller's profile through the single provisioning path.
     let profile = null;
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    const profiles = await svc.entities.UserProfile.filter({ user_email: user.email });
     if (profiles.length > 0) {
       profile = profiles[0];
-      // Only an existing admin may create a school — a student/teacher must not.
-      if (profile.user_type !== 'admin') {
+      // Only an existing admin or a still-unplaced 'pending' account may
+      // create a school — a teacher/student must not.
+      if (profile.user_type !== 'admin' && profile.user_type !== 'pending') {
         return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
       }
     } else {
       const nameParts = (admin_full_name || user.full_name || user.email || 'Admin').trim().split(/\s+/);
-      profile = await base44.asServiceRole.entities.UserProfile.create({
-        user_email: user.email,
-        user_type: 'admin',
+      ({ profile } = await provisionProfile(svc, user, {
         first_name: nameParts[0] || 'Admin',
         last_name: nameParts.slice(1).join(' ') || '',
-        admin_level: 'super_admin',
-        admin_permissions: defaultAdminPermissions('super_admin'),
-        status: 'active',
-        total_achievement_points: 0,
-        total_behaviour_points: 0,
-      });
+      }));
     }
 
-    // 1. Create School
+    // 1. Create School — self-service schools start unverified
     const schoolCode = generateCode(name, 'MAIN');
-    const school = await base44.asServiceRole.entities.School.create({
+    const school = await svc.entities.School.create({
       name: name.trim(),
       code: schoolCode,
       school_code: schoolCode,
@@ -91,11 +93,12 @@ Deno.serve(async (req) => {
       admin_title: admin_job_title?.trim() || undefined,
       address: address?.trim() || [city, country].filter(Boolean).join(', ') || undefined,
       status: 'active',
+      verification_status: 'unverified',
       created_by: user.email,
     });
 
     // 2. Create AdminSchoolMembership (owner)
-    await base44.asServiceRole.entities.AdminSchoolMembership.create({
+    await svc.entities.AdminSchoolMembership.create({
       admin_user_id: profile.id,
       admin_email: user.email,
       admin_name: `${profile.first_name} ${profile.last_name}`,
@@ -107,12 +110,13 @@ Deno.serve(async (req) => {
       joined_at: new Date().toISOString(),
     });
 
-    // 3. Generate codes for teacher, student, admin
+    // 3. Generate join codes — teacher and student only. Admin is
+    //    invite-only: a code can never grant it.
     const teacherCode = generateCode(name, 'TEACH');
-    const adminCode = generateCode(name, 'ADMIN');
+    const studentCode = generateCode(name, 'STUD');
 
     const codeRecords = await Promise.all([
-      base44.asServiceRole.entities.SchoolCode.create({
+      svc.entities.SchoolCode.create({
         school_id: school.id,
         school_name: school.name,
         code: teacherCode,
@@ -121,20 +125,22 @@ Deno.serve(async (req) => {
         created_by: user.email,
         label: 'Teacher Join Code',
       }),
-      base44.asServiceRole.entities.SchoolCode.create({
+      svc.entities.SchoolCode.create({
         school_id: school.id,
         school_name: school.name,
-        code: adminCode,
-        role_type: 'admin',
+        code: studentCode,
+        role_type: 'student',
         status: 'active',
         created_by: user.email,
-        label: 'Admin Join Code',
+        label: 'Student Join Code',
       }),
     ]);
 
-    // 4. Update UserProfile
+    // 4. Update UserProfile — owner-admin scoped to the new school
     const nameParts = (admin_full_name || user.full_name || '').trim().split(/\s+/);
-    await base44.asServiceRole.entities.UserProfile.update(profile.id, {
+    const oldRole = profile.user_type;
+    await svc.entities.UserProfile.update(profile.id, {
+      user_type: 'admin',
       school_id: school.id,
       active_school_id: school.id,
       admin_level: profile.admin_level || 'super_admin',
@@ -147,8 +153,20 @@ Deno.serve(async (req) => {
       status: 'active',
     });
 
+    // Audit the role grant: this is what made the caller an admin.
+    await logRoleGrant(svc, {
+      record_id: profile.id,
+      school_id: school.id,
+      granted_by_email: user.email,
+      granted_to_email: user.email,
+      granted_to_name: `${profile.first_name} ${profile.last_name}`.trim(),
+      role: 'admin',
+      old_role: oldRole,
+      mechanism: 'new school creation (owner-admin, school unverified)',
+    });
+
     // 5. Create AuditLog
-    await base44.asServiceRole.entities.AuditLog.create({
+    await svc.entities.AuditLog.create({
       record_id: school.id,
       school_id: school.id,
       actor_email: user.email,
@@ -170,7 +188,7 @@ Deno.serve(async (req) => {
       },
       codes: {
         teacher: teacherCode,
-        admin: adminCode,
+        student: studentCode,
       },
       code_ids: codeRecords.map(c => c.id),
     });
@@ -178,4 +196,4 @@ Deno.serve(async (req) => {
     console.error('setupSchool error:', error);
     return Response.json({ error: error.message || 'Failed to create school' }, { status: 500 });
   }
-});
+}

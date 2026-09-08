@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
+import { provisionProfile, logRoleGrant } from '../../shared/profileProvisioning.ts';
 
 function normalizeEmail(e) {
   return (e || '').trim().toLowerCase();
@@ -76,33 +76,42 @@ export default async function(req: Request): Promise<Response> {
     const nameParts = (user.full_name || user.email || 'User').trim().split(/\s+/);
     const firstName = nameParts[0] || 'User';
     const lastName = nameParts.slice(1).join(' ') || '';
+    const svc = base44.asServiceRole;
+    const grantMechanism = `email invitation from ${invitation.invited_by}`;
 
     if (invitation.role === 'teacher') {
       let profile = existingProfile;
       if (!profile) {
-        profile = await base44.asServiceRole.entities.UserProfile.create({
-          user_email: user.email,
-          user_type: 'teacher',
-          first_name: firstName,
-          last_name: lastName,
-          status: 'active',
-          school_id: school.id,
-          active_school_id: school.id,
-          total_achievement_points: 0,
-          total_behaviour_points: 0,
-        });
-      } else {
-        await base44.asServiceRole.entities.UserProfile.update(profile.id, {
+        // Profile creation through the single server-side provisioning path —
+        // role and school come from the invitation record.
+        ({ profile } = await provisionProfile(svc, user, {
+          first_name: firstName, last_name: lastName, invitation_token: token,
+        }));
+      } else if (profile.user_type !== 'teacher' || !profile.school_id || profile.status !== 'active') {
+        const oldRole = profile.user_type;
+        await svc.entities.UserProfile.update(profile.id, {
           user_type: 'teacher',
           school_id: school.id,
           active_school_id: school.id,
           status: 'active',
         });
+        if (oldRole !== 'teacher') {
+          await logRoleGrant(svc, {
+            record_id: profile.id,
+            school_id: school.id,
+            granted_by_email: invitation.invited_by,
+            granted_to_email: user.email,
+            granted_to_name: `${firstName} ${lastName}`.trim(),
+            role: 'teacher',
+            old_role: oldRole,
+            mechanism: grantMechanism,
+          });
+        }
       }
       // Active staff membership — invitation IS the authorization, no approval needed
-      const existingStaff = await base44.asServiceRole.entities.StaffMembership.filter({ user_email: user.email, school_id: school.id });
+      const existingStaff = await svc.entities.StaffMembership.filter({ user_email: user.email, school_id: school.id });
       if (existingStaff.length === 0) {
-        await base44.asServiceRole.entities.StaffMembership.create({
+        await svc.entities.StaffMembership.create({
           school_id: school.id,
           school_name: school.name,
           user_email: user.email,
@@ -114,57 +123,66 @@ export default async function(req: Request): Promise<Response> {
           requested_at: new Date().toISOString(),
         });
       } else {
-        await base44.asServiceRole.entities.StaffMembership.update(existingStaff[0].id, { status: 'active' });
+        await svc.entities.StaffMembership.update(existingStaff[0].id, { status: 'active' });
       }
     } else if (invitation.role === 'student') {
       if (!existingProfile) {
-        await base44.asServiceRole.entities.UserProfile.create({
-          user_email: user.email,
-          user_type: 'student',
-          first_name: firstName,
-          last_name: lastName,
-          status: 'active',
-          school_id: school.id,
-          active_school_id: school.id,
-          total_achievement_points: 0,
-          total_behaviour_points: 0,
+        await provisionProfile(svc, user, {
+          first_name: firstName, last_name: lastName, invitation_token: token,
         });
       } else {
-        await base44.asServiceRole.entities.UserProfile.update(existingProfile.id, {
+        const oldRole = existingProfile.user_type;
+        await svc.entities.UserProfile.update(existingProfile.id, {
           user_type: 'student',
           school_id: school.id,
           active_school_id: school.id,
           status: 'active',
         });
+        if (oldRole !== 'student') {
+          await logRoleGrant(svc, {
+            record_id: existingProfile.id,
+            school_id: school.id,
+            granted_by_email: invitation.invited_by,
+            granted_to_email: user.email,
+            granted_to_name: `${firstName} ${lastName}`.trim(),
+            role: 'student',
+            old_role: oldRole,
+            mechanism: grantMechanism,
+          });
+        }
       }
     } else if (invitation.role === 'admin') {
       let profile = existingProfile;
       if (!profile) {
-        profile = await base44.asServiceRole.entities.UserProfile.create({
-          user_email: user.email,
-          user_type: 'admin',
-          first_name: firstName,
-          last_name: lastName,
-          admin_level: 'basic_admin',
-          admin_permissions: defaultAdminPermissions('basic_admin'),
-          status: 'active',
-          school_id: school.id,
-          active_school_id: school.id,
-          total_achievement_points: 0,
-          total_behaviour_points: 0,
-        });
+        ({ profile } = await provisionProfile(svc, user, {
+          first_name: firstName, last_name: lastName, invitation_token: token,
+        }));
       } else {
-        await base44.asServiceRole.entities.UserProfile.update(existingProfile.id, {
+        const oldRole = profile.user_type;
+        await svc.entities.UserProfile.update(profile.id, {
+          user_type: 'admin',
           school_id: school.id,
           active_school_id: school.id,
           status: 'active',
         });
+        if (oldRole !== 'admin') {
+          await logRoleGrant(svc, {
+            record_id: profile.id,
+            school_id: school.id,
+            granted_by_email: invitation.invited_by,
+            granted_to_email: user.email,
+            granted_to_name: `${firstName} ${lastName}`.trim(),
+            role: 'admin',
+            old_role: oldRole,
+            mechanism: grantMechanism,
+          });
+        }
       }
-      const existingMembership = await base44.asServiceRole.entities.AdminSchoolMembership.filter({
+      const existingMembership = await svc.entities.AdminSchoolMembership.filter({
         admin_email: user.email, school_id: school.id
       });
       if (existingMembership.length === 0) {
-        await base44.asServiceRole.entities.AdminSchoolMembership.create({
+        await svc.entities.AdminSchoolMembership.create({
           admin_user_id: profile.id,
           admin_email: user.email,
           admin_name: `${firstName} ${lastName}`.trim(),
@@ -177,19 +195,19 @@ export default async function(req: Request): Promise<Response> {
           invited_by: invitation.invited_by,
         });
       } else {
-        await base44.asServiceRole.entities.AdminSchoolMembership.update(existingMembership[0].id, { status: 'active' });
+        await svc.entities.AdminSchoolMembership.update(existingMembership[0].id, { status: 'active' });
       }
     }
 
     // Mark accepted
-    await base44.asServiceRole.entities.SchoolInvitation.update(invitation.id, {
+    await svc.entities.SchoolInvitation.update(invitation.id, {
       status: 'accepted',
       accepted_at: new Date().toISOString(),
       accepted_by_email: user.email,
     });
 
     // Audit log
-    await base44.asServiceRole.entities.AuditLog.create({
+    await svc.entities.AuditLog.create({
       record_id: invitation.id,
       school_id: school.id,
       actor_email: user.email,

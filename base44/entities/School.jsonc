@@ -90,6 +90,16 @@
       "default": "active",
       "description": "School operational status"
     },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "verified",
+        "rejected"
+      ],
+      "default": "unverified",
+      "description": "Organisation verification state. Schools created through self-service setup start 'unverified' \u2014 the founder-admin is scoped to that school only until the organisation is verified."
+    },
     "created_by": {
       "type": "string",
       "description": "User email who created this school"

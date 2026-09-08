@@ -46,10 +46,10 @@ export default function JoinSchool() {
 
           // Teacher — check for a pending join request so we show a
           // "pending approval" state instead of the join form again.
-          if (p.user_type === 'teacher') {
+          if (p.user_type === 'teacher' || p.status === 'pending_approval') {
             try {
               const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-              const pending = staff.find(s => s.status === 'pending');
+              const pending = staff.find(s => s.status === 'pending') || (p.status === 'pending_approval' ? {} : null);
               if (pending) setPendingMembership(pending);
             } catch { /* ignore */ }
           }
@@ -67,19 +67,21 @@ export default function JoinSchool() {
     window.location.href = createPageUrl(page);
   };
 
-  const role = profile?.user_type || 'teacher';
+  const role = profile?.user_type || 'pending';
   const isStudent = role === 'student';
+  const isPending = role === 'pending';
 
   const handleJoin = async () => {
     if (!joinCode.trim()) { toast.error('Please enter a school code'); return; }
     setSubmitting(true);
     setResult(null);
     try {
+      // SECURITY: no role is sent — the server reads it from the code record.
       const response = await base44.functions.invoke('joinSchoolByCode', {
         code: joinCode.trim(),
-        role_type: role,
       });
       const data = response.data;
+      const joinedRole = data.role || role;
       if (data.status === 'pending') {
         setResult({ pending: true, message: data.message, schoolName: data.school_name });
       } else {
@@ -87,10 +89,10 @@ export default function JoinSchool() {
         setResult({ success: true, message: data.message, schoolName: data.school_name });
         setTimeout(() => {
           // First-time student goes through guided setup; everyone else to their dashboard.
-          if (role === 'student' && !wasLinked) {
+          if (joinedRole === 'student' && !wasLinked) {
             window.location.href = createPageUrl('StudentOnboarding');
           } else {
-            redirectByRole(role);
+            redirectByRole(joinedRole);
           }
         }, 1800);
       }
@@ -151,6 +153,8 @@ export default function JoinSchool() {
           <p className="text-sm text-muted-foreground mt-2">
             {isStudent
               ? 'Enter the student code provided by your school to get started'
+              : isPending
+              ? 'Enter the join code provided by your school — students join immediately, teachers are approved by an administrator'
               : 'Enter the teacher code provided by your school administrator'}
           </p>
         </div>
@@ -205,6 +209,15 @@ export default function JoinSchool() {
                 {isStudent ? 'Join School' : 'Submit Request'} <ArrowRight className="h-4 w-4 ml-2" />
               </>}
             </Button>
+
+            {isPending && (
+              <p className="text-center text-sm text-muted-foreground">
+                Setting up a school?{' '}
+                <a href={createPageUrl('SchoolSetup')} className="text-primary font-medium hover:underline">
+                  Create your school instead
+                </a>
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

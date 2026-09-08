@@ -4,19 +4,30 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, ArrowRight, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Shield, ArrowRight, Loader2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
-import RolePicker from '@/components/auth/RolePicker';
+
+// Fallback profile provisioning for authenticated users without a profile
+// (e.g. a Google return without stashed signup details). Roles are derived
+// entirely server-side by provisionProfile — this form only collects the name
+// and an OPTIONAL join code.
+const NEXT_URL = {
+  awaiting_approval: '/Login',
+  student_setup: '/StudentOnboarding',
+  teacher_dashboard: '/TeacherDashboard',
+  admin_dashboard: '/AdminDashboard',
+  join_school: '/JoinSchool',
+  login: '/Login',
+};
 
 export default function Onboarding() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -39,29 +50,22 @@ export default function Onboarding() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!firstName.trim() || !lastName.trim() || !selectedRole) {
-      toast.error('Please fill in all fields.');
+    if (!firstName.trim() || !lastName.trim()) {
+      toast.error('Please enter your name.');
       return;
     }
     setSubmitting(true);
     try {
-      await base44.entities.UserProfile.create({
-        user_email: user.email,
-        user_type: selectedRole,
+      const res = await base44.functions.invoke('provisionProfile', {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        status: 'active',
-        total_achievement_points: 0,
-        total_behaviour_points: 0,
+        join_code: joinCode.trim() || undefined,
       });
-
-      if (selectedRole === 'admin') {
-        window.location.href = createPageUrl('SchoolSetup');
-      } else {
-        window.location.href = createPageUrl('JoinSchool');
-      }
+      const data = res.data;
+      if (!data?.ok) throw new Error(data?.error || 'Failed to create account');
+      window.location.href = NEXT_URL[data.next] || createPageUrl('JoinSchool');
     } catch (error) {
-      console.error('Error creating profile:', error);
+      console.error('Error provisioning profile:', error);
       toast.error(error.message || 'Failed to create account');
       setSubmitting(false);
     }
@@ -83,45 +87,47 @@ export default function Onboarding() {
             <Shield className="h-7 w-7 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">Welcome to BlockWard</CardTitle>
-          <CardDescription>How will you use BlockWard?</CardDescription>
+          <CardDescription>Tell us who you are — your school decides your role when you join</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            <RolePicker selectedRole={selectedRole} onSelect={setSelectedRole} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name</Label>
+                <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name</Label>
+                <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
+              </div>
+            </div>
 
-            <AnimatePresence>
-              {selectedRole && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4"
-                >
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>First Name</Label>
-                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="John" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Last Name</Label>
-                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
-                    </div>
-                  </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5" /> School code (optional)
+              </Label>
+              <Input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                placeholder="Have a code from your school? Enter it here"
+                className="font-mono uppercase"
+              />
+              <p className="text-xs text-muted-foreground">
+                With a code you join your school straight away. Without one you'll choose a school next.
+              </p>
+            </div>
 
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={!firstName.trim() || !lastName.trim() || submitting}
-                    className="w-full"
-                  >
-                    {submitting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <>Continue <ArrowRight className="h-4 w-4 ml-2" /></>
-                    )}
-                  </Button>
-                </motion.div>
+            <Button
+              onClick={handleSubmit}
+              disabled={!firstName.trim() || !lastName.trim() || submitting}
+              className="w-full"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>Continue <ArrowRight className="h-4 w-4 ml-2" /></>
               )}
-            </AnimatePresence>
+            </Button>
           </div>
         </CardContent>
       </Card>

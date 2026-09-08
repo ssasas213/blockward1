@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { logRoleGrant } from '../../shared/profileProvisioning.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -74,6 +75,18 @@ Deno.serve(async (req) => {
             user_type: 'teacher',
             status: 'active',
             admin_email: user.email,
+          });
+          // Audit the role grant — admin approval is what activated this teacher.
+          await logRoleGrant(base44.asServiceRole, {
+            record_id: tp.id,
+            school_id: membership.school_id,
+            granted_by_email: user.email,
+            granted_by_name: adminName,
+            granted_to_email: membership.user_email,
+            granted_to_name: membership.teacher_name || membership.user_email,
+            role: 'teacher',
+            old_role: 'teacher (pending approval)',
+            mechanism: 'admin approval of join-code request',
           });
         }
 
@@ -201,6 +214,17 @@ Deno.serve(async (req) => {
             active_school_id: membership.school_id,
             user_type: 'admin',
             status: 'active',
+          });
+          await logRoleGrant(base44.asServiceRole, {
+            record_id: ap.id,
+            school_id: membership.school_id,
+            granted_by_email: user.email,
+            granted_by_name: adminName,
+            granted_to_email: membership.admin_email,
+            granted_to_name: membership.admin_name || membership.admin_email,
+            role: 'admin',
+            old_role: 'admin (pending approval)',
+            mechanism: 'admin approval of admin join request',
           });
         }
 

@@ -28,6 +28,11 @@ export default async function(req: Request): Promise<Response> {
     const action = body.action || 'generate';
     const svc = base44.asServiceRole;
 
+    // SECURITY: admin is never grantable via a code. Reject any request for one.
+    if (body.role_type === 'admin') {
+      return Response.json({ error: 'Admin access cannot be granted with a join code. Invite admins by email instead.' }, { status: 403 });
+    }
+
     const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     function makeCode(prefix, roleSuffix) {
       const p = (prefix || 'SCH').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4) || 'SCH';
@@ -35,11 +40,13 @@ export default async function(req: Request): Promise<Response> {
       for (let i = 0; i < 6; i++) random += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
       return `${p}-${roleSuffix}-${random}`;
     }
+    // Teacher and student codes only — admin is invite-only and can never be
+    // granted by a code.
     const ROLE_DEFS = [
       { role_type: 'teacher', suffix: 'TEACH', label: 'Teacher Join Code' },
-      { role_type: 'admin', suffix: 'ADMIN', label: 'Admin Join Code' },
+      { role_type: 'student', suffix: 'STUD', label: 'Student Join Code' },
     ];
-    const order = { teacher: 0, admin: 1 };
+    const order = { teacher: 0, student: 1 };
     const sortByRole = (a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9);
 
     const schools = await svc.entities.School.filter({ id: profile.school_id });
@@ -76,9 +83,14 @@ export default async function(req: Request): Promise<Response> {
         return Response.json({ ok: true, code: { ...code, status: newStatus } });
       }
 
+      // Legacy admin codes can never be re-issued — only left disabled.
+      if (code.role_type === 'admin') {
+        return Response.json({ error: 'Admin codes are no longer supported. Keep this code disabled; invite admins by email instead.' }, { status: 403 });
+      }
+
       // regenerate
       await svc.entities.SchoolCode.update(code.id, { status: 'disabled' });
-      const suffix = code.role_type === 'teacher' ? 'TEACH' : 'ADMIN';
+      const suffix = code.role_type === 'teacher' ? 'TEACH' : 'STUD';
       const newCode = await svc.entities.SchoolCode.create({
         school_id: code.school_id, school_name: code.school_name || schoolName,
         code: makeCode(schoolName, suffix), role_type: code.role_type,

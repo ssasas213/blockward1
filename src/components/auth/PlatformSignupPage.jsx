@@ -43,18 +43,15 @@ export default function PlatformSignupPage({ platformId }) {
       await base44.auth.loginViaEmailPassword(email.trim(), password);
       const user = await base44.auth.me();
 
-      // Students/members are active; coaches/admins need approval
-      const status = role === 'student' ? 'active' : 'inactive';
-
       const [firstName, ...lastParts] = fullName.trim().split(' ');
       const lastName = lastParts.join(' ') || '';
 
-      await base44.entities.UserProfile.create({
-        user_email: user.email,
-        user_type: role,
+      // SECURITY: profile creation is server-side only (provisionProfile).
+      // The selected preference above does NOT grant a role — the server
+      // derives role and school from a join code or invitation.
+      await base44.functions.invoke('provisionProfile', {
         first_name: firstName,
         last_name: lastName,
-        status,
       });
 
       // Redirect to the correct platform dashboard
