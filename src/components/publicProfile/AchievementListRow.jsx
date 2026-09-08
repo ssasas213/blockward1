@@ -13,7 +13,7 @@ export default function AchievementListRow({ achievement, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="card-hover flex w-full items-center gap-3 border border-border bg-card/60 p-3 text-left backdrop-blur-md"
+      className="card-hover flex w-full items-center gap-3 border border-border bg-card p-3 text-left "
       style={{ borderRadius: 'calc(var(--pf-radius, 16px) - 2px)' }}
     >
       <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">

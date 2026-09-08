@@ -56,7 +56,7 @@ export default function BenefitsSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {benefits.map((benefit, i) => (
             <Reveal key={i} delay={i * 0.06}>
-              <div className="card-hover h-full p-6 sm:p-7 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+              <div className="card-hover h-full p-6 sm:p-7 rounded-xl bg-card border border-border">
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5">
                   <benefit.icon className="h-6 w-6 text-primary" />
                 </div>

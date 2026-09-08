@@ -54,7 +54,7 @@ export default function FeedItem({ item, isNew, canEndorse, onEndorse }) {
 
   return (
     <article className={cn(
-      "rounded-xl border bg-card/60 backdrop-blur-sm p-4 sm:p-5 transition-colors",
+      "rounded-xl border bg-card p-4 sm:p-5 transition-colors",
       isNew ? "border-primary/30" : "border-border"
     )}>
       <div className="flex items-start gap-3">

@@ -111,7 +111,7 @@ function InvitationsImpl() {
           <button
             key={c.role}
             onClick={() => openInvite(c.role)}
-            className="text-left p-4 rounded-xl border border-border bg-card/60 backdrop-blur-md hover:border-primary/40 transition-all card-hover"
+            className="text-left p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all card-hover"
           >
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
               <c.icon className="h-5 w-5 text-primary" />
@@ -131,7 +131,7 @@ function InvitationsImpl() {
       ) : (
         <>
           {pending.length > 0 && (
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Send className="h-4 w-4 text-primary" /> Pending Invitations
@@ -151,7 +151,7 @@ function InvitationsImpl() {
           )}
 
           {accepted.length > 0 && (
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Shield className="h-4 w-4 text-success" /> Accepted

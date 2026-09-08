@@ -163,7 +163,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
 
   if (loading) {
     return (
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardContent className="py-10 flex justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </CardContent>
@@ -177,7 +177,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
 
   return (
     <>
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2 text-foreground">
             <AtSign className="h-4 w-4 text-primary" /> Public profile
@@ -309,7 +309,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
       </Card>
 
       {/* ── Customisation with live preview ── */}
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2 text-foreground">
             <Palette className="h-4 w-4 text-primary" /> Customise your profile

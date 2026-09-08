@@ -68,7 +68,7 @@ export default function InteractiveDemo() {
 
         {/* stage card */}
         <div className="max-w-xl mx-auto">
-          <div className="p-8 rounded-xl bg-card/40 backdrop-blur-md border border-border text-center">
+          <div className="p-8 rounded-xl bg-card border border-border text-center">
             <div className="inline-flex h-12 w-12 rounded-xl bg-primary/10 items-center justify-center mb-4">
               <current.icon className="h-6 w-6 text-primary" />
             </div>

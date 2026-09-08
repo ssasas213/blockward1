@@ -61,7 +61,7 @@ export default function JoinSchool() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md">
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardContent className="pt-8 pb-8 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-warning/10 flex items-center justify-center mb-5">
                 <Clock className="h-8 w-8 text-warning" />
@@ -117,7 +117,7 @@ export default function JoinSchool() {
           {canSearch ? (
             <SchoolSearchCard />
           ) : (
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardContent className="p-5 flex items-start gap-3">
                 <Users className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <div className="text-sm">
@@ -136,7 +136,7 @@ export default function JoinSchool() {
 
           {/* 4 — Create a new school: admin path, unchanged */}
           {canCreateSchool && (
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardContent className="p-5 flex items-center gap-4">
                 <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
                   <Building2 className="h-5 w-5 text-accent" />

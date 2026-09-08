@@ -30,7 +30,7 @@ export default function Documentation() {
           <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-8">The credential lifecycle</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {LIFECYCLE.map((s, i) => (
-              <div key={i} className="p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+              <div key={i} className="p-6 rounded-xl bg-card  border border-border">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                     <s.icon className="h-5 w-5 text-primary" />
@@ -53,7 +53,7 @@ export default function Documentation() {
           </p>
           <div className="space-y-4">
             {TIERS.map((t) => (
-              <div key={t.tier} className="flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+              <div key={t.tier} className="flex flex-col sm:flex-row sm:items-start gap-4 p-5 rounded-xl bg-card  border border-border">
                 <span className="inline-flex px-2.5 py-1 rounded-md bg-primary/10 border border-primary/20 text-xs font-semibold text-primary w-fit flex-shrink-0">{t.tier}</span>
                 <div>
                   <h3 className="text-base font-medium text-foreground">{t.title}</h3>
@@ -70,7 +70,7 @@ export default function Documentation() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-semibold text-foreground tracking-tight mb-8">Core concepts</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+            <div className="p-6 rounded-xl bg-card  border border-border">
               <AtSign className="h-5 w-5 text-primary mb-3" />
               <h3 className="text-base font-medium text-foreground mb-2">Handles &amp; public profiles</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -79,7 +79,7 @@ export default function Documentation() {
                 redirect, so links never break.
               </p>
             </div>
-            <div className="p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+            <div className="p-6 rounded-xl bg-card  border border-border">
               <Users className="h-5 w-5 text-primary mb-3" />
               <h3 className="text-base font-medium text-foreground mb-2">Team credentials</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -87,7 +87,7 @@ export default function Documentation() {
                 their role on it — but only after they consent to being listed on the shared team record.
               </p>
             </div>
-            <div className="p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+            <div className="p-6 rounded-xl bg-card  border border-border">
               <ShieldCheck className="h-5 w-5 text-primary mb-3" />
               <h3 className="text-base font-medium text-foreground mb-2">Peer endorsements</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
@@ -95,7 +95,7 @@ export default function Documentation() {
                 per-term budget — no roll-over, never anonymous — so an endorsement always means something.
               </p>
             </div>
-            <div className="p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+            <div className="p-6 rounded-xl bg-card  border border-border">
               <Briefcase className="h-5 w-5 text-primary mb-3" />
               <h3 className="text-base font-medium text-foreground mb-2">Opportunities</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">

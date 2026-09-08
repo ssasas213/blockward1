@@ -34,7 +34,7 @@ export default function HowItWorks() {
                   <step.icon className="h-5 w-5 text-primary" />
                 </div>
               </div>
-              <div className="flex-1 p-5 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+              <div className="flex-1 p-5 rounded-xl bg-card border border-border">
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-xs font-mono text-muted-foreground">0{i + 1}</span>
                   <h3 className="text-base font-medium text-foreground">{step.title}</h3>

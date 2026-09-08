@@ -74,7 +74,7 @@ export default function ProfileHero({ student, orgs = [], count, endorsementCoun
         {/* Compact stats strip — hidden entirely until there is at least one
             achievement, so an empty profile never shows a row of zeros */}
         {count > 0 && (
-          <div className="pf-rise mt-3 flex items-stretch divide-x divide-border rounded-xl border border-border bg-secondary/40 backdrop-blur-sm" style={{ '--pf-delay': '100ms' }}>
+          <div className="pf-rise mt-3 flex items-stretch divide-x divide-border rounded-xl border border-border bg-secondary" style={{ '--pf-delay': '100ms' }}>
             {stats.map((s) => (
               <div key={s.label} className="flex-1 px-2 py-2.5 sm:px-4 text-center">
                 <p className="text-base sm:text-lg font-bold text-foreground leading-none">{s.value}</p>

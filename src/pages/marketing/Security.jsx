@@ -36,7 +36,7 @@ export default function Security() {
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
           {PILLARS.map((p, i) => (
-            <div key={i} className="card-hover p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+            <div key={i} className="card-hover p-6 rounded-xl bg-card border border-border">
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <p.icon className="h-5 w-5 text-primary" />
               </div>

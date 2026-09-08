@@ -66,7 +66,7 @@ const DEMO = {
 function AchievementRow({ a, i }) {
   return (
     <Reveal delay={i * 0.05}>
-      <div className="card-hover flex items-start gap-4 p-5 rounded-xl bg-card/60 backdrop-blur-md border border-border">
+      <div className="card-hover flex items-start gap-4 p-5 rounded-xl bg-card border border-border">
         <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
           <a.icon className="h-5 w-5 text-primary" />
         </div>
@@ -115,7 +115,7 @@ export default function DemoProfile() {
         </div>
 
         {/* Profile header */}
-        <div className="mt-8 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-6 sm:p-8">
+        <div className="mt-8 rounded-2xl border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="h-20 w-20 rounded-2xl bg-brand-gradient flex items-center justify-center text-2xl font-bold text-white flex-shrink-0">
               {DEMO.initials}

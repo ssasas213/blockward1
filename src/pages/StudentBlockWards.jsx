@@ -189,6 +189,19 @@ function StudentBlockWardsContent() {
     setEditing({ ...r, id: null, status: 'draft' });
     setFormOpen(true);
   };
+
+  // Verified-but-unpublished recovery — the student presses "Finish
+  // publishing" to re-run the mint after a server-side failure.
+  const handleRetryPublish = async (r) => {
+    try {
+      const res = await base44.functions.invoke('achievementRequestAction', { action: 'retry_mint', request_id: r.id });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not publish');
+      toast.success('Published to your profile');
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e.message || 'Could not publish');
+    }
+  };
   const unverifiedCount = (selfReported || []).filter(s => s.status !== 'verified').length;
   // Distinct achievements: verified + open requests + unverified self-reported.
   // Archived/minted requests already exist as verified achievements, and
@@ -273,6 +286,7 @@ function StudentBlockWardsContent() {
             onEdit={(r) => { setEditing(r); setFormOpen(true); }}
             onWithdraw={handleWithdraw}
             onDuplicate={handleDuplicate}
+            onRetry={handleRetryPublish}
             loading={requests === null}
           />
         </TabsContent>
@@ -288,7 +302,7 @@ function StudentBlockWardsContent() {
         </Tabs>
 
         {/* View toggle */}
-        <div className="flex items-center gap-1 rounded-lg border border-border bg-card/60 p-1 self-start">
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card p-1 self-start">
           <button
             onClick={() => setView('grid')}
             className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}

@@ -214,7 +214,7 @@ export default function ClassDetail() {
       </div>
 
       {isTeacher && classData.join_code && (
-        <Card className="border-border bg-card/60">
+        <Card className="border-border bg-card">
           <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-5">
             <div className="flex-shrink-0">
               <img

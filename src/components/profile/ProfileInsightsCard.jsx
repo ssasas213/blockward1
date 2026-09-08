@@ -72,7 +72,7 @@ export default function ProfileInsightsCard({ profile }) {
 
   if (loading) {
     return (
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardContent className="py-8 flex justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </CardContent>
@@ -89,7 +89,7 @@ export default function ProfileInsightsCard({ profile }) {
   const hasRecap = (recap.achievements || 0) + (recap.endorsements || 0) > 0;
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base flex items-center gap-2 text-foreground">
           <Eye className="h-4 w-4 text-primary" /> Profile insights

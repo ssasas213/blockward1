@@ -140,7 +140,7 @@ export default function AttendanceRegister({ classId, date }) {
         })}
       </div>
 
-      <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-background/85 backdrop-blur border-t border-border flex items-center justify-between gap-3">
+      <div className="sticky bottom-0 -mx-4 px-4 py-3 bg-background border-t border-border flex items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{presentCount} of {roster.length} present</p>
         <button
           onClick={save}

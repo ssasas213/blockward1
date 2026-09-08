@@ -56,7 +56,7 @@ export default function SchoolSearchCard() {
   };
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg text-foreground">Search for your organisation</CardTitle>
         <CardDescription>Find your school, club, academy or team and request to join — an admin will approve you.</CardDescription>

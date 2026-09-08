@@ -16,7 +16,7 @@ export default function AchievementGridSkeleton({ count = 6, className = '' }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="bw-card-4-3 block w-full rounded-xl border border-border bg-card/60 animate-pulse"
+          className="bw-card-4-3 block w-full rounded-xl border border-border bg-card animate-pulse"
         />
       ))}
     </div>

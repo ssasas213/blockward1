@@ -54,7 +54,7 @@ export default function LeaderboardPanel({ leaderboard, optOut }) {
   );
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <Trophy className="h-4 w-4 text-warning" />
         <p className="text-sm font-semibold text-foreground truncate">

@@ -21,7 +21,7 @@ const ROWS = [
 
 export default function PermissionMatrix() {
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Users className="h-5 w-5 text-primary" />

@@ -54,7 +54,7 @@ function TrustStats() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12 pt-8 border-t border-border">
       {items.map((s) => (
-        <div key={s.label} className="rounded-xl border border-border bg-card/40 backdrop-blur-md p-5">
+        <div key={s.label} className="rounded-xl border border-border bg-card p-5">
           <s.icon className="h-5 w-5 text-primary mb-2" />
           <p className="text-3xl font-bold text-foreground leading-none">{s.value.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground mt-2 leading-snug">{s.label}</p>

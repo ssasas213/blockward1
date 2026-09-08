@@ -274,7 +274,7 @@ export default function Signup() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
-      <Card className="w-full max-w-lg border-border bg-card/60 backdrop-blur-md">
+      <Card className="w-full max-w-lg border-border bg-card">
         <CardHeader className="text-center pb-2">
           <Link to="/" className="inline-flex flex-col items-center gap-2">
             <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-2">

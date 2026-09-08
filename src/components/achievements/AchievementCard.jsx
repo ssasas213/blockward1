@@ -50,7 +50,7 @@ export const STATUS_BADGE = {
   unverified: {
     label: 'Unverified', Icon: null,
     // Grey with an outline rather than a fill — the gap must be obvious.
-    card: 'border-border bg-background/70 backdrop-blur-sm text-muted-foreground',
+    card: 'border-border bg-background text-muted-foreground',
     row: 'border-border bg-muted text-muted-foreground',
   },
 };
@@ -201,7 +201,7 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
               role="button" tabIndex={0}
               onClick={(e) => { e.stopPropagation(); onShare(item); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onShare(item); } }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-sm border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/75 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-black/55  border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/75 cursor-pointer"
             >
               <Share2 className="h-3.5 w-3.5" /> Share
             </span>
@@ -211,7 +211,7 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
               role="button" tabIndex={0}
               onClick={(e) => { e.stopPropagation(); onEndorse(item); }}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onEndorse(item); } }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-black/55 backdrop-blur-sm border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/75 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-full bg-black/55  border border-white/25 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black/75 cursor-pointer"
             >
               <Heart className="h-3.5 w-3.5" /> Endorse
             </span>
@@ -263,7 +263,7 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
         {item.status === 'unverified' && onGetVerified && (
           <button
             onClick={(e) => { e.stopPropagation(); onGetVerified(item); }}
-            className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-secondary/90 px-2 py-1.5 text-[11px] font-semibold text-foreground backdrop-blur-sm hover:bg-secondary"
+            className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-secondary/90 px-2 py-1.5 text-[11px] font-semibold text-foreground  hover:bg-secondary"
           >
             Get this verified <ArrowRight className="h-3 w-3" />
           </button>
@@ -281,7 +281,7 @@ export function AchievementRow({ item, onClick, onShare }) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-3 sm:p-4 rounded-lg border border-border bg-card/60 hover:bg-hover/50 transition-colors flex items-center gap-3"
+      className="w-full text-left p-3 sm:p-4 rounded-lg border border-border bg-card hover:bg-hover/50 transition-colors flex items-center gap-3"
     >
       <div className="h-10 w-10 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center" style={{ background: cat.grad }}>
         {item.cover ? (

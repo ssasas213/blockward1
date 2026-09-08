@@ -37,7 +37,7 @@ export default function CodeJoinCard({ onJoined }) {
   };
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg text-foreground flex items-center gap-2">
           <KeyRound className="h-4 w-4 text-primary" /> Have a join code?

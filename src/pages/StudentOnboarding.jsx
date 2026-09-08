@@ -137,7 +137,7 @@ export default function StudentOnboarding() {
           })}
         </div>
 
-        <Card className="border-border bg-card/60 backdrop-blur-md">
+        <Card className="border-border bg-card">
           <CardContent className="p-6">
             {/* STEP — YOUR SCHOOL (only when the student has one) */}
             {stepKey === 'school' && (

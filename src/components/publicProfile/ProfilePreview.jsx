@@ -14,7 +14,7 @@ export default function ProfilePreview({ name, handle, bio, avatarUrl, value, ac
   const layout = value.profile_layout || 'grid';
 
   const Tile = ({ a, big }) => (
-    <div className={`overflow-hidden rounded-lg border border-border bg-card/60 ${big ? 'col-span-2 row-span-2' : ''}`}>
+    <div className={`overflow-hidden rounded-lg border border-border bg-card ${big ? 'col-span-2 row-span-2' : ''}`}>
       <div className={`${big ? 'aspect-[2/1]' : 'aspect-square'} w-full overflow-hidden`}>
         {a?.image_url ? (
           <img src={a.image_url} alt="" className="h-full w-full object-cover" />
@@ -71,7 +71,7 @@ export default function ProfilePreview({ name, handle, bio, avatarUrl, value, ac
           {layout === 'list' ? (
             <div className="space-y-1.5">
               {sample.map((a, i) => (
-                <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-card/60 p-1.5">
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-card p-1.5">
                   <span className="h-7 w-7 flex-shrink-0 rounded-md bg-primary/15" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[10px] font-semibold text-foreground">{a.title}</span>

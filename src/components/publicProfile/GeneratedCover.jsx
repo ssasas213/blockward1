@@ -54,7 +54,7 @@ export default function GeneratedCover({ title, category, orgName, orgLogo, clas
 
       {/* Organisation badge — hidden in `bare` mode when the card renders its own base line */}
       {!bare && (
-        <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-black/25 px-2 py-0.5 backdrop-blur-sm">
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-black/25 px-2 py-0.5 ">
           {orgLogo ? (
             <img src={orgLogo} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
           ) : (

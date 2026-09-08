@@ -37,7 +37,7 @@ export default function FeaturesSection() {
           {features.map((feature, i) => (
             <div
               key={i}
-              className="card-hover p-5 rounded-xl bg-card/40 backdrop-blur-md border border-border"
+              className="card-hover p-5 rounded-xl bg-card border border-border"
             >
               <div className="flex items-start gap-4">
                 <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

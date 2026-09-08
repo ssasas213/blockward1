@@ -55,7 +55,7 @@ function HighlightCard({ achievement, onOpen }) {
       <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" aria-hidden="true" />
 
       <span
-        className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/45 backdrop-blur-sm border border-white/25"
+        className="absolute top-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-black/45 border border-white/25"
         title="Verified by the issuing organisation"
       >
         <BadgeCheck className="h-4 w-4 text-white" />

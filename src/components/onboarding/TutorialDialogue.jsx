@@ -6,7 +6,7 @@ export default function TutorialDialogue({ step, index, total, onBack, onNext, o
   const isWelcome = step.id === 'welcome';
   return (
     <div className="pointer-events-auto w-[340px] max-w-[calc(100vw-2rem)] rounded-2xl p-[1px] bg-gradient-to-br from-brand-violet/60 via-primary/40 to-brand-pink/50 shadow-[0_12px_44px_rgba(0,0,0,0.45)]">
-      <div className="rounded-2xl bg-card/95 backdrop-blur-xl border border-border p-5">
+      <div className="rounded-2xl bg-card border border-border p-5">
         <div className="flex items-center justify-between mb-1">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">{step.title}</p>
           <button onClick={onSkip} className="text-tertiary hover:text-foreground transition-colors" aria-label="Skip tour">

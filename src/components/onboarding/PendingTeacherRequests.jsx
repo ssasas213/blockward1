@@ -75,7 +75,7 @@ export default function PendingTeacherRequests() {
 
   if (loading) {
     return (
-      <Card className="border-border bg-card/60">
+      <Card className="border-border bg-card">
         <CardContent className="py-8 flex items-center justify-center">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </CardContent>
@@ -90,7 +90,7 @@ export default function PendingTeacherRequests() {
   }
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md">
+    <Card className="border-border bg-card">
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <UserCheck className="h-4 w-4 text-primary" />

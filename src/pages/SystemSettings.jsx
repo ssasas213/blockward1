@@ -138,7 +138,7 @@ function SystemSettingsImpl() {
       </div>
 
       {/* School Information */}
-      <Card className="border-border bg-card/60 backdrop-blur-md">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
@@ -251,7 +251,7 @@ function SystemSettingsImpl() {
       </Card>
 
       {/* School Status */}
-      <Card className="border-border bg-card/60 backdrop-blur-md">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -277,7 +277,7 @@ function SystemSettingsImpl() {
       </Card>
 
       {/* Admin Team */}
-      <Card className="border-border bg-card/60 backdrop-blur-md">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />

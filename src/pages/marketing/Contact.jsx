@@ -49,7 +49,7 @@ export default function Contact() {
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Quick answers */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-xl border border-border bg-card/40 backdrop-blur-md p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Search className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground">Checking a credential?</h3>
@@ -62,7 +62,7 @@ export default function Contact() {
               </Button>
             </div>
 
-            <div className="rounded-xl border border-border bg-card/40 backdrop-blur-md p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground">Connecting your organisation?</h3>
@@ -75,7 +75,7 @@ export default function Contact() {
               </Button>
             </div>
 
-            <div className="rounded-xl border border-border bg-card/40 backdrop-blur-md p-5">
+            <div className="rounded-xl border border-border bg-card p-5">
               <div className="flex items-center gap-2 mb-2">
                 <Mail className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-semibold text-foreground">Something else?</h3>
@@ -87,7 +87,7 @@ export default function Contact() {
           </div>
 
           {/* Form */}
-          <div className="lg:col-span-3 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-6 sm:p-8">
+          <div className="lg:col-span-3 rounded-2xl border border-border bg-card p-6 sm:p-8">
             {sent ? (
               <div className="py-10 text-center space-y-3">
                 <div className="mx-auto h-12 w-12 rounded-2xl bg-success/10 flex items-center justify-center">

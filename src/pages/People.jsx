@@ -164,7 +164,7 @@ function PeopleImpl() {
       <PageHeader title="People" description={`Invite and manage people for ${school?.name || 'your school'}`} />
 
       {/* PRIMARY — Invite by email */}
-      <Card className="border-border bg-card/60 backdrop-blur-md">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> Invite by Email</CardTitle>
           <CardDescription>The recommended way to add people — instant, no approval needed.</CardDescription>
@@ -235,7 +235,7 @@ function PeopleImpl() {
         </Card>
 
         {codes.length === 0 ? (
-          <Card className="border-border bg-card/60">
+          <Card className="border-border bg-card">
             <CardContent className="py-10 text-center">
               <Shield className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
               <p className="text-sm text-muted-foreground mb-4">No join codes yet. Generate the teacher and admin codes as a fallback.</p>
@@ -251,7 +251,7 @@ function PeopleImpl() {
               const config = codeConfig[codeRecord.role_type] || codeConfig.teacher;
               const isActive = codeRecord.status === 'active';
               return (
-                <Card key={codeRecord.id} className={`border-border bg-card/60 backdrop-blur-md ${!isActive ? 'opacity-60' : ''}`}>
+                <Card key={codeRecord.id} className={`border-border bg-card ${!isActive ? 'opacity-60' : ''}`}>
                   <CardContent className="p-5">
                     <div className="flex items-start gap-4">
                       <div className={`h-11 w-11 rounded-xl ${config.bgIcon} flex items-center justify-center flex-shrink-0`}>
@@ -287,7 +287,7 @@ function PeopleImpl() {
                 </Card>
               );
             })}
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardHeader>
                 <CardTitle className="text-sm">Quick Share Links</CardTitle>
                 <CardDescription>Registration links with codes embedded</CardDescription>

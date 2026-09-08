@@ -264,7 +264,7 @@ export default function PublicPortfolio() {
 
 function StatBox({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-4 text-center">
+    <div className="rounded-xl border border-border bg-card p-4 text-center">
       <Icon className="h-5 w-5 text-primary mx-auto mb-1.5" />
       <p className="text-2xl font-bold text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>

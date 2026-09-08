@@ -57,7 +57,7 @@ export default function SchoolMembershipSection({ profile, user, school, onRefre
   const pendingMembership = memberships.find(m => m.status === 'pending');
 
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+    <Card className="border-border bg-card shadow-sm">
       <CardHeader>
         <CardTitle className="text-base flex items-center gap-2 text-foreground">
           <Building2 className="h-4 w-4 text-primary" /> School Membership

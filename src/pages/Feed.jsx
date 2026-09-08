@@ -110,7 +110,7 @@ export default function Feed() {
           <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
             <div className="space-y-3">
               {feed.length === 0 ? (
-                <div className="rounded-xl border border-border bg-card/40 p-12 text-center">
+                <div className="rounded-xl border border-border bg-card p-12 text-center">
                   <Rss className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
                   <p className="text-sm font-medium text-foreground">Nothing in your feed yet</p>
                   <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
@@ -153,7 +153,7 @@ export default function Feed() {
           {data?.leaderboard ? (
             <LeaderboardPanel leaderboard={data.leaderboard} optOut={data.leaderboard_opt_out} />
           ) : (
-            <div className="rounded-xl border border-border bg-card/40 p-12 text-center">
+            <div className="rounded-xl border border-border bg-card p-12 text-center">
               <Trophy className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-sm font-medium text-foreground">No leaderboard yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">

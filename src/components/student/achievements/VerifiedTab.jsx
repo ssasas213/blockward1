@@ -40,8 +40,8 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6" aria-hidden="true">
-          <div className="h-40 rounded-xl border border-border bg-card/60 animate-pulse" />
-          <div className="h-40 rounded-xl border border-border bg-card/60 animate-pulse" />
+          <div className="h-40 rounded-xl border border-border bg-card animate-pulse" />
+          <div className="h-40 rounded-xl border border-border bg-card animate-pulse" />
         </div>
         <AchievementGridSkeleton count={6} />
       </div>

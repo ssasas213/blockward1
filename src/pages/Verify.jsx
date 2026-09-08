@@ -213,7 +213,7 @@ export default function Verify() {
   return (
     <div className="min-h-screen bg-background">
       {/* Brand header */}
-      <header className="border-b border-border bg-secondary/40 backdrop-blur-sm">
+      <header className="border-b border-border bg-secondary">
         <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">

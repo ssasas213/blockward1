@@ -112,7 +112,7 @@ export default function SchoolSetup() {
             <p className="text-sm text-muted-foreground mt-2">Invite your team to start using BlockWard.</p>
           </div>
 
-          <Card className="border-border bg-card/60 backdrop-blur-md mb-5">
+          <Card className="border-border bg-card mb-5">
             <CardContent className="p-5 flex items-center gap-4">
               {result.school.logo_url ? (
                 <img src={result.school.logo_url} alt="" className="h-14 w-14 rounded-xl object-cover border border-border" />
@@ -128,7 +128,7 @@ export default function SchoolSetup() {
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card/60 backdrop-blur-md mb-5">
+          <Card className="border-border bg-card mb-5">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Invite your team</CardTitle>
               <CardDescription>Send email invitations — they join instantly, no codes needed.</CardDescription>
@@ -183,7 +183,7 @@ export default function SchoolSetup() {
           <div className="grid gap-4 sm:grid-cols-2">
             <button
               onClick={() => setMode('create')}
-              className="group p-6 rounded-xl border border-border bg-card/60 backdrop-blur-md hover:border-primary/50 transition-all text-left card-hover"
+              className="group p-6 rounded-xl border border-border bg-card hover:border-primary/50 transition-all text-left card-hover"
             >
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                 <Plus className="h-5 w-5 text-primary" />
@@ -194,7 +194,7 @@ export default function SchoolSetup() {
 
             <button
               onClick={() => setMode('join')}
-              className="group p-6 rounded-xl border border-border bg-card/60 backdrop-blur-md hover:border-primary/50 transition-all text-left card-hover"
+              className="group p-6 rounded-xl border border-border bg-card hover:border-primary/50 transition-all text-left card-hover"
             >
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
                 <LogIn className="h-5 w-5 text-primary" />
@@ -213,7 +213,7 @@ export default function SchoolSetup() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
         <div className="w-full max-w-md">
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardHeader>
               <CardTitle className="text-lg text-foreground">Join an Existing School</CardTitle>
               <CardDescription>Enter the admin join code provided by the school owner</CardDescription>
@@ -264,7 +264,7 @@ export default function SchoolSetup() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
       <div className="w-full max-w-xl">
-        <Card className="border-border bg-card/60 backdrop-blur-md">
+        <Card className="border-border bg-card">
           <CardHeader>
             <CardTitle className="text-lg text-foreground">Create your school</CardTitle>
             <CardDescription>Just a few details to get started</CardDescription>

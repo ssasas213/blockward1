@@ -94,7 +94,7 @@ export default function ClassroomCanvas({ layout, students, marks, mode, selecte
                 <div className="w-full h-full rounded-lg border border-dashed border-border/50" />
               )}
               {isDesk && (
-                <div className="w-full h-full rounded-lg bg-card/80 border border-border shadow-sm">
+                <div className="w-full h-full rounded-lg bg-card border border-border shadow-sm">
                   <SeatGrid el={el} students={students} marks={marks} mode={mode} selectedEmail={selectedEmail} onSeatClick={onSeatClick} onUnassign={onUnassign} />
                 </div>
               )}

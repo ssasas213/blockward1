@@ -152,7 +152,7 @@ export default function PendingSignoffs() {
             const canBulk = role === 'teacher' && r.verification_tier === 1;
             const needsAdminApproval = r.status === 'awaiting_second_approval';
             return (
-              <Card key={r.id} className={`border-border bg-card/60 backdrop-blur-md shadow-sm ${isSelected ? 'border-primary/50' : ''}`}>
+              <Card key={r.id} className={`border-border bg-card shadow-sm ${isSelected ? 'border-primary/50' : ''}`}>
                 <CardContent className="p-5">
                   <div className="flex items-start gap-3">
                     {canBulk && (

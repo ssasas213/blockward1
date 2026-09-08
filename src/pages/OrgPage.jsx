@@ -98,7 +98,7 @@ export default function OrgPage() {
 
       <main className="pt-14 max-w-5xl mx-auto px-4 sm:px-6 pb-24">
         {/* Org header */}
-        <div className="mt-8 sm:mt-12 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-6 sm:p-8">
+        <div className="mt-8 sm:mt-12 rounded-2xl border border-border bg-card p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
             {org.logo_url ? (
               <img src={org.logo_url} alt={org.name} className="h-16 w-16 rounded-2xl object-cover border border-border" />
@@ -152,7 +152,7 @@ export default function OrgPage() {
                 <Link
                   key={m.handle}
                   to={`/@${m.handle}`}
-                  className="card-hover flex items-center gap-3 rounded-xl border border-border bg-card/60 p-3.5"
+                  className="card-hover flex items-center gap-3 rounded-xl border border-border bg-card p-3.5"
                 >
                   <InitialsAvatar name={m.name} src={m.avatar_url} size="md" />
                   <div className="min-w-0">
@@ -179,7 +179,7 @@ export default function OrgPage() {
                 <Link
                   key={c.verification_id || i}
                   to={`/verify/${c.verification_id}`}
-                  className="card-hover group text-left rounded-xl overflow-hidden border border-border bg-card/60"
+                  className="card-hover group text-left rounded-xl overflow-hidden border border-border bg-card"
                 >
                   <div className={`relative aspect-video w-full flex items-center justify-center ${CATEGORY_TINTS[c.category] || CATEGORY_TINTS.special}`}>
                     {c.image_url ? (
@@ -187,7 +187,7 @@ export default function OrgPage() {
                     ) : (
                       <Shield className="h-10 w-10 text-white/80" />
                     )}
-                    <span className="absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-success/40">
+                    <span className="absolute top-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-background border border-success/40">
                       <BadgeCheck className="h-3.5 w-3.5 text-success" />
                     </span>
                   </div>
@@ -202,7 +202,7 @@ export default function OrgPage() {
         )}
 
         {members.length === 0 && credentials.length === 0 && (
-          <div className="mt-10 rounded-xl border border-border bg-card/40 p-8 text-center">
+          <div className="mt-10 rounded-xl border border-border bg-card p-8 text-center">
             <p className="text-sm text-muted-foreground">Nothing published by this organisation yet.</p>
           </div>
         )}

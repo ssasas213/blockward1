@@ -22,7 +22,7 @@ export default function BlockWardPreviewCard({ blockWard }) {
         {imageUrl && <div className="absolute inset-0 bg-black/40" />}
         <div className="flex items-center justify-between relative z-10">
           <div className="text-6xl">{!imageUrl ? (blockWard.icon || '🏆') : ''}</div>
-          <Badge className="bg-white/30 text-white border-0 backdrop-blur-sm">
+          <Badge className="bg-white/30 text-white border-0 ">
             {blockWard.rarity}
           </Badge>
         </div>

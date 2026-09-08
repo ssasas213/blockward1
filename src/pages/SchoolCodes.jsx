@@ -141,7 +141,7 @@ function SchoolCodesImpl() {
       </Card>
 
       {codes.length === 0 ? (
-        <Card className="border-border bg-card/60">
+        <Card className="border-border bg-card">
           <CardContent className="py-12 text-center">
             <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground mb-5">
@@ -159,7 +159,7 @@ function SchoolCodesImpl() {
             const config = codeConfig[codeRecord.role_type] || codeConfig.teacher;
             const isActive = codeRecord.status === 'active';
             return (
-              <Card key={codeRecord.id} className={`border-border bg-card/60 backdrop-blur-md ${!isActive ? 'opacity-60' : ''}`}>
+              <Card key={codeRecord.id} className={`border-border bg-card ${!isActive ? 'opacity-60' : ''}`}>
                 <CardContent className="p-5">
                   <div className="flex items-start gap-4">
                     <div className={`h-11 w-11 rounded-xl ${config.bgIcon} flex items-center justify-center flex-shrink-0`}>
@@ -219,7 +219,7 @@ function SchoolCodesImpl() {
         </div>
       )}
 
-      <Card className="border-border bg-card/60 backdrop-blur-md">
+      <Card className="border-border bg-card">
         <CardHeader>
           <CardTitle className="text-sm">Quick Share Links</CardTitle>
           <CardDescription>Registration links with codes embedded</CardDescription>

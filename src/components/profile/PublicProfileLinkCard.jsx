@@ -97,7 +97,7 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
   if (handle) {
     return (
       <>
-        <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card/60 to-brand-pink/10 backdrop-blur-md shadow-sm">
+        <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card/60 to-brand-pink/10  shadow-sm">
           <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="flex items-center gap-4 min-w-0 flex-1">
               <div className="h-12 w-12 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">
@@ -142,7 +142,7 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
   }
 
   return (
-    <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card/60 to-brand-pink/10 backdrop-blur-md shadow-sm">
+    <Card className="border-primary/25 bg-gradient-to-br from-primary/10 via-card/60 to-brand-pink/10  shadow-sm">
       <CardContent className="p-6">
         <div className="flex items-start gap-4">
           <div className="h-12 w-12 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center flex-shrink-0">

@@ -92,7 +92,7 @@ export default function VerifyLanding() {
               and read the full record for yourself.
             </p>
 
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-5 text-left">
+            <div className="mt-8 rounded-2xl border border-white/10 bg-card p-5 text-left">
               <label htmlFor="credential-input" className="block text-sm font-medium text-white/80 mb-2">
                 Credential link or ID
               </label>
@@ -137,7 +137,7 @@ export default function VerifyLanding() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {WHAT_YOU_SEE.map((item, i) => (
-                <div key={i} className="card-hover p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border">
+                <div key={i} className="card-hover p-6 rounded-xl bg-card border border-border">
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <item.icon className="h-5 w-5 text-primary" />
                   </div>

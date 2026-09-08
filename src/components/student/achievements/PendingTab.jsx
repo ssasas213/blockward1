@@ -19,7 +19,7 @@ const WITHDRAWABLE = ['draft', 'submitted', 'under_review', 'changes_requested',
  * duplicated into a fresh draft so the student can correct and resubmit
  * without retyping everything.
  */
-export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDuplicate, loading = false }) {
+export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDuplicate, onRetry, loading = false }) {
   const [showWithdrawn, setShowWithdrawn] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -45,6 +45,16 @@ export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDupli
 
   const withdrawnCount = requests.filter(r => r.status === 'withdrawn').length;
   const visible = showWithdrawn ? requests : requests.filter(r => r.status !== 'withdrawn');
+
+  // Withdrawable: the pre-verification states, plus verified-but-unpublished
+  // (a failed mint) — no public credential exists to unmake.
+  const canWithdraw = (r) => WITHDRAWABLE.includes(r.status)
+    || (r.status === 'approved' && !r.verification_id);
+
+  const doRetry = async (r) => {
+    setBusyId(r.id);
+    try { await onRetry(r); } finally { setBusyId(null); }
+  };
 
   const doWithdraw = async (r) => {
     setBusyId(r.id);
@@ -117,6 +127,14 @@ export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDupli
                         {r.status === 'draft' ? 'Edit & submit' : 'Edit & resubmit'}
                       </Button>
                     )}
+                    {r.status === 'approved' && !r.verification_id && (
+                      <Button size="sm" variant="outline" disabled={busyId === r.id} onClick={() => doRetry(r)}>
+                        {busyId === r.id
+                          ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          : <ShieldCheck className="h-4 w-4 mr-1.5" />}
+                        Finish publishing
+                      </Button>
+                    )}
                     {['minted', 'archived'].includes(r.status) && r.verification_id && (
                       <Button size="sm" variant="outline" asChild>
                         <Link to={`/verify/${r.verification_id}`}>
@@ -124,7 +142,7 @@ export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDupli
                         </Link>
                       </Button>
                     )}
-                    {WITHDRAWABLE.includes(r.status) && !confirming && (
+                    {canWithdraw(r) && !confirming && (
                       <Button
                         size="sm" variant="ghost"
                         className="text-muted-foreground hover:text-destructive"
@@ -164,6 +182,13 @@ export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDupli
                 )}
                 {r.status === 'expired' && (
                   <p className="text-xs text-muted-foreground mt-3">This request expired without a reviewer responding within 30 days. You can submit it again.</p>
+                )}
+                {r.status === 'approved' && !r.verification_id && (
+                  <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-sm text-muted-foreground">
+                      Your verifier signed off. Publishing to your profile — if it doesn't finish shortly, retry or withdraw it.
+                    </p>
+                  </div>
                 )}
                 {r.status === 'withdrawn' && (
                   <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">

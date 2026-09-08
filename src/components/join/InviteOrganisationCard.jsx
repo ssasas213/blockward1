@@ -87,7 +87,7 @@ export function InviteOrgForm({ onDone, compact = false }) {
 /** Standalone card version — option 3 on the Add-your-school-or-club page. */
 export default function InviteOrganisationCard({ onDone }) {
   return (
-    <Card className="border-border bg-card/60 backdrop-blur-md">
+    <Card className="border-border bg-card">
       <CardHeader>
         <CardTitle className="text-lg text-foreground flex items-center gap-2">
           <Mail className="h-5 w-5 text-primary" /> Not on BlockWard yet?

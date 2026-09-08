@@ -11,7 +11,7 @@ export default function ShowcaseHero({ achievement, onOpen }) {
   return (
     <button
       onClick={() => onOpen(achievement)}
-      className="card-hover group block w-full overflow-hidden border border-border bg-card/60 text-left backdrop-blur-md"
+      className="card-hover group block w-full overflow-hidden border border-border bg-card text-left "
       style={{ borderRadius: 'var(--pf-radius, 16px)', boxShadow: 'var(--pf-shadow, none)' }}
     >
       <div className="grid sm:grid-cols-2">
@@ -27,7 +27,7 @@ export default function ShowcaseHero({ achievement, onOpen }) {
               <cat.Icon className="h-20 w-20 text-white/80" />
             </div>
           )}
-          <span className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-success/40">
+          <span className="absolute left-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background border border-success/40">
             <BadgeCheck className="h-4.5 w-4.5 text-success" />
           </span>
         </div>

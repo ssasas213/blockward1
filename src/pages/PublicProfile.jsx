@@ -268,7 +268,7 @@ export default function PublicProfile({ handle }) {
   return (
     <div className="min-h-screen bg-background font-sans antialiased" style={vars}>
       {/* Slim header */}
-      <header className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <a href={createPageUrl('Home')} className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />

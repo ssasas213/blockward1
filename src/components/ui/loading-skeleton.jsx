@@ -12,7 +12,7 @@ Skeleton.displayName = "Skeleton";
 
 function CardSkeleton({ className }) {
   return (
-    <div className={cn("rounded-xl border border-border bg-card/60 p-6 space-y-4", className)}>
+    <div className={cn("rounded-xl border border-border bg-card p-6 space-y-4", className)}>
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-10 w-10 rounded-lg" />

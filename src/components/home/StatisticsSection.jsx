@@ -35,7 +35,7 @@ export default function StatisticsSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: (i % 3) * 0.1 }}
-              className="p-8 rounded-2xl bg-white/[0.04] border border-white/10 backdrop-blur-md text-center hover:border-violet-500/30 transition-colors duration-300"
+              className="p-8 rounded-2xl bg-white/[0.04] border border-white/10  text-center hover:border-violet-500/30 transition-colors duration-300"
             >
               <div className="inline-flex h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/20 items-center justify-center mb-5">
                 <stat.icon className="h-6 w-6 text-violet-300" />

@@ -94,7 +94,7 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
               "flex items-center gap-4 p-4 rounded-xl border transition-colors",
               item.done
                 ? "border-success/30 bg-success/5"
-                : "border-border bg-card/60 hover:bg-muted/50"
+                : "border-border bg-card hover:bg-muted/50"
             )}
           >
             <div className={cn(

@@ -46,7 +46,7 @@ export default function BlockWardDetailModal({ blockWard, open, onClose }) {
             <div className="flex items-center justify-between relative z-10">
               {!imageUrl && <div className="text-6xl">{blockWard.icon || '🏆'}</div>}
               <div className="ml-auto">
-                <Badge className="bg-white/30 text-white border-0 backdrop-blur-sm">
+                <Badge className="bg-white/30 text-white border-0 ">
                   {blockWard.rarity || 'Common'}
                 </Badge>
               </div>

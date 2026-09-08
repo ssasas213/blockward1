@@ -42,7 +42,7 @@ export default function BlockchainGuaranteesSection() {
           {guarantees.map((g, i) => (
             <div
               key={i}
-              className="card-hover p-6 rounded-xl bg-card/40 backdrop-blur-md border border-border"
+              className="card-hover p-6 rounded-xl bg-card border border-border"
             >
               <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                 <g.icon className="h-5 w-5 text-primary" />
