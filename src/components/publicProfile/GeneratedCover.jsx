@@ -11,15 +11,17 @@ function hashString(str) {
   return Math.abs(h);
 }
 
-// Base two-tone palettes per category (matches the app's category gradients).
+// Base two-tone palettes per category. Deliberately desaturated and
+// deep-toned: generated covers are BACKGROUNDS, not focal points — the title
+// must stay legible on every one of them (WCAG AA against the bottom scrim).
 const PALETTES = {
-  academic: ['#8B5CF6', '#6366F1'],
-  sports: ['#10B981', '#059669'],
-  arts: ['#EC4899', '#F472B6'],
-  leadership: ['#8B5CF6', '#EC4899'],
-  community: ['#F59E0B', '#F97316'],
-  behaviour: ['#64748B', '#475569'],
-  special: ['#6366F1', '#8B5CF6'],
+  academic: ['#6E63A8', '#4B4776'],   // muted violet → dusty indigo
+  sports: ['#3F8A6B', '#28624E'],     // muted emerald
+  arts: ['#A85586', '#7C3D64'],       // muted rose
+  leadership: ['#7A5A93', '#5D4470'], // muted purple
+  community: ['#A87943', '#7E5A33'],   // muted amber
+  behaviour: ['#5A6474', '#3E4756'],   // muted slate
+  special: ['#545D96', '#3D4470'],    // muted indigo
 };
 
 const ANGLES = [135, 160, 115, 200];

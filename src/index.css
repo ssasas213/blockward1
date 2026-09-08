@@ -417,6 +417,16 @@ img, video { max-width: 100%; height: auto; }
   /* Tertiary text utility */
   .text-tertiary { color: hsl(var(--text-muted)); }
 
+  /* ===== Achievement card sizing — 4:3 ratio with a 200px floor =====
+     Defined as PLAIN CSS, never a Tailwind arbitrary utility: every child of
+     the card is absolutely positioned, so if aspect-[4/3] is silently
+     dropped by the build the card collapses to zero height and every
+     overlay collides. This class always ships. */
+  .bw-card-4-3 {
+    aspect-ratio: 4 / 3;
+    min-height: 200px;
+  }
+
   /* ===== Verified BlockWard — purple→pink premium credential ===== */
   .verified-glow {
     border-color: hsl(258 90% 66% / 0.30);

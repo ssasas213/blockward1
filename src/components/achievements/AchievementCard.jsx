@@ -153,7 +153,7 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
       onTouchStart={onTouchStart}
       onTouchEnd={clearPress}
       onTouchMove={clearPress}
-      className={`card-hover group relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-card text-left cursor-pointer
+      className={`card-hover group relative block w-full bw-card-4-3 overflow-hidden rounded-xl bg-card text-left cursor-pointer
         ${item.status === 'unverified' ? 'border-2 border-dashed border-border' : 'border border-border'} ${className}`}
     >
       {/* Cover — uploaded photo or deterministic generated cover */}
@@ -170,8 +170,9 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
           />
         )}
       </div>
-      {/* Scrim — same treatment for light and dark cover photos */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" aria-hidden="true" />
+      {/* Scrim — deep stop at the bottom so the title always sits on near-black,
+          regardless of the cover photo or generated gradient behind it */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/50 to-black/5" aria-hidden="true" />
 
       {/* Status badge — top-right */}
       <span className={`absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${status.card}`}>
@@ -226,15 +227,12 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
         <h3 className={`text-sm font-semibold leading-snug text-white line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] ${endorsers.length > 0 ? 'pl-8' : ''}`}>
           {item.title}
         </h3>
-        <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
-          {item.orgLogo ? (
-            <img src={item.orgLogo} alt="" className="h-3.5 w-3.5 rounded-full object-cover flex-shrink-0" />
-          ) : (
-            <InitialsAvatar name={item.org || cat.label} size="xs" />
-          )}
-          <span className="text-[11px] text-white/85 truncate flex-1">{item.org || cat.label}</span>
-          {fmtDate(item.date) && <span className="text-[11px] text-white/60 whitespace-nowrap">{fmtDate(item.date)}</span>}
-        </div>
+        {/* One quiet base line — organisation (or category) and date. No
+            avatar: without an organisation the initial avatar rendered a
+            stray single letter that read as a rendering artefact. */}
+        <p className="mt-1 truncate text-[11px] font-medium text-white/75">
+          {[item.org || cat.label, fmtDate(item.date)].filter(Boolean).join(' · ')}
+        </p>
         {(item.participant_role || item.team_slug) && (
           <div className="mt-1 flex items-center gap-1.5">
             {item.participant_role && (
