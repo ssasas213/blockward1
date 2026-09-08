@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import EmptyState from '@/components/ui/empty-state';
 import AchievementCard, { AchievementRow, cardFromVault, cardFromRequest, cardFromSelf } from '@/components/achievements/AchievementCard';
+import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import { Trophy } from 'lucide-react';
 
 /**
@@ -10,7 +11,7 @@ import { Trophy } from 'lucide-react';
  * verified achievements, and including them here made the same achievement
  * render twice with different subtitles and icons.
  */
-export default function AllTab({ verified, requests, selfReported, onSelectVerified, onGoTo, onShare, onGetVerified, viewMode = 'grid' }) {
+export default function AllTab({ verified, requests, selfReported, onSelectVerified, onGoTo, onShare, onGetVerified, viewMode = 'grid', loading = false }) {
   const items = useMemo(() => {
     const merged = [
       ...verified.map(v => ({ type: 'verified', card: cardFromVault(v), raw: v, date: v.minted_at || v.created_date })),
@@ -23,6 +24,10 @@ export default function AllTab({ verified, requests, selfReported, onSelectVerif
     ];
     return merged.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
   }, [verified, requests, selfReported]);
+
+  // Skeleton grid while the section loads — shaped like the real cards so the
+  // layout never jumps. (After the useMemo: hooks must not be conditional.)
+  if (loading) return <AchievementGridSkeleton />;
 
   if (items.length === 0) {
     return (

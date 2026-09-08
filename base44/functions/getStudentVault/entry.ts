@@ -22,6 +22,7 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { findProfileByEmail } from '../../shared/profileLookup.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -63,12 +64,10 @@ Deno.serve(async (req) => {
       : normalizeEmail(actor.actor_email);
 
     // ── STEP 1: Resolve the canonical student identity ──
-    let profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: targetEmail });
-    let profile = profiles[0] || null;
-    if (!profile) {
-      const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
-      profile = allProfiles.find(p => normalizeEmail(p.user_email) === targetEmail) || null;
-    }
+    // Targeted lookup (exact + case variants of the normalised email) — never
+    // a full-table scan, which loaded every profile in the database to find
+    // one and degraded as the user base grew.
+    const profile = await findProfileByEmail(base44.asServiceRole, targetEmail);
     if (!profile) {
       return Response.json({ ok: false, error: 'Student profile not found for email: ' + targetEmail }, { status: 403, headers: CORS });
     }
@@ -87,8 +86,10 @@ Deno.serve(async (req) => {
     // ── STEP 2: Query delivered StudentRecords ──
     // Use student_id (primary) and student_email (fallback) to catch all records
     // regardless of how the email was stored at creation time.
-    const recordsByStudentId = await base44.asServiceRole.entities.StudentRecord.filter({ student_id: canonicalStudentId });
-    const recordsByEmail = await base44.asServiceRole.entities.StudentRecord.filter({ student_email: profile.user_email });
+    const [recordsByStudentId, recordsByEmail] = await Promise.all([
+      base44.asServiceRole.entities.StudentRecord.filter({ student_id: canonicalStudentId }),
+      base44.asServiceRole.entities.StudentRecord.filter({ student_email: profile.user_email }),
+    ]);
 
     // Merge and deduplicate by record ID
     const seenIds = new Set();
@@ -135,8 +136,10 @@ Deno.serve(async (req) => {
     // ── STEP 4: Join linked BlockWard data ──
     // Query by both student_email and owner_student_email to catch all BlockWards
     // regardless of how the email was stored at creation time.
-    const blockWardsByEmail = await base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' });
-    const blockWardsByOwnerId = await base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email), status: 'active' });
+    const [blockWardsByEmail, blockWardsByOwnerId] = await Promise.all([
+      base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' }),
+      base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email), status: 'active' }),
+    ]);
     // Deduplicate by BlockWard id — the email and owner_email lookups can
     // return the same BlockWard, and merging blindly duplicated cards.
     const bwSeenIds = new Set();
@@ -156,9 +159,16 @@ Deno.serve(async (req) => {
     // Issuing organisation name/logo — resolved once per school so every
     // achievement card shows who issued it (subtitle hierarchy: org name
     // when org-issued, category otherwise).
+    // Distinct issuing schools, fetched concurrently — never one awaited
+    // query per school inside a loop.
     const orgById = {};
-    for (const sid of [...new Set(earned.map(r => r.school_id).filter(Boolean))]) {
-      try { const s = await base44.asServiceRole.entities.School.filter({ id: sid }); if (s[0]) orgById[sid] = { name: s[0].name, logo_url: s[0].logo_url || null }; } catch (e) { /* ignore */ }
+    const schoolIds = [...new Set(earned.map(r => r.school_id).filter(Boolean))];
+    const schoolLists = await Promise.all(schoolIds.map(sid =>
+      base44.asServiceRole.entities.School.filter({ id: sid }).catch(() => [])
+    ));
+    for (const list of schoolLists) {
+      const s = list?.[0];
+      if (s) orgById[s.id] = { name: s.name, logo_url: s.logo_url || null };
     }
 
     // ── STEP 5: Return unified result ──

@@ -3,13 +3,15 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useSchool } from '@/lib/SchoolContext';
+import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
 import EmptyState from '@/components/ui/empty-state';
-import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
+import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import {
   Award, Shield, Calendar, BookOpen,
   ChevronRight, Star, Send
@@ -23,83 +25,80 @@ import CrossOrgAchievementsCard from '@/components/dashboard/CrossOrgAchievement
 import SelfAchievementsCard from '@/components/dashboard/SelfAchievementsCard';
 import StudentOnboardingChecklist from '@/components/dashboard/StudentOnboardingChecklist';
 
+/** Small pulse rows shaped like the real list content — no centred spinners. */
+function ListRowSkeleton({ rows = 3, height = 'h-16' }) {
+  return (
+    <div className="space-y-2" aria-hidden="true">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className={`${height} rounded-lg bg-muted/60 animate-pulse`} />
+      ))}
+    </div>
+  );
+}
+
 function StudentDashboardContent() {
-  const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    myClasses: [],
-    todaySchedule: [],
-    recentPoints: [],
-    blockWards: [],
-    achievementPoints: 0,
-    behaviourPoints: 0
-  });
+  // Identity comes from SchoolContext — fetched once per session, never here.
+  const { user, profile } = useSchool();
+
+  // Per-section loading: null = still loading. The page shell renders
+  // immediately; every section resolves and un-skeletons on its own.
+  const [myClasses, setMyClasses] = useState(null);
+  const [todaySchedule, setTodaySchedule] = useState(null);
+  const [points, setPoints] = useState(null);
+  const [blockWards, setBlockWards] = useState(null);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!user) return;
+    const email = user.email;
+    const sid = profile?.school_id || null;
+    const today = new Date().getDay();
+    const dayIndex = today === 0 ? 6 : today - 1;
 
-  const loadDashboardData = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      if (!currentUser) return;
+    // Every call is independent of the others — one parallel batch, each
+    // section resolves into its own state as soon as its data lands.
+    const classesP = base44.entities.Class.filter(sid ? { school_id: sid } : {}).catch(() => []);
+    const scheduleP = base44.entities.TimetableEntry.filter(
+      sid ? { school_id: sid, day_of_week: dayIndex } : { day_of_week: dayIndex }
+    ).catch(() => []);
+    const pointsP = base44.entities.PointEntry.filter(
+      { student_email: email }, '-created_date', 10
+    ).catch(() => []);
+    const vaultP = loadEarnedAchievements().then(r => r.achievements).catch(() => []);
 
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      const profile = profiles.length > 0 ? profiles[0] : null;
-      setUserProfile(profile);
+    classesP.then((all) => setMyClasses(all.filter(c => c.student_emails?.includes(email))));
+    pointsP.then(setPoints);
+    vaultP.then(setBlockWards);
+    Promise.all([classesP, scheduleP]).then(([allClasses, allSchedules]) => {
+      const classIds = new Set(allClasses.map(c => c.id));
+      setTodaySchedule(
+        allSchedules
+          .filter(s => classIds.has(s.class_id))
+          .sort((a, b) => a.start_time.localeCompare(b.start_time))
+      );
+    });
+  }, [user, profile?.school_id]);
 
-      const classFilter = profile?.school_id ? { school_id: profile.school_id } : {};
-      const allClasses = await base44.entities.Class.filter(classFilter);
-      const myClasses = allClasses.filter(c => c.student_emails?.includes(currentUser.email));
-
-      const today = new Date().getDay();
-      const dayIndex = today === 0 ? 6 : today - 1;
-      const classIds = myClasses.map(c => c.id);
-      const scheduleFilter = profile?.school_id ? { school_id: profile.school_id, day_of_week: dayIndex } : { day_of_week: dayIndex };
-      const allSchedules = await base44.entities.TimetableEntry.filter(scheduleFilter);
-      const todaySchedule = allSchedules.filter(s => classIds.includes(s.class_id));
-
-      const [points, vaultRes] = await Promise.all([
-        base44.entities.PointEntry.filter({ student_email: currentUser.email }, '-created_date', 10),
-        base44.functions.invoke('getStudentVault', {})
-      ]);
-      const blockWards = vaultRes.data?.ok ? (vaultRes.data.achievements || []) : [];
-
-      let achievementPoints = 0;
-      let behaviourPoints = 0;
-      points.forEach(p => {
-        if (p.type === 'achievement') achievementPoints += p.points;
-        else behaviourPoints += Math.abs(p.points);
-      });
-
-      setStats({
-        myClasses,
-        todaySchedule: todaySchedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
-        recentPoints: points.slice(0, 5),
-        blockWards,
-        achievementPoints: profile?.total_achievement_points || achievementPoints,
-        behaviourPoints: profile?.total_behaviour_points || behaviourPoints
-      });
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <DashboardSkeleton />;
+  // Points totals — same derivation as before, computed once points arrive.
+  let achievementPoints = 0;
+  let behaviourPoints = 0;
+  (points || []).forEach(p => {
+    if (p.type === 'achievement') achievementPoints += p.points;
+    else behaviourPoints += Math.abs(p.points);
+  });
+  const statsAchievementPoints = profile?.total_achievement_points || achievementPoints;
+  const statsBehaviourPoints = profile?.total_behaviour_points || behaviourPoints;
+  const recentPoints = (points || []).slice(0, 5);
 
   // Onboarding state — a brand-new student with no organisations and no
   // achievements sees a single checklist instead of the empty data cards.
-  const isEmptyState = !userProfile?.school_id && stats.blockWards.length === 0;
+  // Unknown until the achievements cache resolves; skeletons show until then.
+  const isEmptyState = !profile?.school_id && blockWards !== null && blockWards.length === 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${userProfile?.first_name || 'Student'}`}
-        description={userProfile?.grade_level ? `Grade ${userProfile.grade_level} · Your achievement overview` : 'Your achievement overview'}
+        title={`Welcome back, ${profile?.first_name || 'Student'}`}
+        description={profile?.grade_level ? `Grade ${profile.grade_level} · Your achievement overview` : 'Your achievement overview'}
       >
         <Button asChild>
           <Link to={createPageUrl('StudentBlockWards')}>
@@ -111,14 +110,14 @@ function StudentDashboardContent() {
 
       {isEmptyState ? (
         <div className="space-y-6">
-          <StudentOnboardingChecklist profile={userProfile} userEmail={user?.email} />
+          <StudentOnboardingChecklist profile={profile} userEmail={user?.email} />
           {/* Achievements can be added right away — no organisation needed. */}
-          <SelfAchievementsCard profile={userProfile} userEmail={user?.email} />
+          <SelfAchievementsCard profile={profile} userEmail={user?.email} />
         </div>
       ) : (
         <>
           {/* My BlockWards — first content block */}
-          {stats.blockWards.length > 0 && (
+          {(blockWards === null || blockWards.length > 0) && (
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">My BlockWards</CardTitle>
@@ -130,26 +129,30 @@ function StudentDashboardContent() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {stats.blockWards.slice(0, 3).map((bw) => (
-                    <BlockWardCard key={bw.id} blockWard={bw} onClick={() => window.location.href = createPageUrl(`StudentBlockWards`)} showStudent={false} />
-                  ))}
-                </div>
+                {blockWards === null ? (
+                  <AchievementGridSkeleton count={3} />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {blockWards.slice(0, 3).map((bw) => (
+                      <BlockWardCard key={bw.id} blockWard={bw} onClick={() => window.location.href = createPageUrl(`StudentBlockWards`)} showStudent={false} />
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
           {/* Aggregated achievements across every organisation the student belongs to */}
-          <CrossOrgAchievementsCard profile={userProfile} userEmail={user?.email} />
+          <CrossOrgAchievementsCard profile={profile} userEmail={user?.email} />
 
           {/* Self-reported achievements — instant, verifiable later */}
-          <SelfAchievementsCard profile={userProfile} userEmail={user?.email} />
+          <SelfAchievementsCard profile={profile} userEmail={user?.email} />
 
           {/* Stats — one compact row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Achievement Points" value={stats.achievementPoints} icon={Award} />
-            <StatCard label="Behaviour Points" value={stats.behaviourPoints} icon={Award} />
-            <StatCard label="BlockWards Earned" value={stats.blockWards.length} icon={Shield} />
+            <StatCard label="Achievement Points" value={statsAchievementPoints} icon={Award} />
+            <StatCard label="Behaviour Points" value={statsBehaviourPoints} icon={Award} />
+            <StatCard label="BlockWards Earned" value={blockWards === null ? '…' : blockWards.length} icon={Shield} />
           </div>
 
           {/* Today's Classes and Attendance */}
@@ -165,9 +168,11 @@ function StudentDashboardContent() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {stats.todaySchedule.length > 0 ? (
+                {todaySchedule === null ? (
+                  <ListRowSkeleton rows={3} height="h-16" />
+                ) : todaySchedule.length > 0 ? (
                   <div className="space-y-2">
-                    {stats.todaySchedule.map((entry) => (
+                    {todaySchedule.map((entry) => (
                       <div key={entry.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
                         <div className="text-center min-w-[56px]">
                           <p className="text-sm font-medium text-foreground">{entry.start_time}</p>
@@ -203,9 +208,11 @@ function StudentDashboardContent() {
                 </Button>
               </CardHeader>
               <CardContent>
-                {stats.recentPoints.length > 0 ? (
+                {points === null ? (
+                  <ListRowSkeleton rows={3} height="h-14" />
+                ) : recentPoints.length > 0 ? (
                   <div className="space-y-2">
-                    {stats.recentPoints.map((point) => (
+                    {recentPoints.map((point) => (
                       <div key={point.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0 ${point.type === 'achievement' ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
@@ -249,9 +256,15 @@ function StudentDashboardContent() {
               </Button>
             </CardHeader>
             <CardContent>
-              {stats.myClasses.length > 0 ? (
+              {myClasses === null ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden="true">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-[92px] rounded-lg border border-border bg-muted/60 animate-pulse" />
+                  ))}
+                </div>
+              ) : myClasses.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {stats.myClasses.map((cls) => (
+                  {myClasses.map((cls) => (
                     <Link
                       key={cls.id}
                       to={createPageUrl(`ClassDetail?id=${cls.id}`)}

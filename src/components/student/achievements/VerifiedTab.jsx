@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import AchievementCard, { AchievementRow, cardFromVault } from '@/components/achievements/AchievementCard';
+import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
 import { Shield, Award, CheckCircle2 } from 'lucide-react';
 
@@ -18,7 +19,7 @@ import { Shield, Award, CheckCircle2 } from 'lucide-react';
  * through loadEarnedAchievements(). Stats, vault status, category filter and
  * the shared achievement card grid.
  */
-export default function VerifiedTab({ achievements, profile, onSelect, onShare, viewMode = 'grid' }) {
+export default function VerifiedTab({ achievements, profile, onSelect, onShare, viewMode = 'grid', loading = false }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showVaultModal, setShowVaultModal] = useState(false);
 
@@ -32,6 +33,20 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
   const filteredBlockWards = achievements.filter(bw =>
     categoryFilter === 'all' || bw.category === categoryFilter
   );
+
+  // Skeletons shaped like the real layout while the section loads —
+  // stats cards plus the 4:3 collection grid. No centred spinners.
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" aria-hidden="true">
+          <div className="h-40 rounded-xl border border-border bg-card/60 animate-pulse" />
+          <div className="h-40 rounded-xl border border-border bg-card/60 animate-pulse" />
+        </div>
+        <AchievementGridSkeleton count={6} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

@@ -1,5 +1,6 @@
 import { defaultAdminPermissions } from './adminPermissions.ts';
 import { sendResendEmail } from './resendEmail.ts';
+import { findProfileByEmail } from './profileLookup.ts';
 
 // ============================================================================
 // profileProvisioning — the SINGLE server-side path for creating a UserProfile
@@ -163,8 +164,11 @@ function guardianEmailHtml(firstName, link) {
 
 // THE profile creation path. svc must be a service-role client.
 export async function provisionProfile(svc, user, opts) {
-  const existing = await svc.entities.UserProfile.filter({ user_email: user.email });
-  if (existing.length > 0) return { profile: existing[0], already_exists: true };
+  // Emails are NORMALISED TO LOWERCASE ON WRITE (below), so every lookup can
+  // stay a targeted exact-match query. The variant lookup covers profiles
+  // created before normalisation existed — no full-table scans anywhere.
+  const existing = await findProfileByEmail(svc, user.email);
+  if (existing) return { profile: existing, already_exists: true };
 
   const now = new Date().toISOString();
   const fallbackParts = (user.full_name || user.email || 'User').trim().split(/\s+/);
@@ -260,7 +264,7 @@ export async function provisionProfile(svc, user, opts) {
   }
 
   const data = {
-    user_email: user.email,
+    user_email: normalizeEmail(user.email),
     user_type: grant.role,
     first_name,
     last_name,

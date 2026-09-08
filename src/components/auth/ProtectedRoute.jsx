@@ -1,53 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useEffect } from 'react';
 import { createPageUrl } from '@/utils';
-import { Loader2, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
+import { useSchool } from '@/lib/SchoolContext';
 
+/**
+ * ProtectedRoute — route guard with ZERO fetches of its own.
+ *
+ * Identity (auth user + profile) is fetched once per session by SchoolContext
+ * and consumed here; this component only enforces the redirect rules. Pages
+ * inside a ProtectedRoute get the same context — they should never call
+ * base44.auth.me() either.
+ */
 export default function ProtectedRoute({ children, requireProfile = true }) {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const { user, profile, loading } = useSchool();
 
   useEffect(() => {
-    loadAuth();
-  }, []);
-
-  const loadAuth = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-
-      if (currentUser) {
-        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-        let p = profiles.length > 0 ? profiles[0] : null;
-        setProfile(p);
-
-        // If there's no profile yet or no school linked, this may be the Test Super User
-        // on first sign-in. getTestModeStatus auto-provisions the test school + personas
-        // and links the controller profile — so we must run it BEFORE deciding to redirect
-        // to Onboarding/JoinSchool. For normal users it returns false immediately (cheap).
-        if (!p || !p.school_id) {
-          try {
-            const res = await base44.functions.invoke('getTestModeStatus');
-            if (res.data?.is_test_super_user) {
-              const refreshed = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-              if (refreshed.length > 0) setProfile(refreshed[0]);
-            }
-          } catch { /* ignore — normal users just proceed to normal redirects */ }
-        }
-      }
-    } catch (error) {
-      setUser(null);
-      setProfile(null);
-    } finally {
-      setLoading(false);
-      setInitialized(true);
-    }
-  };
-
-  useEffect(() => {
-    if (!initialized || loading) return;
+    if (loading) return;
 
     // Not authenticated - redirect to login
     if (!user) {
@@ -55,26 +23,28 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    if (!requireProfile) return;
+
     // Authenticated but no profile - the new join flow starts at Signup
-    if (requireProfile && !profile) {
+    if (!profile) {
       window.location.href = createPageUrl('Signup');
       return;
     }
 
-    // Profile without a role/school yet — new signup: join or create a school
-    if (requireProfile && profile && profile.user_type === 'pending') {
+    // Profile without a role yet — legacy signup: join or create a school
+    if (profile.user_type === 'pending') {
       window.location.href = createPageUrl('JoinSchool');
       return;
     }
 
     // Admin with no school linked — redirect to school setup
-    if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
+    if (profile.user_type === 'admin' && !profile.school_id) {
       window.location.href = createPageUrl('SchoolSetup');
       return;
     }
 
     // Teacher with no school linked — redirect to join school page
-    if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
+    if (profile.user_type === 'teacher' && !profile.school_id) {
       window.location.href = createPageUrl('JoinSchool');
       return;
     }
@@ -82,27 +52,20 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     // Students WITHOUT a school proceed — BlockWard is fully usable without
     // an organisation, and joining one is an optional, later action.
 
-    // Under-13 account waiting on guardian consent - redirect to login (shows the consent waiting card)
-    if (requireProfile && profile && profile.status === 'awaiting_guardian_consent') {
+    // Under-13 awaiting guardian consent / pending approval / suspended —
+    // the login page shows the right holding message.
+    if (
+      profile.status === 'awaiting_guardian_consent' ||
+      profile.status === 'pending_approval' ||
+      profile.status === 'suspended' ||
+      profile.status === 'inactive'
+    ) {
       window.location.href = '/Login';
-      return;
     }
+  }, [user, profile, loading, requireProfile]);
 
-    // Profile pending approval - redirect to login (shows pending message)
-    if (requireProfile && profile && profile.status === 'pending_approval') {
-      window.location.href = '/Login';
-      return;
-    }
-
-    // Profile suspended - redirect to login (shows suspended message)
-    if (requireProfile && profile && (profile.status === 'suspended' || profile.status === 'inactive')) {
-      window.location.href = '/Login';
-      return;
-    }
-  }, [user, profile, loading, initialized, requireProfile]);
-
-  // Show loading state while checking auth
-  if (!initialized || loading) {
+  // Show loading state while the session identity loads (once per session)
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
@@ -120,40 +83,17 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     );
   }
 
-  // Not authenticated
-  if (!user) {
-    return null;
-  }
-
-  // Profile required but not found
-  if (requireProfile && !profile) {
-    return null;
-  }
-
-  // Unplaced profile (no school yet) — redirect in progress
-  if (requireProfile && profile && profile.user_type === 'pending') {
-    return null;
-  }
-
-  // Admin with no school — redirect in progress
-  if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
-    return null;
-  }
-
-  // Teacher with no school — redirect in progress
-  if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
-    return null;
-  }
-
-  // Awaiting consent, pending or suspended — redirect in progress
+  if (!user) return null;
+  if (requireProfile && !profile) return null;
+  if (requireProfile && profile.user_type === 'pending') return null;
+  if (requireProfile && profile.user_type === 'admin' && !profile.school_id) return null;
+  if (requireProfile && profile.user_type === 'teacher' && !profile.school_id) return null;
   if (requireProfile && profile && (
     profile.status === 'awaiting_guardian_consent' ||
     profile.status === 'pending_approval' ||
     profile.status === 'suspended' ||
     profile.status === 'inactive'
-  )) {
-    return null;
-  }
+  )) return null;
 
   return children;
 }

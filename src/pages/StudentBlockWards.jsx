@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Share2, AtSign } from 'lucide-react';
+import { Plus, Share2, AtSign } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -26,7 +26,12 @@ import { LayoutGrid, List } from 'lucide-react';
  * StudentBlockWards, StudentMyRecords, StudentPortfolioVault and
  * AchievementRequests). Tabs: All / Verified / Pending / Unverified.
  * Earned achievements load through loadEarnedAchievements() — the single
- * loader mandated by ACHIEVEMENT_ARCHITECTURE.md.
+ * loader mandated by ACHIEVEMENT_ARCHITECTURE.md, with a 60s TTL cache so
+ * navigation here from the dashboard renders instantly.
+ *
+ * Identity comes from SchoolContext. Each section keeps its own loading state
+ * (null = loading) — the header and tabs render immediately and every grid
+ * shows 4:3 skeleton cards until its data lands. No global spinner.
  */
 export default function StudentBlockWards() { return <RoleGuard roles={['student']}><StudentBlockWardsImpl /></RoleGuard>; }
 function StudentBlockWardsImpl() {
@@ -38,15 +43,12 @@ function StudentBlockWardsImpl() {
 }
 
 function StudentBlockWardsContent() {
-  const { testMode } = useSchool();
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [verified, setVerified] = useState([]);
-  const [requests, setRequests] = useState([]);
+  const { user, profile, testMode } = useSchool();
+  const [verified, setVerified] = useState(null);
+  const [requests, setRequests] = useState(null);
   const [meta, setMeta] = useState(null);
   const [caps, setCaps] = useState(null);
-  const [selfReported, setSelfReported] = useState([]);
+  const [selfReported, setSelfReported] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBlockWard, setSelectedBlockWard] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -62,34 +64,26 @@ function StudentBlockWardsContent() {
   const [verifySelf, setVerifySelf] = useState(null);
 
   const load = useCallback(async () => {
-    try {
-      const me = await base44.auth.me();
-      setUser(me);
-      const profiles = await base44.entities.UserProfile.filter({ user_email: me.email });
-      const p = profiles[0] || null;
-      setProfile(p);
-
-      // THE single loader for earned achievements (ACHIEVEMENT_ARCHITECTURE.md)
-      const { achievements } = await loadEarnedAchievements();
-      setVerified(achievements);
-
-      const email = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : me.email;
-      const [reqRes, selfRes] = await Promise.all([
-        base44.functions.invoke('achievementRequestData', { mode: 'student' }),
-        base44.entities.SelfReportedAchievement.filter({ student_email: email }, '-created_date'),
-      ]);
-      if (reqRes.data?.ok) {
-        setRequests(reqRes.data.requests || []);
-        setMeta({ orgs: reqRes.data.orgs, templates: reqRes.data.templates, staff: reqRes.data.staff });
-        setCaps(reqRes.data.caps);
-      }
-      setSelfReported(selfRes || []);
-    } catch (e) {
-      toast.error(e?.response?.data?.error || e.message);
-    } finally {
-      setLoading(false);
+    if (!user) return;
+    const email = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user.email;
+    // All three loads are independent — one parallel batch. Achievements come
+    // from the shared TTL cache (instant on repeat navigation, background
+    // revalidate when stale).
+    const [earned, reqRes, selfRes] = await Promise.all([
+      loadEarnedAchievements(),
+      base44.functions.invoke('achievementRequestData', { mode: 'student' }).catch(() => null),
+      base44.entities.SelfReportedAchievement.filter({ student_email: email }, '-created_date').catch(() => []),
+    ]);
+    setVerified(earned.achievements || []);
+    if (reqRes?.data?.ok) {
+      setRequests(reqRes.data.requests || []);
+      setMeta({ orgs: reqRes.data.orgs, templates: reqRes.data.templates, staff: reqRes.data.staff });
+      setCaps(reqRes.data.caps);
+    } else {
+      setRequests([]);
     }
-  }, [testMode?.activePersona]);
+    setSelfReported(selfRes || []);
+  }, [user, testMode?.isTestSuperUser, testMode?.effectiveEmail, testMode?.activePersona]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -97,7 +91,7 @@ function StudentBlockWardsContent() {
   // Verified on this device, then never again. The first-ever visit just
   // seeds the set (no confetti for old achievements).
   useEffect(() => {
-    if (loading || !verified.length) return;
+    if (verified === null || verified.length === 0) return;
     try {
       if (localStorage.getItem('bw_celebrated') === null) {
         localStorage.setItem('bw_celebrated', JSON.stringify(verified.map(v => v.verify_id).filter(Boolean)));
@@ -107,7 +101,7 @@ function StudentBlockWardsContent() {
       const fresh = verified.filter(v => v.verify_id && !celebrated.includes(v.verify_id));
       if (fresh.length) setCelebrateQueue(fresh.map(cardFromVault));
     } catch { /* never block the page */ }
-  }, [loading, verified]);
+  }, [verified]);
 
   useEffect(() => {
     if (!celebrateQueue.length || celebrating) return;
@@ -174,24 +168,17 @@ function StudentBlockWardsContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-      </div>
-    );
-  }
-
-  const openRequestCount = requests.filter(r => !['minted', 'archived', 'rejected', 'expired'].includes(r.status)).length;
-  const unverifiedCount = selfReported.filter(s => s.status !== 'verified').length;
+  const openRequestCount = (requests || []).filter(r => !['minted', 'archived', 'rejected', 'expired'].includes(r.status)).length;
+  const unverifiedCount = (selfReported || []).filter(s => s.status !== 'verified').length;
   // Distinct achievements: verified + open requests + unverified self-reported.
   // Archived/minted requests already exist as verified achievements, and
   // verified self-reported items live in the verified list — never count twice.
-  const totalCount = verified.length + openRequestCount + unverifiedCount;
+  const allLoaded = verified !== null && requests !== null && selfReported !== null;
+  const totalCount = allLoaded ? verified.length + openRequestCount + unverifiedCount : null;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — renders immediately from the session identity */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">My BlockWards</h1>
@@ -213,7 +200,7 @@ function StudentBlockWardsContent() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <PortfolioActions records={verified} profile={profile} user={user} />
+          <PortfolioActions records={verified || []} profile={profile} user={user} />
           <Button
             onClick={() => { setEditing(null); setFormOpen(true); }}
             disabled={caps && !caps.can_submit}
@@ -228,48 +215,52 @@ function StudentBlockWardsContent() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
-          <TabsTrigger value="verified">Verified ({verified.length})</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({openRequestCount})</TabsTrigger>
-          <TabsTrigger value="unverified">Unverified ({unverifiedCount})</TabsTrigger>
+          <TabsTrigger value="all">All ({totalCount === null ? '…' : totalCount})</TabsTrigger>
+          <TabsTrigger value="verified">Verified ({verified === null ? '…' : verified.length})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({requests === null ? '…' : openRequestCount})</TabsTrigger>
+          <TabsTrigger value="unverified">Unverified ({selfReported === null ? '…' : unverifiedCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">
           <AllTab
-            verified={verified}
-            requests={requests}
-            selfReported={selfReported}
+            verified={verified || []}
+            requests={requests || []}
+            selfReported={selfReported || []}
             onSelectVerified={setSelectedBlockWard}
             onGoTo={setActiveTab}
             onShare={setShareTarget}
             onGetVerified={handleGetVerified}
             viewMode={viewMode}
+            loading={!allLoaded}
           />
         </TabsContent>
 
         <TabsContent value="verified" className="mt-6">
           <VerifiedTab
-            achievements={verified}
+            achievements={verified || []}
             profile={profile}
             onSelect={setSelectedBlockWard}
             onShare={setShareTarget}
             viewMode={viewMode}
+            loading={verified === null}
           />
         </TabsContent>
 
         <TabsContent value="pending" className="mt-6">
           <PendingTab
-            requests={requests}
+            requests={requests || []}
             caps={caps}
             onEdit={(r) => { setEditing(r); setFormOpen(true); }}
+            loading={requests === null}
           />
         </TabsContent>
 
         <TabsContent value="unverified" className="mt-6">
           <UnverifiedTab
-            items={selfReported}
+            items={selfReported || []}
             onGetVerified={handleGetVerified}
             viewMode={viewMode}
+            loading={selfReported === null}
           />
         </TabsContent>
         </Tabs>
@@ -310,7 +301,7 @@ function StudentBlockWardsContent() {
           handle: profile?.handle,
           bio: profile?.bio || null,
           avatar_url: profile?.avatar_url || null,
-          count: verified.length,
+          count: verified?.length || 0,
         }}
       />
 

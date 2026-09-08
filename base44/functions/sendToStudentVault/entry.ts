@@ -24,6 +24,7 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { findProfileByEmail } from '../../shared/profileLookup.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -99,15 +100,10 @@ Deno.serve(async (req) => {
     const actorName = `${profile.first_name} ${profile.last_name}`;
     const normalizedStudentEmail = normalizeEmail(record.student_email);
 
-    // ── Resolve the student's UserProfile (same resolution getStudentVault uses) ──
+    // ── Resolve the student's UserProfile (same targeted lookup getStudentVault uses) ──
     let studentProfile = null;
     try {
-      const studentProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: record.student_email });
-      studentProfile = studentProfiles[0] || null;
-      if (!studentProfile) {
-        const allProfiles = await base44.asServiceRole.entities.UserProfile.filter({});
-        studentProfile = allProfiles.find(p => normalizeEmail(p.user_email) === normalizedStudentEmail) || null;
-      }
+      studentProfile = await findProfileByEmail(base44.asServiceRole, record.student_email);
     } catch (e) { /* best-effort */ }
     const canonicalStudentId = studentProfile?.id || record.owner_student_id || record.student_id;
 

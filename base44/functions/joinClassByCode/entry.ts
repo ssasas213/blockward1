@@ -12,6 +12,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { ensureVault } from '../../shared/vault.ts';
+import { findProfileByEmail } from '../../shared/profileLookup.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -44,12 +45,12 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole;
 
-    // Look up the class by code (case-insensitive).
-    let matches = await svc.entities.Class.filter({ join_code: code }).catch(() => []);
-    let cls = matches[0] || null;
-    if (!cls) {
-      const all = await svc.entities.Class.filter({}).catch(() => []);
-      cls = all.find(c => (c.join_code || '').toUpperCase() === code) || null;
+    // Look up the class by code — targeted queries on the stored case variants
+    // (never a full Class-table scan to find one code).
+    let cls = null;
+    for (const variant of [...new Set([code, code.toLowerCase()])]) {
+      const matches = await svc.entities.Class.filter({ join_code: variant }).catch(() => []);
+      if (matches.length > 0) { cls = matches[0]; break; }
     }
     if (!cls) {
       return Response.json({ ok: false, error: 'Invalid class code. No class found with that code.' }, { status: 404, headers: CORS });

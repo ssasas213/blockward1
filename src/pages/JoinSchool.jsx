@@ -4,8 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { useSchool } from '@/lib/SchoolContext';
 import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight } from 'lucide-react';
-import { toast } from 'sonner';
 import CodeJoinCard from '@/components/join/CodeJoinCard';
 import SchoolSearchCard from '@/components/join/SchoolSearchCard';
 import InviteOrganisationCard from '@/components/join/InviteOrganisationCard';
@@ -16,49 +16,39 @@ import InviteOrganisationCard from '@/components/join/InviteOrganisationCard';
  * join with a code (fastest), search for an organisation and request to
  * join, invite one that isn't on BlockWard yet, or create a new school
  * (admin path). Students can always come back later — a school-less student
- * is a complete account.
+ * is a complete account. Identity comes from SchoolContext — no auth fetches.
  */
 export default function JoinSchool() {
-  const [profile, setProfile] = useState(null);
+  const { user, profile, testMode, loading: ctxLoading } = useSchool();
   const [pendingMembership, setPendingMembership] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { loadAuth(); }, []);
-
-  const loadAuth = async () => {
-    try {
-      const currentUser = await base44.auth.me();
-      if (currentUser) {
-        // Test Super User bypass: auto-provisioned server-side — never show the join form.
-        try {
-          const tm = await base44.functions.invoke('getTestModeStatus');
-          if (tm.data?.is_test_super_user) {
-            window.location.href = createPageUrl('AdminDashboard');
-            return;
-          }
-        } catch { /* not the test super user */ }
-
-        const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-        if (profiles.length > 0) {
-          const p = profiles[0];
-          setProfile(p);
-          if (p.status === 'pending_approval' || p.user_type === 'teacher') {
-            try {
-              const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-              const pending = staff.find(s => s.status === 'pending') || (p.status === 'pending_approval' ? {} : null);
-              if (pending) setPendingMembership(pending);
-            } catch { /* ignore */ }
-          }
-        }
-      }
-    } catch {
-      window.location.href = '/Login';
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (ctxLoading) return;
+    if (!user) { window.location.href = '/Login'; return; }
+    // Test Super User bypass: auto-provisioned server-side — never show the join form.
+    if (testMode?.isTestSuperUser) {
+      window.location.href = createPageUrl('AdminDashboard');
+      return;
     }
-  };
+    let cancelled = false;
+    const finish = () => { if (!cancelled) setLoading(false); };
+    if (profile?.status === 'pending_approval' || profile?.user_type === 'teacher') {
+      base44.entities.StaffMembership.filter({ user_email: user.email })
+        .then((staff) => {
+          if (cancelled) return;
+          const pending = staff.find(s => s.status === 'pending') || (profile?.status === 'pending_approval' ? {} : null);
+          if (pending) setPendingMembership(pending);
+        })
+        .catch(() => {})
+        .finally(finish);
+    } else {
+      finish();
+    }
+    return () => { cancelled = true; };
+  }, [ctxLoading, user, profile, testMode]);
 
-  if (loading) {
+  if (ctxLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin" />
@@ -101,7 +91,6 @@ export default function JoinSchool() {
   const canCreateSchool = role === 'pending' || role === 'admin';
 
   const handleJoined = (data) => {
-    toast.success(data.message || `You have joined ${data.school_name}.`);
     setTimeout(() => {
       window.location.href = data.role === 'teacher' ? '/TeacherDashboard' : '/StudentDashboard';
     }, 1200);

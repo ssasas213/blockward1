@@ -11,6 +11,10 @@ export const SchoolProvider = ({ children }) => {
   const [testMode, setTestMode] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ── Identity: fetched ONCE per session here ──
+  // SchoolContext is the single source of truth for auth user + profile.
+  // ProtectedRoute and every page consume this context — none of them should
+  // call base44.auth.me() or refetch the profile themselves.
   const loadSchoolData = useCallback(async () => {
     try {
       const currentUser = await base44.auth.me();
@@ -20,24 +24,32 @@ export const SchoolProvider = ({ children }) => {
       }
       setUser(currentUser);
 
-      // Probe test mode FIRST — for the Test Super User this creates the controller
-      // profile + test school + personas (idempotent). For normal users it returns
-      // false immediately. Running it before the profile fetch means first sign-in
-      // is provisioned before we look for a profile (breaks the chicken-and-egg).
-      let testModeRes = null;
-      try {
-        const res = await base44.functions.invoke('getTestModeStatus');
-        if (res.data?.is_test_super_user) testModeRes = res.data;
-      } catch { /* not test super user — cheap false */ }
-
       const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      if (profiles.length === 0 && !testModeRes) {
+      let p = profiles[0] || null;
+
+      // Test-mode probe — ONLY the test controller needs it (their profile is
+      // flagged test_super_user server-side), plus the chicken-and-egg first
+      // sign-in where no profile exists yet and the probe performs the
+      // provisioning. Everyone else skips the call entirely.
+      let testModeRes = null;
+      if (!p || p.test_super_user) {
+        try {
+          const res = await base44.functions.invoke('getTestModeStatus');
+          if (res.data?.is_test_super_user) testModeRes = res.data;
+        } catch { /* test mode disabled — normal user */ }
+        // Provisioning may have just created/promoted the controller profile —
+        // refresh so the rest of this function uses authoritative server state.
+        if (testModeRes) {
+          const refreshed = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
+          if (refreshed.length > 0) { p = refreshed[0]; }
+        }
+      }
+
+      if (!p && !testModeRes) {
         setTestMode({ isTestSuperUser: false });
         setLoading(false);
         return;
       }
-
-      let p = profiles[0];
       setProfile(p);
 
       if (testModeRes) {
@@ -55,44 +67,33 @@ export const SchoolProvider = ({ children }) => {
           effectiveName: activeInfo.name,
           profileId: testModeRes.profile_id,
         });
-        // Provisioning may have just promoted the profile (user_type→admin,
-        // school_id set) — refresh the local copy so the rest of this function
-        // uses authoritative server-side state.
-        if (!p || p.user_type !== 'admin' || !p.school_id) {
-          const refreshed = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-          if (refreshed.length > 0) { p = refreshed[0]; setProfile(p); }
-        }
       } else {
         setTestMode({ isTestSuperUser: false });
       }
 
       if (p.user_type === 'admin') {
-        // Load owned schools + schools from active memberships
         const [ownedSchools, memberships] = await Promise.all([
           base44.entities.School.filter({ admin_email: currentUser.email }),
           base44.entities.AdminSchoolMembership.filter({ admin_email: currentUser.email, status: 'active' }),
         ]);
 
-        // Fetch schools from memberships that aren't already in ownedSchools
         const ownedIds = new Set(ownedSchools.map(s => s.id));
         const memberSchoolIds = memberships.map(m => m.school_id).filter(id => !ownedIds.has(id));
-        const memberSchools = [];
-        for (const sid of memberSchoolIds) {
-          try {
-            const s = await base44.entities.School.filter({ id: sid });
-            if (s.length > 0) memberSchools.push(s[0]);
-          } catch { /* skip */ }
-        }
+        const activeSchoolId = p.active_school_id || p.school_id;
 
-        const allSchools = [...ownedSchools, ...memberSchools];
-        setManagedSchools(allSchools);
-
-        // Load the active school (from school_id or active_school_id)
-        const schoolId = p.active_school_id || p.school_id;
-        if (schoolId) {
-          const schools = await base44.entities.School.filter({ id: schoolId });
-          if (schools.length > 0) setActiveSchool(schools[0]);
-        }
+        // Member schools and the active school are independent of each other —
+        // fetch them concurrently, never one awaited query per school in a loop.
+        const [memberSchoolLists, activeSchoolLists] = await Promise.all([
+          Promise.all(memberSchoolIds.map(sid =>
+            base44.entities.School.filter({ id: sid }).catch(() => [])
+          )),
+          activeSchoolId
+            ? base44.entities.School.filter({ id: activeSchoolId }).catch(() => [])
+            : Promise.resolve([]),
+        ]);
+        const memberSchools = memberSchoolLists.map(l => l[0]).filter(Boolean);
+        setManagedSchools([...ownedSchools, ...memberSchools]);
+        if (activeSchoolLists.length > 0) setActiveSchool(activeSchoolLists[0]);
       } else {
         // Teachers and students — single school, no switcher
         if (p.school_id) {
@@ -172,8 +173,6 @@ export const SchoolProvider = ({ children }) => {
   } : profile;
   const effectiveUser = isTestMode ? { email: effectiveEmail, id: user?.id } : user;
 
-  // Any authenticated user without an active school is "unlinked" — the route guard
-  // redirects them to the join flow, so the app never renders in a half-state.
   const hasNoSchool = !!profile && !activeSchool && !loading;
 
   const value = {

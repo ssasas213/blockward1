@@ -1,6 +1,7 @@
 import React from 'react';
 import EmptyState from '@/components/ui/empty-state';
 import AchievementCard, { AchievementRow, cardFromSelf } from '@/components/achievements/AchievementCard';
+import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import { FileText } from 'lucide-react';
 
 /**
@@ -9,7 +10,8 @@ import { FileText } from 'lucide-react';
  * "Get this verified" action so the gap between unverified and verified is
  * obvious and easy to close. List mode uses the compact shared row.
  */
-export default function UnverifiedTab({ items, onGetVerified, viewMode = 'grid' }) {
+export default function UnverifiedTab({ items, onGetVerified, viewMode = 'grid', loading = false }) {
+  if (loading) return <AchievementGridSkeleton />;
   if (!items || items.length === 0) {
     return (
       <EmptyState

@@ -12,7 +12,16 @@ import { STATUS_LABELS, STATUS_BADGE_VARIANTS, TIER_SHORT, CATEGORY_LABELS } fro
  * from the My achievement requests page: statuses, reviewer comments,
  * evidence, activity log, and edit & resubmit.
  */
-export default function PendingTab({ requests, caps, onEdit }) {
+export default function PendingTab({ requests, caps, onEdit, loading = false }) {
+  if (loading) {
+    return (
+      <div className="space-y-3" aria-hidden="true">
+        {[0, 1, 2].map(i => (
+          <div key={i} className="h-24 rounded-xl border border-border bg-card/60 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
   if (requests.length === 0) {
     return (
       <EmptyState
