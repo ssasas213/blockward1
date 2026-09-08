@@ -7,6 +7,11 @@
  *     profile this week") — NEVER individual viewer identities
  *   - view-milestone notifications (10/25/50/100/250/500/1000), once each
  *   - profile-strength inputs (owner-only completeness meter)
+ *   - "your year" recap: achievements earned, top category, endorsements
+ *     received, views — over the last 365 days
+ *
+ * Detailed view data is only collected and returned while the student has
+ * insights enabled (UserProfile.views_insight_opt_out = false).
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
@@ -24,6 +29,7 @@ export default async function (req: Request): Promise<Response> {
     const profile = profiles[0];
     if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 });
 
+    const optedIn = !profile.views_insight_opt_out;
     const now = new Date();
     let views: any[] = [];
     try { views = await svc.entities.ProfileView.filter({ profile_id: profile.id }); } catch (e) { /* empty */ }
@@ -53,20 +59,22 @@ export default async function (req: Request): Promise<Response> {
     const total = profile.profile_views || views.length;
 
     // ── View milestone — notify once per threshold crossed ──
-    try {
-      const last = profile.last_view_milestone || 0;
-      const next = MILESTONES.find((m) => total >= m && last < m);
-      if (next) {
-        await notifyEvent(svc, {
-          to_email: profile.user_email,
-          event_type: 'view_milestone',
-          title: `${profile.handle ? '@' + profile.handle : 'Your profile'} just hit ${next} views`,
-          body: `Your profile has now been viewed ${total} times — every view is someone new seeing your verified achievements.`,
-          related_id: `${profile.id}:${next}`,
-        });
-        await svc.entities.UserProfile.update(profile.id, { last_view_milestone: next });
-      }
-    } catch (e) { /* best-effort */ }
+    if (optedIn) {
+      try {
+        const last = profile.last_view_milestone || 0;
+        const next = MILESTONES.find((m) => total >= m && last < m);
+        if (next) {
+          await notifyEvent(svc, {
+            to_email: profile.user_email,
+            event_type: 'view_milestone',
+            title: `${profile.handle ? '@' + profile.handle : 'Your profile'} just hit ${next} views`,
+            body: `Your profile has now been viewed ${total} times — every view is someone new seeing your verified achievements.`,
+            related_id: `${profile.id}:${next}`,
+          });
+          await svc.entities.UserProfile.update(profile.id, { last_view_milestone: next });
+        }
+      } catch (e) { /* best-effort */ }
+    }
 
     // ── Profile-strength inputs (owner-only meter; never public) ──
     let registry: any[] = [];
@@ -84,13 +92,40 @@ export default async function (req: Request): Promise<Response> {
       externally_verified: hasExternal,
     };
 
+    // ── "Your year" recap — the last 365 days ──
+    const yearAgo = now.getTime() - 365 * 24 * 60 * 60 * 1000;
+    const inYear = (t: any) => {
+      const ts = new Date(t || 0).getTime();
+      return ts > yearAgo;
+    };
+    const yearAchievements = visible.filter((r) => inYear(r.date_delivered || r.date_approved || r.date_achieved));
+    const catCounts: Record<string, number> = {};
+    for (const r of yearAchievements) {
+      const c = r.achievement_category || 'special';
+      catCounts[c] = (catCounts[c] || 0) + 1;
+    }
+    const topCat = Object.entries(catCounts).sort((a, b) => b[1] - a[1])[0] || null;
+    let yearEndorsements = 0;
+    try {
+      const es = await svc.entities.Endorsement.filter({ recipient_id: profile.id, status: 'active' });
+      yearEndorsements = es.filter((e) => inYear(e.created_date)).length;
+    } catch (e) { /* empty */ }
+    const recap = {
+      achievements: yearAchievements.length,
+      top_category: topCat ? topCat[0] : null,
+      top_category_count: topCat ? topCat[1] : 0,
+      endorsements: yearEndorsements,
+      views: optedIn ? views.filter((v) => inYear(v.created_date)).length : null,
+    };
+
     return Response.json({
       ok: true,
       total,
-      sparkline: days,
-      week: { people: weekPeople.size, schools: weekSchools.size },
+      sparkline: optedIn ? days : [],
+      week: optedIn ? { people: weekPeople.size, schools: weekSchools.size } : null,
       strength,
-      opted_in: !profile.views_insight_opt_out,
+      recap,
+      opted_in: optedIn,
       handle: profile.handle || null,
     });
   } catch (error) {

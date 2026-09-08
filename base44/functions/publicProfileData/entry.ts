@@ -217,11 +217,49 @@ export default async function (req: Request): Promise<Response> {
     const is_owner = !!body.viewer_email &&
       String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
 
-    // View counter — server-side only, never the owner's own views.
+    // View counting — server-side only, never the owner's own views.
+    // The public counter always increments; the detailed view record (which
+    // powers the owner's insights) is deduped to once per viewer per 24h and
+    // skipped entirely when the owner has opted out of insights.
     if (!is_owner) {
       try {
         await svc.entities.UserProfile.update(profile.id, { profile_views: (profile.profile_views || 0) + 1 });
       } catch (e) { /* best-effort */ }
+
+      if (!profile.views_insight_opt_out) {
+        try {
+          let viewerKey = null;
+          let viewerSchoolId = null;
+          let viewerSchoolName = null;
+          if (body.viewer_email) {
+            try {
+              const viewerRows = await svc.entities.UserProfile.filter({ user_email: body.viewer_email });
+              const v = viewerRows[0];
+              viewerKey = v ? `u:${v.id}` : `u:${String(body.viewer_email).toLowerCase()}`;
+              if (v?.school_id) {
+                const s = await svc.entities.School.filter({ id: v.school_id });
+                if (s[0]) { viewerSchoolId = v.school_id; viewerSchoolName = s[0].name; }
+              }
+            } catch (e) { /* stay generic */ }
+          } else if (body.anon_id) {
+            viewerKey = `a:${String(body.anon_id).slice(0, 64)}`;
+          }
+          if (viewerKey) {
+            const recent = await svc.entities.ProfileView.filter({ profile_id: profile.id, viewer_key: viewerKey });
+            const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+            const seenRecently = (recent || []).some((v) => new Date(v.created_date).getTime() > dayAgo);
+            if (!seenRecently) {
+              await svc.entities.ProfileView.create({
+                profile_id: profile.id,
+                handle: profile.handle,
+                viewer_key: viewerKey,
+                viewer_school_id: viewerSchoolId || null,
+                viewer_school_name: viewerSchoolName || null,
+              });
+            }
+          }
+        } catch (e) { /* best-effort — insights never fail a page load */ }
+      }
     }
 
     return Response.json({
