@@ -1,89 +1,102 @@
 import React from 'react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
-import AchievementTile from '@/components/publicProfile/AchievementTile';
-import AchievementListRow from '@/components/publicProfile/AchievementListRow';
 import SocialLinks from '@/components/publicProfile/SocialLinks';
-import FeaturedLink from '@/components/publicProfile/FeaturedLink';
 import { themeVars, bannerStyle } from '@/lib/profileThemes';
 
-// Placeholder tiles so the preview shows a real layout before the student
-// has any published achievements.
-const PLACEHOLDERS = [
-  { registry_id: 'ph1', title: 'Regional 400m champion', category: 'sports', image_url: null, organisation_name: 'Athletics Club' },
-  { registry_id: 'ph2', title: 'Grade 8 violin distinction', category: 'arts', image_url: null, organisation_name: 'Music Academy' },
-  { registry_id: 'ph3', title: 'UKMT Maths Challenge gold', category: 'academic', image_url: null, organisation_name: 'Maths Trust' },
-];
+// Live mini render of the public profile — updates as the student changes
+// options. The preview IS the feature: every iteration is another minute
+// spent on the profile.
+export default function ProfilePreview({ name, handle, bio, avatarUrl, value, achievements = [] }) {
+  const vars = themeVars(value.theme_id, value.accent_colour, value.display_font);
+  const hasBanner = !!value.banner_url || (value.theme_id && value.theme_id !== 'slate');
+  const bs = bannerStyle(value.banner_url);
+  const sample = achievements.slice(0, 4);
+  const layout = value.profile_layout || 'grid';
 
-/**
- * ProfilePreview — live, self-contained miniature of the public /@handle
- * profile. The theme's token overrides are applied to this wrapper only, so
- * the preview updates as the student changes options without touching the
- * rest of the app.
- */
-export default function ProfilePreview({
-  name, handle, bio, avatarUrl, count,
-  bannerUrl, themeId, accentColour, displayFont, profileLayout,
-  socialLinks, featuredLink, sampleAchievements,
-}) {
-  const vars = themeVars(themeId, accentColour, displayFont);
-  const samples = (sampleAchievements && sampleAchievements.length ? sampleAchievements.slice(0, 3) : PLACEHOLDERS);
+  const Tile = ({ a, big }) => (
+    <div className={`overflow-hidden rounded-lg border border-border bg-card/60 ${big ? 'col-span-2 row-span-2' : ''}`}>
+      <div className={`${big ? 'aspect-[2/1]' : 'aspect-square'} w-full overflow-hidden`}>
+        {a?.image_url ? (
+          <img src={a.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full bg-primary/15" />
+        )}
+      </div>
+      {big && <p className="truncate px-2 py-1.5 text-[10px] font-semibold text-foreground">{a?.title}</p>}
+    </div>
+  );
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden bg-background" style={vars}>
+    <div className="overflow-hidden rounded-2xl border border-border bg-background" style={vars}>
       {/* Banner */}
-      <div className="h-16 w-full" style={bannerStyle(bannerUrl, themeId)} />
+      {hasBanner && (
+        <div
+          className={bs ? 'h-16' : 'h-10'}
+          style={bs || { background: 'var(--pf-banner)' }}
+        />
+      )}
 
-      {/* Header */}
-      <div className="p-3.5 sm:p-4" style={{ borderRadius: 'var(--pf-radius, 1rem)' }}>
-        <div className="flex items-center gap-3">
-          <InitialsAvatar name={name || 'Student'} src={avatarUrl} size="md" ring />
-          <div className="min-w-0 flex-1">
-            <p className="font-heading text-sm sm:text-base font-bold text-foreground truncate">{name || 'Your Name'}</p>
-            <p className="text-xs font-semibold text-primary">@{handle || 'handle'}</p>
+      <div className="p-4">
+        <div className={`flex items-end gap-3 ${hasBanner && bs ? '-mt-8' : ''}`}>
+          <div className="rounded-full bg-background p-0.5">
+            <InitialsAvatar name={name || 'Student'} src={avatarUrl} size="lg" ring />
           </div>
-          <div className="rounded-lg border border-border bg-secondary/40 px-2.5 py-1 text-center">
-            <p className="text-sm font-bold text-foreground leading-none">{count || samples.length}</p>
-            <p className="text-[9px] text-muted-foreground mt-0.5">verified</p>
+          <div className="min-w-0 flex-1 pb-0.5">
+            <p className="truncate font-heading text-base font-bold text-foreground">{name || 'Your name'}</p>
+            <p className="truncate text-xs font-semibold text-primary">@{handle || 'handle'}</p>
           </div>
+          <span className="rounded-lg border border-border bg-secondary/40 px-2 py-1 text-center">
+            <span className="block text-sm font-bold leading-none text-foreground">{achievements.length}</span>
+            <span className="block text-[8px] text-muted-foreground">verified</span>
+          </span>
         </div>
 
-        {bio && <p className="mt-2 text-xs text-muted-foreground whitespace-pre-line leading-relaxed line-clamp-3">{bio}</p>}
+        {bio && <p className="mt-2 whitespace-pre-line text-[11px] leading-relaxed text-muted-foreground line-clamp-3">{bio}</p>}
 
-        {socialLinks?.length > 0 && <div className="mt-2"><SocialLinks links={socialLinks.slice(0, 6)} /></div>}
+        <div className="mt-2.5">
+          <SocialLinks links={value.social_links} />
+        </div>
 
-        {featuredLink?.url && <div className="mt-3"><FeaturedLink link={featuredLink} /></div>}
-      </div>
-
-      {/* Achievements in the chosen layout */}
-      <div className="px-3.5 sm:px-4 pb-4">
-        {profileLayout === 'list' ? (
-          <div className="space-y-1.5">
-            {samples.map((a) => (
-              <AchievementListRow key={a.registry_id} achievement={a} onClick={() => {}} />
-            ))}
-          </div>
-        ) : profileLayout === 'showcase' ? (
-          <div>
-            <div className="rounded-xl border border-border bg-card/60 overflow-hidden flex items-center gap-3 p-2.5">
-              <div className="h-14 w-20 flex-shrink-0 rounded-lg bg-gradient-to-br from-primary to-accent" />
-              <div className="min-w-0">
-                <p className="text-xs font-semibold text-foreground truncate">{samples[0].title}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{samples[0].organisation_name}</p>
-              </div>
-            </div>
-            <div className="mt-1.5 grid grid-cols-4 gap-1.5">
-              {samples.slice(1).map((a) => (
-                <AchievementTile key={a.registry_id} achievement={a} onClick={() => {}} />
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            {samples.map((a) => (
-              <AchievementTile key={a.registry_id} achievement={a} onClick={() => {}} />
-            ))}
+        {value.featured_link?.url && (
+          <div
+            className="mt-3 truncate rounded-lg bg-primary px-3 py-2 text-center text-[11px] font-semibold text-primary-foreground"
+            style={{ borderRadius: 'calc(var(--pf-radius, 14px) - 2px)' }}
+          >
+            {value.featured_link.label || 'Featured link'} ↗
           </div>
         )}
+
+        {/* Achievements in the chosen layout */}
+        <div className="mt-3 border-t border-border pt-3">
+          {layout === 'list' ? (
+            <div className="space-y-1.5">
+              {sample.map((a, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-card/60 p-1.5">
+                  <span className="h-7 w-7 flex-shrink-0 rounded-md bg-primary/15" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[10px] font-semibold text-foreground">{a.title}</span>
+                    <span className="block truncate text-[8px] text-muted-foreground">{a.organisation_name}</span>
+                  </span>
+                  <span className="text-[8px] text-tertiary">✓</span>
+                </div>
+              ))}
+              {sample.length === 0 && <p className="text-[10px] text-muted-foreground">Your verified achievements will appear as compact rows.</p>}
+            </div>
+          ) : layout === 'showcase' ? (
+            <div className="grid grid-cols-2 gap-1.5">
+              {sample[0] ? <Tile a={sample[0]} big /> : <div className="col-span-2 row-span-2 flex h-20 items-center justify-center rounded-lg border border-dashed border-border text-[10px] text-muted-foreground">Hero achievement</div>}
+              {sample.slice(1, 3).map((a, i) => <Tile key={i} a={a} />)}
+              {sample.length === 0 && <Tile />}{sample.length === 0 && <Tile />}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 gap-1.5">
+              {sample.map((a, i) => <Tile key={i} a={a} />)}
+              {sample.length === 0 && (
+                <p className="col-span-3 py-4 text-center text-[10px] text-muted-foreground">Your verified achievements will appear here.</p>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import React from 'react';
-import { BadgeCheck, Link } from 'lucide-react';
+import { Link as RouterLink } from 'react-router-dom';
+import { BadgeCheck } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import { CATEGORY_STYLE, fmtDate } from '@/components/publicProfile/AchievementTile';
 
@@ -37,9 +38,9 @@ export default function AchievementListRow({ achievement, onClick }) {
             {achievement.participant_role ? ` · ${achievement.participant_role}` : ''}
           </span>
           {achievement.team_slug && (
-            <Link to={`/team/${achievement.team_slug}`} onClick={(e) => { e.stopPropagation(); }} className="text-[11px] text-muted-foreground hover:text-primary hover:underline">
+            <RouterLink to={`/team/${achievement.team_slug}`} onClick={(e) => { e.stopPropagation(); }} className="text-[11px] text-muted-foreground hover:text-primary hover:underline">
               Team record →
-            </Link>
+            </RouterLink>
           )}
         </div>
       </div>

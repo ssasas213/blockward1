@@ -9,9 +9,14 @@
  *                          global uniqueness (incl. reserved history) and the
  *                          30-day change cooldown. Old handles are kept in
  *                          handle_history as permanent redirects.
- *  - bio:                  one-line bio (max 120 chars).
+ *  - bio:                  public bio (max 200 chars, plain text, line breaks ok).
  *  - profile_visibility:   'public' | 'link_only' | 'private'.
  *  - og_image_url:         generated share-card image used as the OG image.
+ *  - Visual customisation — PRESETS ONLY, validated against fixed lists:
+ *      theme_id, accent_colour, profile_layout, display_font, banner_url,
+ *      social_links (whitelisted platforms, https forced, max 6),
+ *      featured_link (one https CTA button).
+ *  - pinned_achievement_ids: up to 6 pinned verified achievements.
  *  - achievement_visibility: { registry_id, visibility } for one achievement —
  *                          only on achievements owned by the caller.
  */
@@ -19,7 +24,29 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { normalizeHandle, validateHandle, isHandleAvailable, cooldownDaysRemaining } from '../../shared/handles.ts';
 
-const MAX_BIO = 120;
+const MAX_BIO = 200;
+const THEMES = ['slate', 'midnight', 'paper', 'terracotta', 'forest', 'cobalt', 'rose', 'mono', 'gradient', 'carbon'];
+const LAYOUTS = ['grid', 'list', 'showcase'];
+const FONTS = ['sans', 'serif', 'mono', 'display'];
+const ACCENT_HEXES = ['#7c3aed', '#4f46e5', '#2563eb', '#0d9488', '#059669', '#d97706', '#ea580c', '#dc2626', '#e11d48', '#db2777', '#334155', '#171717'];
+const PLATFORMS = ['instagram', 'tiktok', 'linkedin', 'github', 'youtube', 'twitter', 'discord', 'behance', 'dribbble', 'strava', 'chess', 'website'];
+const PRESET_BANNER_IDS = ['aurora', 'dusk', 'ember', 'glacier', 'prism', 'sandstone', 'tide', 'orchid', 'voltage', 'botanical', 'nebula', 'blueprint'];
+
+// Force https, reject every other protocol.
+function normalizeHttpsUrl(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  let url = raw.trim();
+  if (!url) return null;
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:') u.protocol = 'https:';
+    if (u.protocol !== 'https:') return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
 
 export default async function (req: Request): Promise<Response> {
   try {
@@ -81,10 +108,8 @@ export default async function (req: Request): Promise<Response> {
         }
       }
 
-      const availability = await isHandleAvailable(svc, handle, profile.id);
-      if (!availability.available) {
-        return Response.json({ error: availability.reason || 'That handle is already taken' }, { status: 409 });
-      }
+      const available = await isHandleAvailable(svc, handle, profile.id);
+      if (!available) return Response.json({ error: 'That handle is already taken' }, { status: 409 });
 
       updates.handle = handle;
       updates.handle_changed_at = now;
@@ -93,7 +118,7 @@ export default async function (req: Request): Promise<Response> {
       }
     }
 
-    // ── Bio ─────────────────────────────────────────────────────────────────
+    // ── Bio (200 chars, plain text, line breaks allowed) ──────────────────────
     if (typeof body.bio === 'string') {
       const bio = body.bio.trim();
       if (bio.length > MAX_BIO) return Response.json({ error: `Bio must be ${MAX_BIO} characters or fewer` }, { status: 400 });
@@ -111,6 +136,68 @@ export default async function (req: Request): Promise<Response> {
     // ── OG image ─────────────────────────────────────────────────────────────
     if (typeof body.og_image_url === 'string') {
       updates.og_image_url = body.og_image_url || null;
+    }
+
+    // ── Visual customisation — validated presets, never raw styling ──────────
+    if (typeof body.theme_id === 'string') {
+      if (!THEMES.includes(body.theme_id)) return Response.json({ error: 'Unknown theme' }, { status: 400 });
+      updates.theme_id = body.theme_id;
+    }
+    if (body.accent_colour === null || body.accent_colour === '') {
+      updates.accent_colour = null;
+    } else if (typeof body.accent_colour === 'string') {
+      const hex = body.accent_colour.toLowerCase();
+      if (!ACCENT_HEXES.includes(hex)) return Response.json({ error: 'Accent colour must come from the BlockWard palette' }, { status: 400 });
+      updates.accent_colour = hex;
+    }
+    if (typeof body.profile_layout === 'string') {
+      if (!LAYOUTS.includes(body.profile_layout)) return Response.json({ error: 'Unknown layout' }, { status: 400 });
+      updates.profile_layout = body.profile_layout;
+    }
+    if (typeof body.display_font === 'string') {
+      if (!FONTS.includes(body.display_font)) return Response.json({ error: 'Unknown font pairing' }, { status: 400 });
+      updates.display_font = body.display_font;
+    }
+    if (typeof body.banner_url === 'string' || body.banner_url === null) {
+      const b = body.banner_url;
+      if (!b) {
+        updates.banner_url = null;
+      } else if (b.startsWith('preset:')) {
+        if (!PRESET_BANNER_IDS.includes(b.slice(7))) return Response.json({ error: 'Unknown banner preset' }, { status: 400 });
+        updates.banner_url = b;
+      } else {
+        const u = normalizeHttpsUrl(b);
+        if (!u) return Response.json({ error: 'Banner must be a valid image URL' }, { status: 400 });
+        updates.banner_url = u;
+      }
+    }
+    if (Array.isArray(body.social_links)) {
+      const links = [];
+      for (const raw of body.social_links) {
+        if (!raw || typeof raw !== 'object') continue;
+        if (!PLATFORMS.includes(raw.platform)) continue;
+        const url = normalizeHttpsUrl(raw.url);
+        if (!url) continue;
+        links.push({
+          platform: raw.platform,
+          url,
+          label: String(raw.label || '').slice(0, 40) || null,
+        });
+        if (links.length >= 6) break;
+      }
+      updates.social_links = links;
+    }
+    if (body.featured_link === null || body.featured_link === '') {
+      updates.featured_link = null;
+    } else if (typeof body.featured_link === 'object') {
+      const fl = body.featured_link;
+      if (!fl.url) {
+        updates.featured_link = null;
+      } else {
+        const url = normalizeHttpsUrl(fl.url);
+        if (!url) return Response.json({ error: 'Featured link must be a valid https URL' }, { status: 400 });
+        updates.featured_link = { url, label: String(fl.label || '').slice(0, 60) || 'Featured link' };
+      }
     }
 
     // ── Highlights — up to 6 pinned verified achievements ──────────────────
@@ -160,6 +247,13 @@ export default async function (req: Request): Promise<Response> {
         name: `${fresh.first_name || ''} ${fresh.last_name || ''}`.trim(),
         avatar_url: fresh.avatar_url || null,
         grade_level: fresh.grade_level || null,
+        banner_url: fresh.banner_url || null,
+        theme_id: fresh.theme_id || 'slate',
+        accent_colour: fresh.accent_colour || null,
+        profile_layout: fresh.profile_layout || 'grid',
+        display_font: fresh.display_font || 'sans',
+        social_links: fresh.social_links || [],
+        featured_link: fresh.featured_link || null,
       },
       achievements: Object.values(achievementsById),
     });

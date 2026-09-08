@@ -34,11 +34,6 @@ function domainOf(r: any): string {
   return ORG_TYPE_DOMAIN[r.organisation_type] || CATEGORY_DOMAIN[r.achievement_category] || 'other';
 }
 
-// URL slug for the public /org/:slug organisation page.
-function slugifyName(s: string): string {
-  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -99,7 +94,7 @@ export default async function (req: Request): Promise<Response> {
     const orgs: any[] = [];
     const orgLogos: Record<string, string | null> = {};
     if (school) {
-      orgs.push({ id: school.id, name: school.name, org_type: school.org_type, city: school.city || null, country: school.country || null, logo_url: school.logo_url || null, slug: slugifyName(school.name) });
+      orgs.push({ id: school.id, name: school.name, org_type: school.org_type, city: school.city || null, country: school.country || null, logo_url: school.logo_url || null });
       if (school.logo_url) orgLogos[school.id] = school.logo_url;
     }
     for (const m of memberships) {
@@ -113,7 +108,6 @@ export default async function (req: Request): Promise<Response> {
         city: org?.city || null,
         country: org?.country || null,
         logo_url: org?.logo_url || null,
-        slug: slugifyName((org && org.name) || m.school_name || ''),
       });
       if (org?.logo_url) orgLogos[org.id] = org.logo_url;
     }
@@ -170,16 +164,6 @@ export default async function (req: Request): Promise<Response> {
     // each carries the endorser's name, handle and affiliation only.
     let endorsements = [];
     try { endorsements = await svc.entities.Endorsement.filter({ recipient_id: profile.id, status: 'active' }); } catch (e) { /* entity not present yet */ }
-    // Endorser avatars — resolved from their profiles, shown as faces on cards.
-    const avatarById: Record<string, string | null> = {};
-    for (const e of endorsements) {
-      if (e.endorser_id && !(e.endorser_id in avatarById)) {
-        try {
-          const rows = await svc.entities.UserProfile.filter({ id: e.endorser_id });
-          avatarById[e.endorser_id] = rows?.[0]?.avatar_url || null;
-        } catch (err) { /* ignore individual lookups */ }
-      }
-    }
     const byRegistry = {};
     const unattached = [];
     for (const e of endorsements) {
@@ -191,7 +175,6 @@ export default async function (req: Request): Promise<Response> {
           name: e.endorser_name,
           handle: e.endorser_handle || null,
           affiliation: e.endorser_affiliation || null,
-          avatar_url: avatarById[e.endorser_id] || null,
         },
         created_date: e.created_date || null,
       };
@@ -234,6 +217,13 @@ export default async function (req: Request): Promise<Response> {
     const is_owner = !!body.viewer_email &&
       String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
 
+    // View counter — server-side only, never the owner's own views.
+    if (!is_owner) {
+      try {
+        await svc.entities.UserProfile.update(profile.id, { profile_views: (profile.profile_views || 0) + 1 });
+      } catch (e) { /* best-effort */ }
+    }
+
     return Response.json({
       ok: true,
       student: {
@@ -244,6 +234,14 @@ export default async function (req: Request): Promise<Response> {
         grade_level: profile.grade_level || null,
         og_image_url: profile.og_image_url || null,
         link_only: profile.profile_visibility === 'link_only',
+        // Student-chosen visual customisation (validated presets).
+        banner_url: profile.banner_url || null,
+        theme_id: profile.theme_id || 'slate',
+        accent_colour: profile.accent_colour || null,
+        profile_layout: profile.profile_layout || 'grid',
+        display_font: profile.display_font || 'sans',
+        social_links: Array.isArray(profile.social_links) ? profile.social_links.slice(0, 6) : [],
+        featured_link: profile.featured_link || null,
       },
       school: school ? {
         name: school.name,

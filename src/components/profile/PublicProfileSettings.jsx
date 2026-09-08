@@ -4,21 +4,35 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock,
+  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock, Palette,
 } from 'lucide-react';
 import ProfileCardImage from '@/components/profile/ProfileCardImage';
+import ProfileCustomizer from '@/components/profile/ProfileCustomizer';
+import ProfilePreview from '@/components/publicProfile/ProfilePreview';
 
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
+const MAX_BIO = 200;
 const VISIBILITIES = [
   { key: 'public', Icon: Globe2, label: 'Public', desc: 'Anyone with the link can see it. Previews as a rich card when shared.' },
   { key: 'link_only', Icon: Link2, label: 'Link only', desc: 'Only people you give the link to can see it. Hidden from search engines.' },
   { key: 'private', Icon: Lock, label: 'Private', desc: 'Nobody can see your profile, even with the link.' },
 ];
 const ACH_VIS_LABELS = { public: 'Public', link_only: 'Link only', private: 'Hidden' };
+
+const DEFAULT_CUSTOM = {
+  banner_url: null,
+  theme_id: 'slate',
+  accent_colour: null,
+  profile_layout: 'grid',
+  display_font: 'sans',
+  social_links: [],
+  featured_link: null,
+};
 
 const dataUrlToFile = (dataUrl, filename) => {
   const [head, body] = dataUrl.split(',');
@@ -38,7 +52,8 @@ export default function PublicProfileSettings({ profile }) {
   const [visibility, setVisibility] = useState('public');
   const [cooldownDays, setCooldownDays] = useState(0);
   const [achievements, setAchievements] = useState([]);
-  const [availability, setAvailability] = useState({ state: 'idle', reason: null, suggestions: [] }); // idle | checking | ok | taken | invalid
+  const [custom, setCustom] = useState(DEFAULT_CUSTOM);
+  const [availability, setAvailability] = useState({ state: 'idle', reason: null }); // idle | checking | ok | taken | invalid
   const cardRef = useRef(null);
   const checkTimer = useRef(null);
 
@@ -58,6 +73,15 @@ export default function PublicProfileSettings({ profile }) {
       setVisibility(p.profile_visibility || 'public');
       setCooldownDays(p.cooldown_days_remaining || 0);
       setAchievements(res.data?.achievements || []);
+      setCustom({
+        banner_url: p.banner_url || null,
+        theme_id: p.theme_id || 'slate',
+        accent_colour: p.accent_colour || null,
+        profile_layout: p.profile_layout || 'grid',
+        display_font: p.display_font || 'sans',
+        social_links: Array.isArray(p.social_links) ? p.social_links : [],
+        featured_link: p.featured_link || null,
+      });
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to load profile settings');
     } finally {
@@ -68,19 +92,17 @@ export default function PublicProfileSettings({ profile }) {
   // Live handle availability — debounced, only for new/changed handles.
   useEffect(() => {
     const h = handleInput.trim().toLowerCase();
-    if (!h || h === originalHandle) { setAvailability({ state: 'idle', reason: null, suggestions: [] }); return; }
-    if (!HANDLE_RE.test(h)) { setAvailability({ state: 'invalid', reason: '3–20 characters, lowercase letters, numbers and underscores', suggestions: [] }); return; }
-    setAvailability({ state: 'checking', reason: null, suggestions: [] });
+    if (!h || h === originalHandle) { setAvailability({ state: 'idle', reason: null }); return; }
+    if (!HANDLE_RE.test(h)) { setAvailability({ state: 'invalid', reason: '3–20 characters, lowercase letters, numbers and underscores' }); return; }
+    setAvailability({ state: 'checking', reason: null });
     if (checkTimer.current) clearTimeout(checkTimer.current);
     checkTimer.current = setTimeout(async () => {
       try {
         const res = await base44.functions.invoke('checkHandleAvailability', { handle: h });
         const d = res.data || {};
-        setAvailability(d.available
-          ? { state: 'ok', reason: null, suggestions: [] }
-          : { state: 'taken', reason: d.reason || 'That handle is already taken', suggestions: d.suggestions || [] });
+        setAvailability(d.available ? { state: 'ok', reason: null } : { state: 'taken', reason: d.reason || 'That handle is already taken' });
       } catch {
-        setAvailability({ state: 'idle', reason: null, suggestions: [] });
+        setAvailability({ state: 'idle', reason: null });
       }
     }, 500);
   }, [handleInput, originalHandle]);
@@ -105,7 +127,7 @@ export default function PublicProfileSettings({ profile }) {
     if (handleBlocked) { toast.error(availability.reason || 'Fix your handle first'); return; }
     setSaving(true);
     try {
-      const payload = { bio, profile_visibility: visibility };
+      const payload = { bio, profile_visibility: visibility, ...custom };
       if (handleDirty) payload.handle = handleInput.trim().toLowerCase();
 
       // Regenerate the share/OG card image so it matches the current profile.
@@ -119,12 +141,22 @@ export default function PublicProfileSettings({ profile }) {
       }
 
       const res = await base44.functions.invoke('updatePublicProfile', payload);
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to save');
       const p = res.data?.profile || {};
       setOriginalHandle(p.handle);
       setCooldownDays(p.cooldown_days_remaining || 0);
+      setCustom({
+        banner_url: p.banner_url || null,
+        theme_id: p.theme_id || 'slate',
+        accent_colour: p.accent_colour || null,
+        profile_layout: p.profile_layout || 'grid',
+        display_font: p.display_font || 'sans',
+        social_links: Array.isArray(p.social_links) ? p.social_links : [],
+        featured_link: p.featured_link || null,
+      });
       toast.success('Public profile saved');
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to save');
+      toast.error(e?.response?.data?.error || e.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
@@ -201,36 +233,22 @@ export default function PublicProfileSettings({ profile }) {
               3–20 characters — lowercase letters, numbers and underscores. This is your permanent public link.
               {availability.reason && <span className="text-destructive"> {availability.reason}</span>}
             </p>
-            {availability.state === 'taken' && (availability.suggestions || []).length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-xs text-muted-foreground">Available:</span>
-                {(availability.suggestions || []).map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setHandleInput(s)}
-                    className="rounded-md border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
-                  >
-                    @{s}
-                  </button>
-                ))}
-              </div>
-            )}
             {!canChangeHandle && nextChangeDate && (
               <p className="text-xs text-warning">Handles can be changed once every 30 days — yours unlocks on {nextChangeDate}.</p>
             )}
           </div>
 
-          {/* Bio */}
+          {/* Bio — 200 chars, line breaks allowed */}
           <div className="space-y-2">
             <Label>Bio</Label>
-            <Input
+            <Textarea
               value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, 120))}
-              maxLength={120}
-              placeholder="Sprinter · violinist · student council president"
+              onChange={(e) => setBio(e.target.value.slice(0, MAX_BIO))}
+              maxLength={MAX_BIO}
+              rows={3}
+              placeholder={'Sprinter · violinist · student council president\nAnything you achieve, we can verify.'}
             />
-            <p className="text-xs text-muted-foreground text-right">{bio.length}/120</p>
+            <p className="text-xs text-muted-foreground text-right">{bio.length}/{MAX_BIO}</p>
           </div>
 
           {/* Global visibility */}
@@ -246,7 +264,7 @@ export default function PublicProfileSettings({ profile }) {
                 >
                   <Icon className={`h-4 w-4 mt-0.5 ${visibility === key ? 'text-primary' : 'text-muted-foreground'}`} />
                   <div>
-                    <p className={`text-sm font-medium ${visibility === key ? 'text-foreground' : 'text-foreground'}`}>{label}</p>
+                    <p className="text-sm font-medium text-foreground">{label}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                   </div>
                 </button>
@@ -299,6 +317,41 @@ export default function PublicProfileSettings({ profile }) {
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             {saving ? 'Saving…' : 'Save public profile'}
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Customisation with live preview ── */}
+      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-foreground">
+            <Palette className="h-4 w-4 text-primary" /> Customise your profile
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Choose from designed presets — banner, theme, layout, fonts and links. The preview updates as you go.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+            <ProfileCustomizer value={custom} onChange={setCustom} />
+            <div className="lg:sticky lg:top-20 h-fit">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Live preview</p>
+              <ProfilePreview
+                name={profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''}
+                handle={handleInput || originalHandle || 'handle'}
+                bio={bio}
+                avatarUrl={profile?.avatar_url || null}
+                value={custom}
+                achievements={achievements}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <Button onClick={save} disabled={saving || handleBlocked}>
+              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              {saving ? 'Saving…' : 'Save customisation'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </>
