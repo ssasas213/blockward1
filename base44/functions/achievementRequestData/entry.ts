@@ -42,10 +42,13 @@ Deno.serve(async (req) => {
       const school = schoolRows?.[0] || null;
 
       // Every organisation the student belongs to: home school + approved
-      // cross-org memberships. Requests can target any of them.
+      // cross-org memberships. PENDING memberships are included too — an
+      // organisation the student invited (inbound lead) can be targeted
+      // before its admin has approved them, so a school-less student can
+      // still send a verification request by email.
       let memberships: any[] = [];
       try { memberships = await svc.entities.StudentOrgMembership.filter({ student_email: email }); } catch (e) { /* empty */ }
-      const orgIds = [schoolId, ...memberships.filter((m) => m.status === 'active').map((m) => m.school_id)]
+      const orgIds = [schoolId, ...memberships.filter((m) => ['active', 'pending'].includes(m.status)).map((m) => m.school_id)]
         .filter(Boolean)
         .filter((id, i, arr) => arr.indexOf(id) === i);
 
@@ -77,6 +80,17 @@ Deno.serve(async (req) => {
             });
           }
         } catch (e) { /* ignore */ }
+        // An invited organisation has no staff profiles yet — offer its
+        // invited admin as the verifier so the student can still submit.
+        if (!staff.some((s) => s.school_id === oid) && org?.admin_email) {
+          staff.push({
+            id: `org-${oid}-invited-admin`,
+            email: org.admin_email,
+            name: `${org.name} — invited admin`,
+            user_type: 'admin',
+            school_id: oid,
+          });
+        }
       }
       const myRequests = await svc.entities.AchievementRequest.filter({ student_email: email }, '-created_date', 100);
 

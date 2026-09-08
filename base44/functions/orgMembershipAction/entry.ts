@@ -229,20 +229,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
         approved_by_name: actorName,
       });
 
-      // Approving a join request from a 'pending' account (new signup with no
-      // code or invitation) grants the student role and links the school.
+      // Approving a join request also links the organisation as the home
+      // school for accounts with none: a legacy 'pending' account (granted
+      // the student role) or a school-less student whose first membership
+      // this is. Joining later never disturbs achievements, endorsements or
+      // followers earned before it.
       if (action === 'approve') {
         try {
           const rows = await svc.entities.UserProfile.filter({ user_email: membership.student_email });
           const p = rows?.[0];
-          if (p && p.user_type === 'pending') {
+          if (p && (p.user_type === 'pending' || (p.user_type === 'student' && !p.school_id))) {
+            const wasPending = p.user_type === 'pending';
             await svc.entities.UserProfile.update(p.id, {
               user_type: 'student',
               school_id: membership.school_id,
               active_school_id: membership.school_id,
               status: 'active',
             });
-            await logRoleGrant(svc, {
+            if (wasPending) await logRoleGrant(svc, {
               record_id: p.id,
               school_id: membership.school_id,
               granted_by_email: email,

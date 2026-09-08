@@ -26,19 +26,18 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
         if (!email) email = (await base44.auth.me())?.email;
         if (testMode?.isTestSuperUser && testMode.effectiveEmail) email = testMode.effectiveEmail;
 
-        const [memberships, requests, self, endorsements] = await Promise.all([
+        const [memberships, requests, self] = await Promise.all([
           base44.entities.StudentOrgMembership.filter({ student_email: email }).catch(() => []),
           base44.entities.AchievementRequest.filter({ student_email: email }).catch(() => []),
           base44.entities.SelfReportedAchievement.filter({ student_email: email }).catch(() => []),
-          base44.entities.Endorsement.filter({ endorser_email: email }).catch(() => []),
         ]);
 
         if (!cancelled) {
           setState({
-            org: !!profile?.school_id || memberships.length > 0,
+            org: !!profile?.school_id || memberships.some((m) => m.status === 'active'),
             achievement: requests.length > 0 || self.length > 0,
+            verified: requests.some((r) => r.status && r.status !== 'draft' && r.status !== 'rejected'),
             handle: !!profile?.handle,
-            endorse: endorsements.length > 0,
           });
         }
       } catch {
@@ -46,8 +45,8 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
           setState({
             org: !!profile?.school_id,
             achievement: false,
+            verified: false,
             handle: !!profile?.handle,
-            endorse: false,
           });
         }
       }
@@ -65,11 +64,13 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
     );
   }
 
+  // The school/club item is deliberately NOT first — joining an organisation
+  // is optional and never a blocking step. Everything else works without one.
   const items = [
-    { label: 'Add your school or club', desc: 'Join with an invite or a school code', done: state.org, icon: Building2, to: 'JoinSchool' },
-    { label: 'Add your first achievement', desc: 'Ask your organisation to verify something', done: state.achievement, icon: Trophy, to: 'StudentBlockWards' },
+    { label: 'Add your first achievement', desc: 'Self-report it now — verify it whenever you like', done: state.achievement, icon: Trophy, to: 'StudentBlockWards' },
     { label: 'Claim your profile link', desc: 'Get your shareable public profile', done: state.handle, icon: AtSign, to: 'Profile' },
-    { label: 'Endorse someone', desc: 'Spend one of your peer endorsements', done: state.endorse, icon: Quote, to: 'Feed' },
+    { label: 'Get something verified', desc: 'Send an achievement to an organisation to sign off', done: state.verified, icon: Quote, to: 'StudentBlockWards' },
+    { label: 'Add your school or club', desc: 'Optional — join with a code, search for it, or invite it', done: state.org, icon: Building2, to: 'JoinSchool' },
   ];
   const doneCount = items.filter(i => i.done).length;
 
@@ -81,7 +82,7 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
           <span className="text-sm font-medium text-muted-foreground">{doneCount} of 4 done</span>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          A few quick steps and your achievements will start building up.
+          Everything works without one — you can add a school or club any time.
         </p>
       </CardHeader>
       <CardContent className="space-y-2">

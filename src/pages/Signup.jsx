@@ -268,7 +268,7 @@ export default function Signup() {
             <CardTitle className="text-2xl">Create your BlockWard account</CardTitle>
             <CardDescription>
               {step === 'details'
-                ? 'Your school decides your role when you join'
+                ? 'Start collecting achievements — a school or club is optional'
                 : 'Verify your email to finish'}
             </CardDescription>
           </Link>
@@ -320,16 +320,16 @@ export default function Signup() {
 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">
-                    <KeyRound className="h-3.5 w-3.5" /> School code (optional)
+                    <KeyRound className="h-3.5 w-3.5" /> School or club code (optional)
                   </Label>
                   <Input
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value)}
-                    placeholder="Have a code from your school? Enter it here"
+                    placeholder="Have a code from your school or club? Enter it here"
                     className="font-mono uppercase"
                   />
                   <p className="text-xs text-muted-foreground">
-                    With a code you join your school straight away. Without one you'll choose a school next.
+                    With a code you join your school, club or academy straight away. Without one you can add it later — you don't need one to use BlockWard.
                   </p>
                 </div>
 

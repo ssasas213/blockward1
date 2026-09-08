@@ -110,7 +110,11 @@ function StudentDashboardContent() {
       </PageHeader>
 
       {isEmptyState ? (
-        <StudentOnboardingChecklist profile={userProfile} userEmail={user?.email} />
+        <div className="space-y-6">
+          <StudentOnboardingChecklist profile={userProfile} userEmail={user?.email} />
+          {/* Achievements can be added right away — no organisation needed. */}
+          <SelfAchievementsCard profile={userProfile} userEmail={user?.email} />
+        </div>
       ) : (
         <>
           {/* My BlockWards — first content block */}

@@ -471,6 +471,18 @@ async function normalizeForm(svc, actor, form) {
   else {
     const rows = await svc.entities.UserProfile.filter({ user_email: vEmail });
     verifier = rows?.find((p) => p.school_id === schoolId && ['teacher', 'admin'].includes(p.user_type)) || null;
+    // An organisation the student invited (inbound lead) has no staff yet —
+    // its invited admin email may be nominated, so the verification request
+    // can be sent by email before they join. It waits in their queue.
+    if (!verifier) {
+      try {
+        const schools = await svc.entities.School.filter({ id: schoolId });
+        const org = schools?.[0];
+        if (org && (org.admin_email || '').toLowerCase() === vEmail) {
+          verifier = { id: null, user_email: org.admin_email, first_name: org.name, last_name: 'invited admin' };
+        }
+      } catch (e) { /* ignore */ }
+    }
     if (!verifier) errors.push('The nominated verifier must be a teacher or admin of this organisation');
   }
 
