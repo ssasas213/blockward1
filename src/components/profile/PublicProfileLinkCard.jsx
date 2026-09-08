@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
-  AtSign, Check, Copy, ExternalLink, Globe, Link2, Loader2, Share2, Sparkles, X,
+  AtSign, Check, Copy, ExternalLink, Eye, Globe, Link2, Loader2, Share2, Sparkles, X,
 } from 'lucide-react';
 import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
 
@@ -101,10 +101,16 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Your public profile</p>
                 <div className="flex items-center gap-2 mt-1 min-w-0">
-                  <p className="text-xl sm:text-2xl font-bold text-foreground truncate">blockward.me/@{handle}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground truncate font-mono">blockward.me/@{handle}</p>
                   <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" onClick={copyLink} aria-label="Copy your profile link">
                     {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4 text-muted-foreground" />}
                   </Button>
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-background/60 px-2 py-0.5 text-xs text-muted-foreground flex-shrink-0"
+                    title="Total public profile views"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> {profile?.profile_views || 0}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {count} verified {count === 1 ? 'achievement' : 'achievements'} — share this link with universities, employers and friends.
@@ -140,7 +146,7 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
           <div className="flex-1 min-w-0">
             <h3 className="text-lg font-bold text-foreground">Claim your profile link</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Your verified achievements get a permanent public page — the link you share with universities, employers and friends.
+              Your verified achievements get a permanent public page — this is the link you put in your Instagram bio and send to universities.
             </p>
             <div className="mt-4 flex flex-col sm:flex-row gap-2 max-w-md">
               <div className="relative flex-1">
