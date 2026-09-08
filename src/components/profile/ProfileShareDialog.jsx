@@ -17,7 +17,7 @@ import ProfileCardImage from '@/components/profile/ProfileCardImage';
  */
 export default function ProfileShareDialog({ open, onOpenChange, profile }) {
   const [copied, setCopied] = useState(false);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState(null);
   const [qrSvg, setQrSvg] = useState(null);
   const [qrLoading, setQrLoading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
@@ -54,7 +54,7 @@ export default function ProfileShareDialog({ open, onOpenChange, profile }) {
 
   const downloadImage = async () => {
     if (!cardRef.current) return;
-    setDownloading(true);
+    setDownloading('local');
     try {
       const canvas = await html2canvas(cardRef.current, {
         width: 1080, height: 1080, scale: 1, backgroundColor: null, logging: false,
@@ -63,11 +63,34 @@ export default function ProfileShareDialog({ open, onOpenChange, profile }) {
       link.download = `blockward-${profile.handle}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-      toast.success('Story image downloaded');
+      toast.success('Image downloaded');
     } catch {
       toast.error('Could not generate the image');
     } finally {
-      setDownloading(false);
+      setDownloading(null);
+    }
+  };
+
+  // Server-rendered cards — themed, branded and cached server-side.
+  const downloadServerCard = async (variant) => {
+    if (!profile?.handle) return;
+    setDownloading(variant);
+    try {
+      const res = await base44.functions.invoke('generateProfileCard', { variant, handle: profile.handle });
+      const url = res.data?.url;
+      if (!url) throw new Error(res.data?.error);
+      const blob = await (await fetch(url)).blob();
+      const link = document.createElement('a');
+      link.download = `blockward-${profile.handle}-${variant === 'story' ? 'story' : 'feed'}.png`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+      toast.success(variant === 'story' ? 'Story image downloaded' : 'Feed image downloaded');
+    } catch {
+      if (variant === 'square') await downloadImage();
+      else toast.error('Could not generate the image');
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -201,12 +224,18 @@ export default function ProfileShareDialog({ open, onOpenChange, profile }) {
               </div>
             </div>
 
-            <Button className="w-full" variant="outline" onClick={downloadImage} disabled={downloading}>
-              {downloading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-              Download story image
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={() => downloadServerCard('story')} disabled={!!downloading}>
+                {downloading === 'story' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                Story image
+              </Button>
+              <Button variant="outline" onClick={() => downloadServerCard('square')} disabled={!!downloading}>
+                {downloading === 'square' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                Feed image
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground text-center">
-              A square image with the name, handle and verified count — perfect for stories.
+              Rendered in your profile theme — 1080×1920 for stories, 1080×1080 for feed posts.
             </p>
           </div>
         </DialogContent>

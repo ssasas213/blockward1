@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +10,6 @@ import { toast } from 'sonner';
 import {
   Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock, Palette,
 } from 'lucide-react';
-import ProfileCardImage from '@/components/profile/ProfileCardImage';
 import ProfileCustomizer from '@/components/profile/ProfileCustomizer';
 import ProfilePreview from '@/components/publicProfile/ProfilePreview';
 
@@ -34,15 +32,6 @@ const DEFAULT_CUSTOM = {
   featured_link: null,
 };
 
-const dataUrlToFile = (dataUrl, filename) => {
-  const [head, body] = dataUrl.split(',');
-  const mime = (head.match(/:(.*?);/) || [])[1] || 'image/png';
-  const bin = atob(body);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return new File([arr], filename, { type: mime });
-};
-
 export default function PublicProfileSettings({ profile }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +43,6 @@ export default function PublicProfileSettings({ profile }) {
   const [achievements, setAchievements] = useState([]);
   const [custom, setCustom] = useState(DEFAULT_CUSTOM);
   const [availability, setAvailability] = useState({ state: 'idle', reason: null }); // idle | checking | ok | taken | invalid
-  const cardRef = useRef(null);
   const checkTimer = useRef(null);
 
   useEffect(() => {
@@ -130,16 +118,6 @@ export default function PublicProfileSettings({ profile }) {
       const payload = { bio, profile_visibility: visibility, ...custom };
       if (handleDirty) payload.handle = handleInput.trim().toLowerCase();
 
-      // Regenerate the share/OG card image so it matches the current profile.
-      if (cardRef.current) {
-        try {
-          const canvas = await html2canvas(cardRef.current, { width: 1080, height: 1080, scale: 1, logging: false });
-          const file = dataUrlToFile(canvas.toDataURL('image/png'), 'profile-card.png');
-          const up = await base44.integrations.Core.UploadFile({ file });
-          if (up?.file_url) payload.og_image_url = up.file_url;
-        } catch { /* image is best-effort — settings still save */ }
-      }
-
       const res = await base44.functions.invoke('updatePublicProfile', payload);
       if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to save');
       const p = res.data?.profile || {};
@@ -154,6 +132,12 @@ export default function PublicProfileSettings({ profile }) {
         social_links: Array.isArray(p.social_links) ? p.social_links : [],
         featured_link: p.featured_link || null,
       });
+      // Regenerate the server-rendered share/OG card so link previews match
+      // the saved profile (cached server-side — re-renders only on change).
+      const savedHandle = res.data?.profile?.handle;
+      if (savedHandle) {
+        base44.functions.invoke('generateProfileCard', { variant: 'og', handle: savedHandle }).catch(() => {});
+      }
       toast.success('Public profile saved');
     } catch (e) {
       toast.error(e?.response?.data?.error || e.message || 'Failed to save');
@@ -178,17 +162,6 @@ export default function PublicProfileSettings({ profile }) {
 
   return (
     <>
-      <ProfileCardImage
-        domRef={cardRef}
-        data={{
-          name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '',
-          handle: handleInput || (originalHandle || 'handle'),
-          bio,
-          avatarUrl: profile?.avatar_url || null,
-          schoolName: achievements[0]?.organisation_name,
-          count: achievements.length,
-        }}
-      />
       <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2 text-foreground">

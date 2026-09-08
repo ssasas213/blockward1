@@ -8,7 +8,7 @@ import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
   Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
-  UserCheck, History, Users
+  UserCheck, History, Users, Loader2, Share2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,16 @@ const CATEGORY_ICONS = {
   academic: GraduationCap, sports: Trophy, arts: Sparkles,
   leadership: Shield, community: Building2, behaviour: AlertCircle, special: Award,
 };
+
+function setMeta(attr, key, content) {
+  let el = document.head.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', content);
+}
 
 function CheckItem({ children }) {
   return (
@@ -66,6 +76,8 @@ export default function Verify() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [shareCardUrl, setShareCardUrl] = useState(null);
+  const [shareCardBusy, setShareCardBusy] = useState(false);
 
   useEffect(() => {
     if (!verificationId) { setNotFound(true); setLoading(false); return; }
@@ -89,6 +101,43 @@ export default function Verify() {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Rich link previews (OG tags) + the server-rendered share card, generated
+  // once and cached server-side.
+  useEffect(() => {
+    if (!data?.ok || !data.isVerified || !data.record) return;
+    const r = data.record;
+    document.title = `${r.achievement_title} — verified · BlockWard`;
+    setMeta('property', 'og:title', `${r.achievement_title} — verified achievement`);
+    setMeta('property', 'og:description', `${r.student_name || 'Student'} · issued by ${r.organisation_name || 'their organisation'}`);
+    setMeta('property', 'og:url', window.location.href);
+    setMeta('property', 'og:type', 'website');
+    setMeta('name', 'twitter:card', 'summary_large_image');
+    base44.functions.invoke('generateProfileCard', { variant: 'achievement', verification_id: verificationId })
+      .then((res) => {
+        if (res.data?.ok && res.data.url) {
+          setShareCardUrl(res.data.url);
+          setMeta('property', 'og:image', res.data.url);
+        }
+      })
+      .catch(() => {});
+    return () => { document.title = 'BlockWard — Verified Achievements'; };
+  }, [data]);
+
+  const downloadShareCard = async () => {
+    if (!shareCardUrl) return;
+    setShareCardBusy(true);
+    try {
+      const blob = await (await fetch(shareCardUrl)).blob();
+      const link = document.createElement('a');
+      link.download = `blockward-${verificationId}.png`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    } finally {
+      setShareCardBusy(false);
+    }
   };
 
   if (loading) return (
@@ -411,6 +460,16 @@ export default function Verify() {
                   {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
                 </Button>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <Share2 className="h-4 w-4 text-tertiary flex-shrink-0" />
+                <span className="text-xs text-tertiary font-medium">Share card</span>
+              </div>
+              <Button variant="outline" size="sm" onClick={downloadShareCard} disabled={!shareCardUrl || shareCardBusy} className="flex-shrink-0">
+                {shareCardBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Download className="h-3.5 w-3.5 mr-1" />}
+                Download image
+              </Button>
             </div>
           </CardContent>
         </Card>

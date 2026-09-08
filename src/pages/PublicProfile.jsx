@@ -43,6 +43,8 @@ export default function PublicProfile() {
   const [selected, setSelected] = useState(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [viewerEmail, setViewerEmail] = useState(null);
+  const [anonId, setAnonId] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [endorseOpen, setEndorseOpen] = useState(false);
   const [followState, setFollowState] = useState({ known: false, following: false });
   const [followBusy, setFollowBusy] = useState(false);
@@ -55,11 +57,21 @@ export default function PublicProfile() {
   // Who is looking at this profile (endorsement is signed-in only; pinning is owner-only).
   useEffect(() => {
     let active = true;
+    // Anonymous visitors get a stable local id so views can be deduplicated
+    // per person without ever identifying them.
+    try {
+      let anon = localStorage.getItem('bw_anon_id');
+      if (!anon) {
+        anon = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem('bw_anon_id', anon);
+      }
+      setAnonId(anon);
+    } catch { /* private mode — stay fully anonymous */ }
     base44.auth.isAuthenticated().then(async (authed) => {
       if (authed && active) {
         try { setViewerEmail((await base44.auth.me()).email); } catch (e) { /* stay anonymous */ }
       }
-    });
+    }).finally(() => { if (active) setAuthChecked(true); });
     return () => { active = false; };
   }, []);
 
@@ -94,10 +106,11 @@ export default function PublicProfile() {
 
   useEffect(() => {
     let active = true;
+    if (!authChecked) return;
     setLoading(true);
     setNotFound(false);
     setData(null);
-    base44.functions.invoke('publicProfileData', { handle, viewer_email: viewerEmail })
+    base44.functions.invoke('publicProfileData', { handle, viewer_email: viewerEmail, anon_id: anonId })
       .then((res) => {
         if (!active) return;
         if (res.data?.ok) setData(res.data);
@@ -106,7 +119,7 @@ export default function PublicProfile() {
       .catch(() => { if (active) setNotFound(true); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [handle, reload, viewerEmail]);
+  }, [handle, reload, authChecked]);
 
   // Social preview meta tags — injected client-side (best effort for
   // JS-executing crawlers; static fallback lives in index.html).
@@ -117,6 +130,13 @@ export default function PublicProfile() {
     setMeta('property', 'og:title', `${s.name} (@${s.handle}) — verified achievements`);
     setMeta('property', 'og:description', s.bio || `${data.count} verified achievement${data.count === 1 ? '' : 's'} on BlockWard`);
     setMeta('property', 'og:image', s.og_image_url || s.avatar_url || DEFAULT_OG);
+    // No saved share card yet — request the server-rendered OG card (cached
+    // server-side) and upgrade the preview once it's ready.
+    if (!s.og_image_url && s.handle) {
+      base44.functions.invoke('generateProfileCard', { variant: 'og', handle: s.handle })
+        .then((res) => { if (res.data?.ok) setMeta('property', 'og:image', res.data.url); })
+        .catch(() => {});
+    }
     setMeta('property', 'og:url', window.location.href);
     setMeta('property', 'og:type', 'profile');
     setMeta('name', 'twitter:card', 'summary_large_image');

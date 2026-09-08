@@ -1,5 +1,6 @@
-import React from 'react';
-import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText, Quote, Pin } from 'lucide-react';
+import React, { useState } from 'react';
+import { BadgeCheck, PenLine, ShieldCheck, HardDrive, ExternalLink, FileText, Quote, Pin, Share2 } from 'lucide-react';
+import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
 import { Button } from '@/components/ui/button';
 import EndorsementList from '@/components/endorsements/EndorsementList';
 import {
@@ -19,6 +20,7 @@ const fmt = (iso) => {
  * permanent public verification page.
  */
 export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed, isOwner, isPinned, canPin, onTogglePin }) {
+  const [shareOpen, setShareOpen] = useState(false);
   if (!achievement) return null;
   const verifyUrl = achievement.verification_id
     ? `${window.location.origin}/verify/${achievement.verification_id}`
@@ -103,11 +105,18 @@ export default function AchievementDetailModal({ achievement, open, onOpenChange
         )}
 
         {verifyUrl && (
-          <Button variant="outline" className="w-full" onClick={() => window.open(verifyUrl, '_blank')}>
-            <ExternalLink className="h-4 w-4 mr-2" />
-            View permanent verification page
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" onClick={() => setShareOpen(true)}>
+              <Share2 className="h-4 w-4 mr-2" />
+              Share
+            </Button>
+            <Button variant="outline" onClick={() => window.open(verifyUrl, '_blank')}>
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Verification page
+            </Button>
+          </div>
         )}
+        <AchievementShareDialog open={shareOpen} onOpenChange={setShareOpen} achievement={achievement} />
       </DialogContent>
     </Dialog>
   );
