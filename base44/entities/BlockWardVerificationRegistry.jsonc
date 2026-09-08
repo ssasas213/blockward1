@@ -171,7 +171,7 @@
         ]
       },
       "default": [],
-      "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. Displayed on the credential detail page."
+      "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. Displayed on the credential detail page and the per-achievement share card."
     },
     "is_team_credential": {
       "type": "boolean",
@@ -235,6 +235,14 @@
     "public_verification_url": {
       "type": "string",
       "description": "Full public verification URL"
+    },
+    "share_card_url": {
+      "type": "string",
+      "description": "Server-generated 1080x1080 share card PNG (achievement variant) \u2014 issued org, date, signer chain and verify QR. Rendered by generateProfileCard."
+    },
+    "share_card_hash": {
+      "type": "string",
+      "description": "Cache validity hash for the share card \u2014 a change to the credential's card content triggers regeneration on next request."
     },
     "is_public": {
       "type": "boolean",

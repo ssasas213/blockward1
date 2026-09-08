@@ -8,7 +8,7 @@
     },
     "school_id": {
       "type": "string",
-      "description": "Currently active school \u2014 used by RLS for data isolation. Updated when admin switches schools. Service-role only: clients can never write this field."
+      "description": "Currently active school \u2014 used by RLS for data isolation. Service-role only: clients can never write this field."
     },
     "active_school_id": {
       "type": "string",
@@ -22,7 +22,7 @@
         "student",
         "pending"
       ],
-      "description": "Core role: admin=Approver/Org Admin, teacher=Verifier, student=Participant. 'pending' = newly provisioned account with no school yet \u2014 the user must join a school (code/invite) or create one before any role is granted. Service-role only: clients can never write this field. Roles are granted exclusively through provisionProfile (invite, join code, school creation) or an admin approval."
+      "description": "Core role. 'pending' = provisioned account with no school yet. Service-role only: clients can never write this field."
     },
     "role_label": {
       "type": "string",
@@ -37,11 +37,11 @@
         "data_manager",
         "basic_admin"
       ],
-      "description": "Display label that seeds default admin_permissions on creation. Service-role only: clients can never write this field."
+      "description": "Seeds default admin_permissions. Service-role only."
     },
     "admin_permissions": {
       "type": "object",
-      "description": "Source of truth for what this admin may do. Seeded from admin_level on creation, then editable per-admin via setAdminPermissions. Service-role only: clients can never write this field.",
+      "description": "What this admin may do. Service-role only.",
       "properties": {
         "manage_users": {
           "type": "boolean",
@@ -88,7 +88,7 @@
     },
     "handle": {
       "type": "string",
-      "description": "Globally unique public handle for the /@handle profile page. 3-20 chars, lowercase letters, numbers and underscores. Uniqueness (including reserved history) enforced server-side."
+      "description": "Globally unique public handle for /@handle. Uniqueness enforced server-side."
     },
     "handle_history": {
       "type": "array",
@@ -96,16 +96,16 @@
         "type": "string"
       },
       "default": [],
-      "description": "Previous handles kept permanently reserved \u2014 old /@handle URLs redirect to the current one."
+      "description": "Previous handles kept permanently reserved."
     },
     "handle_changed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When the handle was last claimed or changed \u2014 enforces the 30-day change cooldown."
+      "description": "When the handle was last claimed/changed \u2014 30-day cooldown anchor."
     },
     "bio": {
       "type": "string",
-      "description": "Public bio shown on the public profile (max 200 characters, line breaks allowed). Plain text only \u2014 no markdown, no HTML."
+      "description": "Public bio shown on the public profile (max 200 characters, plain text, line breaks allowed)."
     },
     "pinned_achievement_ids": {
       "type": "array",
@@ -113,101 +113,7 @@
         "type": "string"
       },
       "default": [],
-      "description": "Up to 6 BlockWardVerificationRegistry ids pinned as Highlights at the top of the public profile."
-    },
-    "banner_url": {
-      "type": "string",
-      "description": "Public profile cover banner. Either an uploaded image URL (cropped to 3:1, 1500x500 on upload) or a built-in abstract banner encoded as 'preset:<id>'. Set from the bounded presets in updatePublicProfile \u2014 never free styling."
-    },
-    "theme_id": {
-      "type": "string",
-      "enum": [
-        "slate",
-        "midnight",
-        "paper",
-        "terracotta",
-        "forest",
-        "cobalt",
-        "rose",
-        "mono",
-        "gradient",
-        "carbon"
-      ],
-      "default": "slate",
-      "description": "Named design preset for the public /@handle profile \u2014 background treatment, card style, border radius, shadow depth and text colour. Validated server-side."
-    },
-    "accent_colour": {
-      "type": "string",
-      "description": "Hex accent colour for the public profile, restricted to the fixed 12-colour palette \u2014 validated server-side, never a free picker."
-    },
-    "profile_layout": {
-      "type": "string",
-      "enum": [
-        "grid",
-        "list",
-        "showcase"
-      ],
-      "default": "grid",
-      "description": "How achievements are presented on the public profile: grid (many achievements), list (long verified record), showcase (hero treatment for pinned highlights)."
-    },
-    "social_links": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "platform": {
-            "type": "string",
-            "description": "One of the supported platforms: instagram, tiktok, linkedin, github, youtube, x, discord, behance, dribbble, strava, chesscom, website"
-          },
-          "url": {
-            "type": "string",
-            "description": "https URL (forced server-side)"
-          },
-          "label": {
-            "type": "string",
-            "description": "Optional display label (max 40 chars)"
-          }
-        },
-        "required": [
-          "platform",
-          "url"
-        ]
-      },
-      "default": [],
-      "description": "Up to 6 social/profile links shown as icon buttons under the bio (link-in-bio). Rendered with rel=noopener nofollow."
-    },
-    "featured_link": {
-      "type": "object",
-      "description": "One prominent call-to-action button above the achievements \u2014 portfolio, CV, fundraiser, team page or commission form.",
-      "properties": {
-        "url": {
-          "type": "string",
-          "description": "https URL (forced server-side)"
-        },
-        "label": {
-          "type": "string",
-          "description": "Button label (max 60 chars)"
-        }
-      },
-      "required": [
-        "url"
-      ]
-    },
-    "display_font": {
-      "type": "string",
-      "enum": [
-        "sans",
-        "serif",
-        "mono",
-        "display"
-      ],
-      "default": "sans",
-      "description": "Curated heading font pairing for the public profile \u2014 one of 4 designed pairings, never a free font choice."
-    },
-    "profile_views": {
-      "type": "number",
-      "default": 0,
-      "description": "Total views of the public /@handle profile. Incremented server-side only (publicProfileData) \u2014 never client-writable."
+      "description": "Up to 6 registry ids pinned as Highlights."
     },
     "profile_visibility": {
       "type": "string",
@@ -217,16 +123,48 @@
         "private"
       ],
       "default": "public",
-      "description": "Global visibility of the public /@handle profile page. Under-16 accounts are provisioned with 'private' as the safe default; the student can change it."
+      "description": "Global visibility of the public profile page."
     },
     "leaderboard_opt_out": {
       "type": "boolean",
       "default": false,
-      "description": "When true, this member is hidden from the organisation's weekly and monthly leaderboards."
+      "description": "Hidden from organisation leaderboards when true."
     },
     "og_image_url": {
       "type": "string",
-      "description": "Generated square share-card image used as the Open Graph image for the public profile."
+      "description": "Generated 1200x630 share card used as the Open Graph image \u2014 server-rendered by generateProfileCard (variant 'og'), cached and regenerated on profile changes."
+    },
+    "story_card_url": {
+      "type": "string",
+      "description": "Generated 1080x1920 story card (Instagram/TikTok) \u2014 server-rendered by generateProfileCard, cached."
+    },
+    "feed_card_url": {
+      "type": "string",
+      "description": "Generated 1080x1080 feed card \u2014 server-rendered by generateProfileCard, cached."
+    },
+    "card_hashes": {
+      "type": "object",
+      "description": "Cache validity hashes per generated card variant \u2014 content changes (name, avatar, bio, theme, pins, count) produce a new hash and trigger regeneration on next request. Service-managed.",
+      "properties": {
+        "og": {
+          "type": "string"
+        },
+        "story": {
+          "type": "string"
+        },
+        "square": {
+          "type": "string"
+        }
+      }
+    },
+    "theme_id": {
+      "type": "string",
+      "default": "slate",
+      "description": "Named profile theme preset used by the public profile and share cards."
+    },
+    "accent_colour": {
+      "type": "string",
+      "description": "Accent colour (hex) from the fixed palette \u2014 overrides the theme's default accent on the profile and share cards."
     },
     "theme_preference": {
       "type": "string",
@@ -241,7 +179,7 @@
     "show_mascot_on_signin": {
       "type": "boolean",
       "default": false,
-      "description": "When true, the BlockWard mascot tour launches automatically on each sign-in (once per browser session)."
+      "description": "Mascot tour launches automatically on sign-in when true."
     },
     "class_ids": {
       "type": "array",
@@ -249,46 +187,46 @@
         "type": "string"
       },
       "default": [],
-      "description": "Class IDs this user is associated with \u2014 teachers: classes they teach (mirrored from StaffMembership); students: classes they're enrolled in (mirrored from Enrollment). Used by RLS for class-scoped reads on Enrollment/JoinRequest/Resource/TimetableEntry. Kept in sync by joinClassByCode + class creation."
+      "description": "Class IDs this user is associated with (teachers: taught; students: enrolled)."
     },
     "student_id": {
       "type": "string",
-      "description": "Student ID number (for students)"
+      "description": "Student ID number"
     },
     "grade_level": {
       "type": "string",
-      "description": "Year/Grade level (for students)"
+      "description": "Year/Grade level"
     },
     "department": {
       "type": "string",
-      "description": "Department (for teachers)"
+      "description": "Department (teachers)"
     },
     "subjects": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "Subjects taught (for teachers)"
+      "description": "Subjects taught (teachers)"
     },
     "admin_email": {
       "type": "string",
-      "description": "School admin email \u2014 inherited by teachers and students"
+      "description": "School admin email \u2014 inherited"
     },
     "primary_teacher_email": {
       "type": "string",
-      "description": "Primary teacher email \u2014 inherited by students"
+      "description": "Primary teacher email \u2014 inherited"
     },
     "parent_name": {
       "type": "string",
-      "description": "Parent/Guardian name (for students)"
+      "description": "Parent/Guardian name"
     },
     "parent_email": {
       "type": "string",
-      "description": "Parent/Guardian email (for students). Doubles as the guardian email for under-13 consent \u2014 the same field managed on the student dashboard, never a separate one."
+      "description": "Parent/Guardian email. Doubles as the guardian email for under-13 consent."
     },
     "parent_phone": {
       "type": "string",
-      "description": "Parent/Guardian phone (for students)"
+      "description": "Parent/Guardian phone"
     },
     "parent_relationship": {
       "type": "string",
@@ -307,7 +245,7 @@
     "date_of_birth": {
       "type": "string",
       "format": "date",
-      "description": "Date of birth, collected at signup so age-appropriate privacy and consent rules can be applied (under-13 guardian consent, under-16 private-by-default profile and link-only credentials). Age is always DERIVED server-side from this field \u2014 the user is never asked to state an age \u2014 and it is never displayed publicly. Service-role only: clients can never write this field."
+      "description": "Collected at signup for age-appropriate privacy/consent rules. Age derived server-side, never displayed publicly. Service-role only."
     },
     "default_credential_visibility": {
       "type": "string",
@@ -316,11 +254,11 @@
         "link_only"
       ],
       "default": "public",
-      "description": "Age-derived safe default applied when a new credential is published: under-16 accounts start 'link_only' so achievements are visible only to people with the share link. The student can still change each credential's visibility. Service-role only: clients can never write this field."
+      "description": "Age-derived safe default for new credentials. Service-role only."
     },
     "guardian_consent": {
       "type": "object",
-      "description": "Parent/guardian consent record for under-13 accounts. The account stays 'awaiting_guardian_consent' until consent is recorded via the emailed link. Service-role only.",
+      "description": "Under-13 consent record. Service-role only.",
       "properties": {
         "status": {
           "type": "string",
@@ -342,7 +280,7 @@
         "granted_at": {
           "type": "string",
           "format": "date-time",
-          "description": "When the guardian consented \u2014 the compliance timestamp."
+          "description": "Compliance timestamp."
         },
         "granted_via": {
           "type": "string"
@@ -351,15 +289,15 @@
     },
     "guardian_consent_token": {
       "type": "string",
-      "description": "One-time lookup token for the public /guardian-consent/:token page. Regenerated on resend, cleared after consent is recorded. Service-role only: clients can never write this field."
+      "description": "One-time token for /guardian-consent/:token. Service-role only."
     },
     "wallet_address": {
       "type": "string",
-      "description": "Custodial blockchain wallet address (public). Private key lives on Vaults, never here."
+      "description": "Custodial wallet address (public)."
     },
     "portfolio_public_id": {
       "type": "string",
-      "description": "Public identifier for the student's shareable portfolio (format: prt-xxxxxxxx)."
+      "description": "Public portfolio identifier (prt-xxxxxxxx)."
     },
     "blockchain_role": {
       "type": "string",
@@ -392,12 +330,12 @@
         "awaiting_guardian_consent"
       ],
       "default": "active",
-      "description": "pending_approval: a teacher who joined with a code and is awaiting admin approval. awaiting_guardian_consent: an under-13 account that cannot be used until a parent/guardian consents via the emailed link. Service-role only: clients can never write this field."
+      "description": "pending_approval: teacher awaiting admin approval. awaiting_guardian_consent: under-13 account inactive until guardian consents. Service-role only."
     },
     "test_super_user": {
       "type": "boolean",
       "default": false,
-      "description": "True only for the server-authorised test super user. Source of truth is the TEST_SUPER_USER_EMAIL secret."
+      "description": "True only for the server-authorised test super user."
     },
     "active_test_persona": {
       "type": "string",
@@ -406,11 +344,11 @@
         "teacher",
         "admin"
       ],
-      "description": "For the test super user only \u2014 which persona's experience is currently active."
+      "description": "Test super user only \u2014 active persona."
     },
     "test_persona_ids": {
       "type": "object",
-      "description": "For the test super user only \u2014 maps persona role \u2192 UserProfile.id of the corresponding test persona profile.",
+      "description": "Test super user only \u2014 persona role \u2192 profile id.",
       "properties": {
         "student": {
           "type": "string"
@@ -425,7 +363,7 @@
     },
     "test_persona_of": {
       "type": "string",
-      "description": "For test persona profiles only \u2014 the controller email that owns this persona."
+      "description": "Test persona profiles only \u2014 owning controller email."
     }
   },
   "required": [
