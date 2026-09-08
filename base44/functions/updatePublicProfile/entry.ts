@@ -81,8 +81,10 @@ export default async function (req: Request): Promise<Response> {
         }
       }
 
-      const available = await isHandleAvailable(svc, handle, profile.id);
-      if (!available) return Response.json({ error: 'That handle is already taken' }, { status: 409 });
+      const availability = await isHandleAvailable(svc, handle, profile.id);
+      if (!availability.available) {
+        return Response.json({ error: availability.reason || 'That handle is already taken' }, { status: 409 });
+      }
 
       updates.handle = handle;
       updates.handle_changed_at = now;
@@ -109,13 +111,6 @@ export default async function (req: Request): Promise<Response> {
     // ── OG image ─────────────────────────────────────────────────────────────
     if (typeof body.og_image_url === 'string') {
       updates.og_image_url = body.og_image_url || null;
-    }
-
-    // ── Views-insight privacy opt-out ────────────────────────────────────────
-    // When true, this user's own profile visits are not counted in other
-    // people's view insights at all. Client-writable, easy to find.
-    if (typeof body.views_insight_opt_out === 'boolean') {
-      updates.views_insight_opt_out = body.views_insight_opt_out;
     }
 
     // ── Highlights — up to 6 pinned verified achievements ──────────────────
@@ -161,7 +156,6 @@ export default async function (req: Request): Promise<Response> {
         bio: fresh.bio || null,
         profile_visibility: fresh.profile_visibility || 'public',
         og_image_url: fresh.og_image_url || null,
-        views_insight_opt_out: fresh.views_insight_opt_out || false,
         pinned_achievement_ids: fresh.pinned_achievement_ids || [],
         name: `${fresh.first_name || ''} ${fresh.last_name || ''}`.trim(),
         avatar_url: fresh.avatar_url || null,

@@ -56,6 +56,19 @@ export default function AchievementTile({ achievement, onClick }) {
           <span className="text-xs text-muted-foreground truncate flex-1">{achievement.organisation_name}</span>
           {date && <span className="text-[11px] text-tertiary whitespace-nowrap">{date}</span>}
         </div>
+
+        {achievement.endorsements?.length > 0 && (
+          <div className="mt-2 flex items-center">
+            <div className="flex -space-x-1.5">
+              {achievement.endorsements.slice(0, 4).map((e, i) => (
+                <EndorserFace key={i} endorsement={e} />
+              ))}
+            </div>
+            {achievement.endorsements.length > 4 && (
+              <span className="ml-2 text-[10px] text-tertiary">+{achievement.endorsements.length - 4} more</span>
+            )}
+          </div>
+        )}
         {(achievement.participant_role || achievement.team_slug) && (
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
             {achievement.participant_role && (
@@ -77,4 +90,32 @@ export default function AchievementTile({ achievement, onClick }) {
       </div>
     </button>
   );
+}
+
+/**
+ * EndorserFace — one endorser's avatar on a card. Social proof; each face is
+ * a link to their public profile so a visitor becomes a browser.
+ */
+function EndorserFace({ endorsement }) {
+  const en = endorsement.endorser || {};
+  const inner = (
+    <span
+      title={`${en.name || 'Peer'} endorsed this`}
+      className="inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-primary/15 ring-2 ring-card text-[9px] font-bold text-primary"
+    >
+      {endorsement.avatar_url ? (
+        <img src={endorsement.avatar_url} alt={en.name || ''} className="h-full w-full object-cover" />
+      ) : (
+        (en.name || '?').slice(0, 1).toUpperCase()
+      )}
+    </span>
+  );
+  if (en.handle) {
+    return (
+      <Link to={`/@${en.handle}`} onClick={(e) => e.stopPropagation()} className="hover:opacity-80 transition-opacity">
+        {inner}
+      </Link>
+    );
+  }
+  return inner;
 }

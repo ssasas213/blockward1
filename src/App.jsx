@@ -59,6 +59,7 @@ import DemoProfile from './pages/DemoProfile';
 import TeamPage from './pages/TeamPage';
 import TeamJoin from './pages/TeamJoin';
 import PublicProfile from './pages/PublicProfile';
+import OrgPage from './pages/OrgPage';
 import Opportunities from './pages/Opportunities';
 import ManageOpportunities from './pages/ManageOpportunities';
 import Feed from './pages/Feed';
@@ -160,6 +161,7 @@ const AuthenticatedApp = () => {
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />
       <Route path="/@:handle" element={<PublicProfile />} />
+      <Route path="/org/:slug" element={<OrgPage />} />
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Feed" element={<LayoutWrapper currentPageName="Feed"><ProtectedRoute><Feed /></ProtectedRoute></LayoutWrapper>} />

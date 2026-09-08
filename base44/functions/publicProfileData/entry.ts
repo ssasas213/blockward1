@@ -34,6 +34,11 @@ function domainOf(r: any): string {
   return ORG_TYPE_DOMAIN[r.organisation_type] || CATEGORY_DOMAIN[r.achievement_category] || 'other';
 }
 
+// URL slug for the public /org/:slug organisation page.
+function slugifyName(s: string): string {
+  return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -94,7 +99,7 @@ export default async function (req: Request): Promise<Response> {
     const orgs: any[] = [];
     const orgLogos: Record<string, string | null> = {};
     if (school) {
-      orgs.push({ id: school.id, name: school.name, org_type: school.org_type, city: school.city || null, country: school.country || null, logo_url: school.logo_url || null });
+      orgs.push({ id: school.id, name: school.name, org_type: school.org_type, city: school.city || null, country: school.country || null, logo_url: school.logo_url || null, slug: slugifyName(school.name) });
       if (school.logo_url) orgLogos[school.id] = school.logo_url;
     }
     for (const m of memberships) {
@@ -108,6 +113,7 @@ export default async function (req: Request): Promise<Response> {
         city: org?.city || null,
         country: org?.country || null,
         logo_url: org?.logo_url || null,
+        slug: slugifyName((org && org.name) || m.school_name || ''),
       });
       if (org?.logo_url) orgLogos[org.id] = org.logo_url;
     }
@@ -164,6 +170,16 @@ export default async function (req: Request): Promise<Response> {
     // each carries the endorser's name, handle and affiliation only.
     let endorsements = [];
     try { endorsements = await svc.entities.Endorsement.filter({ recipient_id: profile.id, status: 'active' }); } catch (e) { /* entity not present yet */ }
+    // Endorser avatars — resolved from their profiles, shown as faces on cards.
+    const avatarById: Record<string, string | null> = {};
+    for (const e of endorsements) {
+      if (e.endorser_id && !(e.endorser_id in avatarById)) {
+        try {
+          const rows = await svc.entities.UserProfile.filter({ id: e.endorser_id });
+          avatarById[e.endorser_id] = rows?.[0]?.avatar_url || null;
+        } catch (err) { /* ignore individual lookups */ }
+      }
+    }
     const byRegistry = {};
     const unattached = [];
     for (const e of endorsements) {
@@ -175,6 +191,7 @@ export default async function (req: Request): Promise<Response> {
           name: e.endorser_name,
           handle: e.endorser_handle || null,
           affiliation: e.endorser_affiliation || null,
+          avatar_url: avatarById[e.endorser_id] || null,
         },
         created_date: e.created_date || null,
       };
@@ -216,56 +233,6 @@ export default async function (req: Request): Promise<Response> {
     // Owner flag: the signed-in viewer is the profile owner (enables pinning).
     const is_owner = !!body.viewer_email &&
       String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
-
-    // 5. Record this view — owner views are never counted. Deduplicated per
-    // viewer per 24h; viewers who opted out of being counted are skipped
-    // entirely. The profile_views counter is only ever incremented here.
-    if (!is_owner) {
-      try {
-        let viewerProfile: any = null;
-        if (body.viewer_email) {
-          try {
-            const vp = await svc.entities.UserProfile.filter({ user_email: body.viewer_email });
-            viewerProfile = vp[0] || null;
-          } catch (e) { /* ignore */ }
-        }
-        if (!viewerProfile || !viewerProfile.views_insight_opt_out) {
-          const viewerKey = viewerProfile?.id
-            ? `u:${viewerProfile.id}`
-            : (body.viewer_id ? `a:${String(body.viewer_id).slice(0, 64)}` : null);
-          let seenRecently = false;
-          if (viewerKey) {
-            try {
-              const recent = await svc.entities.ProfileView.filter({ profile_id: profile.id, viewer_key: viewerKey });
-              const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-              seenRecently = (recent || []).some((v: any) => new Date(v.created_date).getTime() > cutoff);
-            } catch (e) { /* ignore */ }
-          }
-          if (!seenRecently) {
-            let viewerSchoolName: string | null = null;
-            if (viewerProfile?.school_id) {
-              try {
-                const vs = await svc.entities.School.filter({ id: viewerProfile.school_id });
-                viewerSchoolName = vs[0]?.name || null;
-              } catch (e) { /* ignore */ }
-            }
-            await svc.entities.ProfileView.create({
-              profile_id: profile.id,
-              handle: profile.handle,
-              viewer_key: viewerKey || `anon:${crypto.randomUUID()}`,
-              viewer_school_id: viewerProfile?.school_id || null,
-              viewer_school_name: viewerSchoolName,
-            });
-            try {
-              await svc.entities.UserProfile.updateMany(
-                { id: profile.id },
-                { $inc: { profile_views: 1 } }
-              );
-            } catch (e) { /* best-effort counter */ }
-          }
-        }
-      } catch (e) { /* view recording is best-effort — never break the profile load */ }
-    }
 
     return Response.json({
       ok: true,

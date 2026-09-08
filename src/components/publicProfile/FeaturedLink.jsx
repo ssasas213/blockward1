@@ -1,22 +1,22 @@
 import React from 'react';
 import { ExternalLink } from 'lucide-react';
 
-/**
- * FeaturedLink — one prominent call-to-action above the achievements
- * (portfolio, CV, fundraiser, team page, commission form). This is what
- * makes the profile worth putting in an Instagram bio.
- */
+// The one prominent call-to-action above the achievements — portfolio, CV,
+// fundraiser, team page or commission form. https-only, safe rel attributes.
 export default function FeaturedLink({ link }) {
   if (!link?.url) return null;
   return (
-    <a
-      href={link.url}
-      target="_blank"
-      rel="noopener nofollow"
-      className="inline-flex items-center gap-2.5 rounded-xl bg-primary text-primary-foreground px-6 h-12 text-sm sm:text-base font-semibold shadow-lg hover:-translate-y-0.5 hover:shadow-xl transition-all"
-    >
-      {link.label || 'View my work'}
-      <ExternalLink className="h-4 w-4" />
-    </a>
+    <div className="mt-6">
+      <a
+        href={link.url}
+        target="_blank"
+        rel="noopener nofollow"
+        className="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground shadow-lg transition-transform hover:-translate-y-0.5"
+        style={{ borderRadius: 'var(--pf-radius, 14px)' }}
+      >
+        <ExternalLink className="h-4 w-4" />
+        {link.label || 'Featured link'}
+      </a>
+    </div>
   );
 }

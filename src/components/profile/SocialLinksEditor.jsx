@@ -1,66 +1,60 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { SOCIAL_PLATFORMS } from '@/lib/profileThemes';
 
-/**
- * SocialLinksEditor — the link-in-bio editor: up to 6 links from the
- * supported platform list. https:// is forced server-side on save.
- */
-export default function SocialLinksEditor({ value = [], onChange }) {
-  const update = (i, patch) => {
-    const next = value.map((l, idx) => (idx === i ? { ...l, ...patch } : l));
-    onChange(next);
-  };
-  const remove = (i) => onChange(value.filter((_, idx) => idx !== i));
-  const add = () => {
-    if (value.length >= 6) return;
-    onChange([...value, { platform: 'instagram', url: '', label: '' }]);
-  };
+// Editor for the link-in-bio: up to 6 whitelisted-platform links with an
+// optional label each. URLs are forced to https server-side on save.
+export default function SocialLinksEditor({ links, onChange }) {
+  const list = Array.isArray(links) ? links : [];
+  const update = (i, patch) => onChange(list.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  const remove = (i) => onChange(list.filter((_, idx) => idx !== i));
+  const add = () => onChange([...list, { platform: 'instagram', url: '', label: '' }]);
 
   return (
     <div className="space-y-2">
-      {value.map((l, i) => {
-        const platform = SOCIAL_PLATFORMS.find((p) => p.id === l.platform);
-        return (
-          <div key={i} className="flex flex-col sm:flex-row gap-2">
-            <Select value={l.platform} onValueChange={(v) => update(i, { platform: v })}>
-              <SelectTrigger className="sm:w-[150px] flex-shrink-0 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {SOCIAL_PLATFORMS.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              className="flex-1 h-9"
-              placeholder={`${platform?.label || 'Link'} URL — https:// added automatically`}
-              value={l.url || ''}
-              onChange={(e) => update(i, { url: e.target.value.slice(0, 200) })}
-            />
-            <Input
-              className="sm:w-[130px] h-9"
-              placeholder="Label (optional)"
-              value={l.label || ''}
-              onChange={(e) => update(i, { label: e.target.value.slice(0, 40) })}
-            />
-            <Button type="button" size="icon" variant="ghost" className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive" onClick={() => remove(i)}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        );
-      })}
-      {value.length < 6 && (
-        <Button type="button" size="sm" variant="outline" onClick={add}>
-          <Plus className="h-4 w-4 mr-1.5" /> Add link ({value.length}/6)
+      {list.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          No links yet. Add up to 6 — Instagram, TikTok, LinkedIn, GitHub, YouTube, X, Discord, Behance, Dribbble, Strava, Chess.com or your own website.
+        </p>
+      )}
+      {list.map((l, i) => (
+        <div key={i} className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={l.platform}
+            onChange={(e) => update(i, { platform: e.target.value })}
+            className="h-9 rounded-md border border-border bg-secondary/50 px-2 text-sm text-foreground flex-shrink-0 sm:w-36"
+            aria-label="Platform"
+          >
+            {SOCIAL_PLATFORMS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+          </select>
+          <Input
+            value={l.url || ''}
+            onChange={(e) => update(i, { url: e.target.value })}
+            placeholder="yourname or https://…"
+            className="flex-1"
+          />
+          <Input
+            value={l.label || ''}
+            onChange={(e) => update(i, { label: e.target.value })}
+            placeholder="Label"
+            maxLength={40}
+            className="flex-1 sm:w-32"
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={() => remove(i)} className="text-destructive hover:bg-destructive/10 flex-shrink-0" aria-label="Remove link">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      {list.length < 6 && (
+        <Button type="button" variant="outline" size="sm" onClick={add}>
+          <Plus className="h-3.5 w-3.5 mr-1.5" /> Add link ({list.length}/6)
         </Button>
       )}
-      <p className="text-xs text-muted-foreground">Links open safely in a new tab and are marked nofollow for search engines.</p>
+      <p className="text-xs text-muted-foreground">https:// is added automatically — links open safely in a new tab.</p>
     </div>
   );
 }
