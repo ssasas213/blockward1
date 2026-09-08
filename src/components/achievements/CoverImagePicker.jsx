@@ -62,8 +62,7 @@ export default function CoverImagePicker({ imageUrl, onChange, label = 'Cover im
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
-          {label === undefined ? '' : ''}
-          {imageUrl === undefined ? '' : 'Optional — without a photo we generate a branded cover from your organisation and title automatically.'}
+          Optional — without a photo we generate a branded cover from your organisation and title automatically.
         </p>
       )}
 

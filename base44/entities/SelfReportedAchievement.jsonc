@@ -22,6 +22,10 @@
       "type": "string",
       "description": "Details in the student's own words"
     },
+    "image_url": {
+      "type": "string",
+      "description": "Optional PUBLIC cover image for the self-reported achievement (auto-cropped to 4:3, compressed client-side). Shown on the public profile's unverified section \u2014 the day-one profile experience for students without an organisation."
+    },
     "domain": {
       "type": "string",
       "enum": [

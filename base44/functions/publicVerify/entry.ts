@@ -72,10 +72,23 @@ Deno.serve(async (req) => {
         adminSig = signatures.find(s => s.signer_role === 'admin') || null;
       } catch (e) { /* best-effort */ }
 
+      // Organisation admins of the issuing org may moderate the cover image
+      // from this page — computed server-side, so no raw school IDs are exposed.
+      let can_moderate = false;
+      try {
+        const viewer = await base44.auth.me();
+        if (viewer) {
+          const vrows = await base44.asServiceRole.entities.UserProfile.filter({ user_email: viewer.email });
+          const v = vrows?.[0];
+          if (v?.user_type === 'admin' && v.school_id === reg.school_id) can_moderate = true;
+        }
+      } catch (e) { /* public page — the viewer may not be signed in */ }
+
       return Response.json({
         ok: true,
         isVerified: true,
         source: 'registry',
+        can_moderate,
         record: {
           verification_id: reg.verification_id,
           public_slug: reg.public_slug,

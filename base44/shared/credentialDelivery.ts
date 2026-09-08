@@ -26,6 +26,34 @@ export async function mintRequestCredential(svc: any, request: any) {
   } catch (_) { /* best-effort */ }
   const studentId = studentProfile?.id || request.student_id;
   const evidenceFile = (request.evidence || []).find((e: any) => e.type === 'file');
+  const evidenceFileType = evidenceFile
+    ? (/\.(jpg|jpeg|png|webp|gif)$/i.test(evidenceFile.url) ? 'image' : 'file')
+    : null;
+
+  // ── Cover image moderation — student-uploaded public images are checked
+  // before they become public. A blocked cover never blocks the credential:
+  // it publishes without a photo and the block is audited. Moderation failure
+  // fails OPEN — the request has already been reviewed and signed by staff,
+  // and admins can remove a cover afterwards. ──
+  let coverUrl: string | null = request.image_url || null;
+  if (coverUrl) {
+    const mod = await moderateCoverImage(svc, coverUrl);
+    if (!mod.safe) {
+      coverUrl = null;
+      try {
+        await svc.entities.AuditLog.create({
+          record_id: request.id,
+          school_id: request.school_id,
+          actor_email: 'system',
+          actor_name: 'Image moderation',
+          actor_role: 'system',
+          action: 'cover_image_blocked',
+          notes: `Cover image blocked during publishing of "${request.title}": ${mod.reason || 'failed moderation'}`,
+          timestamp: now,
+        });
+      } catch { /* best-effort */ }
+    }
+  }
 
   // ── 1. Source-of-truth StudentRecord (origin: student) ──
   let record: any = null;
@@ -59,7 +87,12 @@ export async function mintRequestCredential(svc: any, request: any) {
       category: request.category || 'special',
       description: request.description || null,
       date_achieved: request.date_achieved || null,
+      // Student-uploaded cover → the record's custom image slot; evidence →
+      // the evidence file + type. Both fields already exist on StudentRecord
+      // and were previously unused for student-originated records.
+      custom_nft_image_url: coverUrl,
       file_url: evidenceFile?.url || null,
+      file_type: evidenceFileType,
       submitted_at: request.submitted_at || null,
       approved_at: request.approved_at || now,
       status: 'approved',
@@ -112,6 +145,7 @@ export async function mintRequestCredential(svc: any, request: any) {
       signer_chain: buildSignerChain(request),
       approval_status: 'approved',
       vault_status: 'delivered',
+      achievement_image: coverUrl || existingRegs[0].achievement_image || null,
       evidence_file_url: evidenceFile?.url || existingRegs[0].evidence_file_url || null,
       date_delivered: now,
       ...(teamSlug ? {
@@ -144,7 +178,7 @@ export async function mintRequestCredential(svc: any, request: any) {
       achievement_title: request.title,
       achievement_category: request.category || 'special',
       achievement_description: request.description || null,
-      achievement_image: null,
+      achievement_image: coverUrl,
       evidence_file_url: evidenceFile?.url || null,
       date_achieved: request.date_achieved || null,
       date_approved: request.approved_at || now,
@@ -205,4 +239,23 @@ export async function mintRequestCredential(svc: any, request: any) {
     teamSlug,
     team,
   };
+}
+
+// Vision moderation for student-uploaded public cover images.
+async function moderateCoverImage(svc: any, imageUrl: string): Promise<{ safe: boolean; reason?: string }> {
+  try {
+    const res = await svc.integrations.Core.InvokeLLM({
+      prompt: 'You are an image moderation system for a school achievement platform used by minors. Classify this image for public display on student achievement profiles. It must NOT contain: nudity or sexual content, violence or gore, drugs, alcohol, tobacco or vaping, weapons, hate symbols, or inappropriate text. Return safe=false only for a clear violation, with a short reason.',
+      file_urls: [imageUrl],
+      response_json_schema: {
+        type: 'object',
+        properties: { safe: { type: 'boolean' }, reason: { type: 'string' } },
+        required: ['safe'],
+      },
+    });
+    if (typeof res?.safe === 'boolean') return { safe: res.safe, reason: res.reason };
+    return { safe: true, reason: 'moderation result unparseable' };
+  } catch {
+    return { safe: true, reason: 'moderation unavailable' };
+  }
 }

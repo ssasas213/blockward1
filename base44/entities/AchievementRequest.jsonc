@@ -57,6 +57,10 @@
       "type": "string",
       "description": "What the student did, in their words"
     },
+    "image_url": {
+      "type": "string",
+      "description": "Student-uploaded PUBLIC cover image (auto-cropped to 4:3, compressed client-side). Decorative only \u2014 this is what appears on the public profile tiles. Moderated before it becomes public; organisation admins can remove it. Evidence lives separately in the evidence field."
+    },
     "date_achieved": {
       "type": "string",
       "format": "date",
@@ -87,7 +91,7 @@
         ]
       },
       "default": [],
-      "description": "Evidence attachments \u2014 uploaded files and external links"
+      "description": "Evidence attachments \u2014 up to 5 uploaded files (JPG/PNG/WebP/PDF, max 10MB, images compressed client-side) and external links. Shown to verifiers; NOT public unless the student opts in."
     },
     "is_team": {
       "type": "boolean",

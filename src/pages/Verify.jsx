@@ -8,8 +8,9 @@ import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
   Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
-  UserCheck, History, Users, Loader2, Share2
+  UserCheck, History, Users, Loader2, Share2, Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { METHOD_OPTIONS } from '@/lib/achievementRequests';
@@ -78,6 +79,8 @@ export default function Verify() {
   const [copied, setCopied] = useState(false);
   const [shareCardUrl, setShareCardUrl] = useState(null);
   const [shareCardBusy, setShareCardBusy] = useState(false);
+  const [canModerate, setCanModerate] = useState(false);
+  const [removingCover, setRemovingCover] = useState(false);
 
   useEffect(() => {
     if (!verificationId) { setNotFound(true); setLoading(false); return; }
@@ -89,6 +92,7 @@ export default function Verify() {
       const response = await base44.functions.invoke('publicVerify', { verification_id: verificationId });
       const result = response.data;
       if (!result.ok) { setNotFound(true); setLoading(false); return; }
+      setCanModerate(!!result.can_moderate);
       setData(result);
     } catch (e) {
       setNotFound(true);
@@ -137,6 +141,23 @@ export default function Verify() {
       setTimeout(() => URL.revokeObjectURL(link.href), 5000);
     } finally {
       setShareCardBusy(false);
+    }
+  };
+
+  // Organisation admins of the issuing org can remove a student-uploaded cover
+  // image from this credential (moderation). Authorisation and the audit log
+  // live server-side in removeAchievementCover.
+  const removeCover = async () => {
+    setRemovingCover(true);
+    try {
+      const res = await base44.functions.invoke('removeAchievementCover', { verification_id: verificationId });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to remove cover image');
+      toast.success('Cover image removed');
+      loadRecord();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e?.message || 'Failed to remove cover image');
+    } finally {
+      setRemovingCover(false);
     }
   };
 
@@ -288,6 +309,24 @@ export default function Verify() {
               <div className="sm:pt-2"><Field icon={FileCheck} label="Date Approved" value={approvedDate} /></div>
               <div className="sm:pt-2"><Field icon={Hash} label="Verification ID" value={record.verification_id || verificationId} mono /></div>
             </div>
+
+            {canModerate && record.achievement_image && (
+              <div className="mt-6 pt-6 border-t border-border flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Organisation admin — this public cover image was uploaded by the student. Removing it is audited.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={removeCover}
+                  disabled={removingCover}
+                  className="border-destructive/30 text-destructive hover:bg-destructive/10"
+                >
+                  {removingCover ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
+                  Remove cover image
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
