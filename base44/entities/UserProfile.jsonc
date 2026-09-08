@@ -123,7 +123,7 @@
         "private"
       ],
       "default": "public",
-      "description": "Global visibility of the public /@handle profile page."
+      "description": "Global visibility of the public /@handle profile page. Under-16 accounts are provisioned with 'private' as the safe default; the student can change it."
     },
     "leaderboard_opt_out": {
       "type": "boolean",
@@ -190,7 +190,7 @@
     },
     "parent_email": {
       "type": "string",
-      "description": "Parent/Guardian email (for students)"
+      "description": "Parent/Guardian email (for students). Doubles as the guardian email for under-13 consent \u2014 the same field managed on the student dashboard, never a separate one."
     },
     "parent_phone": {
       "type": "string",
@@ -209,6 +209,55 @@
     "parent_contact_updated_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "date_of_birth": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of birth, collected at signup so age-appropriate privacy and consent rules can be applied (under-13 guardian consent, under-16 private-by-default profile and link-only credentials). Age is always DERIVED server-side from this field \u2014 the user is never asked to state an age \u2014 and it is never displayed publicly. Service-role only: clients can never write this field."
+    },
+    "default_credential_visibility": {
+      "type": "string",
+      "enum": [
+        "public",
+        "link_only"
+      ],
+      "default": "public",
+      "description": "Age-derived safe default applied when a new credential is published: under-16 accounts start 'link_only' so achievements are visible only to people with the share link. The student can still change each credential's visibility. Service-role only: clients can never write this field."
+    },
+    "guardian_consent": {
+      "type": "object",
+      "description": "Parent/guardian consent record for under-13 accounts. The account stays 'awaiting_guardian_consent' until consent is recorded via the emailed link. Service-role only.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "granted"
+          ]
+        },
+        "guardian_email": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "granted_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the guardian consented \u2014 the compliance timestamp."
+        },
+        "granted_via": {
+          "type": "string"
+        }
+      }
+    },
+    "guardian_consent_token": {
+      "type": "string",
+      "description": "One-time lookup token for the public /guardian-consent/:token page. Regenerated on resend, cleared after consent is recorded. Service-role only: clients can never write this field."
     },
     "wallet_address": {
       "type": "string",
@@ -245,10 +294,11 @@
         "active",
         "inactive",
         "suspended",
-        "pending_approval"
+        "pending_approval",
+        "awaiting_guardian_consent"
       ],
       "default": "active",
-      "description": "pending_approval: a teacher who joined with a code and is awaiting admin approval \u2014 cannot sign off achievements, view student data, take attendance or issue points until approved."
+      "description": "pending_approval: a teacher who joined with a code and is awaiting admin approval. awaiting_guardian_consent: an under-13 account that cannot be used until a parent/guardian consents via the emailed link. Service-role only: clients can never write this field."
     },
     "test_super_user": {
       "type": "boolean",
@@ -314,7 +364,15 @@
       ]
     },
     "update": {
-      "data.school_id": "__service_role_only__"
+      "data.school_id": "__service_role_only__",
+      "data.user_type": "__service_role_only__",
+      "data.admin_level": "__service_role_only__",
+      "data.admin_permissions": "__service_role_only__",
+      "data.status": "__service_role_only__",
+      "data.date_of_birth": "__service_role_only__",
+      "data.default_credential_visibility": "__service_role_only__",
+      "data.guardian_consent": "__service_role_only__",
+      "data.guardian_consent_token": "__service_role_only__"
     },
     "delete": {
       "$or": [
