@@ -18,6 +18,31 @@
       "type": "string",
       "description": "Foreign key to StudentRecord.id \u2014 the source-of-truth achievement"
     },
+    "verification_mode": {
+      "type": "string",
+      "enum": [
+        "organisation",
+        "independent"
+      ],
+      "default": "organisation",
+      "description": "HOW this credential was verified. 'organisation': signed by staff of a BlockWard member organisation. 'independent': signed by a named person outside the BlockWard network (coach, referee, employer\u2026) via an account-free attestation link. The two tiers MUST render distinctly \u2014 'Verified by <Organisation>' vs 'Verified by <Name>, <Role> at <Org label>' \u2014 so an independently verified credential can never be mistaken for an institutionally verified one."
+    },
+    "independent_verifier": {
+      "type": "object",
+      "description": "Snapshot of the independent verifier for mode:'independent' credentials \u2014 powers the 'Verified by <Name>, <Role> at <Organisation>' badge.",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "organisation_label": {
+          "type": "string",
+          "description": "Their organisation as free text (display label, not a BlockWard organisation)"
+        }
+      }
+    },
     "organisation_id": {
       "type": "string",
       "description": "ID of the issuing organisation (School.id for schools)"
@@ -42,7 +67,7 @@
     },
     "organisation_name": {
       "type": "string",
-      "description": "Display name of the issuing organisation"
+      "description": "Display name of the issuing organisation. For independently verified credentials this is the verifier's free-text organisation label (display only)."
     },
     "school_id": {
       "type": "string",
@@ -104,7 +129,7 @@
     },
     "teacher_name": {
       "type": "string",
-      "description": "Teacher/verifier display name (public)"
+      "description": "Teacher/verifier display name (public). For independently verified credentials this is the independent verifier's name."
     },
     "teacher_signature_id": {
       "type": "string",

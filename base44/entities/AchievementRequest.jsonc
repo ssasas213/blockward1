@@ -2,13 +2,100 @@
   "name": "AchievementRequest",
   "type": "object",
   "properties": {
+    "verification_mode": {
+      "type": "string",
+      "enum": [
+        "organisation",
+        "independent"
+      ],
+      "default": "organisation",
+      "description": "Who verifies this request. 'organisation': the existing staff flow (nominated verifier, tiers, admin approval). 'independent': a named person who was there, verified via a one-time account-free link \u2014 available to students with no organisation. Service-role only: set exclusively through the submit flow."
+    },
     "school_id": {
       "type": "string",
-      "description": "Target organisation for this request (RLS scope)"
+      "description": "Target organisation for this request (RLS scope). NULL for independent-verification requests \u2014 the student has no organisation and the free-text organisation label never creates one."
     },
     "school_name": {
       "type": "string",
-      "description": "Denormalised organisation name"
+      "description": "Denormalised organisation name. For independent requests this is the verifier's free-text organisation label (display only, not a BlockWard organisation)."
+    },
+    "independent_verifier": {
+      "type": "object",
+      "description": "The person the student nominated to independently verify this achievement. Their one-time link, their details at sign-off time, and their anti-abuse flags all live on this request.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Verifier's full name as entered by the student"
+        },
+        "email": {
+          "type": "string",
+          "description": "Verifier email \u2014 the one-time link is sent here. Validated against self-verification aliases and disposable domains."
+        },
+        "role": {
+          "type": "string",
+          "description": "Their role, from the fixed whitelist: coach, teacher, instructor, examiner, referee, club_official, event_organiser, employer, mentor, other"
+        },
+        "organisation_label": {
+          "type": "string",
+          "description": "Their organisation as free text (e.g. 'Gracie Barra Dubai'). A DISPLAY LABEL ONLY \u2014 it never creates or links a BlockWard organisation. Matched later to offer org admins a re-verify upgrade."
+        },
+        "relationship": {
+          "type": "string",
+          "description": "The student's relationship to them, one line (e.g. 'My club coach for 3 years')"
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "role"
+      ]
+    },
+    "submit_ip": {
+      "type": "string",
+      "description": "IP the student submitted from \u2014 compared against the verifier's confirmation IP for the shared-IP anti-abuse flag. Service-role only."
+    },
+    "review_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "sole_student_verifier | high_volume_verifier | shared_ip"
+          },
+          "detail": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "reason",
+          "at"
+        ]
+      },
+      "default": [],
+      "description": "Anti-abuse review signals recorded at independent verification. Flags NEVER auto-reject \u2014 they are recorded for human review."
+    },
+    "false_report": {
+      "type": "object",
+      "description": "Recorded when an independent verifier reports the request as false. Rejects the request and notifies the student. Service-role only.",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Why the verifier says the claim is false"
+        },
+        "name": {
+          "type": "string",
+          "description": "Reporting verifier's name"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
     },
     "student_id": {
       "type": "string",
@@ -96,7 +183,7 @@
     "is_team": {
       "type": "boolean",
       "default": false,
-      "description": "True when this is a group achievement \u2014 one verification and sign-off covers every listed participant, and each gets their own credential with their role once they consent."
+      "description": "True when this is a group achievement \u2014 one verification and sign-off covers every listed participant, and each gets their own credential with their role once they consent. Organisation flow only; independent verification is per-student."
     },
     "my_team_role": {
       "type": "string",
@@ -156,7 +243,7 @@
         3
       ],
       "default": 1,
-      "description": "1: verifier only. 2: verifier + org admin (different people). 3: verifier + admin + external verifier via expiring link. Set by the credential type, overridable by the organisation."
+      "description": "1: verifier only. 2: verifier + org admin (different people). 3: verifier + admin + external verifier via expiring link. Set by the credential type, overridable by the organisation. Null for independent-verification requests."
     },
     "status": {
       "type": "string",
@@ -179,7 +266,7 @@
     },
     "external_verifier_email": {
       "type": "string",
-      "description": "Contact email for the Tier 3 external verifier (examiner, referee, federation officer, event organiser)"
+      "description": "Contact email for the Tier 3 external verifier, or the independent verifier's email (reminders + anti-abuse history keyed on this)."
     },
     "external_token": {
       "type": "string",
@@ -281,7 +368,7 @@
     },
     "external_signoff": {
       "type": "object",
-      "description": "External verifier's confirmation (Tier 3) \u2014 recorded without a BlockWard account",
+      "description": "External verifier's confirmation (Tier 3, and ALL independent verifications) \u2014 recorded without a BlockWard account. Name, role, organisation, email, method, attestation, signature, IP-derived country and timestamp are all recorded here.",
       "properties": {
         "name": {
           "type": "string"
@@ -384,7 +471,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | changes_requested | rejected | reminded | expired | minted | migrated"
+            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | external_declined | reported_false | changes_requested | rejected | reminded | expired | minted | migrated | flagged"
           },
           "actor_email": {
             "type": "string"
@@ -413,7 +500,6 @@
     }
   },
   "required": [
-    "school_id",
     "student_email",
     "title",
     "status"

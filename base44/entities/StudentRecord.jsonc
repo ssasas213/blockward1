@@ -4,7 +4,31 @@
   "properties": {
     "school_id": {
       "type": "string",
-      "description": "School this record belongs to \u2014 enforces data isolation"
+      "description": "School this record belongs to \u2014 enforces data isolation. NULL for independently verified records (the student has no organisation)."
+    },
+    "verification_mode": {
+      "type": "string",
+      "enum": [
+        "organisation",
+        "independent"
+      ],
+      "default": "organisation",
+      "description": "How this achievement was verified: staff of a member organisation, or an independent named verifier via an account-free attestation link. Powers the distinct badge in the student's vault."
+    },
+    "independent_verifier": {
+      "type": "object",
+      "description": "Snapshot of the independent verifier for mode:'independent' records (name, role, free-text organisation label).",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "organisation_label": {
+          "type": "string"
+        }
+      }
     },
     "class_id": {
       "type": "string"
@@ -60,7 +84,7 @@
     },
     "owner_school_id": {
       "type": "string",
-      "description": "PERMANENT OWNER \u2014 school_id at time of creation. Immutable ownership anchor."
+      "description": "PERMANENT OWNER \u2014 school_id at time of creation. Immutable ownership anchor. NULL for independently verified records."
     },
     "origin": {
       "type": "string",
@@ -296,7 +320,6 @@
     }
   },
   "required": [
-    "school_id",
     "student_email",
     "title",
     "category"

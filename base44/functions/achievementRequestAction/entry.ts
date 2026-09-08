@@ -12,6 +12,10 @@ import {
   logEvent, appendEvent, rejectionStatsFor, requestEmailHtml, notifyRequest, appUrl,
 } from '../../shared/achievementRequests.ts';
 import { mintRequestCredential } from '../../shared/credentialDelivery.ts';
+import {
+  INDEPENDENT_ROLES, INDEPENDENT_MONTHLY_CAP, INDEPENDENT_TOKEN_DAYS,
+  isDisposableEmail, selfVerificationError, independentVerifierFlags,
+} from '../../shared/independentVerification.ts';
 import { MAX_TEAM_PARTICIPANTS } from '../../shared/teamCredentials.ts';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
 
@@ -28,6 +32,11 @@ function ipCountry(req) {
   return req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || req.headers.get('x-country-code') || null;
 }
 
+function requestIp(req) {
+  const fwd = req.headers.get('cf-connecting-ip') || req.headers.get('x-forwarded-for');
+  return fwd ? fwd.split(',')[0].trim() : null;
+}
+
 function bad(error, status = 400) {
   return Response.json({ ok: false, error }, { status, headers: CORS });
 }
@@ -41,7 +50,7 @@ Deno.serve(async (req) => {
     const svc = base44.asServiceRole;
 
     // ── Public, token-authenticated external verifier actions ──
-    if (action === 'external_get' || action === 'external_confirm') {
+    if (['external_get', 'external_confirm', 'external_decline', 'external_report_false'].includes(action)) {
       return await handleExternal(svc, body, req);
     }
 
@@ -74,6 +83,8 @@ Deno.serve(async (req) => {
 
       const now = new Date().toISOString();
       const baseData = {
+        verification_mode: form.data.verification_mode,
+        independent_verifier: form.data.independent_verifier,
         school_id: form.data.school_id,
         school_name: form.data.school_name,
         student_id: actor.actor_id,
@@ -117,6 +128,27 @@ Deno.serve(async (req) => {
         if (weeklyCount >= WEEKLY_PER_ORG_LIMIT) {
           return bad(`You can submit up to ${WEEKLY_PER_ORG_LIMIT} requests per organisation each week. Try again later.`);
         }
+
+        // ── Independent-verification anti-abuse: hard rejection only for
+        // self-verification (including aliases), disposable domains and the
+        // rolling monthly cap. Everything softer is a flag at confirm time.
+        if (form.data.verification_mode === 'independent') {
+          const profRows = await svc.entities.UserProfile.filter({ user_email: email });
+          const p = profRows?.[0] || {};
+          const selfErr = selfVerificationError(
+            form.data.independent_verifier.email, email,
+            [p.parent_email, p.admin_email, p.primary_teacher_email],
+          );
+          if (selfErr) return bad(selfErr);
+          if (isDisposableEmail(form.data.independent_verifier.email)) {
+            return bad('Disposable email addresses cannot verify achievements. Use a real contact address.');
+          }
+          const monthAgo = new Date(Date.now() - 30 * DAY_MS).toISOString();
+          const monthCount = excludingSelf.filter((r) => r.verification_mode === 'independent' && r.submitted_at && r.submitted_at >= monthAgo).length;
+          if (monthCount >= INDEPENDENT_MONTHLY_CAP) {
+            return bad(`You can request up to ${INDEPENDENT_MONTHLY_CAP} independent verifications every 30 days. Try again later.`);
+          }
+        }
       }
 
       const events = [];
@@ -133,6 +165,11 @@ Deno.serve(async (req) => {
         status = 'under_review';
         extra = { resubmitted_at: now };
         events.push(logEvent('resubmitted', email, baseData.student_name, 'student', null));
+      } else if (form.data.verification_mode === 'independent') {
+        // Straight to the verifier's inbox — no staff queue without an org.
+        status = 'awaiting_external_verification';
+        extra = { submitted_at: now, last_reviewer_action_at: now };
+        events.push(logEvent('submitted', email, baseData.student_name, 'student', null));
       } else {
         status = 'submitted';
         extra = { submitted_at: now };
@@ -145,6 +182,31 @@ Deno.serve(async (req) => {
         saved = await svc.entities.AchievementRequest.update(request.id, { ...baseData, status, ...extra, event_log: mergedLog });
       } else {
         saved = await svc.entities.AchievementRequest.create({ ...baseData, status, ...extra, event_log: events });
+      }
+
+      // Independent verification — email the verifier a one-time 14-day link.
+      if (status === 'awaiting_external_verification' && form.data.verification_mode === 'independent') {
+        const iv = form.data.independent_verifier;
+        const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').substring(0, 8);
+        const expires = new Date(Date.now() + INDEPENDENT_TOKEN_DAYS * DAY_MS).toISOString();
+        await svc.entities.AchievementRequest.update(saved.id, {
+          external_token: token,
+          external_token_expires_at: expires,
+          submit_ip: requestIp(req),
+        });
+        const roleLabel = (iv.role || '').replace(/_/g, ' ');
+        const html = requestEmailHtml(
+          `Can you verify an achievement for ${baseData.student_name}?`,
+          [
+            `<strong>${baseData.student_name}</strong> has asked you to verify: <strong>${baseData.title}</strong>`,
+            iv.relationship ? `They wrote: <em>"${iv.relationship}"</em>` : null,
+            `You were named as their ${roleLabel}${iv.organisation_label ? ` at ${iv.organisation_label}` : ''}. If you were in a position to confirm this, follow the link — no account needed.`,
+            `The link is one-time and expires on ${new Date(expires).toUTCString()}.`,
+          ].filter(Boolean),
+          `${appUrl()}/external-verify/${token}`,
+          'Review this achievement'
+        );
+        await notifyRequest(iv.email, `Can you verify an achievement for ${baseData.student_name}?`, html);
       }
 
       // Email the nominated verifier when a request lands in their queue.
@@ -426,8 +488,76 @@ async function signAndAdvance(svc, request, kind, body, email, actorName, countr
   return { ok: true };
 }
 
+// Validates & normalises an independent-verification form. No organisation,
+// no staff list, no template — just the student, the claim, the evidence and
+// the person who was there.
+async function normalizeIndependentForm(svc, actor, form) {
+  const errors = [];
+  const title = (form.title || '').trim();
+  if (!title) errors.push('A title is required');
+
+  let category = form.category || null;
+  if (!category) errors.push('Pick a category');
+  else if (!CATEGORIES.includes(category)) errors.push('Invalid category');
+
+  const iv = form.independent_verifier || {};
+  const ivName = (iv.name || '').trim();
+  const ivEmail = (iv.email || '').trim().toLowerCase();
+  const ivRole = (iv.role || '').trim();
+  const ivOrg = (iv.organisation_label || '').trim();
+  const ivRelationship = (iv.relationship || '').trim();
+  if (!ivName) errors.push("Add the verifier's full name");
+  if (!ivEmail || !ivEmail.includes('@')) errors.push("Add the verifier's email");
+  if (!ivRole || !INDEPENDENT_ROLES.includes(ivRole)) errors.push("Pick the verifier's role");
+
+  const evidence = (form.evidence || [])
+    .filter((e) => e && e.url && ['file', 'link'].includes(e.type))
+    .map((e) => ({ type: e.type, url: e.url, name: (e.name || '').trim() || e.url }));
+
+  if (errors.length) return { errors };
+
+  return {
+    data: {
+      verification_mode: 'independent',
+      // No organisation. The free-text label is DISPLAY ONLY — it never
+      // creates or links a BlockWard organisation.
+      school_id: null,
+      school_name: ivOrg || null,
+      independent_verifier: {
+        name: ivName,
+        email: ivEmail,
+        role: ivRole,
+        organisation_label: ivOrg || null,
+        relationship: ivRelationship || null,
+      },
+      credential_type_id: null,
+      credential_type_title: null,
+      is_custom_credential: false,
+      category: category || 'special',
+      title,
+      description: (form.description || '').trim() || null,
+      image_url: (typeof form.image_url === 'string' && form.image_url.trim().startsWith('http')) ? form.image_url.trim() : null,
+      date_achieved: form.date_achieved || null,
+      evidence,
+      nominated_verifier_id: null,
+      nominated_verifier_email: null,
+      nominated_verifier_name: null,
+      verification_tier: null,
+      // Doubles as the maintenance-reminder recipient and the anti-abuse
+      // history key for this verifier address.
+      external_verifier_email: ivEmail,
+      is_team: false,
+      my_team_role: null,
+      team_participants: [],
+    },
+  };
+}
+
 // Validates & normalises the student's form. Returns { errors } or { data }.
 async function normalizeForm(svc, actor, form) {
+  if (form.verification_mode === 'independent') {
+    return await normalizeIndependentForm(svc, actor, form);
+  }
   const errors = [];
   const schoolId = form.school_id;
   if (!schoolId) errors.push('Pick an organisation');
@@ -520,6 +650,7 @@ async function normalizeForm(svc, actor, form) {
 
   return {
     data: {
+      verification_mode: 'organisation',
       school_id: schoolId,
       school_name: schoolName,
       credential_type_id: credentialTypeId,
@@ -570,8 +701,90 @@ async function handleExternal(svc, body, req) {
         evidence: request.evidence || [],
         nominated_verifier_name: request.nominated_verifier_name,
         expires_at: request.external_token_expires_at,
+        verification_mode: request.verification_mode || 'organisation',
+        relationship: request.independent_verifier?.relationship || null,
+        verifier: request.verification_mode === 'independent' ? {
+          name: request.independent_verifier?.name || null,
+          role: request.independent_verifier?.role || null,
+          organisation_label: request.independent_verifier?.organisation_label || null,
+        } : null,
       },
     }, { headers: CORS });
+  }
+
+  // Verifier declines — the request goes back to the student to pick someone else.
+  if (body.action === 'external_decline') {
+    const nowIso = new Date().toISOString();
+    const declinerName = (body.name || '').trim() || 'Your nominated verifier';
+    await svc.entities.AchievementRequest.update(request.id, {
+      status: 'changes_requested',
+      changes_requested_reason: `${declinerName} declined to verify this achievement. Edit your request and choose a different verifier.`,
+      external_token: null,
+      external_token_expires_at: null,
+      last_reviewer_action_at: nowIso,
+      event_log: appendEvent(request.event_log, logEvent('external_declined', request.external_verifier_email || null, (body.name || '').trim() || null, 'external_verifier', (body.reason || '').trim() || null)),
+    });
+    const html = requestEmailHtml(
+      'Your verifier declined this achievement',
+      [
+        `The person you nominated to verify <strong>${request.title}</strong> declined.`,
+        `You can edit your request and nominate someone else.`,
+      ],
+      `${appUrl()}/AchievementRequests`,
+      'Edit my request'
+    );
+    await notifyRequest(request.student_email, `Your verifier declined: "${request.title}"`, html);
+    await notifyEvent(svc, {
+      to_email: request.student_email,
+      school_id: request.school_id,
+      event_type: 'request_changes',
+      title: `Your verifier declined "${request.title}"`,
+      body: 'The person you nominated could not verify this. Edit your request and choose a different verifier.',
+      related_id: request.id,
+    });
+    return Response.json({ ok: true, status: 'changes_requested' }, { headers: CORS });
+  }
+
+  // Verifier reports the claim as false — the request is withdrawn and the
+  // report is audited for review.
+  if (body.action === 'external_report_false') {
+    const reason = (body.reason || '').trim();
+    const reporter = (body.name || '').trim() || 'The nominated verifier';
+    if (!reason) return bad('A reason is required to report a request as false');
+    const nowIso = new Date().toISOString();
+    await svc.entities.AchievementRequest.update(request.id, {
+      status: 'rejected',
+      rejection_reason: `${reporter} reported this claim as inaccurate: ${reason}`,
+      false_report: { reason, name: reporter, at: nowIso },
+      external_token: null,
+      external_token_expires_at: null,
+      last_reviewer_action_at: nowIso,
+      event_log: appendEvent(request.event_log, logEvent('reported_false', request.external_verifier_email || null, reporter, 'external_verifier', reason)),
+    });
+    try {
+      await svc.entities.AuditLog.create({
+        record_id: request.id,
+        school_id: request.school_id,
+        actor_email: request.external_verifier_email || 'unknown',
+        actor_name: reporter,
+        actor_role: 'external_verifier',
+        action: 'false_report',
+        notes: `Verifier reported "${request.title}" as false: ${reason}`,
+        timestamp: nowIso,
+      });
+    } catch { /* best-effort audit */ }
+    const html = requestEmailHtml(
+      'Your achievement request was withdrawn',
+      [
+        `The person you nominated to verify <strong>${request.title}</strong> reported the claim as inaccurate:`,
+        `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
+        `The request has been withdrawn. Rejections are private — nothing appears on your public profile.`,
+      ],
+      `${appUrl()}/AchievementRequests`,
+      'View my requests'
+    );
+    await notifyRequest(request.student_email, `Your request for "${request.title}" was withdrawn`, html);
+    return Response.json({ ok: true, status: 'rejected' }, { headers: CORS });
   }
 
   // external_confirm
@@ -588,8 +801,31 @@ async function handleExternal(svc, body, req) {
   if (signCheck.error) errs.push(signCheck.error);
   if (errs.length) return bad(errs.join('. '));
 
+  const isIndependent = request.verification_mode === 'independent';
+  if (isIndependent) {
+    // Re-check the confirmed email against the student's own identities —
+    // access to the link's inbox proves nothing about who owns it.
+    let accountEmails: any[] = [];
+    try {
+      const rows = await svc.entities.UserProfile.filter({ user_email: request.student_email });
+      const p = rows?.[0];
+      if (p) accountEmails = [p.parent_email, p.admin_email, p.primary_teacher_email];
+    } catch { /* best-effort */ }
+    const selfErr = selfVerificationError(email, request.student_email, accountEmails);
+    if (selfErr) return bad(selfErr);
+    if (isDisposableEmail(email)) return bad('Disposable email addresses cannot verify achievements');
+  }
+
   const now = new Date().toISOString();
   const country = ipCountry(req);
+
+  // Anti-abuse review flags — recorded, never auto-rejecting.
+  let flags: any[] = [];
+  if (isIndependent) {
+    try {
+      flags = await independentVerifierFlags(svc, request, email, requestIp(req));
+    } catch { /* flags are best-effort */ }
+  }
   await svc.entities.AchievementRequest.update(request.id, {
     external_signoff: {
       name, role: role_, organisation, email,
@@ -605,7 +841,14 @@ async function handleExternal(svc, body, req) {
     last_reviewer_action_at: now,
     external_token: null,
     external_token_expires_at: null,
-    event_log: appendEvent(request.event_log, logEvent('external_confirmed', email, name, 'external_verifier', body.method)),
+    ...(flags.length ? { review_flags: [...(request.review_flags || []), ...flags] } : {}),
+    event_log: (() => {
+      let log = appendEvent(request.event_log, logEvent('external_confirmed', email, name, 'external_verifier', body.method));
+      for (const f of flags) {
+        log = appendEvent(log, logEvent('flagged', 'system', 'BlockWard', 'system', `${f.reason}: ${f.detail}`));
+      }
+      return log;
+    })(),
   });
 
   const fresh = (await svc.entities.AchievementRequest.filter({ id: request.id }))[0];
@@ -617,9 +860,13 @@ async function handleExternal(svc, body, req) {
     return Response.json({ ok: false, error: 'Your confirmation was recorded, but publishing failed. The organisation has been notified.' }, { status: 500, headers: CORS });
   }
 
+  const ivName = isIndependent ? (name || request.independent_verifier?.name || 'your verifier') : null;
+  const ivRole = isIndependent ? ((role_ || request.independent_verifier?.role || '').replace(/_/g, ' ')) : null;
   const html = requestEmailHtml(
     'Your achievement has been verified and published',
-    [`<strong>${request.title}</strong> has been fully verified and published to your profile.`],
+    [isIndependent
+      ? `<strong>${request.title}</strong> was independently verified by <strong>${ivName}${ivRole ? `, ${ivRole}` : ''}</strong> and is now published on your profile.`
+      : `<strong>${request.title}</strong> has been fully verified and published to your profile.`],
     `${appUrl()}/StudentBlockWards`,
     'View my credentials'
   );
