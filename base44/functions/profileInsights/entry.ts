@@ -15,17 +15,21 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
 
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Effective actor: under Test Mode the persona's insights load, matching
+    // the profile the simulated user actually sees.
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return Response.json({ error: actor.reason || 'Unauthorized' }, { status: actor.status || 401 });
     const svc = base44.asServiceRole;
 
-    const profiles = await svc.entities.UserProfile.filter({ user_email: user.email });
+    const profiles = await svc.entities.UserProfile.filter({ id: actor.actor_id });
     const profile = profiles[0];
     if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 });
 

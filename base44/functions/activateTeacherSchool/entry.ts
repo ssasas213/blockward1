@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 // Provisions a teacher's school_id from an active StaffMembership. Teachers have
 // no classes and no admin membership, so this is the teacher-specific path (the
@@ -10,10 +11,12 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Effective actor: under Test Mode the simulated teacher provisions from
+    // the persona's staff membership.
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return Response.json({ error: actor.reason || 'Unauthorized' }, { status: actor.status || 401 });
 
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ id: actor.actor_id });
     const profile = profiles[0];
     if (!profile) return Response.json({ error: 'Profile not found' }, { status: 404 });
     if (profile.user_type !== 'teacher') {
@@ -21,7 +24,7 @@ export default async function(req: Request): Promise<Response> {
     }
     if (profile.school_id) return Response.json({ ok: true, already: true, school_id: profile.school_id });
 
-    const staff = await base44.asServiceRole.entities.StaffMembership.filter({ user_email: user.email, status: 'active' });
+    const staff = await base44.asServiceRole.entities.StaffMembership.filter({ user_email: actor.actor_email, status: 'active' });
     const active = staff[0];
     if (!active) return Response.json({ error: 'No active staff membership found' }, { status: 404 });
 

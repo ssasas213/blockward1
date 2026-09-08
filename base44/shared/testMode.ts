@@ -111,3 +111,21 @@ export async function resolveEffectiveActor(base44): Promise<any> {
     controller_email: user.email,
   };
 }
+
+/**
+ * requireRealIdentity — explicit guard for PRIVILEGED operations (role grants,
+ * permission changes, user administration, join approvals, school ownership).
+ * These authorise against the REAL controller identity and must NEVER follow
+ * the active test persona: a simulated persona must not escalate into genuine
+ * admin rights, and the real controller must not lose their real rights while
+ * simulating. Returns the controller's own profile (or null when none exists
+ * yet) — never a persona profile.
+ */
+export async function requireRealIdentity(base44): Promise<{ authorized: boolean; status?: number; user?: any; profile?: any; reason?: string }> {
+  const user = await base44.auth.me();
+  if (!user) return { authorized: false, status: 401, reason: 'Not authenticated' };
+  // Deliberately NOT resolveEffectiveActor — privileged authorisation never
+  // follows the persona. user.email here is always the real signed-in account.
+  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+  return { authorized: true, user, profile: profiles[0] || null };
+}

@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 import { provisionProfile, logRoleGrant } from '../../shared/profileProvisioning.ts';
+import { requireRealIdentity } from '../../shared/testMode.ts';
 
 const UNSAFE_CHARS = /[O0I1L]/g;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -25,8 +26,13 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // PRIVILEGED — school creation makes the caller an owner-admin, so it
+    // authorises against the REAL controller identity, never the active test
+    // persona (which would hand the persona a real school).
+    const real = await requireRealIdentity(base44);
+    if (!real.authorized) return Response.json({ error: real.reason || 'Unauthorized' }, { status: real.status || 401 });
+    const user = real.user;
 
     const body = await req.json();
     const {
@@ -57,8 +63,9 @@ export default async function(req: Request): Promise<Response> {
     // additional schools; a brand-new 'pending' account (signed up without a
     // code or invitation) may create its FIRST school. Teachers and students
     // may not — they would be granting themselves admin.
-    const profiles = await svc.entities.UserProfile.filter({ user_email: user.email });
-    let profile = profiles[0] || null;
+    // real.profile is the controller's own profile — never a persona. May be
+    // null for a brand-new account, which provisions below.
+    let profile = real.profile;
     if (profile && !['admin', 'pending'].includes(profile.user_type)) {
       return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
     }

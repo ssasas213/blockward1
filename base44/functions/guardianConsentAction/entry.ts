@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { sendResendEmail } from '../../shared/resendEmail.ts';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -93,10 +94,12 @@ export default async function(req: Request): Promise<Response> {
 
     // ── Authed: resend (optionally to a corrected guardian email) ──
     if (action === 'resend') {
-      const user = await base44.auth.me();
-      if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      // Effective actor: under Test Mode the simulated student resends their
+      // own consent email.
+      const actor = await resolveEffectiveActor(base44);
+      if (!actor.authorized) return Response.json({ error: actor.reason || 'Unauthorized' }, { status: actor.status || 401 });
 
-      const rows = await svc.entities.UserProfile.filter({ user_email: user.email });
+      const rows = await svc.entities.UserProfile.filter({ id: actor.actor_id });
       const p = rows[0];
       if (!p) return Response.json({ error: 'Profile not found' }, { status: 404 });
       if (p.status !== 'awaiting_guardian_consent' || p.guardian_consent?.status !== 'pending') {

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { logRoleGrant } from '../../shared/profileProvisioning.ts';
+import { requireRealIdentity } from '../../shared/testMode.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -11,14 +12,17 @@ Deno.serve(async (req) => {
     }
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
-    // Verify admin role
-    const adminProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    const adminProfile = adminProfiles[0];
+    // PRIVILEGED — join approvals authorise against the REAL controller
+    // identity, never the active test persona.
+    const real = await requireRealIdentity(base44);
+    if (!real.authorized) {
+      return Response.json({ error: real.reason || 'Unauthorized' }, { status: real.status || 401 });
+    }
+    const user = real.user;
+
+    // Verify admin role — real.profile is the controller's own profile.
+    const adminProfile = real.profile;
     if (!adminProfile || adminProfile.user_type !== 'admin') {
       return Response.json({ error: 'Forbidden: admin role required' }, { status: 403 });
     }

@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { ADMIN_PERMISSION_KEYS } from '../../shared/adminPermissions.ts';
+import { requireRealIdentity } from '../../shared/testMode.ts';
 
 // Sets an admin's admin_level + admin_permissions. Only a super admin (or the
 // owner with no level set) may call it, and the target admin must be in the
@@ -11,8 +12,11 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // PRIVILEGED — permission changes authorise against the REAL controller
+    // identity, never the active test persona.
+    const real = await requireRealIdentity(base44);
+    if (!real.authorized) return Response.json({ error: real.reason || 'Unauthorized' }, { status: real.status || 401 });
 
     const body = await req.json().catch(() => ({}));
     const targetEmail = String(body.target_email || '').trim().toLowerCase();
@@ -20,8 +24,8 @@ export default async function(req: Request): Promise<Response> {
     const adminPermissions = body.admin_permissions || {};
     if (!targetEmail) return Response.json({ error: 'target_email is required' }, { status: 400 });
 
-    const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    const caller = callerProfiles[0];
+    // real.profile is the controller's own profile — never a persona.
+    const caller = real.profile;
     if (!caller || caller.user_type !== 'admin') {
       return Response.json({ error: 'Only administrators can manage permissions' }, { status: 403 });
     }

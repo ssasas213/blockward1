@@ -4,6 +4,7 @@ import {
   PERSONA_EMAILS, PERSONA_NAMES, isValidPersona,
 } from '../../shared/testMode.ts';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
+import { provisionProfile } from '../../shared/profileProvisioning.ts';
 
 export default async function(req) {
   try {
@@ -39,24 +40,31 @@ export default async function(req) {
       let found = await svc.entities.UserProfile.filter({ user_email: email });
       let p = found[0];
       if (!p) {
-        p = await svc.entities.UserProfile.create({
-          user_email: email, user_type: role,
+        // Provision through the SINGLE server-side path (provisionProfile) so
+        // a test persona is a COMPLETE account — portfolio_public_id, point
+        // defaults, the same creation logic as a real signup. Test mode must
+        // exercise the real flows, not a shortcut.
+        p = (await provisionProfile(svc, { email, full_name: `${name.first_name} ${name.last_name}` }, {
           first_name: name.first_name, last_name: name.last_name,
-          school_id: school.id, active_school_id: school.id,
-          admin_email: user.email, status: 'active',
-          test_persona_of: user.email,
-          total_achievement_points: 0, total_behaviour_points: 0,
-          ...(role === 'admin' ? { admin_level: 'super_admin', admin_permissions: defaultAdminPermissions('super_admin') } : {}),
-        });
-      } else {
-        const upd: any = {};
-        if (p.school_id !== school.id) { upd.school_id = school.id; upd.active_school_id = school.id; }
-        if (p.status !== 'active') upd.status = 'active';
-        if (p.first_name !== name.first_name) upd.first_name = name.first_name;
-        if (p.last_name !== name.last_name) upd.last_name = name.last_name;
-        if (!p.test_persona_of) upd.test_persona_of = user.email;
-        if (Object.keys(upd).length) p = await svc.entities.UserProfile.update(p.id, upd);
+        })).profile;
       }
+      // Normalise identity and membership onto the persona profile — runs on
+      // every check so personas survive resets and stay complete accounts.
+      const upd: any = {};
+      if (p.user_type !== role) upd.user_type = role;
+      if (p.school_id !== school.id) { upd.school_id = school.id; upd.active_school_id = school.id; }
+      if (p.status !== 'active') upd.status = 'active';
+      if (p.first_name !== name.first_name) upd.first_name = name.first_name;
+      if (p.last_name !== name.last_name) upd.last_name = name.last_name;
+      if (!p.test_persona_of) upd.test_persona_of = user.email;
+      if (!p.admin_email) upd.admin_email = user.email;
+      if (role === 'admin') {
+        if (!p.admin_level) upd.admin_level = 'super_admin';
+        if (!p.admin_permissions || !Object.keys(p.admin_permissions || {}).length) {
+          upd.admin_permissions = defaultAdminPermissions('super_admin');
+        }
+      }
+      if (Object.keys(upd).length) p = await svc.entities.UserProfile.update(p.id, upd);
       personaIds[role] = p.id;
       personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, first_name: name.first_name, last_name: name.last_name, role };
     }

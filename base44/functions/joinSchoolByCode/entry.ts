@@ -3,6 +3,7 @@ import {
   provisionProfile, logRoleGrant, roleFromCode,
   normalizeJoinCode, ensureTeacherMembership,
 } from '../../shared/profileProvisioning.ts';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 // joinSchoolByCode — join (or switch to) a school with a join code.
 // SECURITY: the role comes from the SchoolCode RECORD, never the request body.
@@ -14,8 +15,22 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // Effective actor: under Test Mode the simulated persona joins the school,
+    // not the controller. A brand-new account with no profile yet cannot have
+    // a persona, so it falls back to the real signed-in user and
+    // provisionProfile below creates the profile.
+    const actor = await resolveEffectiveActor(base44);
+    let user;
+    if (actor.authorized) {
+      user = { id: actor.controller_user_id, email: actor.actor_email, full_name: `${actor.first_name || ''} ${actor.last_name || ''}`.trim() };
+    } else if (actor.reason === 'User profile not found') {
+      const me = await base44.auth.me();
+      if (!me) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      user = me;
+    } else {
+      return Response.json({ error: actor.reason || 'Unauthorized' }, { status: actor.status || 401 });
+    }
 
     const body = await req.json().catch(() => ({}));
     const rawCode = (body.code || '').trim();

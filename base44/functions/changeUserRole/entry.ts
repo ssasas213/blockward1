@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 import { logRoleGrant } from '../../shared/profileProvisioning.ts';
+import { requireRealIdentity } from '../../shared/testMode.ts';
 
 // Changes a user's role. Only a BlockWard admin of the SAME school may call it,
 // and the target must belong to that school. Demoting out of admin clears the
@@ -12,8 +13,13 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // PRIVILEGED — role grants authorise against the REAL controller identity,
+    // never the active test persona (a simulated persona must not escalate
+    // into genuine admin rights).
+    const real = await requireRealIdentity(base44);
+    if (!real.authorized) return Response.json({ error: real.reason || 'Unauthorized' }, { status: real.status || 401 });
+    const user = real.user;
 
     const body = await req.json().catch(() => ({}));
     const targetEmail = String(body.target_email || body.email || '').trim().toLowerCase();
@@ -23,8 +29,8 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'Invalid role' }, { status: 400 });
     }
 
-    const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    const caller = callerProfiles[0];
+    // real.profile is the controller's own profile — never a persona.
+    const caller = real.profile;
     if (!caller || caller.user_type !== 'admin' || !caller.school_id) {
       return Response.json({ error: 'Only a school administrator can change roles' }, { status: 403 });
     }

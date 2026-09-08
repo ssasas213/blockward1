@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { requireRealIdentity } from '../../shared/testMode.ts';
 
 // An admin editing another user's presentational fields + status. Role and
 // membership fields are NOT editable here — those go through changeUserRole /
@@ -11,16 +12,19 @@ export default async function(req: Request): Promise<Response> {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // PRIVILEGED — user administration authorises against the REAL controller
+    // identity, never the active test persona.
+    const real = await requireRealIdentity(base44);
+    if (!real.authorized) return Response.json({ error: real.reason || 'Unauthorized' }, { status: real.status || 401 });
 
     const body = await req.json().catch(() => ({}));
     const targetEmail = String(body.target_email || '').trim().toLowerCase();
     const updates = body.updates || {};
     if (!targetEmail) return Response.json({ error: 'target_email is required' }, { status: 400 });
 
-    const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
-    const caller = callerProfiles[0];
+    // real.profile is the controller's own profile — never a persona.
+    const caller = real.profile;
     if (!caller || caller.user_type !== 'admin' || !caller.school_id) {
       return Response.json({ error: 'Only a school administrator can update users' }, { status: 403 });
     }

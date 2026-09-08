@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,13 +67,14 @@ Deno.serve(async (req) => {
 
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return safeJson({ ok: false, message: "Unauthorized" }, 401);
+
+    // Effective actor: under Test Mode the simulated staff member imports
+    // into the persona's school, not the controller's.
+    const actor = await resolveEffectiveActor(base44);
+    if (!actor.authorized) return safeJson({ ok: false, message: actor.reason || "Unauthorized" }, actor.status || 401);
 
     // Only admins and teachers can import
-    const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-    const profile = profiles[0] || null;
-    if (!profile || profile.user_type === 'student') {
+    if (actor.actor_role === 'student') {
       return safeJson({ ok: false, message: "Only staff can import calendars" }, 403);
     }
 
@@ -109,14 +111,14 @@ Deno.serve(async (req) => {
     let imported = 0;
     for (const ev of upcoming) {
       await base44.asServiceRole.entities.Event.create({
-        school_id: school_id || profile.school_id || null,
+        school_id: school_id || actor.school_id || null,
         title: ev.summary,
         start_time: ev.dtstart,
         end_time: ev.dtend || null,
         location: ev.location || null,
         notes: ev.description || null,
         audience: 'whole_school',
-        created_by: user.email,
+        created_by: actor.actor_email,
       });
       imported++;
     }
