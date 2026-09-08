@@ -9,17 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import BlockWardCard from '@/components/blockwards/BlockWardCard';
+import AchievementCard, { AchievementRow, cardFromVault } from '@/components/achievements/AchievementCard';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
 import { Shield, Award, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 /**
  * VerifiedTab — archived StudentRecords with their minted BlockWards, loaded
- * through loadEarnedAchievements(). Carries over the stats, vault status,
- * category filter and collection grid from the original My BlockWards page.
+ * through loadEarnedAchievements(). Stats, vault status, category filter and
+ * the shared achievement card grid.
  */
-export default function VerifiedTab({ achievements, profile, onSelect }) {
+export default function VerifiedTab({ achievements, profile, onSelect, onShare, viewMode = 'grid' }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showVaultModal, setShowVaultModal] = useState(false);
 
@@ -38,64 +37,52 @@ export default function VerifiedTab({ achievements, profile, onSelect }) {
     <div className="space-y-8">
       {/* Stats & Vault */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          <Card className="shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total BlockWards</p>
-                  <p className="text-4xl font-bold text-foreground mt-1">{achievements.length}</p>
-                  <p className="text-sm text-muted-foreground mt-1">Achievements earned</p>
-                </div>
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
-                  <Award className="h-8 w-8 text-white" />
-                </div>
+        <Card className="shadow-lg">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total BlockWards</p>
+                <p className="text-4xl font-bold text-foreground mt-1">{achievements.length}</p>
+                <p className="text-sm text-muted-foreground mt-1">Achievements earned</p>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+                <Award className="h-8 w-8 text-white" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
-        >
-          <Card className="shadow-lg bg-success/5 border-success/20">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl bg-success flex items-center justify-center">
-                    <Shield className="h-6 w-6 text-success-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Vault Status</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                      <Badge className="bg-success/10 text-success border-success/30">
-                        Active
-                      </Badge>
-                    </div>
+        <Card className="shadow-lg bg-success/5 border-success/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-success flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-success-foreground" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Vault Status</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <Badge className="bg-success/10 text-success border-success/30">
+                      Active
+                    </Badge>
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Your achievements are securely stored by BlockWard
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowVaultModal(true)}
-                className="w-full border-success/30 hover:bg-success/10"
-              >
-                View Vault Details
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your achievements are securely stored by BlockWard
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowVaultModal(true)}
+              className="w-full border-success/30 hover:bg-success/10"
+            >
+              View Vault Details
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Collection */}
@@ -132,20 +119,21 @@ export default function VerifiedTab({ achievements, profile, onSelect }) {
                   : 'Try selecting a different category'}
               </p>
             </div>
+          ) : viewMode === 'list' ? (
+            <div className="space-y-2">
+              {filteredBlockWards.map(bw => (
+                <AchievementRow key={bw.id} item={cardFromVault(bw)} onClick={() => onSelect(bw)} onShare={onShare} />
+              ))}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBlockWards.map((bw, index) => (
-                <motion.div
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredBlockWards.map(bw => (
+                <AchievementCard
                   key={bw.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                >
-                  <BlockWardCard
-                    blockWard={bw}
-                    onClick={() => onSelect(bw)}
-                  />
-                </motion.div>
+                  item={cardFromVault(bw)}
+                  onClick={() => onSelect(bw)}
+                  onShare={onShare}
+                />
               ))}
             </div>
           )}

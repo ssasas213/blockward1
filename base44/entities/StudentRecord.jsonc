@@ -284,6 +284,15 @@
       "type": "string",
       "format": "date-time",
       "description": "When this legacy student submission was converted to the achievement-request flow"
+    },
+    "deleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Soft-delete flag \u2014 set by the duplicate-record cleanup. Deleted records are excluded from vault listings and public pages but kept for audit history. Service-role only."
+    },
+    "deleted_reason": {
+      "type": "string",
+      "description": "Why this record was soft-deleted, e.g. 'Duplicate of <record id> \u2014 soft-deleted by dedupe (same student, title, date_achieved)'."
     }
   },
   "required": [

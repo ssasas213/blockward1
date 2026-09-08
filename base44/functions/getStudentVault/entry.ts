@@ -116,6 +116,8 @@ Deno.serve(async (req) => {
     //   - (status === 'delivered_to_vault' OR status === 'approved' OR status === 'archived')
     //   - delivered_to_student_vault === true (if the field exists)
     const earned = records.filter(r => {
+      // Soft-deleted duplicates never appear in the vault.
+      if (r.deleted === true) return false;
       // Only 'delivered_to_vault' and legacy 'archived' count as delivered.
       // 'approved' alone is NOT delivered — the admin must explicitly send to vault.
       const isDeliveredStatus = r.status === 'delivered_to_vault' || r.status === 'archived';
@@ -135,7 +137,14 @@ Deno.serve(async (req) => {
     // regardless of how the email was stored at creation time.
     const blockWardsByEmail = await base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' });
     const blockWardsByOwnerId = await base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email), status: 'active' });
-    const blockWards = [...blockWardsByEmail, ...blockWardsByOwnerId];
+    // Deduplicate by BlockWard id — the email and owner_email lookups can
+    // return the same BlockWard, and merging blindly duplicated cards.
+    const bwSeenIds = new Set();
+    const blockWards = [...blockWardsByEmail, ...blockWardsByOwnerId].filter(bw => {
+      if (bwSeenIds.has(bw.id)) return false;
+      bwSeenIds.add(bw.id);
+      return true;
+    });
     const bwByRecordId = {};
     blockWards.forEach(bw => {
       const key = bw.student_record_id || bw.record_id;
@@ -144,9 +153,18 @@ Deno.serve(async (req) => {
       }
     });
 
+    // Issuing organisation name/logo — resolved once per school so every
+    // achievement card shows who issued it (subtitle hierarchy: org name
+    // when org-issued, category otherwise).
+    const orgById = {};
+    for (const sid of [...new Set(earned.map(r => r.school_id).filter(Boolean))]) {
+      try { const s = await base44.asServiceRole.entities.School.filter({ id: sid }); if (s[0]) orgById[sid] = { name: s[0].name, logo_url: s[0].logo_url || null }; } catch (e) { /* ignore */ }
+    }
+
     // ── STEP 5: Return unified result ──
     const achievements = earned.map(rec => {
       const bw = bwByRecordId[rec.id] || null;
+      const org = orgById[rec.school_id] || null;
       return {
         id: bw?.id || rec.id,
         record_id: rec.id,
@@ -162,6 +180,8 @@ Deno.serve(async (req) => {
         title: rec.title,
         description: rec.description,
         category: rec.category,
+        organisation_name: org?.name || null,
+        organisation_logo: org?.logo_url || null,
         image_url: bw?.image_url || rec.nft_image_url || rec.custom_nft_image_url || null,
         token_id: bw?.token_id || rec.nft_token_id || null,
         transaction_hash: bw?.transaction_hash || rec.nft_transaction_hash || null,

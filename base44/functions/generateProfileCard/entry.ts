@@ -299,6 +299,40 @@ function buildAchievementCard(d) {
   );
 }
 
+function buildAchievementStoryCard(d) {
+  const p = d.palette;
+  return E({ width: 1080, height: 1920, ...bgStyle(p), flexDirection: 'column', padding: '110px 90px', boxSizing: 'border-box', overflow: 'hidden', position: 'relative', fontFamily: 'Inter' },
+    E({ position: 'absolute', top: -220, right: -160, width: 900, height: 700, backgroundImage: `radial-gradient(ellipse, ${hexToRgba(p.accent, 0.20)}, transparent 70%)` }),
+    E({ position: 'absolute', bottom: -180, left: -160, width: 800, height: 600, backgroundImage: `radial-gradient(ellipse, ${hexToRgba(p.accent, 0.10)}, transparent 70%)` }),
+    E({ flexDirection: 'row', alignItems: 'center', gap: 20 },
+      d.avatarUri ? Img(d.avatarUri, { width: 92, height: 92, borderRadius: 26, objectFit: 'cover' }) : initialsAvatar(d.name, 92, 32),
+      E({ flexDirection: 'column', gap: 2 },
+        E({ fontSize: 30, fontWeight: 700, color: p.text }, d.name),
+        E({ fontSize: 24, fontWeight: 600, color: p.accentText }, `@${d.handle}`),
+      ),
+    ),
+    E({ flexDirection: 'column', justifyContent: 'center', flex: 1 },
+      E({ fontSize: 22, fontWeight: 700, letterSpacing: 4, color: p.accentText }, 'VERIFIED ACHIEVEMENT'),
+      E({ fontSize: 72, fontWeight: 800, color: p.text, marginTop: 20, lineHeight: 1.12 }, d.title),
+      d.date ? E({ fontSize: 28, color: p.muted, marginTop: 26 }, `Achieved ${d.date}`) : null,
+      (d.signers || []).length > 0
+        ? E({ flexDirection: 'column', gap: 10, marginTop: 34 },
+            d.signers.map((s) => E({ fontSize: 24, color: p.muted }, s)),
+          )
+        : null,
+    ),
+    E({ flexDirection: 'column', alignItems: 'center', gap: 16, padding: 30, borderRadius: 30, backgroundColor: p.rowFill, border: `1px solid ${p.rowBorder}` },
+      Img(d.qrUri, { width: 300, height: 300, borderRadius: 22 }),
+      E({ fontSize: 30, fontWeight: 700, color: p.text }, 'Scan to verify'),
+      E({ fontSize: 25, fontWeight: 600, color: p.accentText }, d.verificationId),
+      E({ fontSize: 22, color: p.muted }, d.verifyUrl),
+    ),
+    E({ marginTop: 28, justifyContent: 'center' },
+      E({ fontSize: 23, fontWeight: 700, color: p.accentText }, 'Verified by BlockWard'),
+    ),
+  );
+}
+
 // ── Data assembly ───────────────────────────────────────────────────────────
 async function profileCardData(svc, handle) {
   const rows = await svc.entities.UserProfile.filter({ handle });
@@ -426,17 +460,25 @@ export default async function (req: Request): Promise<Response> {
 
       const rows = await svc.entities.BlockWardVerificationRegistry.filter({ verification_id: body.verification_id });
       const r = rows[0];
-      if (!body.force && r.share_card_url && r.share_card_hash === d.hash) {
-        return Response.json({ ok: true, url: r.share_card_url, cached: true });
+      // Format: 'square' (1:1 feed, default) or 'story' (9:16 stories).
+      const format = body.format === 'story' ? 'story' : 'square';
+      const cachedUrl = format === 'story' ? r.share_story_card_url : r.share_card_url;
+      const cachedHash = format === 'story' ? r.share_story_card_hash : r.share_card_hash;
+      if (!body.force && cachedUrl && cachedHash === d.hash) {
+        return Response.json({ ok: true, url: cachedUrl, cached: true });
       }
       d.qrUri = await QRCode.toDataURL(`https://blockward.base44.app/verify/${d.verificationId}`, { width: 480, margin: 1 });
-      const png = await renderPng(buildAchievementCard(d), 1080, 1080);
+      const [w, h] = format === 'story' ? [1080, 1920] : [1080, 1080];
+      const png = await renderPng(format === 'story' ? buildAchievementStoryCard(d) : buildAchievementCard(d), w, h);
       const up = await svc.integrations.Core.UploadFile({
-        file: new File([png], `card-${d.verificationId}.png`, { type: 'image/png' }),
+        file: new File([png], `card-${d.verificationId}-${format}.png`, { type: 'image/png' }),
       });
       const url = up?.file_url || up?.url;
       if (!url) return Response.json({ error: 'Failed to store the card' }, { status: 500 });
-      await svc.entities.BlockWardVerificationRegistry.update(r.id, { share_card_url: url, share_card_hash: d.hash });
+      const fields = format === 'story'
+        ? { share_story_card_url: url, share_story_card_hash: d.hash }
+        : { share_card_url: url, share_card_hash: d.hash };
+      await svc.entities.BlockWardVerificationRegistry.update(r.id, fields);
       return Response.json({ ok: true, url, cached: false });
     }
 

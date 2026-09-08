@@ -244,6 +244,14 @@
       "type": "string",
       "description": "Cache validity hash for the share card \u2014 a change to the credential's card content triggers regeneration on next request."
     },
+    "share_story_card_url": {
+      "type": "string",
+      "description": "Server-rendered 1080x1920 story share card PNG (achievement variant, 9:16 format). Rendered by generateProfileCard."
+    },
+    "share_story_card_hash": {
+      "type": "string",
+      "description": "Cache validity hash for the 9:16 story share card."
+    },
     "is_public": {
       "type": "boolean",
       "default": true,

@@ -10,16 +10,17 @@ import { toast } from 'sonner';
 /**
  * AchievementShareDialog — share options for a single verified achievement:
  * copy the permanent verification link, a QR code for the /verify page, and
- * the server-rendered 1080x1080 share card (issuing org, date, signer chain,
- * verify QR) as a downloadable PNG.
+ * the server-rendered share cards as downloadable PNGs — 9:16 for stories
+ * and 1:1 for feeds (generateProfileCard, variant 'achievement').
  */
 export default function AchievementShareDialog({ open, onOpenChange, achievement }) {
   const [copied, setCopied] = useState(false);
   const [qrSvg, setQrSvg] = useState(null);
-  const [cardBusy, setCardBusy] = useState(false);
+  const [busyFormat, setBusyFormat] = useState(null);
 
-  const url = achievement?.verification_id
-    ? `${window.location.origin}/verify/${achievement.verification_id}`
+  const verificationId = achievement?.verification_id || achievement?.verify_id || null;
+  const url = verificationId
+    ? `${window.location.origin}/verify/${verificationId}`
     : achievement?.public_verification_url || '';
 
   useEffect(() => {
@@ -42,26 +43,28 @@ export default function AchievementShareDialog({ open, onOpenChange, achievement
     }
   };
 
-  const downloadCard = async () => {
-    setCardBusy(true);
+  const downloadCard = async (format) => {
+    if (!verificationId) return;
+    setBusyFormat(format);
     try {
       const res = await base44.functions.invoke('generateProfileCard', {
         variant: 'achievement',
-        verification_id: achievement.verification_id,
+        verification_id: verificationId,
+        format, // 'story' (9:16) or 'square' (1:1)
       });
       const cardUrl = res.data?.url;
       if (!cardUrl) throw new Error(res.data?.error);
       const blob = await (await fetch(cardUrl)).blob();
       const link = document.createElement('a');
-      link.download = `blockward-${achievement.verification_id}.png`;
+      link.download = `blockward-${verificationId}-${format}.png`;
       link.href = URL.createObjectURL(blob);
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 5000);
-      toast.success('Share card downloaded');
+      toast.success(format === 'story' ? 'Story card downloaded' : 'Feed card downloaded');
     } catch (e) {
       toast.error('Could not generate the card');
     } finally {
-      setCardBusy(false);
+      setBusyFormat(null);
     }
   };
 
@@ -96,12 +99,18 @@ export default function AchievementShareDialog({ open, onOpenChange, achievement
             </div>
           </div>
 
-          <Button className="w-full" variant="outline" onClick={downloadCard} disabled={cardBusy}>
-            {cardBusy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-            Download share card
-          </Button>
+          <div className="grid grid-cols-2 gap-3">
+            <Button variant="outline" onClick={() => downloadCard('story')} disabled={!!busyFormat}>
+              {busyFormat === 'story' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Story 9:16
+            </Button>
+            <Button variant="outline" onClick={() => downloadCard('square')} disabled={!!busyFormat}>
+              {busyFormat === 'square' ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+              Feed 1:1
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground text-center">
-            A 1080×1080 image with the issuing organisation, date and verification chain.
+            Share cards with the issuing organisation, date and verification chain — one for stories, one for feeds.
           </p>
         </div>
       </DialogContent>
