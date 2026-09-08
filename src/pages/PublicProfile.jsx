@@ -35,7 +35,12 @@ function setMeta(attr, key, content) {
 }
 
 export default function PublicProfile() {
-  const { handle } = useParams();
+  // Splat route ("/@*") — React Router v6 can't bind a literal "@" prefix and
+  // a dynamic segment in the same path segment, so the handle arrives as the
+  // '*' param. Normalise before lookup: strip any trailing slash, trim,
+  // lowercase.
+  const params = useParams();
+  const handle = (params['*'] || '').replace(/\/+$/, '').trim().toLowerCase();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);

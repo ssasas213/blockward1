@@ -160,7 +160,10 @@ const AuthenticatedApp = () => {
       <Route path="/guardian-consent/:token" element={<GuardianConsent />} />
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />
-      <Route path="/@:handle" element={<PublicProfile />} />
+      {/* Public /@handle profiles — a splat route: React Router v6 can't mix a
+          literal "@" with a dynamic segment in the same path segment, so the
+          handle arrives as the '*' param and PublicProfile normalises it. */}
+      <Route path="/@*" element={<PublicProfile />} />
       <Route path="/org/:slug" element={<OrgPage />} />
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
