@@ -113,9 +113,13 @@ export async function handlePostLoginRedirect() {
   // Pending join request — show the awaiting-approval state on the Login page
   if (pendingMembership) return 'pending';
 
-  // No school linked yet — route to setup, not the dashboard
+  // No school linked yet. Teachers and admins genuinely cannot function
+  // without an organisation, so they go to setup. A school-less student is a
+  // complete account — straight to the dashboard.
   if (!hasSchool) {
-    window.location.href = role === 'admin' ? '/SchoolSetup' : '/JoinSchool';
+    if (role === 'admin') window.location.href = '/SchoolSetup';
+    else if (role === 'student') window.location.href = '/StudentDashboard';
+    else window.location.href = '/JoinSchool'; // 'pending' or teacher with no membership
     return null;
   }
 

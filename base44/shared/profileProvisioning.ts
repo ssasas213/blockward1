@@ -7,7 +7,11 @@ import { sendResendEmail } from './resendEmail.ts';
 // service role, so this module is the only way a profile can come into
 // existence. Role and school are derived ENTIRELY server-side:
 //
-//   - No code and no invitation  → user_type 'pending', no school_id.
+//   - No code and no invitation  → user_type 'student', no school_id. The
+//     account is complete without an organisation — joining one is optional
+//     and can happen any time later. 'pending' remains only for legacy
+//     profiles awaiting a genuine role grant (e.g. teachers pending admin
+//     approval paths that still derive it).
 //   - Join code                   → role read from the SchoolCode RECORD (teacher
 //     or student only). Teachers start pending_approval, students join immediately.
 //   - Invitation token            → role and school read from the SchoolInvitation
@@ -189,11 +193,14 @@ export async function provisionProfile(svc, user, opts) {
   }
 
   let grant = {
-    role: 'pending',
+    // A student with no organisation is a complete, valid account — NOT an
+    // incomplete one. The invitation/code paths below override this for
+    // teachers; admins only ever come via setupSchool or an invitation.
+    role: 'student',
     status: 'active',
     school_id: null,
     school: null,
-    mechanism: 'self-signup (no school linked yet)',
+    mechanism: 'self-signup (organisation optional — can be added later)',
     granted_by_email: user.email,
   };
   let teacher_membership = null;

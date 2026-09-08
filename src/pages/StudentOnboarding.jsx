@@ -11,8 +11,8 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const STEPS = [
-  { key: 'school', label: 'Verify School', icon: School },
+const ALL_STEPS = [
+  { key: 'school', label: 'Your School', icon: School },
   { key: 'photo', label: 'Profile Photo', icon: Camera },
   { key: 'vault', label: 'Link Vault', icon: Wallet },
 ];
@@ -48,8 +48,8 @@ export default function StudentOnboarding() {
       const p = profiles[0] || null;
       if (!p) { window.location.href = createPageUrl('Onboarding'); return; }
       if (p.user_type !== 'student') { redirectByRole(p.user_type); return; }
-      if (!p.school_id) { window.location.href = createPageUrl('JoinSchool'); return; }
-
+      // A student without a school is a complete account — the school step
+      // below is simply skipped.
       setProfile(p);
       if (p.wallet_address) setVaultAddress(p.wallet_address);
 
@@ -96,7 +96,10 @@ export default function StudentOnboarding() {
     );
   }
 
-  const isLast = step === STEPS.length - 1;
+  // School-less students skip the school step — everything else still applies.
+  const steps = profile?.school_id ? ALL_STEPS : ALL_STEPS.filter((s) => s.key !== 'school');
+  const stepKey = steps[step]?.key;
+  const isLast = step === steps.length - 1;
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -114,7 +117,7 @@ export default function StudentOnboarding() {
 
         {/* Progress */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          {STEPS.map((s, i) => {
+          {steps.map((s, i) => {
             const done = i < step;
             const active = i === step;
             return (
@@ -128,7 +131,7 @@ export default function StudentOnboarding() {
                   {done ? <Check className="h-3.5 w-3.5" /> : <s.icon className="h-3.5 w-3.5" />}
                   <span className="text-xs font-medium hidden sm:inline">{s.label}</span>
                 </div>
-                {i < STEPS.length - 1 && <div className={cn('h-px w-4 sm:w-6', done ? 'bg-success/50' : 'bg-border')} />}
+                {i < steps.length - 1 && <div className={cn('h-px w-4 sm:w-6', done ? 'bg-success/50' : 'bg-border')} />}
               </div>
             );
           })}
@@ -136,8 +139,8 @@ export default function StudentOnboarding() {
 
         <Card className="border-border bg-card/60 backdrop-blur-md">
           <CardContent className="p-6">
-            {/* STEP 1 — VERIFY SCHOOL */}
-            {step === 0 && (
+            {/* STEP — YOUR SCHOOL (only when the student has one) */}
+            {stepKey === 'school' && (
               <div className="space-y-5">
                 <div className="flex items-center gap-2">
                   <School className="h-5 w-5 text-primary" />
@@ -170,8 +173,8 @@ export default function StudentOnboarding() {
               </div>
             )}
 
-            {/* STEP 2 — PROFILE PHOTO */}
-            {step === 1 && (
+            {/* STEP — PROFILE PHOTO */}
+            {stepKey === 'photo' && (
               <div className="space-y-5">
                 <div className="flex items-center gap-2">
                   <Camera className="h-5 w-5 text-primary" />
@@ -187,8 +190,8 @@ export default function StudentOnboarding() {
               </div>
             )}
 
-            {/* STEP 3 — LINK VAULT */}
-            {step === 2 && (
+            {/* STEP — LINK VAULT */}
+            {stepKey === 'vault' && (
               <div className="space-y-5">
                 <div className="flex items-center gap-2">
                   <Wallet className="h-5 w-5 text-primary" />

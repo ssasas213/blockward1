@@ -79,11 +79,8 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
-    // Student with no school linked — redirect to join school page
-    if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
-      window.location.href = createPageUrl('JoinSchool');
-      return;
-    }
+    // Students WITHOUT a school proceed — BlockWard is fully usable without
+    // an organisation, and joining one is an optional, later action.
 
     // Under-13 account waiting on guardian consent - redirect to login (shows the consent waiting card)
     if (requireProfile && profile && profile.status === 'awaiting_guardian_consent') {
@@ -145,11 +142,6 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Teacher with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'teacher' && !profile.school_id) {
-    return null;
-  }
-
-  // Student with no school — redirect in progress
-  if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
     return null;
   }
 
