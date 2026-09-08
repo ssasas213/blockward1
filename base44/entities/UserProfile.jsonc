@@ -8,7 +8,7 @@
     },
     "school_id": {
       "type": "string",
-      "description": "Currently active school \u2014 used by RLS for data isolation. Updated when admin switches schools."
+      "description": "Currently active school \u2014 used by RLS for data isolation. Updated when admin switches schools. Service-role only: clients can never write this field."
     },
     "active_school_id": {
       "type": "string",
@@ -19,9 +19,10 @@
       "enum": [
         "admin",
         "teacher",
-        "student"
+        "student",
+        "pending"
       ],
-      "description": "Core role: admin=Approver/Org Admin, teacher=Verifier, student=Participant"
+      "description": "Core role: admin=Approver/Org Admin, teacher=Verifier, student=Participant. 'pending' = newly provisioned account with no school yet \u2014 the user must join a school (code/invite) or create one before any role is granted. Service-role only: clients can never write this field. Roles are granted exclusively through provisionProfile (invite, join code, school creation) or an admin approval."
     },
     "role_label": {
       "type": "string",
@@ -36,11 +37,11 @@
         "data_manager",
         "basic_admin"
       ],
-      "description": "Display label that seeds default admin_permissions on creation."
+      "description": "Display label that seeds default admin_permissions on creation. Service-role only: clients can never write this field."
     },
     "admin_permissions": {
       "type": "object",
-      "description": "Source of truth for what this admin may do. Seeded from admin_level on creation, then editable per-admin.",
+      "description": "Source of truth for what this admin may do. Seeded from admin_level on creation, then editable per-admin via setAdminPermissions. Service-role only: clients can never write this field.",
       "properties": {
         "manage_users": {
           "type": "boolean",
@@ -246,7 +247,8 @@
         "suspended",
         "pending_approval"
       ],
-      "default": "active"
+      "default": "active",
+      "description": "pending_approval: a teacher who joined with a code and is awaiting admin approval \u2014 cannot sign off achievements, view student data, take attendance or issue points until approved."
     },
     "test_super_user": {
       "type": "boolean",
@@ -290,7 +292,7 @@
   ],
   "rls": {
     "create": {
-      "data.user_email": "{{user.email}}"
+      "data.user_email": "__service_role_only__"
     },
     "read": {
       "$or": [
