@@ -17,13 +17,12 @@
     "role_type": {
       "type": "string",
       "enum": [
-        "admin",
         "teacher",
         "student",
         "all"
       ],
       "default": "all",
-      "description": "Which role type this code is valid for"
+      "description": "Which role type this code grants. 'all' resolves to student at join time. Admin is NEVER grantable via a code \u2014 admins are added by email invitation or by creating a new school."
     },
     "status": {
       "type": "string",
