@@ -19,7 +19,26 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.44';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { normalizeHandle, validateHandle, isHandleAvailable, cooldownDaysRemaining } from '../../shared/handles.ts';
 
-const MAX_BIO = 120;
+const MAX_BIO = 200;
+
+// ── Bounded visual customisation — presets only, never raw styling ────────
+const THEME_IDS = ['slate', 'midnight', 'paper', 'terracotta', 'forest', 'cobalt', 'rose', 'mono', 'gradient', 'carbon'];
+const ACCENTS = new Set(['#7c3aed', '#4f46e5', '#2563eb', '#0d9488', '#059669', '#d97706', '#ea580c', '#dc2626', '#e11d48', '#db2777', '#334155', '#171717']);
+const SOCIAL_PLATFORMS = new Set(['instagram', 'tiktok', 'linkedin', 'github', 'youtube', 'x', 'discord', 'behance', 'dribbble', 'strava', 'chesscom', 'website']);
+
+// Force every outbound link to a valid https URL (http is upgraded).
+function forceHttpsUrl(raw) {
+  let u = String(raw || '').trim();
+  if (!u) return null;
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try {
+    const parsed = new URL(u);
+    parsed.protocol = 'https:';
+    return parsed.href;
+  } catch {
+    return null;
+  }
+}
 
 export default async function (req: Request): Promise<Response> {
   try {
@@ -106,6 +125,62 @@ export default async function (req: Request): Promise<Response> {
       updates.profile_visibility = body.profile_visibility;
     }
 
+    // ── Visual customisation (validated presets) ────────────────────────────
+    if (typeof body.theme_id === 'string') {
+      if (!THEME_IDS.includes(body.theme_id)) return Response.json({ error: 'Unknown theme' }, { status: 400 });
+      updates.theme_id = body.theme_id;
+    }
+    if (typeof body.accent_colour === 'string') {
+      const accent = body.accent_colour.toLowerCase();
+      if (!ACCENTS.has(accent)) return Response.json({ error: 'Accent colour must be one of the preset colours' }, { status: 400 });
+      updates.accent_colour = accent;
+    } else if (body.accent_colour === null) {
+      updates.accent_colour = null;
+    }
+    if (typeof body.profile_layout === 'string') {
+      if (!['grid', 'list', 'showcase'].includes(body.profile_layout)) return Response.json({ error: 'Invalid layout' }, { status: 400 });
+      updates.profile_layout = body.profile_layout;
+    }
+    if (typeof body.display_font === 'string') {
+      if (!['sans', 'serif', 'mono', 'display'].includes(body.display_font)) return Response.json({ error: 'Invalid font' }, { status: 400 });
+      updates.display_font = body.display_font;
+    }
+    if (typeof body.banner_url === 'string' || body.banner_url === null) {
+      const b = body.banner_url;
+      if (b && !/^preset:[a-z_]+$/.test(b) && !/^https:\/\//.test(b)) {
+        return Response.json({ error: 'Banner must be an uploaded image or one of the built-in banners' }, { status: 400 });
+      }
+      updates.banner_url = b || null;
+    }
+    if (Array.isArray(body.social_links)) {
+      if (body.social_links.length > 6) return Response.json({ error: 'Maximum of 6 social links' }, { status: 400 });
+      const clean = [];
+      for (const l of body.social_links) {
+        if (!l || typeof l !== 'object') continue;
+        if (!SOCIAL_PLATFORMS.has(String(l.platform || ''))) {
+          return Response.json({ error: 'Unsupported social platform' }, { status: 400 });
+        }
+        const url = forceHttpsUrl(l.url);
+        if (!url) return Response.json({ error: 'Social links must be valid URLs' }, { status: 400 });
+        clean.push({
+          platform: String(l.platform),
+          url,
+          label: String(l.label || '').slice(0, 40) || null,
+        });
+      }
+      updates.social_links = clean;
+    }
+    if (body.featured_link !== undefined) {
+      const f = body.featured_link;
+      if (!f || !String(f.url || '').trim()) {
+        updates.featured_link = null;
+      } else {
+        const url = forceHttpsUrl(f.url);
+        if (!url) return Response.json({ error: 'Featured link must be a valid URL' }, { status: 400 });
+        updates.featured_link = { url, label: String(f.label || '').slice(0, 60) || null };
+      }
+    }
+
     // ── OG image ─────────────────────────────────────────────────────────────
     if (typeof body.og_image_url === 'string') {
       updates.og_image_url = body.og_image_url || null;
@@ -155,6 +230,13 @@ export default async function (req: Request): Promise<Response> {
         profile_visibility: fresh.profile_visibility || 'public',
         og_image_url: fresh.og_image_url || null,
         pinned_achievement_ids: fresh.pinned_achievement_ids || [],
+        theme_id: fresh.theme_id || 'slate',
+        accent_colour: fresh.accent_colour || null,
+        profile_layout: fresh.profile_layout || 'grid',
+        display_font: fresh.display_font || 'sans',
+        banner_url: fresh.banner_url || null,
+        social_links: fresh.social_links || [],
+        featured_link: fresh.featured_link || null,
         name: `${fresh.first_name || ''} ${fresh.last_name || ''}`.trim(),
         avatar_url: fresh.avatar_url || null,
         grade_level: fresh.grade_level || null,

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 
-const CATEGORY_STYLE = {
+export const CATEGORY_STYLE = {
   academic: { Icon: Medal, grad: 'linear-gradient(135deg, #8B5CF6, #6366F1)' },
   sports: { Icon: Trophy, grad: 'linear-gradient(135deg, #10B981, #059669)' },
   arts: { Icon: Star, grad: 'linear-gradient(135deg, #EC4899, #F472B6)' },

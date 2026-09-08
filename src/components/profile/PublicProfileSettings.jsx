@@ -8,8 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock,
+  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock, Palette,
 } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import ProfilePreview from '@/components/publicProfile/ProfilePreview';
+import ProfileCustomizer from '@/components/profile/ProfileCustomizer';
 import ProfileCardImage from '@/components/profile/ProfileCardImage';
 
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
@@ -35,6 +38,13 @@ export default function PublicProfileSettings({ profile }) {
   const [handleInput, setHandleInput] = useState('');
   const [originalHandle, setOriginalHandle] = useState(null);
   const [bio, setBio] = useState('');
+  const [themeId, setThemeId] = useState('slate');
+  const [accentColour, setAccentColour] = useState(null);
+  const [profileLayout, setProfileLayout] = useState('grid');
+  const [displayFont, setDisplayFont] = useState('sans');
+  const [bannerUrl, setBannerUrl] = useState(null);
+  const [socialLinks, setSocialLinks] = useState([]);
+  const [featuredLink, setFeaturedLink] = useState(null);
   const [visibility, setVisibility] = useState('public');
   const [cooldownDays, setCooldownDays] = useState(0);
   const [achievements, setAchievements] = useState([]);
@@ -55,6 +65,13 @@ export default function PublicProfileSettings({ profile }) {
       setOriginalHandle(p.handle);
       setHandleInput(p.handle || '');
       setBio(p.bio || '');
+      setThemeId(p.theme_id || 'slate');
+      setAccentColour(p.accent_colour || null);
+      setProfileLayout(p.profile_layout || 'grid');
+      setDisplayFont(p.display_font || 'sans');
+      setBannerUrl(p.banner_url || null);
+      setSocialLinks(p.social_links || []);
+      setFeaturedLink(p.featured_link || null);
       setVisibility(p.profile_visibility || 'public');
       setCooldownDays(p.cooldown_days_remaining || 0);
       setAchievements(res.data?.achievements || []);
@@ -103,7 +120,17 @@ export default function PublicProfileSettings({ profile }) {
     if (handleBlocked) { toast.error(availability.reason || 'Fix your handle first'); return; }
     setSaving(true);
     try {
-      const payload = { bio, profile_visibility: visibility };
+      const payload = {
+        bio,
+        profile_visibility: visibility,
+        theme_id: themeId,
+        accent_colour: accentColour || null,
+        profile_layout: profileLayout,
+        display_font: displayFont,
+        banner_url: bannerUrl || null,
+        social_links: (socialLinks || []).filter((l) => l && l.platform && String(l.url || '').trim()),
+        featured_link: featuredLink && String(featuredLink.url || '').trim() ? featuredLink : null,
+      };
       if (handleDirty) payload.handle = handleInput.trim().toLowerCase();
 
       // Regenerate the share/OG card image so it matches the current profile.
@@ -207,13 +234,57 @@ export default function PublicProfileSettings({ profile }) {
           {/* Bio */}
           <div className="space-y-2">
             <Label>Bio</Label>
-            <Input
+            <Textarea
               value={bio}
-              onChange={(e) => setBio(e.target.value.slice(0, 120))}
-              maxLength={120}
+              onChange={(e) => setBio(e.target.value.slice(0, 200))}
+              maxLength={200}
+              rows={2}
               placeholder="Sprinter · violinist · student council president"
             />
-            <p className="text-xs text-muted-foreground text-right">{bio.length}/120</p>
+            <p className="text-xs text-muted-foreground text-right">{bio.length}/200 · line breaks allowed</p>
+          </div>
+
+          {/* Look & feel — bounded presets with a live preview */}
+          <div className="space-y-4">
+            <Label className="flex items-center gap-2">
+              <Palette className="h-4 w-4 text-primary" /> Look &amp; feel
+            </Label>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Designed presets only — admissions officers and employers will read this page, so every option stays legible and credible.
+            </p>
+            <ProfilePreview
+              name={profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''}
+              handle={handleInput || originalHandle || 'handle'}
+              bio={bio}
+              avatarUrl={profile?.avatar_url || null}
+              count={achievements.length}
+              bannerUrl={bannerUrl}
+              themeId={themeId}
+              accentColour={accentColour}
+              displayFont={displayFont}
+              profileLayout={profileLayout}
+              socialLinks={socialLinks}
+              featuredLink={featuredLink}
+              sampleAchievements={achievements.slice(0, 3)}
+            />
+            <ProfileCustomizer
+              themeId={themeId}
+              accentColour={accentColour}
+              profileLayout={profileLayout}
+              displayFont={displayFont}
+              bannerUrl={bannerUrl}
+              socialLinks={socialLinks}
+              featuredLink={featuredLink}
+              onChange={(patch) => {
+                if (patch.theme_id !== undefined) setThemeId(patch.theme_id);
+                if (patch.accent_colour !== undefined) setAccentColour(patch.accent_colour);
+                if (patch.profile_layout !== undefined) setProfileLayout(patch.profile_layout);
+                if (patch.display_font !== undefined) setDisplayFont(patch.display_font);
+                if (patch.banner_url !== undefined) setBannerUrl(patch.banner_url);
+                if (patch.social_links !== undefined) setSocialLinks(patch.social_links);
+                if (patch.featured_link !== undefined) setFeaturedLink(patch.featured_link);
+              }}
+            />
           </div>
 
           {/* Global visibility */}

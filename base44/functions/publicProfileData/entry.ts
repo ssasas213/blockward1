@@ -78,6 +78,17 @@ export default async function (req: Request): Promise<Response> {
       });
     }
 
+    // Owner flag: the signed-in viewer is the profile owner (enables pinning).
+    const is_owner = !!body.viewer_email &&
+      String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
+
+    // View counter — server-incremented only; owner views don't count.
+    if (!is_owner) {
+      try {
+        await svc.entities.UserProfile.update(profile.id, { profile_views: (profile.profile_views || 0) + 1 });
+      } catch (e) { /* non-critical */ }
+    }
+
     // 3. Affiliations — EVERY organisation this student belongs to: their home
     // school plus approved cross-org memberships (clubs, academies…).
     let school = null;
@@ -213,10 +224,6 @@ export default async function (req: Request): Promise<Response> {
     const visibleIds = new Set(visible.map((r) => r.id));
     const pinned = (profile.pinned_achievement_ids || []).filter((id: string) => visibleIds.has(id)).slice(0, 6);
 
-    // Owner flag: the signed-in viewer is the profile owner (enables pinning).
-    const is_owner = !!body.viewer_email &&
-      String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
-
     return Response.json({
       ok: true,
       student: {
@@ -227,6 +234,14 @@ export default async function (req: Request): Promise<Response> {
         grade_level: profile.grade_level || null,
         og_image_url: profile.og_image_url || null,
         link_only: profile.profile_visibility === 'link_only',
+        // Bounded visual customisation (validated presets, saved via updatePublicProfile)
+        theme_id: profile.theme_id || 'slate',
+        accent_colour: profile.accent_colour || null,
+        profile_layout: profile.profile_layout || 'grid',
+        display_font: profile.display_font || 'sans',
+        banner_url: profile.banner_url || null,
+        social_links: (profile.social_links || []).filter((l) => l && l.platform && l.url).slice(0, 6),
+        featured_link: profile.featured_link && profile.featured_link.url ? profile.featured_link : null,
       },
       school: school ? {
         name: school.name,

@@ -1,12 +1,14 @@
 // Shared per-type notification dispatcher for social & credential events.
 // ONE place that reads the recipient's per-type preferences
-// (NotificationPreference.prefs[event_type] = { in_app, email }) and delivers
-// both the in-app Notification record and (optionally) the Resend email.
-// Every event type used here must exist in the Notification entity's type enum.
-// Delivery is always best-effort and never throws — a notification failure
-// must never block the action that triggered it.
-
-import { sendResendEmail } from './resendEmail.ts';
+// (NotificationPreference.prefs[event_type] = { in_app, email }).
+//
+// In-app Notification records are created instantly when enabled.
+//
+// EMAIL IS NOT SENT INSTANTLY: every event type here is batched into ONE
+// daily digest email per recipient (sendDailyDigest, run by the
+// "Daily Social Digest" workflow). The digest honors the SAME per-type
+// email preference, and skips notifications the user already read in-app —
+// quiet by default, never more than one email a day, fully opt-out.
 
 export const EVENT_TYPES = [
   'endorsement',
@@ -15,6 +17,8 @@ export const EVENT_TYPES = [
   'request_changes',
   'team_accepted',
   'opportunity_match',
+  'view_milestone',
+  'org_approved',
 ];
 
 export async function notifyEvent(svc: any, opts: {
@@ -54,8 +58,6 @@ export async function notifyEvent(svc: any, opts: {
     }
   }
 
-  if (opts.email_html && (!pref || pref.email !== false)) {
-    const { delivered, error } = await sendResendEmail(to_email, opts.email_subject || title, opts.email_html);
-    if (!delivered) console.log('[notifyEvent] email not delivered', { to_email, error });
-  }
+  // Email: nothing instant — the daily digest (sendDailyDigest) picks this
+  // notification up within 24h and respects prefs[event_type].email there.
 }

@@ -23,7 +23,7 @@
     },
     "prefs": {
       "type": "object",
-      "description": "Per-event-type preferences for the social & credential event stream. Each key is an event type (endorsement, follow, request_signed_off, request_changes, team_accepted, opportunity_match); each value has in_app and email booleans. A missing key or missing channel defaults to ON.",
+      "description": "Per-event-type preferences for the social & credential event stream. Each key is an event type (endorsement, follow, request_signed_off, request_changes, team_accepted, opportunity_match, view_milestone, org_approved); each value has in_app and email booleans. A missing key or missing channel defaults to ON.",
       "properties": {
         "endorsement": {
           "type": "object",
@@ -91,6 +91,32 @@
           }
         },
         "opportunity_match": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "view_milestone": {
+          "type": "object",
+          "properties": {
+            "in_app": {
+              "type": "boolean",
+              "default": true
+            },
+            "email": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "org_approved": {
           "type": "object",
           "properties": {
             "in_app": {

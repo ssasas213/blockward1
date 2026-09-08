@@ -105,7 +105,7 @@
     },
     "bio": {
       "type": "string",
-      "description": "One-line public bio shown on the public profile (max 120 characters)."
+      "description": "Public bio shown on the public profile (max 200 characters, line breaks allowed). Plain text only \u2014 no markdown, no HTML."
     },
     "pinned_achievement_ids": {
       "type": "array",
@@ -114,6 +114,100 @@
       },
       "default": [],
       "description": "Up to 6 BlockWardVerificationRegistry ids pinned as Highlights at the top of the public profile."
+    },
+    "banner_url": {
+      "type": "string",
+      "description": "Public profile cover banner. Either an uploaded image URL (cropped to 3:1, 1500x500 on upload) or a built-in abstract banner encoded as 'preset:<id>'. Set from the bounded presets in updatePublicProfile \u2014 never free styling."
+    },
+    "theme_id": {
+      "type": "string",
+      "enum": [
+        "slate",
+        "midnight",
+        "paper",
+        "terracotta",
+        "forest",
+        "cobalt",
+        "rose",
+        "mono",
+        "gradient",
+        "carbon"
+      ],
+      "default": "slate",
+      "description": "Named design preset for the public /@handle profile \u2014 background treatment, card style, border radius, shadow depth and text colour. Validated server-side."
+    },
+    "accent_colour": {
+      "type": "string",
+      "description": "Hex accent colour for the public profile, restricted to the fixed 12-colour palette \u2014 validated server-side, never a free picker."
+    },
+    "profile_layout": {
+      "type": "string",
+      "enum": [
+        "grid",
+        "list",
+        "showcase"
+      ],
+      "default": "grid",
+      "description": "How achievements are presented on the public profile: grid (many achievements), list (long verified record), showcase (hero treatment for pinned highlights)."
+    },
+    "social_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "type": "string",
+            "description": "One of the supported platforms: instagram, tiktok, linkedin, github, youtube, x, discord, behance, dribbble, strava, chesscom, website"
+          },
+          "url": {
+            "type": "string",
+            "description": "https URL (forced server-side)"
+          },
+          "label": {
+            "type": "string",
+            "description": "Optional display label (max 40 chars)"
+          }
+        },
+        "required": [
+          "platform",
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Up to 6 social/profile links shown as icon buttons under the bio (link-in-bio). Rendered with rel=noopener nofollow."
+    },
+    "featured_link": {
+      "type": "object",
+      "description": "One prominent call-to-action button above the achievements \u2014 portfolio, CV, fundraiser, team page or commission form.",
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "https URL (forced server-side)"
+        },
+        "label": {
+          "type": "string",
+          "description": "Button label (max 60 chars)"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "display_font": {
+      "type": "string",
+      "enum": [
+        "sans",
+        "serif",
+        "mono",
+        "display"
+      ],
+      "default": "sans",
+      "description": "Curated heading font pairing for the public profile \u2014 one of 4 designed pairings, never a free font choice."
+    },
+    "profile_views": {
+      "type": "number",
+      "default": 0,
+      "description": "Total views of the public /@handle profile. Incremented server-side only (publicProfileData) \u2014 never client-writable."
     },
     "profile_visibility": {
       "type": "string",

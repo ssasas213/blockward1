@@ -27,7 +27,9 @@
         "request_signed_off",
         "request_changes",
         "team_accepted",
-        "opportunity_match"
+        "opportunity_match",
+        "view_milestone",
+        "org_approved"
       ],
       "description": "Notification type"
     },
@@ -42,7 +44,7 @@
     },
     "related_id": {
       "type": "string",
-      "description": "ID of the related entity (e.g. announcement ID, message ID, registry ID)"
+      "description": "ID of the related entity (e.g. announcement ID, message ID, registry ID, membership ID)"
     },
     "read": {
       "type": "boolean",
@@ -51,6 +53,11 @@
     "read_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "digested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set by the daily digest job once this notification has been included in (or deliberately skipped from) a digest email \u2014 prevents re-sending. Unread social/credential notifications without this are pending their daily digest."
     }
   },
   "required": [

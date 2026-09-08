@@ -1,0 +1,45 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "daily_social_digest",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_digest": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "sendDailyDigest",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Send daily digest emails",
+            "description": "One email per user for the last 24h"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Daily Social Digest",
+  "description": "Batches each user's social & credential notifications from the last 24 hours into a single daily email (quiet by default, respects per-type opt-outs, skips already-read items).",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 17 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Dubai",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}

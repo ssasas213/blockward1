@@ -15,6 +15,11 @@ import ProfileTimeline from '@/components/publicProfile/ProfileTimeline';
 import SelfReportedSection from '@/components/publicProfile/SelfReportedSection';
 import HighlightsRow from '@/components/publicProfile/HighlightsRow';
 import { exportPortfolioPdf } from '@/lib/portfolioPdf';
+import { themeVars, bannerStyle } from '@/lib/profileThemes';
+import SocialLinks from '@/components/publicProfile/SocialLinks';
+import FeaturedLink from '@/components/publicProfile/FeaturedLink';
+import AchievementListRow from '@/components/publicProfile/AchievementListRow';
+import ShowcaseHero from '@/components/publicProfile/ShowcaseHero';
 import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 import { createPageUrl } from '@/utils';
 
@@ -177,6 +182,10 @@ export default function PublicProfile() {
   const { student, school, orgs = [], achievements, self_reported = [], pinned = [], is_owner } = data;
   const count = data.count;
 
+  // Bounded visual customisation — theme tokens, accent, banner, font, layout.
+  const layout = student.profile_layout || 'grid';
+  const profileStyle = themeVars(student.theme_id, student.accent_colour, student.display_font);
+
   // Category counts for the filter chips.
   const counts = { all: achievements.length };
   for (const a of achievements) {
@@ -234,7 +243,7 @@ export default function PublicProfile() {
   const openAchievement = (a) => setSelected(a);
 
   return (
-    <div className="min-h-screen bg-background font-sans antialiased">
+    <div className="min-h-screen bg-background font-sans antialiased" style={profileStyle}>
       {/* Slim header */}
       <header className="fixed top-0 left-0 right-0 z-40 glass border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -265,14 +274,28 @@ export default function PublicProfile() {
       </header>
 
       <main className="pt-14 max-w-5xl mx-auto px-4 sm:px-6 pb-24">
+        {/* Banner — uploaded (3:1 crop), a built-in abstract, or the theme's own treatment */}
+        <div
+          className="mt-8 sm:mt-10 h-32 sm:h-44 rounded-2xl overflow-hidden border border-border"
+          style={bannerStyle(student.banner_url, student.theme_id)}
+        />
+
         {/* Profile header */}
-        <div className="mt-8 sm:mt-12 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-6 sm:p-8">
+        <div
+          className="mt-4 rounded-2xl border border-border bg-card/60 backdrop-blur-md p-6 sm:p-8"
+          style={{ borderRadius: 'var(--pf-radius, 1rem)', boxShadow: 'var(--pf-shadow, none)' }}
+        >
           <div className="flex flex-col sm:flex-row sm:items-end gap-5">
             <InitialsAvatar name={student.name} src={student.avatar_url} size="xl" ring />
             <div className="min-w-0 flex-1">
-              <h1 className="text-2xl sm:text-4xl font-bold text-foreground leading-tight">{student.name}</h1>
+              <h1 className="font-heading text-2xl sm:text-4xl font-bold text-foreground leading-tight">{student.name}</h1>
               <p className="text-base text-primary font-semibold mt-0.5">@{student.handle}</p>
-              {student.bio && <p className="text-sm sm:text-base text-muted-foreground mt-2 leading-relaxed">{student.bio}</p>}
+              {student.bio && <p className="text-sm sm:text-base text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{student.bio}</p>}
+              {student.social_links?.length > 0 && (
+                <div className="mt-3">
+                  <SocialLinks links={student.social_links} />
+                </div>
+              )}
             </div>
             <div className="flex-shrink-0 rounded-xl bg-background/60 border border-border px-5 py-3 text-center">
               <p className="text-2xl sm:text-3xl font-bold text-foreground leading-none">{count}</p>
@@ -302,8 +325,19 @@ export default function PublicProfile() {
           )}
         </div>
 
-        {/* Highlights — pinned by the student (max 6) */}
-        <HighlightsRow items={pinnedItems} onOpen={openAchievement} />
+        {/* Featured link — one prominent call-to-action above the achievements */}
+        {student.featured_link?.url && (
+          <div className="mt-6">
+            <FeaturedLink link={student.featured_link} />
+          </div>
+        )}
+
+        {/* Highlights — pinned by the student (max 6); showcase profiles get a hero treatment */}
+        {layout === 'showcase' && pinnedItems.length > 0 ? (
+          <ShowcaseHero items={pinnedItems} onOpen={openAchievement} />
+        ) : (
+          <HighlightsRow items={pinnedItems} onOpen={openAchievement} />
+        )}
 
         {achievements.length > 0 ? (
           <>
@@ -319,6 +353,12 @@ export default function PublicProfile() {
 
             {view === 'timeline' ? (
               <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
+            ) : layout === 'list' ? (
+              <div className="space-y-2">
+                {sorted.map((a) => (
+                  <AchievementListRow key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                ))}
+              </div>
             ) : sort === 'category' ? (
               <div className="space-y-10">
                 {grouped.map(({ domain, items }) => (

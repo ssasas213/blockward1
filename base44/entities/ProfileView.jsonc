@@ -1,0 +1,44 @@
+{
+  "name": "ProfileView",
+  "type": "object",
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "description": "UserProfile.id of the profile that was viewed"
+    },
+    "handle": {
+      "type": "string",
+      "description": "Handle of the profile viewed (denormalised for lookups)"
+    },
+    "viewer_key": {
+      "type": "string",
+      "description": "Stable per-viewer key used for 24-hour deduplication \u2014 'u:<profile id>' for signed-in viewers, 'a:<anonymous id>' for cookie-id'd visitors. The profile owner NEVER sees individual identities, only aggregates."
+    },
+    "viewer_school_id": {
+      "type": "string",
+      "description": "Signed-in viewer's school id \u2014 powers the aggregated 'people from N schools' insight. Never exposed individually."
+    },
+    "viewer_school_name": {
+      "type": "string",
+      "description": "Signed-in viewer's school name (denormalised). Only ever shown to the profile owner as an anonymous aggregate count."
+    }
+  },
+  "required": [
+    "profile_id",
+    "viewer_key"
+  ],
+  "rls": {
+    "create": {
+      "data.profile_id": "__service_role_only__"
+    },
+    "read": {
+      "data.profile_id": "__service_role_only__"
+    },
+    "update": {
+      "data.profile_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.profile_id": "__service_role_only__"
+    }
+  }
+}
