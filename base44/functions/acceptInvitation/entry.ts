@@ -92,6 +92,7 @@ export default async function(req: Request): Promise<Response> {
         // derives role/school from the record.
         profile = (await provisionProfile(svc, user, {
           first_name: firstName, last_name: lastName, invitation_token: token,
+          date_of_birth: body.date_of_birth, guardian_email: body.guardian_email,
         })).profile;
       } else {
         const oldRole = profile.user_type;
@@ -133,6 +134,7 @@ export default async function(req: Request): Promise<Response> {
       if (!existingProfile) {
         await provisionProfile(svc, user, {
           first_name: firstName, last_name: lastName, invitation_token: token,
+          date_of_birth: body.date_of_birth, guardian_email: body.guardian_email,
         });
       } else {
         const oldRole = existingProfile.user_type;
@@ -161,6 +163,7 @@ export default async function(req: Request): Promise<Response> {
         // provisionProfile seeds basic_admin level + permissions from the invitation record.
         profile = (await provisionProfile(svc, user, {
           first_name: firstName, last_name: lastName, invitation_token: token,
+          date_of_birth: body.date_of_birth, guardian_email: body.guardian_email,
         })).profile;
       } else {
         const oldRole = existingProfile.user_type;
@@ -201,6 +204,24 @@ export default async function(req: Request): Promise<Response> {
       } else {
         await svc.entities.AdminSchoolMembership.update(existingMembership[0].id, { status: 'active' });
       }
+    }
+
+    // Under-13 invitee: the invitation is accepted, but the account stays
+    // inactive until the guardian consents (consent link emailed by
+    // provisionProfile). Client shows the guardian-waiting screen instead of a dashboard.
+    const freshProfiles = await svc.entities.UserProfile.filter({ user_email: user.email });
+    const freshProfile = freshProfiles[0];
+    if (freshProfile?.status === 'awaiting_guardian_consent') {
+      await svc.entities.SchoolInvitation.update(invitation.id, {
+        status: 'accepted',
+        accepted_at: new Date().toISOString(),
+        accepted_by_email: user.email,
+      });
+      return Response.json({
+        success: true,
+        consent_required: true,
+        guardian_email: freshProfile.parent_email || body.guardian_email || null,
+      });
     }
 
     // Mark accepted

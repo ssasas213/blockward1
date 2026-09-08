@@ -85,6 +85,12 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
+    // Under-13 account waiting on guardian consent - redirect to login (shows the consent waiting card)
+    if (requireProfile && profile && profile.status === 'awaiting_guardian_consent') {
+      window.location.href = '/Login';
+      return;
+    }
+
     // Profile pending approval - redirect to login (shows pending message)
     if (requireProfile && profile && profile.status === 'pending_approval') {
       window.location.href = '/Login';
@@ -147,8 +153,9 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     return null;
   }
 
-  // Pending or suspended — redirect in progress
+  // Awaiting consent, pending or suspended — redirect in progress
   if (requireProfile && profile && (
+    profile.status === 'awaiting_guardian_consent' ||
     profile.status === 'pending_approval' ||
     profile.status === 'suspended' ||
     profile.status === 'inactive'

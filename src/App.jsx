@@ -53,6 +53,7 @@ import Insights from './pages/Insights';
 import SchoolSettings from './pages/SchoolSettings';
 import MySchool from './pages/MySchool';
 import ExternalVerify from './pages/ExternalVerify';
+import GuardianConsent from './pages/GuardianConsent';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
 import TeamPage from './pages/TeamPage';
@@ -155,6 +156,7 @@ const AuthenticatedApp = () => {
       <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
       <Route path="/GradeBook" element={<Navigate to="/Gradebook" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
+      <Route path="/guardian-consent/:token" element={<GuardianConsent />} />
       <Route path="/team/:slug" element={<TeamPage />} />
       <Route path="/team-join/:token" element={<TeamJoin />} />
       <Route path="/@:handle" element={<PublicProfile />} />

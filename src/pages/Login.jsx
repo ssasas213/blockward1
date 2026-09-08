@@ -6,6 +6,7 @@ import { Shield, Loader2, Clock, Ban, AlertCircle, Mail, ArrowLeft } from 'lucid
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -42,6 +43,7 @@ export default function Login() {
           const result = await handlePostLoginRedirect();
           if (result === 'suspended') setAccountStatus('suspended');
           else if (result === 'pending') setAccountStatus('pending');
+          else if (result === 'guardian_consent') setAccountStatus('guardian_consent');
         }
       } catch {
         /* not authenticated */
@@ -103,6 +105,7 @@ export default function Login() {
       const result = await handlePostLoginRedirect();
       if (result === 'suspended') setAccountStatus('suspended');
       else if (result === 'pending') setAccountStatus('pending');
+      else if (result === 'guardian_consent') setAccountStatus('guardian_consent');
     } catch (err) {
       setError(err?.message || 'Invalid email or password.');
       setLoading(false);
@@ -194,7 +197,9 @@ export default function Login() {
 
         {/* Card */}
         <div className="glass rounded-xl shadow-sm p-8">
-          {accountStatus === 'pending' ? (
+          {accountStatus === 'guardian_consent' ? (
+            <GuardianConsentCard onSignOut={handleSignOut} />
+          ) : accountStatus === 'pending' ? (
             <div className="text-center">
               <div className="mx-auto h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center mb-4">
                 <Clock className="h-6 w-6 text-warning" />

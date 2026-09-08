@@ -24,7 +24,22 @@ const SIGNUP_STORAGE_KEYS = {
   first: 'blockward_signup_first',
   last: 'blockward_signup_last',
   code: 'blockward_signup_code',
+  dob: 'blockward_signup_dob',
+  guardian: 'blockward_signup_guardian',
 };
+
+// Client-side mirror of the server's age derivation — used ONLY to reveal the
+// guardian email field at the right moment. The server re-derives the age from
+// the date of birth and never trusts the client.
+function ageFromDob(dob) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob || '')) return null;
+  const d = new Date(dob + 'T00:00:00');
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  if (today.getMonth() < d.getMonth() || (today.getMonth() === d.getMonth() && today.getDate() < d.getDate())) age--;
+  return age;
+}
 
 // Where to go after the server provisions the profile. Role and school are
 // decided server-side (provisionProfile) — the client just follows the map.
@@ -41,6 +56,12 @@ async function provisionAccount(payload) {
   const res = await base44.functions.invoke('provisionProfile', payload);
   const data = res.data;
   if (!data?.ok) throw new Error(data?.error || 'Failed to create account');
+  // Under-13: the account exists but stays inactive until the guardian
+  // consents. The sign-in screen shows the waiting card with the guardian email.
+  if (data.next === 'guardian_consent') {
+    window.location.href = '/Login';
+    return;
+  }
   window.location.href = NEXT_URL[data.next] || '/JoinSchool';
 }
 
@@ -56,10 +77,21 @@ export default function Signup() {
     try { return new URLSearchParams(window.location.search).get('email') || ''; } catch { return ''; }
   });
   const [password, setPassword] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [guardianEmail, setGuardianEmail] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  // DOB is always collected; a guardian email becomes required under 13.
+  const validateAgeFields = () => {
+    if (!dateOfBirth) return 'Please enter your date of birth.';
+    const age = ageFromDob(dateOfBirth);
+    if (age === null || age < 0) return 'Please enter a valid date of birth.';
+    if (age < 13 && !guardianEmail.trim()) return "Please enter a parent or guardian's email to activate your account.";
+    return null;
+  };
 
   // Client-side resend cooldown — complements the server-side OTP rate limits.
   useEffect(() => {
@@ -85,14 +117,22 @@ export default function Signup() {
         const pf = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.first);
         const pl = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.last);
         const pc = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.code);
+        const pd = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.dob);
+        const pg = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.guardian);
         if (pf) {
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.first);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.last);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.code);
+          sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.dob);
+          sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.guardian);
           try {
             // The server derives role/school from the code (or leaves the
             // account unplaced until they join a school).
-            await provisionAccount({ first_name: pf, last_name: pl, join_code: pc || undefined });
+            await provisionAccount({
+              first_name: pf, last_name: pl, join_code: pc || undefined,
+              date_of_birth: pd || undefined,
+              guardian_email: pg || undefined,
+            });
           } catch (e) {
             console.error('Profile provisioning failed:', e);
             setError(e.message || 'Failed to create account');
@@ -115,10 +155,19 @@ export default function Signup() {
       toast.error('Please enter your name.');
       return;
     }
+    const ageError = validateAgeFields();
+    if (ageError) {
+      toast.error(ageError);
+      return;
+    }
     // Stash the details so we can finish provisioning after the Google redirect.
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.first, firstName.trim());
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.last, lastName.trim());
     if (joinCode.trim()) sessionStorage.setItem(SIGNUP_STORAGE_KEYS.code, joinCode.trim());
+    sessionStorage.setItem(SIGNUP_STORAGE_KEYS.dob, dateOfBirth);
+    if (ageFromDob(dateOfBirth) < 13 && guardianEmail.trim()) {
+      sessionStorage.setItem(SIGNUP_STORAGE_KEYS.guardian, guardianEmail.trim());
+    }
     setLoading(true);
     setError('');
     try {
@@ -141,6 +190,11 @@ export default function Signup() {
     }
     if (password.length < 6) {
       setError('Password must be at least 6 characters.');
+      return;
+    }
+    const ageError = validateAgeFields();
+    if (ageError) {
+      setError(ageError);
       return;
     }
     setLoading(true);
@@ -175,6 +229,8 @@ export default function Signup() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         join_code: joinCode.trim() || undefined,
+        date_of_birth: dateOfBirth,
+        guardian_email: ageFromDob(dateOfBirth) < 13 ? guardianEmail.trim() : undefined,
       });
     } catch (err) {
       setError(err?.message || 'Verification failed. Check the code and try again.');
@@ -231,6 +287,36 @@ export default function Signup() {
                     <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Doe" />
                   </div>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Date of birth</Label>
+                  <Input
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    We use your date of birth only to apply the right privacy and safety settings for your age — it's never shown on your profile.
+                  </p>
+                </div>
+
+                {ageFromDob(dateOfBirth) !== null && ageFromDob(dateOfBirth) < 13 && (
+                  <div className="space-y-2 rounded-xl border border-warning/30 bg-warning/5 p-3">
+                    <Label className="text-foreground">Parent or guardian's email</Label>
+                    <Input
+                      type="email"
+                      value={guardianEmail}
+                      onChange={(e) => setGuardianEmail(e.target.value)}
+                      placeholder="parent@example.com"
+                      disabled={loading}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Because you're under 13, your account activates once a parent or guardian confirms the email we send them.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1.5">

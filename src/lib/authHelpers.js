@@ -68,6 +68,11 @@ export async function handlePostLoginRedirect() {
     return 'suspended';
   }
 
+  // Under-13 account — holding screen until the parent/guardian consents
+  if (profile.status === 'awaiting_guardian_consent') {
+    return 'guardian_consent';
+  }
+
   if (profile.status === 'pending_approval') {
     return 'pending';
   }

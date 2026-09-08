@@ -160,6 +160,8 @@ export async function mintRequestCredential(svc: any, request: any) {
       nft_status: 'pending',
       public_verification_url: publicVerificationUrl,
       is_public: true,
+      // Age-derived safety default: under-16s' new credentials start link-only.
+      visibility: studentProfile?.default_credential_visibility === 'link_only' ? 'link_only' : 'public',
       ...(teamSlug ? {
         team_slug: teamSlug,
         participant_role: request.my_team_role || 'Member',
