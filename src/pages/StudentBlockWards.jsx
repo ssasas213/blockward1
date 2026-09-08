@@ -16,6 +16,10 @@ import PendingTab from '@/components/student/achievements/PendingTab';
 import UnverifiedTab from '@/components/student/achievements/UnverifiedTab';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
+import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
+import CelebrationDialog from '@/components/achievements/CelebrationDialog';
+import { cardFromVault } from '@/components/achievements/AchievementCard';
+import { LayoutGrid, List } from 'lucide-react';
 
 /**
  * My BlockWards — the one merged student achievement page (formerly
@@ -49,6 +53,13 @@ function StudentBlockWardsContent() {
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem('bw_view_mode') || 'grid'; } catch { return 'grid'; }
+  });
+  const [shareTarget, setShareTarget] = useState(null);
+  const [celebrateQueue, setCelebrateQueue] = useState([]);
+  const [celebrating, setCelebrating] = useState(null);
+  const [verifySelf, setVerifySelf] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +93,58 @@ function StudentBlockWardsContent() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Celebration — fires once per achievement the first time it appears as
+  // Verified on this device, then never again. The first-ever visit just
+  // seeds the set (no confetti for old achievements).
+  useEffect(() => {
+    if (loading || !verified.length) return;
+    try {
+      if (localStorage.getItem('bw_celebrated') === null) {
+        localStorage.setItem('bw_celebrated', JSON.stringify(verified.map(v => v.verify_id).filter(Boolean)));
+        return;
+      }
+      const celebrated = JSON.parse(localStorage.getItem('bw_celebrated') || '[]');
+      const fresh = verified.filter(v => v.verify_id && !celebrated.includes(v.verify_id));
+      if (fresh.length) setCelebrateQueue(fresh.map(cardFromVault));
+    } catch { /* never block the page */ }
+  }, [loading, verified]);
+
+  useEffect(() => {
+    if (!celebrateQueue.length || celebrating) return;
+    const [next, ...rest] = celebrateQueue;
+    setCelebrateQueue(rest);
+    setCelebrating(next);
+    try {
+      const celebrated = JSON.parse(localStorage.getItem('bw_celebrated') || '[]');
+      localStorage.setItem('bw_celebrated', JSON.stringify([...celebrated, next.verification_id]));
+    } catch { /* never block the celebration */ }
+  }, [celebrateQueue, celebrating]);
+
+  // "Get this verified" on unverified cards — prefills the request form from
+  // the self-reported item (same flow as the dashboard self-achievements card).
+  const handleGetVerified = (card) => {
+    const s = card.raw;
+    if (!meta?.orgs?.length) {
+      toast.error('Join an organisation first — verification needs someone to verify it');
+      return;
+    }
+    setVerifySelf(s);
+    setEditing({
+      school_id: meta.orgs[0].id,
+      title: s.title,
+      description: s.description || '',
+      image_url: s.image_url || '',
+      date_achieved: s.date_achieved || '',
+      evidence: s.evidence || [],
+    });
+    setFormOpen(true);
+  };
+
+  const setView = (mode) => {
+    setViewMode(mode);
+    try { localStorage.setItem('bw_view_mode', mode); } catch { /* ignore */ }
+  };
+
   const handleSubmit = async (payload, { submit, resubmit }) => {
     setSaving(true);
     try {
@@ -90,7 +153,17 @@ function StudentBlockWardsContent() {
         action, form: payload, request_id: editing?.id || null,
       });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to save');
-      toast.success(submit ? (resubmit ? 'Resubmitted for review' : 'Request submitted') : 'Draft saved');
+      if (verifySelf && submit) {
+        const rid = res.data.request_id || res.data.request?.id || res.data.id || null;
+        await base44.entities.SelfReportedAchievement.update(verifySelf.id, {
+          status: 'verification_requested',
+          verification_request_id: rid,
+        }).catch(() => {});
+        toast.success('Sent for verification — it stays marked unverified until approved');
+        setVerifySelf(null);
+      } else {
+        toast.success(submit ? (resubmit ? 'Resubmitted for review' : 'Request submitted') : 'Draft saved');
+      }
       setFormOpen(false);
       setEditing(null);
       load();
@@ -111,7 +184,10 @@ function StudentBlockWardsContent() {
 
   const openRequestCount = requests.filter(r => !['minted', 'archived', 'rejected', 'expired'].includes(r.status)).length;
   const unverifiedCount = selfReported.filter(s => s.status !== 'verified').length;
-  const totalCount = verified.length + requests.length + selfReported.length;
+  // Distinct achievements: verified + open requests + unverified self-reported.
+  // Archived/minted requests already exist as verified achievements, and
+  // verified self-reported items live in the verified list — never count twice.
+  const totalCount = verified.length + openRequestCount + unverifiedCount;
 
   return (
     <div className="space-y-6">
@@ -148,8 +224,9 @@ function StudentBlockWardsContent() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Tabs + view toggle — the grid is the default; the list is the compact mode */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="all">All ({totalCount})</TabsTrigger>
           <TabsTrigger value="verified">Verified ({verified.length})</TabsTrigger>
@@ -164,6 +241,9 @@ function StudentBlockWardsContent() {
             selfReported={selfReported}
             onSelectVerified={setSelectedBlockWard}
             onGoTo={setActiveTab}
+            onShare={setShareTarget}
+            onGetVerified={handleGetVerified}
+            viewMode={viewMode}
           />
         </TabsContent>
 
@@ -172,6 +252,8 @@ function StudentBlockWardsContent() {
             achievements={verified}
             profile={profile}
             onSelect={setSelectedBlockWard}
+            onShare={setShareTarget}
+            viewMode={viewMode}
           />
         </TabsContent>
 
@@ -184,9 +266,34 @@ function StudentBlockWardsContent() {
         </TabsContent>
 
         <TabsContent value="unverified" className="mt-6">
-          <UnverifiedTab items={selfReported} />
+          <UnverifiedTab
+            items={selfReported}
+            onGetVerified={handleGetVerified}
+            viewMode={viewMode}
+          />
         </TabsContent>
-      </Tabs>
+        </Tabs>
+
+        {/* View toggle */}
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-card/60 p-1 self-start">
+          <button
+            onClick={() => setView('grid')}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${viewMode === 'grid' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}
+            aria-label="Grid view"
+            title="Grid view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors ${viewMode === 'list' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-hover hover:text-foreground'}`}
+            aria-label="List view"
+            title="Compact list view"
+          >
+            <List className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
       {/* Modals */}
       <BlockWardDetailModal
@@ -205,6 +312,18 @@ function StudentBlockWardsContent() {
           avatar_url: profile?.avatar_url || null,
           count: verified.length,
         }}
+      />
+
+      <AchievementShareDialog
+        open={!!shareTarget}
+        onOpenChange={(o) => { if (!o) setShareTarget(null); }}
+        achievement={shareTarget ? { verification_id: shareTarget.verification_id, title: shareTarget.title } : null}
+      />
+
+      <CelebrationDialog
+        item={celebrating}
+        onDismiss={() => setCelebrating(null)}
+        onShare={(card) => { setCelebrating(null); setShareTarget(card); }}
       />
 
       <RequestForm
