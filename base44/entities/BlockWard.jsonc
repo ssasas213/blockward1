@@ -37,7 +37,7 @@
     },
     "owner_school_id": {
       "type": "string",
-      "description": "PERMANENT OWNER \u2014 school_id. Immutable ownership anchor."
+      "description": "PERMANENT OWNER \u2014 school_id. Immutable ownership anchor. Null for independently verified credentials (the student has no organisation)."
     },
     "issuer_email": {
       "type": "string"
@@ -134,18 +134,27 @@
       "data.school_id": "__service_role_only__"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
       "$or": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "data.owner_student_email": "{{user.email}}"
         },
         {
           "data.issuer_email": "{{user.email}}"
         },
         {
-          "data.student_email": "{{user.email}}"
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         }
       ]
     },
