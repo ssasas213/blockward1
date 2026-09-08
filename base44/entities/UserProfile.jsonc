@@ -223,6 +223,28 @@
       "default": 0,
       "description": "Public profile view counter. Incremented server-side only, never from the client."
     },
+    "story_card_url": {
+      "type": "string",
+      "description": "Server-rendered 1080x1920 story share card URL (generateProfileCard). Cached per content hash."
+    },
+    "feed_card_url": {
+      "type": "string",
+      "description": "Server-rendered 1080x1080 feed share card URL (generateProfileCard). Cached per content hash."
+    },
+    "card_hashes": {
+      "type": "object",
+      "description": "Per-variant content hashes for the server-rendered share cards \u2014 a hash change triggers regeneration on the next request. Service-role only (generateProfileCard)."
+    },
+    "last_view_milestone": {
+      "type": "number",
+      "default": 0,
+      "description": "Highest view-count milestone (10/25/50/100/250/500/1000) the owner has already been notified for. Service-role only (profileInsights)."
+    },
+    "views_insight_opt_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, detailed view records (viewer keys, viewer schools) stop being collected \u2014 only the plain public counter keeps updating. The owner toggles this in profile insights."
+    },
     "theme_preference": {
       "type": "string",
       "enum": [
@@ -461,7 +483,9 @@
       "data.date_of_birth": "__service_role_only__",
       "data.default_credential_visibility": "__service_role_only__",
       "data.guardian_consent": "__service_role_only__",
-      "data.guardian_consent_token": "__service_role_only__"
+      "data.guardian_consent_token": "__service_role_only__",
+      "data.card_hashes": "__service_role_only__",
+      "data.last_view_milestone": "__service_role_only__"
     },
     "delete": {
       "$or": [
