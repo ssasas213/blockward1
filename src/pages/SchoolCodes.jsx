@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, RefreshCw, Users, GraduationCap, Shield, Check, Loader2, Power, Send } from 'lucide-react';
+import { Copy, RefreshCw, Users, GraduationCap, Shield, Check, Loader2, Power, Send, QrCode } from 'lucide-react';
 import { toast } from 'sonner';
+import JoinCodeQRDialog from '@/components/schoolcodes/JoinCodeQRDialog';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
@@ -28,6 +29,7 @@ function SchoolCodesImpl() {
   const [regenerating, setRegenerating] = useState({});
   const [toggling, setToggling] = useState({});
   const [generating, setGenerating] = useState(false);
+  const [qrCode, setQrCode] = useState(null);
 
   useEffect(() => { loadData(); }, []);
 
@@ -56,9 +58,8 @@ function SchoolCodesImpl() {
       const schools = await base44.entities.School.filter({ id: profile.school_id });
       if (schools.length > 0) setSchool(schools[0]);
 
-      const allCodes = (await base44.entities.SchoolCode.filter({ school_id: profile.school_id }))
-        .filter(c => c.role_type !== 'student');
-      const order = { teacher: 0, admin: 1 };
+      const allCodes = await base44.entities.SchoolCode.filter({ school_id: profile.school_id });
+      const order = { teacher: 0, student: 1 };
       allCodes.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
       setCodes(allCodes);
     } catch (error) {
@@ -112,8 +113,9 @@ function SchoolCodesImpl() {
   }
 
   const codeConfig = {
-    teacher: { title: 'Teacher Join Code', description: 'Share with teachers to request access', icon: Users, color: 'text-primary', bgIcon: 'bg-primary/10' },
-    admin: { title: 'Admin Join Code', description: 'Highly restricted — requires owner approval', icon: Shield, color: 'text-accent', bgIcon: 'bg-accent/10' },
+    teacher: { title: 'Teacher Join Code', description: 'Teachers who join are queued for your approval', icon: Users, color: 'text-primary', bgIcon: 'bg-primary/10' },
+    student: { title: 'Student Join Code', description: 'Students join instantly — the primary way a class onboards', icon: GraduationCap, color: 'text-primary', bgIcon: 'bg-primary/10' },
+    admin: { title: 'Admin Join Code (legacy)', description: 'Disabled — admins are invited by email only', icon: Shield, color: 'text-muted-foreground', bgIcon: 'bg-muted' },
   };
 
   return (
@@ -129,8 +131,11 @@ function SchoolCodesImpl() {
             <Send className="h-4 w-4 text-info" />
           </div>
           <div>
-            <p className="text-sm font-medium text-foreground">Email invitations are the recommended way to add people</p>
-            <p className="text-xs text-muted-foreground mt-0.5">They're instant and don't need approval. Use these codes as a fallback when a teacher or admin can't be emailed. Students join a class with a class code, not a school code.</p>
+            <p className="text-sm font-medium text-foreground">Email invitations are the best way to add teachers and admins</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Join codes are the way a whole class onboards: print the QR code and put it on the board — students scan it and land straight in signup.
+              Students join instantly; teachers are queued for your approval. Admins can never join with a code.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -190,6 +195,12 @@ function SchoolCodesImpl() {
                       </div>
 
                       <div className="flex gap-2 mt-3">
+                        {isActive && (
+                          <Button variant="outline" size="sm" onClick={() => setQrCode(codeRecord)} className="h-8">
+                            <QrCode className="h-3.5 w-3.5 mr-1" />
+                            QR code
+                          </Button>
+                        )}
                         <Button variant="outline" size="sm" onClick={() => regenerateCode(codeRecord)} disabled={regenerating[codeRecord.id]} className="h-8">
                           {regenerating[codeRecord.id] ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}
                           Regenerate
@@ -215,7 +226,7 @@ function SchoolCodesImpl() {
         </CardHeader>
         <CardContent className="space-y-3">
           {codes.filter(c => c.status === 'active').map((codeRecord) => {
-            const shareUrl = `${window.location.origin}/JoinSchool?code=${codeRecord.code}`;
+            const shareUrl = `${window.location.origin}/join/${codeRecord.code}`;
             return (
               <div key={codeRecord.id} className="flex items-center gap-2">
                 <Input value={shareUrl} readOnly className="flex-1 bg-muted/30 font-mono text-xs" />
@@ -227,6 +238,14 @@ function SchoolCodesImpl() {
           })}
         </CardContent>
       </Card>
+
+      <JoinCodeQRDialog
+        open={!!qrCode}
+        onOpenChange={(o) => { if (!o) setQrCode(null); }}
+        code={qrCode?.code}
+        school={school}
+        roleLabel={qrCode?.role_type}
+      />
     </div>
   );
 }

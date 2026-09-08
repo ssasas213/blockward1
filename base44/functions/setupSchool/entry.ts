@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 import { provisionProfile, logRoleGrant } from '../../shared/profileProvisioning.ts';
 
@@ -14,25 +14,19 @@ function generateCode(prefix, roleSuffix) {
   return `${p}-${roleSuffix}-${random}`;
 }
 
-// Create a school. The caller becomes the owner-admin of the NEW school only
-// (super_admin scoped to it). Schools created here start verification_status
-// 'unverified'. Only an existing admin — or an account still in the 'pending'
-// holding state (no school yet) — may create a school; a teacher/student
-// cannot. Profile creation goes through the shared provisionProfile path.
+// setupSchool — self-service school creation ("I'm setting up a new school").
+// SECURITY: the creator becomes super_admin of THIS school only, and the school
+// is created with verification_status 'unverified' — usable normally, but
+// blockchain-anchored credentials are paused until BlockWard verifies it.
+// Join codes generated here are teacher + student only (never admin).
 export default async function(req: Request): Promise<Response> {
   try {
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { status: 204 });
-    }
-    if (req.method !== 'POST') {
-      return Response.json({ error: 'Method not allowed' }, { status: 405 });
-    }
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204 });
+    if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    if (!user) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const {
@@ -58,25 +52,26 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: `You already own a school named "${duplicate.name}"` }, { status: 409 });
     }
 
-    // Resolve the caller's profile through the single provisioning path.
-    let profile = null;
+    // ── Resolve the caller's profile ──
+    // Creating a school makes you its owner-admin. Existing admins may create
+    // additional schools; a brand-new 'pending' account (signed up without a
+    // code or invitation) may create its FIRST school. Teachers and students
+    // may not — they would be granting themselves admin.
     const profiles = await svc.entities.UserProfile.filter({ user_email: user.email });
-    if (profiles.length > 0) {
-      profile = profiles[0];
-      // Only an existing admin or a still-unplaced 'pending' account may
-      // create a school — a teacher/student must not.
-      if (profile.user_type !== 'admin' && profile.user_type !== 'pending') {
-        return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
-      }
-    } else {
+    let profile = profiles[0] || null;
+    if (profile && !['admin', 'pending'].includes(profile.user_type)) {
+      return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
+    }
+    const oldRole = profile ? profile.user_type : null;
+    if (!profile) {
       const nameParts = (admin_full_name || user.full_name || user.email || 'Admin').trim().split(/\s+/);
-      ({ profile } = await provisionProfile(svc, user, {
-        first_name: nameParts[0] || 'Admin',
-        last_name: nameParts.slice(1).join(' ') || '',
-      }));
+      profile = (await provisionProfile(svc, user, {
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(' '),
+      })).profile;
     }
 
-    // 1. Create School — self-service schools start unverified
+    // 1. Create School — self-service schools start unverified.
     const schoolCode = generateCode(name, 'MAIN');
     const school = await svc.entities.School.create({
       name: name.trim(),
@@ -110,8 +105,7 @@ export default async function(req: Request): Promise<Response> {
       joined_at: new Date().toISOString(),
     });
 
-    // 3. Generate join codes — teacher and student only. Admin is
-    //    invite-only: a code can never grant it.
+    // 3. Generate codes for teacher + student (never admin)
     const teacherCode = generateCode(name, 'TEACH');
     const studentCode = generateCode(name, 'STUD');
 
@@ -136,24 +130,21 @@ export default async function(req: Request): Promise<Response> {
       }),
     ]);
 
-    // 4. Update UserProfile — owner-admin scoped to the new school
-    const nameParts = (admin_full_name || user.full_name || '').trim().split(/\s+/);
-    const oldRole = profile.user_type;
+    // 4. Upgrade the profile to super_admin, scoped to THIS school only
+    const nameParts = (admin_full_name || user.full_name || `${profile.first_name} ${profile.last_name}`).trim().split(/\s+/);
     await svc.entities.UserProfile.update(profile.id, {
-      user_type: 'admin',
       school_id: school.id,
       active_school_id: school.id,
-      admin_level: profile.admin_level || 'super_admin',
+      user_type: 'admin',
+      admin_level: 'super_admin',
       admin_permissions: (profile.admin_permissions && Object.keys(profile.admin_permissions).length)
         ? profile.admin_permissions
-        : defaultAdminPermissions(profile.admin_level || 'super_admin'),
+        : defaultAdminPermissions('super_admin'),
       first_name: nameParts[0] || profile.first_name,
       last_name: nameParts.slice(1).join(' ') || profile.last_name,
       department: admin_department?.trim() || profile.department,
       status: 'active',
     });
-
-    // Audit the role grant: this is what made the caller an admin.
     await logRoleGrant(svc, {
       record_id: profile.id,
       school_id: school.id,
@@ -161,8 +152,8 @@ export default async function(req: Request): Promise<Response> {
       granted_to_email: user.email,
       granted_to_name: `${profile.first_name} ${profile.last_name}`.trim(),
       role: 'admin',
-      old_role: oldRole,
-      mechanism: 'new school creation (owner-admin, school unverified)',
+      old_role: oldRole || 'pending',
+      mechanism: `new school creation (owner of ${school.name})`,
     });
 
     // 5. Create AuditLog
@@ -174,7 +165,7 @@ export default async function(req: Request): Promise<Response> {
       actor_role: 'admin',
       action: 'school_created',
       new_status: 'active',
-      notes: `School "${school.name}" created by ${user.email}`,
+      notes: `School "${school.name}" created by ${user.email} (verification_status: unverified)`,
       timestamp: new Date().toISOString(),
     });
 
@@ -186,6 +177,7 @@ export default async function(req: Request): Promise<Response> {
         logo_url: school.logo_url,
         school_type: school.school_type,
       },
+      verification_status: 'unverified',
       codes: {
         teacher: teacherCode,
         student: studentCode,

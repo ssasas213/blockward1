@@ -98,7 +98,7 @@
         "rejected"
       ],
       "default": "unverified",
-      "description": "Organisation verification state. Schools created through self-service setup start 'unverified' \u2014 the founder-admin is scoped to that school only until the organisation is verified."
+      "description": "Organisation verification state. Self-service schools created through setupSchool start 'unverified': the school works normally, but blockchain-anchored credentials are paused until BlockWard verifies the organisation \u2014 this stops fake schools minting fake verified credentials. Records created before this field existed (undefined) are treated as legacy-verified."
     },
     "created_by": {
       "type": "string",

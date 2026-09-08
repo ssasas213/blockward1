@@ -16,21 +16,34 @@ export default async function(req: Request): Promise<Response> {
     const schoolId = body.school_id;
     if (!schoolId) return Response.json({ error: 'school_id is required' }, { status: 400 });
 
-    const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    const svc = base44.asServiceRole;
+    const callerProfiles = await svc.entities.UserProfile.filter({ user_email: user.email });
     const caller = callerProfiles[0];
-    if (!caller || caller.user_type !== 'admin') {
-      return Response.json({ error: 'Only administrators can switch schools' }, { status: 403 });
+    if (!caller || !['admin', 'teacher', 'student'].includes(caller.user_type)) {
+      return Response.json({ error: 'Account not active' }, { status: 403 });
     }
 
-    const [owned, memberships] = await Promise.all([
-      base44.asServiceRole.entities.School.filter({ id: schoolId, admin_email: user.email }),
-      base44.asServiceRole.entities.AdminSchoolMembership.filter({ school_id: schoolId, admin_email: user.email, status: 'active' }),
-    ]);
-    if (owned.length === 0 && memberships.length === 0) {
+    // Authorization per role — switching is only allowed to a school the user
+    // actually belongs to (owned, active membership, or currently linked).
+    let authorized = false;
+    if (caller.user_type === 'admin') {
+      const [owned, memberships] = await Promise.all([
+        svc.entities.School.filter({ id: schoolId, admin_email: user.email }),
+        svc.entities.AdminSchoolMembership.filter({ school_id: schoolId, admin_email: user.email, status: 'active' }),
+      ]);
+      authorized = owned.length > 0 || memberships.length > 0;
+    } else if (caller.user_type === 'teacher') {
+      const staff = await svc.entities.StaffMembership.filter({ school_id: schoolId, user_email: user.email, status: 'active' });
+      authorized = staff.length > 0;
+    } else if (caller.user_type === 'student') {
+      const orgs = await svc.entities.StudentOrgMembership.filter({ school_id: schoolId, student_email: user.email, status: 'active' });
+      authorized = orgs.length > 0 || caller.school_id === schoolId;
+    }
+    if (!authorized) {
       return Response.json({ error: 'You do not have access to that school' }, { status: 403 });
     }
 
-    await base44.asServiceRole.entities.UserProfile.update(caller.id, {
+    await svc.entities.UserProfile.update(caller.id, {
       school_id: schoolId,
       active_school_id: schoolId,
     });

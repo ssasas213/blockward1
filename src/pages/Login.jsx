@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
-import { Shield, Loader2, Clock, Ban, AlertCircle } from 'lucide-react';
+import { Shield, Loader2, Clock, Ban, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+// Remembers the last sign-in method used on this device so the form defaults
+// to it next time.
+const METHOD_KEY = 'blockward_auth_method';
 
 function GoogleIcon({ className }) {
   return (
@@ -25,6 +29,10 @@ export default function Login() {
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [step, setStep] = useState('main'); // 'main' | 'password'
+  const [lastMethod] = useState(() => {
+    try { return localStorage.getItem(METHOD_KEY) || 'google'; } catch { return 'google'; }
+  });
 
   useEffect(() => {
     (async () => {
@@ -44,12 +52,39 @@ export default function Login() {
   }, []);
 
   const handleGoogleLogin = () => {
+    try { localStorage.setItem(METHOD_KEY, 'google'); } catch { /* ignore */ }
     setLoading(true);
     setError('');
     try {
       base44.auth.loginWithProvider('google', window.location.origin + '/Login');
     } catch (err) {
       setError(err?.message || 'Google sign-in failed. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Email step: a brand-new email is routed straight into the signup flow with
+  // the email carried over — no dead-end error. An existing account continues
+  // to its password step.
+  const handleEmailContinue = async (e) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      setError('Please enter your email.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await base44.functions.invoke('checkSigninEmail', { email: email.trim() });
+      if (res.data?.has_account === false) {
+        window.location.href = `/Signup?email=${encodeURIComponent(email.trim())}`;
+        return;
+      }
+      setStep('password');
+    } catch {
+      // Probe unavailable — fall through to the password step rather than blocking sign-in.
+      setStep('password');
+    } finally {
       setLoading(false);
     }
   };
@@ -64,6 +99,7 @@ export default function Login() {
     setError('');
     try {
       await base44.auth.loginViaEmailPassword(email.trim(), password);
+      try { localStorage.setItem(METHOD_KEY, 'email'); } catch { /* ignore */ }
       const result = await handlePostLoginRedirect();
       if (result === 'suspended') setAccountStatus('suspended');
       else if (result === 'pending') setAccountStatus('pending');
@@ -84,6 +120,64 @@ export default function Login() {
       </div>
     );
   }
+
+  const errorBox = error && (
+    <div role="alert" className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-sm text-destructive mb-4">
+      <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+      {error}
+    </div>
+  );
+
+  const divider = (
+    <div className="relative my-5">
+      <div className="absolute inset-0 flex items-center">
+        <span className="w-full border-t border-border" />
+      </div>
+      <div className="relative flex justify-center text-xs">
+        <span className="bg-card px-2 text-muted-foreground">or</span>
+      </div>
+    </div>
+  );
+
+  const googleButton = (
+    <Button
+      onClick={handleGoogleLogin}
+      disabled={loading}
+      variant="outline"
+      className="w-full font-medium py-2.5"
+    >
+      {loading && step === 'main' ? (
+        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+      ) : (
+        <GoogleIcon className="mr-2.5" />
+      )}
+      Continue with Google
+    </Button>
+  );
+
+  const emailForm = (
+    <form onSubmit={handleEmailContinue} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wide">Email</Label>
+        <Input
+          id="login-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@school.ac.uk"
+          autoComplete="email"
+          disabled={loading}
+        />
+      </div>
+      <Button type="submit" disabled={loading} className="w-full font-medium py-2.5">
+        {loading && step === 'main' ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
+        Continue
+      </Button>
+      <p className="text-xs text-muted-foreground text-center">
+        New here? We'll set up your account with an email code.
+      </p>
+    </form>
+  );
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12 accent-glow relative overflow-hidden">
@@ -126,56 +220,23 @@ export default function Login() {
                 Sign Out
               </Button>
             </div>
-          ) : (
+          ) : step === 'password' ? (
             <>
-              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in to BlockWard</h1>
-              <p className="text-sm text-muted-foreground mb-6 text-center">
-                Use your Google account or email to continue.
+              <button
+                onClick={() => setStep('main')}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-4"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back
+              </button>
+              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in with email</h1>
+              <p className="text-sm text-muted-foreground mb-6 text-center flex items-center justify-center gap-1.5">
+                <Mail className="h-3.5 w-3.5" /> {email}
+                <button onClick={() => setStep('main')} className="text-primary hover:underline ml-1">Not you?</button>
               </p>
 
-              {error && (
-                <div role="alert" className="flex items-start gap-2 p-3 bg-destructive/5 border border-destructive/20 rounded-lg text-sm text-destructive mb-4">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              <Button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                variant="outline"
-                className="w-full font-medium py-2.5"
-              >
-                {loading ? (
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                ) : (
-                  <GoogleIcon className="mr-2.5" />
-                )}
-                Continue with Google
-              </Button>
-
-              <div className="relative my-5">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-card px-2 text-muted-foreground">or</span>
-                </div>
-              </div>
+              {errorBox}
 
               <form onSubmit={handleEmailLogin} className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="login-email" className="text-xs font-semibold uppercase tracking-wide">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@school.ac.uk"
-                    autoComplete="email"
-                    disabled={loading}
-                  />
-                </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="login-password" className="text-xs font-semibold uppercase tracking-wide">Password</Label>
@@ -189,6 +250,7 @@ export default function Login() {
                     placeholder="••••••••"
                     autoComplete="current-password"
                     disabled={loading}
+                    autoFocus
                   />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full font-medium py-2.5">
@@ -196,6 +258,33 @@ export default function Login() {
                   Sign In
                 </Button>
               </form>
+
+              {divider}
+              {googleButton}
+            </>
+          ) : (
+            <>
+              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in to BlockWard</h1>
+              <p className="text-sm text-muted-foreground mb-6 text-center">
+                Use your Google account or email to continue.
+              </p>
+
+              {errorBox}
+
+              {/* Default to the method last used on this device */}
+              {lastMethod === 'email' ? (
+                <>
+                  {emailForm}
+                  {divider}
+                  {googleButton}
+                </>
+              ) : (
+                <>
+                  {googleButton}
+                  {divider}
+                  {emailForm}
+                </>
+              )}
             </>
           )}
         </div>

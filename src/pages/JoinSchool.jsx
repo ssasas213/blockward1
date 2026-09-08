@@ -1,52 +1,45 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Loader2, Check, AlertTriangle, Users, GraduationCap, Clock } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Building2, Plus, Clock, GraduationCap, Users } from 'lucide-react';
 import { toast } from 'sonner';
+import SchoolSearchCard from '@/components/join/SchoolSearchCard';
+import CodeJoinCard from '@/components/join/CodeJoinCard';
 
+/**
+ * JoinSchool — the "join or create a school" hub. Three paths, never a dead
+ * end: search for your school and request to join, enter a join code, or
+ * create a new school. Users with user_type 'pending' (signed up with no code
+ * or invitation) land here after signup.
+ */
 export default function JoinSchool() {
   const [profile, setProfile] = useState(null);
   const [pendingMembership, setPendingMembership] = useState(null);
-  const [wasLinked, setWasLinked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [joinCode, setJoinCode] = useState('');
-  const [result, setResult] = useState(null);
 
-  useEffect(() => {
-    loadAuth();
-  }, []);
+  useEffect(() => { loadAuth(); }, []);
 
   const loadAuth = async () => {
     try {
       const currentUser = await base44.auth.me();
       if (currentUser) {
-        // Test Super User bypass: auto-provision the test school + personas server-side,
-        // then go straight to the Admin Dashboard — never show the join form to them.
+        // Test Super User bypass: auto-provisioned server-side — never show the join form.
         try {
           const tm = await base44.functions.invoke('getTestModeStatus');
           if (tm.data?.is_test_super_user) {
             window.location.href = createPageUrl('AdminDashboard');
             return;
           }
-        } catch { /* not the test super user — fall through to normal join flow */ }
+        } catch { /* not the test super user */ }
 
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
           const p = profiles[0];
           setProfile(p);
-
-          // Remember if they're already linked to a school — we still allow
-          // joining/switching to another school, but skip the guided onboarding.
-          if (p.school_id) setWasLinked(true);
-
-          // Teacher — check for a pending join request so we show a
-          // "pending approval" state instead of the join form again.
-          if (p.user_type === 'teacher' || p.status === 'pending_approval') {
+          if (p.status === 'pending_approval' || p.user_type === 'teacher') {
             try {
               const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
               const pending = staff.find(s => s.status === 'pending') || (p.status === 'pending_approval' ? {} : null);
@@ -62,56 +55,15 @@ export default function JoinSchool() {
     }
   };
 
-  const redirectByRole = (role) => {
-    const page = role === 'admin' ? 'AdminDashboard' : role === 'teacher' ? 'TeacherDashboard' : 'StudentDashboard';
-    window.location.href = createPageUrl(page);
-  };
-
-  const role = profile?.user_type || 'pending';
-  const isStudent = role === 'student';
-  const isPending = role === 'pending';
-
-  const handleJoin = async () => {
-    if (!joinCode.trim()) { toast.error('Please enter a school code'); return; }
-    setSubmitting(true);
-    setResult(null);
-    try {
-      // SECURITY: no role is sent — the server reads it from the code record.
-      const response = await base44.functions.invoke('joinSchoolByCode', {
-        code: joinCode.trim(),
-      });
-      const data = response.data;
-      const joinedRole = data.role || role;
-      if (data.status === 'pending') {
-        setResult({ pending: true, message: data.message, schoolName: data.school_name });
-      } else {
-        // Student (auto-approved) — linked immediately; new students go through guided setup
-        setResult({ success: true, message: data.message, schoolName: data.school_name });
-        setTimeout(() => {
-          // First-time student goes through guided setup; everyone else to their dashboard.
-          if (joinedRole === 'student' && !wasLinked) {
-            window.location.href = createPageUrl('StudentOnboarding');
-          } else {
-            redirectByRole(joinedRole);
-          }
-        }, 1800);
-      }
-    } catch (error) {
-      setResult({ error: error.response?.data?.error || error.message || 'Failed to join school' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="h-8 w-8 rounded-full border-2 border-border border-t-primary animate-spin" />
       </div>
     );
   }
 
-  // Teacher with a pending request — show pending state, not the join form
+  // A teacher awaiting approval — clear holding state instead of the join form.
   if (pendingMembership) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -121,10 +73,10 @@ export default function JoinSchool() {
               <div className="mx-auto h-16 w-16 rounded-full bg-warning/10 flex items-center justify-center mb-5">
                 <Clock className="h-8 w-8 text-warning" />
               </div>
-              <h2 className="text-xl font-bold text-foreground mb-2">Request Pending Approval</h2>
+              <h2 className="text-xl font-bold text-foreground mb-2">Awaiting approval</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Your request to join this school has been sent to the administrator.
-                You'll be able to access the platform once your request is approved.
+                Your request to join {profile?.school_id ? 'this school' : 'your school'} has been sent to the administrator.
+                You can sign in, but you won't be able to sign off achievements, view student data, take attendance or issue points until an admin approves you.
               </p>
               <Button
                 onClick={() => base44.auth.logout(window.location.origin + '/Login')}
@@ -140,86 +92,71 @@ export default function JoinSchool() {
     );
   }
 
-  const RoleIcon = isStudent ? GraduationCap : Users;
+  const role = profile?.user_type || 'pending';
+  const canSearch = role === 'student' || role === 'pending';
+  const canCreateSchool = role === 'pending' || role === 'admin';
+
+  const handleJoined = (data) => {
+    toast.success(data.message || `You have joined ${data.school_name}.`);
+    setTimeout(() => {
+      window.location.href = data.role === 'teacher' ? '/TeacherDashboard' : '/StudentDashboard';
+    }, 1200);
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
+      <div className="w-full max-w-xl">
         <div className="text-center mb-6">
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-            <RoleIcon className="h-7 w-7 text-primary" />
+            {role === 'teacher' ? <Users className="h-7 w-7 text-primary" /> : <GraduationCap className="h-7 w-7 text-primary" />}
           </div>
-          <h1 className="text-2xl font-semibold text-foreground">Join a School</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Join a school</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            {isStudent
-              ? 'Enter the student code provided by your school to get started'
-              : isPending
-              ? 'Enter the join code provided by your school — students join immediately, teachers are approved by an administrator'
-              : 'Enter the teacher code provided by your school administrator'}
+            Search for your school, enter a join code, or create a new school.
           </p>
         </div>
 
-        <Card className="border-border bg-card/60 backdrop-blur-md">
-          <CardHeader>
-            <CardTitle className="text-lg text-foreground">{isStudent ? 'Student Code' : 'Teacher Code'}</CardTitle>
-            <CardDescription>
-              {isStudent
-                ? 'You will be linked to the school immediately, then join a class'
-                : 'Your request will be sent to the school admin for approval'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {wasLinked && profile?.school_id && (
-              <div className="p-3 rounded-lg border border-info/30 bg-info/10 text-sm text-info">
-                You're currently linked to a school. Joining a new one will switch your active school
-                {isStudent ? ' immediately.' : ' after the admin approves your request.'}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>School Code</Label>
-              <Input
-                value={joinCode}
-                onChange={e => setJoinCode(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleJoin()}
-                placeholder={isStudent ? 'e.g. IHS-STUDENT-7K4P92' : 'e.g. IHS-TEACH-7K4P92'}
-                className="font-mono uppercase"
-              />
-            </div>
-
-            {result?.error && (
-              <div className="p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-sm text-destructive">{result.error}</div>
-            )}
-            {result?.pending && (
-              <div className="p-3 rounded-lg border border-warning/30 bg-warning/10 text-sm text-warning flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-medium">{result.schoolName}</p>
-                  <p className="mt-0.5">{result.message}</p>
+        <div className="space-y-4">
+          {canSearch ? (
+            <SchoolSearchCard />
+          ) : (
+            <Card className="border-border bg-card/60 backdrop-blur-md">
+              <CardContent className="p-5 flex items-start gap-3">
+                <Users className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">Teachers join with a code or an invitation</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Ask your school administrator for a join code, or have them email you an invitation.
+                    You'll get full access once they approve you.
+                  </p>
                 </div>
-              </div>
-            )}
-            {result?.success && (
-              <div className="p-3 rounded-lg border border-success/30 bg-success/10 text-sm text-success flex items-center gap-2">
-                <Check className="h-4 w-4" /> {result.message}
-              </div>
-            )}
+              </CardContent>
+            </Card>
+          )}
 
-            <Button onClick={handleJoin} disabled={submitting} className="w-full">
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>
-                {isStudent ? 'Join School' : 'Submit Request'} <ArrowRight className="h-4 w-4 ml-2" />
-              </>}
-            </Button>
+          <CodeJoinCard onJoined={handleJoined} />
 
-            {isPending && (
-              <p className="text-center text-sm text-muted-foreground">
-                Setting up a school?{' '}
-                <a href={createPageUrl('SchoolSetup')} className="text-primary font-medium hover:underline">
-                  Create your school instead
-                </a>
-              </p>
-            )}
-          </CardContent>
-        </Card>
+          {canCreateSchool && (
+            <Card className="border-border bg-card/60 backdrop-blur-md">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <Building2 className="h-5 w-5 text-accent" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">Setting up a new school?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You'll be the administrator of your school. New schools start unverified.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" asChild className="flex-shrink-0">
+                  <Link to={createPageUrl('SchoolSetup')}>
+                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Create school
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -13,6 +13,7 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { logRoleGrant } from '../../shared/profileProvisioning.ts';
 import { runInvitationFlow, resolveAppUrl, parseEmails } from '../../shared/invitations.ts';
 import { requestEmailHtml, notifyRequest } from '../../shared/achievementRequests.ts';
 
@@ -101,7 +102,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     // ── Request membership of an existing organisation ───────────────────────
     if (action === 'request') {
-      if (role !== 'student') return bad('Only students can request membership', 403);
+      // 'pending' accounts (signed up with no code/invite) are prospective
+      // members — the search-and-request flow is exactly for them.
+      if (role !== 'student' && role !== 'pending') return bad('Only students can request membership', 403);
       const org = await orgById(body.organisation_id);
       if (!org) return bad('Organisation not found', 404);
 
@@ -224,6 +227,34 @@ Deno.serve(async (req: Request): Promise<Response> => {
         approved_by_email: email,
         approved_by_name: actorName,
       });
+
+      // Approving a join request from a 'pending' account (new signup with no
+      // code or invitation) grants the student role and links the school.
+      if (action === 'approve') {
+        try {
+          const rows = await svc.entities.UserProfile.filter({ user_email: membership.student_email });
+          const p = rows?.[0];
+          if (p && p.user_type === 'pending') {
+            await svc.entities.UserProfile.update(p.id, {
+              user_type: 'student',
+              school_id: membership.school_id,
+              active_school_id: membership.school_id,
+              status: 'active',
+            });
+            await logRoleGrant(svc, {
+              record_id: p.id,
+              school_id: membership.school_id,
+              granted_by_email: email,
+              granted_by_name: actorName,
+              granted_to_email: p.user_email,
+              granted_to_name: membership.student_name || p.user_email,
+              role: 'student',
+              old_role: 'pending',
+              mechanism: 'admin approval of a school join request',
+            });
+          }
+        } catch (e) { /* best-effort */ }
+      }
 
       // Best-effort: tell the student.
       const verb = action === 'approve' ? 'approved' : 'declined';

@@ -34,7 +34,6 @@ import SchoolsSignup from './pages/schools/Signup';
 import OrgsLogin from './pages/organisations/Login';
 import OrgsSignup from './pages/organisations/Signup';
 import OrgDashboard from './pages/organisations/Dashboard';
-import AcceptInvite from './pages/AcceptInvite';
 import Invitations from './pages/Invitations';
 import StudentGrades from './pages/StudentGrades';
 import Gradebook from './pages/Gradebook';
@@ -132,8 +131,9 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
       <Route path="/JoinClass" element={<JoinClass />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />
-      <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
-      <Route path="/invite/:token" element={<AcceptInvite />} />
+      <Route path="/StudentOnboarding" element={<LayoutWrapper currentPageName="StudentOnboarding"><StudentOnboarding /></LayoutWrapper>} />
+      <Route path="/join/:code" element={<Signup />} />
+      <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentGrades" element={<LayoutWrapper currentPageName="StudentGrades"><ProtectedRoute><StudentGrades /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Gradebook" element={<LayoutWrapper currentPageName="Gradebook"><ProtectedRoute><Gradebook /></ProtectedRoute></LayoutWrapper>} />

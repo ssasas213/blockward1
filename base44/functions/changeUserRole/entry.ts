@@ -49,20 +49,17 @@ export default async function(req: Request): Promise<Response> {
     }
 
     const updated = await base44.asServiceRole.entities.UserProfile.update(target.id, patch);
-
-    // Audit every manual role change: who changed it, for whom, and when.
     await logRoleGrant(base44.asServiceRole, {
       record_id: target.id,
       school_id: caller.school_id,
       granted_by_email: user.email,
       granted_by_name: `${caller.first_name} ${caller.last_name}`.trim(),
-      granted_to_email: target.user_email,
+      granted_to_email: targetEmail,
       granted_to_name: `${target.first_name} ${target.last_name}`.trim(),
       role: newRole,
       old_role: target.user_type,
-      mechanism: `manual role change by ${user.email}`,
+      mechanism: 'manual role change',
     });
-
     return Response.json({ ok: true, profile: updated });
   } catch (error) {
     return Response.json({ error: error?.message || 'Failed to change role' }, { status: 500 });

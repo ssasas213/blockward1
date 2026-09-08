@@ -55,9 +55,15 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
-    // Authenticated but no profile - redirect to onboarding
+    // Authenticated but no profile - the new join flow starts at Signup
     if (requireProfile && !profile) {
-      window.location.href = createPageUrl('Onboarding');
+      window.location.href = createPageUrl('Signup');
+      return;
+    }
+
+    // Profile without a role/school yet — new signup: join or create a school
+    if (requireProfile && profile && profile.user_type === 'pending') {
+      window.location.href = createPageUrl('JoinSchool');
       return;
     }
 
@@ -75,12 +81,6 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
     // Student with no school linked — redirect to join school page
     if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
-      window.location.href = createPageUrl('JoinSchool');
-      return;
-    }
-
-    // Newly provisioned account with no school yet — join or create a school
-    if (requireProfile && profile && profile.user_type === 'pending') {
       window.location.href = createPageUrl('JoinSchool');
       return;
     }
@@ -127,6 +127,11 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     return null;
   }
 
+  // Unplaced profile (no school yet) — redirect in progress
+  if (requireProfile && profile && profile.user_type === 'pending') {
+    return null;
+  }
+
   // Admin with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'admin' && !profile.school_id) {
     return null;
@@ -139,11 +144,6 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
   // Student with no school — redirect in progress
   if (requireProfile && profile && profile.user_type === 'student' && !profile.school_id) {
-    return null;
-  }
-
-  // Unplaced 'pending' account — redirect to join/create school in progress
-  if (requireProfile && profile && profile.user_type === 'pending') {
     return null;
   }
 

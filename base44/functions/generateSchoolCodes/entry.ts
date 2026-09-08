@@ -28,7 +28,8 @@ export default async function(req: Request): Promise<Response> {
     const action = body.action || 'generate';
     const svc = base44.asServiceRole;
 
-    // SECURITY: admin is never grantable via a code. Reject any request for one.
+    // SECURITY: codes can never grant admin. Admins are added by email
+    // invitation or by creating a new school — nothing else.
     if (body.role_type === 'admin') {
       return Response.json({ error: 'Admin access cannot be granted with a join code. Invite admins by email instead.' }, { status: 403 });
     }
@@ -40,8 +41,6 @@ export default async function(req: Request): Promise<Response> {
       for (let i = 0; i < 6; i++) random += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
       return `${p}-${roleSuffix}-${random}`;
     }
-    // Teacher and student codes only — admin is invite-only and can never be
-    // granted by a code.
     const ROLE_DEFS = [
       { role_type: 'teacher', suffix: 'TEACH', label: 'Teacher Join Code' },
       { role_type: 'student', suffix: 'STUD', label: 'Student Join Code' },
@@ -77,15 +76,17 @@ export default async function(req: Request): Promise<Response> {
       const sameErr = requireSameSchool(profile, code.school_id);
       if (sameErr) return Response.json({ error: sameErr.error }, { status: sameErr.status });
 
+      // Legacy admin codes are dead: refuse to regenerate or re-enable them.
+      if (code.role_type === 'admin') {
+        return Response.json({
+          error: 'Admin codes are no longer supported. Keep this code disabled — administrators are added by email invitation only.',
+        }, { status: 403 });
+      }
+
       if (action === 'toggle') {
         const newStatus = code.status === 'active' ? 'disabled' : 'active';
         await svc.entities.SchoolCode.update(code.id, { status: newStatus });
         return Response.json({ ok: true, code: { ...code, status: newStatus } });
-      }
-
-      // Legacy admin codes can never be re-issued — only left disabled.
-      if (code.role_type === 'admin') {
-        return Response.json({ error: 'Admin codes are no longer supported. Keep this code disabled; invite admins by email instead.' }, { status: 403 });
       }
 
       // regenerate

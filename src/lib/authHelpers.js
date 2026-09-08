@@ -57,8 +57,8 @@ export async function handlePostLoginRedirect() {
   } catch { /* not test super user or test mode disabled — continue normal flow */ }
 
   if (profiles.length === 0) {
-    // Authenticated but no BlockWard profile — send to onboarding
-    window.location.href = '/Onboarding';
+    // Authenticated but no BlockWard profile — the join flow starts at Signup
+    window.location.href = '/Signup';
     return null;
   }
 

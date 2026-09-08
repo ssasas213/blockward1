@@ -76,19 +76,18 @@ Deno.serve(async (req) => {
             status: 'active',
             admin_email: user.email,
           });
-          // Audit the role grant — admin approval is what activated this teacher.
-          await logRoleGrant(base44.asServiceRole, {
-            record_id: tp.id,
-            school_id: membership.school_id,
-            granted_by_email: user.email,
-            granted_by_name: adminName,
-            granted_to_email: membership.user_email,
-            granted_to_name: membership.teacher_name || membership.user_email,
-            role: 'teacher',
-            old_role: 'teacher (pending approval)',
-            mechanism: 'admin approval of join-code request',
-          });
         }
+        await logRoleGrant(base44.asServiceRole, {
+          record_id: membership.id,
+          school_id: membership.school_id,
+          granted_by_email: user.email,
+          granted_by_name: adminName,
+          granted_to_email: membership.user_email,
+          granted_to_name: membership.teacher_name || membership.user_email,
+          role: 'teacher',
+          old_role: 'teacher (pending approval)',
+          mechanism: 'admin approval of a join-code request',
+        });
 
         // Create notification for the teacher
         try {
@@ -215,18 +214,18 @@ Deno.serve(async (req) => {
             user_type: 'admin',
             status: 'active',
           });
-          await logRoleGrant(base44.asServiceRole, {
-            record_id: ap.id,
-            school_id: membership.school_id,
-            granted_by_email: user.email,
-            granted_by_name: adminName,
-            granted_to_email: membership.admin_email,
-            granted_to_name: membership.admin_name || membership.admin_email,
-            role: 'admin',
-            old_role: 'admin (pending approval)',
-            mechanism: 'admin approval of admin join request',
-          });
         }
+        await logRoleGrant(base44.asServiceRole, {
+          record_id: membership.id,
+          school_id: membership.school_id,
+          granted_by_email: user.email,
+          granted_by_name: adminName,
+          granted_to_email: membership.admin_email,
+          granted_to_name: membership.admin_name || membership.admin_email,
+          role: 'admin',
+          old_role: 'admin (pending approval)',
+          mechanism: 'admin approval of an admin join request',
+        });
 
         try {
           await base44.asServiceRole.entities.Notification.create({

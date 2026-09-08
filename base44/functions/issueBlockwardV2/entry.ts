@@ -38,6 +38,16 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, error: 'You are not approved to issue BlockWards. Ask your admin to enable your permission.' }), { status: 403, headers: CORS });
   }
 
+  // ── UNVERIFIED SCHOOL GUARD: blockchain-anchored credentials require a verified school.
+  // Self-service schools are created 'unverified' — this stops a fake school
+  // minting fake verified credentials. Legacy schools (no field) pass.
+  const callerSchoolRows = callerProfile.school_id
+    ? await base44.asServiceRole.entities.School.filter({ id: callerProfile.school_id })
+    : [];
+  if (callerSchoolRows[0]?.verification_status === 'unverified') {
+    return new Response(JSON.stringify({ ok: false, error: 'Your school is not verified yet. Blockchain-anchored credentials are paused until BlockWard verifies your school.' }), { status: 403, headers: CORS });
+  }
+
   const body = await req.json();
   const { studentId, title, category, description, tokenURI } = body;
 
