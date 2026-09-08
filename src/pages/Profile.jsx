@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/loading-skeleton';
 import NotificationPreferences from '@/components/notifications/NotificationPreferences';
 import ProfileHeader from '@/components/profile/ProfileHeader';
 import EditProfileForm from '@/components/profile/EditProfileForm';
+import PublicProfileSettings from '@/components/profile/PublicProfileSettings';
+import PublicProfileLinkCard from '@/components/profile/PublicProfileLinkCard';
 import ProfileStats from '@/components/profile/ProfileStats';
 import ProfileInsightsCard from '@/components/profile/ProfileInsightsCard';
 import SecuritySection from '@/components/profile/SecuritySection';
@@ -173,6 +175,11 @@ function ProfileContent() {
         </div>
       )}
 
+      {/* Public profile link — claim it or share it */}
+      {profile?.user_type === 'student' && (
+        <PublicProfileLinkCard profile={profile} onSaved={load} />
+      )}
+
       {/* User Info */}
       {profile ? (
         <ProfileHeader profile={profile} user={user} school={school} />
@@ -195,6 +202,11 @@ function ProfileContent() {
 
       {/* Edit Profile Form (includes profile picture uploader) */}
       <EditProfileForm profile={profile} onSaved={load} />
+
+      {/* Public profile customisation — handle, bio, banner, theme, links, live preview */}
+      {profile?.user_type === 'student' && (
+        <PublicProfileSettings profile={profile} onSaved={load} />
+      )}
 
       {/* Digital Custodian Status */}
       <ProfileStats profile={profile} userEmail={user?.email} />

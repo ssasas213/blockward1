@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox
+  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox, Globe
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
@@ -114,6 +114,14 @@ export default function Layout({ children, currentPageName }) {
             <DropdownMenuContent align="start" className="w-56">
               <TestModeMenuItems />
               <ThemeToggle />
+              {profile?.handle && (
+                <DropdownMenuItem asChild>
+                  <a href={`/@${profile.handle}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    My profile
+                  </a>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem asChild>
                 <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
                   <UserCircle className="h-4 w-4" />
@@ -284,6 +292,14 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
           <DropdownMenuContent align="end" className="w-56">
             <TestModeMenuItems />
             <ThemeToggle />
+            {userType === 'student' && profile?.handle && (
+              <DropdownMenuItem asChild>
+                <a href={`/@${profile.handle}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  My profile
+                </a>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link to={createPageUrl('Profile')} className="flex items-center gap-2">
                 <UserCircle className="h-4 w-4" />

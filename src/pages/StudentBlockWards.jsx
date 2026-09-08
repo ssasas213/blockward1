@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus } from 'lucide-react';
+import { Loader2, Plus, Share2, AtSign } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -15,6 +15,7 @@ import VerifiedTab from '@/components/student/achievements/VerifiedTab';
 import PendingTab from '@/components/student/achievements/PendingTab';
 import UnverifiedTab from '@/components/student/achievements/UnverifiedTab';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
+import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
 
 /**
  * My BlockWards — the one merged student achievement page (formerly
@@ -47,6 +48,7 @@ function StudentBlockWardsContent() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -120,6 +122,19 @@ function StudentBlockWardsContent() {
           <p className="text-muted-foreground mt-1">
             Your achievements are stored securely in your BlockWard Vault
           </p>
+          {profile?.handle && (
+            <div className="flex flex-wrap items-center gap-2 mt-3">
+              <button
+                onClick={() => window.open(`${window.location.origin}/@${profile.handle}`, '_blank')}
+                className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
+              >
+                <AtSign className="h-3.5 w-3.5" /> {profile.handle}
+              </button>
+              <Button size="sm" variant="outline" onClick={() => setShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5 mr-1.5" /> Share profile
+              </Button>
+            </div>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PortfolioActions records={verified} profile={profile} user={user} />
@@ -178,6 +193,18 @@ function StudentBlockWardsContent() {
         blockWard={selectedBlockWard}
         open={!!selectedBlockWard}
         onClose={() => setSelectedBlockWard(null)}
+      />
+
+      <ProfileShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        profile={{
+          name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '',
+          handle: profile?.handle,
+          bio: profile?.bio || null,
+          avatar_url: profile?.avatar_url || null,
+          count: verified.length,
+        }}
       />
 
       <RequestForm

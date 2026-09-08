@@ -68,7 +68,7 @@ export default function StudentOnboardingChecklist({ profile, userEmail }) {
   const items = [
     { label: 'Add your school or club', desc: 'Join with an invite or a school code', done: state.org, icon: Building2, to: 'JoinSchool' },
     { label: 'Add your first achievement', desc: 'Ask your organisation to verify something', done: state.achievement, icon: Trophy, to: 'StudentBlockWards' },
-    { label: 'Claim your profile handle', desc: 'Get your shareable public profile', done: state.handle, icon: AtSign, to: 'Profile' },
+    { label: 'Claim your profile link', desc: 'Get your shareable public profile', done: state.handle, icon: AtSign, to: 'Profile' },
     { label: 'Endorse someone', desc: 'Spend one of your peer endorsements', done: state.endorse, icon: Quote, to: 'Feed' },
   ];
   const doneCount = items.filter(i => i.done).length;
