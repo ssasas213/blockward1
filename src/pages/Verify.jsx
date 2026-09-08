@@ -8,7 +8,7 @@ import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
   Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
-  UserCheck, History, Users, Loader2, Share2, Trash2
+  UserCheck, History, Users, Loader2, Share2, Trash2, BadgeCheck
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -114,7 +114,9 @@ export default function Verify() {
     const r = data.record;
     document.title = `${r.achievement_title} — verified · BlockWard`;
     setMeta('property', 'og:title', `${r.achievement_title} — verified achievement`);
-    setMeta('property', 'og:description', `${r.student_name || 'Student'} · issued by ${r.organisation_name || 'their organisation'}`);
+    setMeta('property', 'og:description', r.verification_mode === 'independent'
+      ? `${r.student_name || 'Student'} · independently verified by ${r.independent_verifier?.name || 'a named verifier'}`
+      : `${r.student_name || 'Student'} · issued by ${r.organisation_name || 'their organisation'}`);
     setMeta('property', 'og:url', window.location.href);
     setMeta('property', 'og:type', 'website');
     setMeta('name', 'twitter:card', 'summary_large_image');
@@ -183,6 +185,13 @@ export default function Verify() {
   );
 
   const { record, teacherSignature, adminSignature, isVerified, isRevoked, message } = data;
+  // Two honest tiers: organisation-verified (a member org stands behind it)
+  // vs independently verified (a named person does). They must never look alike.
+  const independent = isVerified && record.verification_mode === 'independent';
+  const iv = record.independent_verifier || null;
+  const ivName = iv?.name || record.teacher_name;
+  const ivRole = (iv?.role || '').replace(/_/g, ' ');
+  const ivOrg = iv?.organisation_label || record.organisation_name;
   const CategoryIcon = CATEGORY_ICONS[record.achievement_category] || Award;
   const accent = CATEGORY_ACCENT[record.achievement_category] || 'text-primary';
   const evidenceIsImage = record.evidence_file_url && record.evidence_file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
@@ -231,6 +240,18 @@ export default function Verify() {
               <p className="text-sm text-muted-foreground">{message || 'This achievement is no longer valid.'}</p>
             </div>
           </div>
+        ) : independent ? (
+          <div className="rounded-2xl border border-info/30 bg-info/10 p-6 flex items-center gap-4">
+            <div className="h-14 w-14 rounded-full bg-info/15 flex items-center justify-center flex-shrink-0">
+              <UserCheck className="h-8 w-8 text-info" />
+            </div>
+            <div>
+              <p className="font-bold text-2xl tracking-tight text-foreground">Independently verified</p>
+              <p className="text-sm text-muted-foreground">
+                Verified by {ivName || 'a named verifier'}{ivRole ? `, ${ivRole}` : ''}{ivOrg ? ` at ${ivOrg}` : ''} — a named person, not a BlockWard member organisation
+              </p>
+            </div>
+          </div>
         ) : isVerified ? (
           <div className="rounded-2xl border border-success/25 bg-success/10 p-6 flex items-center gap-4">
             <div className="h-14 w-14 rounded-full bg-success/15 flex items-center justify-center flex-shrink-0">
@@ -238,7 +259,9 @@ export default function Verify() {
             </div>
             <div>
               <p className="font-bold text-2xl tracking-tight text-foreground">Verified BlockWard</p>
-              <p className="text-sm text-muted-foreground">Authentic credential, secured and independently verifiable</p>
+              <p className="text-sm text-muted-foreground">
+                Verified by {record.organisation_name || 'the issuing organisation'}, a BlockWard member organisation
+              </p>
             </div>
           </div>
         ) : (
@@ -274,6 +297,17 @@ export default function Verify() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
                       <Network className="h-3 w-3" /> Secured
                     </span>
+                  )}
+                  {isVerified && (
+                    independent ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-info/10 border border-info/30 text-xs font-medium text-info">
+                        <UserCheck className="h-3 w-3" /> Independently verified
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-success/10 border border-success/30 text-xs font-medium text-success">
+                        <BadgeCheck className="h-3 w-3" /> Organisation verified
+                      </span>
+                    )
                   )}
                   {record.student_requested && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-accent/10 border border-accent/20 text-xs font-medium text-accent">
@@ -338,11 +372,16 @@ export default function Verify() {
                 <Shield className="h-4 w-4 text-success" /> Verification Status
               </h2>
               <ul className="space-y-3">
-                <CheckItem>Issuer verified</CheckItem>
+                <CheckItem>{independent ? 'Named verifier attested' : 'Issuer verified'}</CheckItem>
                 <CheckItem>Credential valid</CheckItem>
                 <CheckItem>BlockWard secured</CheckItem>
                 {hasBlockchain && <CheckItem>Blockchain anchored</CheckItem>}
               </ul>
+              <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground leading-relaxed">
+                {independent
+                  ? `Independently verified credentials are signed by a named person outside BlockWard's organisation network. They carry that person's personal attestation — the full identity, method and timestamp are shown above — rather than an institutional guarantee from a member organisation.`
+                  : `Organisation-verified credentials are signed by staff of a BlockWard member organisation and carry that organisation's institutional guarantee.`}
+              </p>
             </CardContent>
           </Card>
         )}
