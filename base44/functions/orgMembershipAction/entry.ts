@@ -16,6 +16,7 @@ import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { logRoleGrant } from '../../shared/profileProvisioning.ts';
 import { runInvitationFlow, resolveAppUrl, parseEmails } from '../../shared/invitations.ts';
 import { requestEmailHtml, notifyRequest } from '../../shared/achievementRequests.ts';
+import { notifyEvent } from '../../shared/eventNotifications.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -264,6 +265,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
         `${appUrl}/StudentDashboard`, 'Open BlockWard',
       );
       try { await notifyRequest(membership.student_email, `Your request to join ${membership.school_name} was ${verb}`, html); } catch (e) { /* ignore */ }
+
+      // In-app (instantly) + daily digest: "an organisation you requested approved you".
+      if (action === 'approve') {
+        try {
+          await notifyEvent(svc, {
+            to_email: membership.student_email,
+            school_id: membership.school_id,
+            event_type: 'org_approved',
+            title: `${membership.school_name} approved you`,
+            body: `Your request to join ${membership.school_name} was approved — your achievements there can now appear on your profile.`,
+            related_id: membership.id,
+          });
+        } catch (e) { /* best-effort */ }
+      }
 
       return Response.json({ ok: true, status }, { headers: CORS });
     }

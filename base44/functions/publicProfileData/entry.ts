@@ -78,17 +78,6 @@ export default async function (req: Request): Promise<Response> {
       });
     }
 
-    // Owner flag: the signed-in viewer is the profile owner (enables pinning).
-    const is_owner = !!body.viewer_email &&
-      String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
-
-    // View counter — server-incremented only; owner views don't count.
-    if (!is_owner) {
-      try {
-        await svc.entities.UserProfile.update(profile.id, { profile_views: (profile.profile_views || 0) + 1 });
-      } catch (e) { /* non-critical */ }
-    }
-
     // 3. Affiliations — EVERY organisation this student belongs to: their home
     // school plus approved cross-org memberships (clubs, academies…).
     let school = null;
@@ -224,6 +213,60 @@ export default async function (req: Request): Promise<Response> {
     const visibleIds = new Set(visible.map((r) => r.id));
     const pinned = (profile.pinned_achievement_ids || []).filter((id: string) => visibleIds.has(id)).slice(0, 6);
 
+    // Owner flag: the signed-in viewer is the profile owner (enables pinning).
+    const is_owner = !!body.viewer_email &&
+      String(body.viewer_email).toLowerCase() === (profile.user_email || '').toLowerCase();
+
+    // 5. Record this view — owner views are never counted. Deduplicated per
+    // viewer per 24h; viewers who opted out of being counted are skipped
+    // entirely. The profile_views counter is only ever incremented here.
+    if (!is_owner) {
+      try {
+        let viewerProfile: any = null;
+        if (body.viewer_email) {
+          try {
+            const vp = await svc.entities.UserProfile.filter({ user_email: body.viewer_email });
+            viewerProfile = vp[0] || null;
+          } catch (e) { /* ignore */ }
+        }
+        if (!viewerProfile || !viewerProfile.views_insight_opt_out) {
+          const viewerKey = viewerProfile?.id
+            ? `u:${viewerProfile.id}`
+            : (body.viewer_id ? `a:${String(body.viewer_id).slice(0, 64)}` : null);
+          let seenRecently = false;
+          if (viewerKey) {
+            try {
+              const recent = await svc.entities.ProfileView.filter({ profile_id: profile.id, viewer_key: viewerKey });
+              const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+              seenRecently = (recent || []).some((v: any) => new Date(v.created_date).getTime() > cutoff);
+            } catch (e) { /* ignore */ }
+          }
+          if (!seenRecently) {
+            let viewerSchoolName: string | null = null;
+            if (viewerProfile?.school_id) {
+              try {
+                const vs = await svc.entities.School.filter({ id: viewerProfile.school_id });
+                viewerSchoolName = vs[0]?.name || null;
+              } catch (e) { /* ignore */ }
+            }
+            await svc.entities.ProfileView.create({
+              profile_id: profile.id,
+              handle: profile.handle,
+              viewer_key: viewerKey || `anon:${crypto.randomUUID()}`,
+              viewer_school_id: viewerProfile?.school_id || null,
+              viewer_school_name: viewerSchoolName,
+            });
+            try {
+              await svc.entities.UserProfile.updateMany(
+                { id: profile.id },
+                { $inc: { profile_views: 1 } }
+              );
+            } catch (e) { /* best-effort counter */ }
+          }
+        }
+      } catch (e) { /* view recording is best-effort — never break the profile load */ }
+    }
+
     return Response.json({
       ok: true,
       student: {
@@ -234,14 +277,6 @@ export default async function (req: Request): Promise<Response> {
         grade_level: profile.grade_level || null,
         og_image_url: profile.og_image_url || null,
         link_only: profile.profile_visibility === 'link_only',
-        // Bounded visual customisation (validated presets, saved via updatePublicProfile)
-        theme_id: profile.theme_id || 'slate',
-        accent_colour: profile.accent_colour || null,
-        profile_layout: profile.profile_layout || 'grid',
-        display_font: profile.display_font || 'sans',
-        banner_url: profile.banner_url || null,
-        social_links: (profile.social_links || []).filter((l) => l && l.platform && l.url).slice(0, 6),
-        featured_link: profile.featured_link && profile.featured_link.url ? profile.featured_link : null,
       },
       school: school ? {
         name: school.name,
