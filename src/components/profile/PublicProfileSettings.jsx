@@ -32,7 +32,7 @@ const DEFAULT_CUSTOM = {
   featured_link: null,
 };
 
-export default function PublicProfileSettings({ profile }) {
+export default function PublicProfileSettings({ profile, onSaved }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [handleInput, setHandleInput] = useState('');
@@ -42,6 +42,9 @@ export default function PublicProfileSettings({ profile }) {
   const [cooldownDays, setCooldownDays] = useState(0);
   const [achievements, setAchievements] = useState([]);
   const [custom, setCustom] = useState(DEFAULT_CUSTOM);
+  // Snapshot of what was last saved — powers the unsaved-changes bar so a
+  // user can always see (and reach) the Save action after editing.
+  const [savedCustom, setSavedCustom] = useState(DEFAULT_CUSTOM);
   const [availability, setAvailability] = useState({ state: 'idle', reason: null }); // idle | checking | ok | taken | invalid
   const checkTimer = useRef(null);
 
@@ -61,7 +64,7 @@ export default function PublicProfileSettings({ profile }) {
       setVisibility(p.profile_visibility || 'public');
       setCooldownDays(p.cooldown_days_remaining || 0);
       setAchievements(res.data?.achievements || []);
-      setCustom({
+      const nextCustom = {
         banner_url: p.banner_url || null,
         theme_id: p.theme_id || 'slate',
         accent_colour: p.accent_colour || null,
@@ -69,7 +72,9 @@ export default function PublicProfileSettings({ profile }) {
         display_font: p.display_font || 'sans',
         social_links: Array.isArray(p.social_links) ? p.social_links : [],
         featured_link: p.featured_link || null,
-      });
+      };
+      setCustom(nextCustom);
+      setSavedCustom(nextCustom);
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Failed to load profile settings');
     } finally {
@@ -98,6 +103,7 @@ export default function PublicProfileSettings({ profile }) {
   const canChangeHandle = !originalHandle || cooldownDays === 0;
   const handleDirty = handleInput.trim().toLowerCase() !== (originalHandle || '');
   const handleBlocked = handleDirty && (!canChangeHandle || ['taken', 'invalid', 'checking'].includes(availability.state));
+  const customDirty = JSON.stringify(custom) !== JSON.stringify(savedCustom);
 
   const setAchievementVisibility = async (registryId, vis) => {
     const prev = achievements;
@@ -123,14 +129,22 @@ export default function PublicProfileSettings({ profile }) {
       const p = res.data?.profile || {};
       setOriginalHandle(p.handle);
       setCooldownDays(p.cooldown_days_remaining || 0);
-      setCustom({
-        banner_url: p.banner_url || null,
-        theme_id: p.theme_id || 'slate',
-        accent_colour: p.accent_colour || null,
-        profile_layout: p.profile_layout || 'grid',
-        display_font: p.display_font || 'sans',
-        social_links: Array.isArray(p.social_links) ? p.social_links : [],
-        featured_link: p.featured_link || null,
+      // Merge the server response into the user's current selections instead
+      // of replacing them — a missing field keeps what's on screen, and a
+      // default is only applied where the server explicitly returns null.
+      setCustom((prev) => {
+        const merged = {
+          ...prev,
+          banner_url: p.banner_url === null ? null : p.banner_url ?? prev.banner_url,
+          theme_id: p.theme_id ?? prev.theme_id,
+          accent_colour: p.accent_colour === null ? null : p.accent_colour ?? prev.accent_colour,
+          profile_layout: p.profile_layout ?? prev.profile_layout,
+          display_font: p.display_font ?? prev.display_font,
+          social_links: Array.isArray(p.social_links) ? p.social_links : prev.social_links,
+          featured_link: p.featured_link === null ? null : p.featured_link ?? prev.featured_link,
+        };
+        setSavedCustom(merged);
+        return merged;
       });
       // Regenerate the server-rendered share/OG card so link previews match
       // the saved profile (cached server-side — re-renders only on change).
@@ -139,6 +153,7 @@ export default function PublicProfileSettings({ profile }) {
         base44.functions.invoke('generateProfileCard', { variant: 'og', handle: savedHandle }).catch(() => {});
       }
       toast.success('Public profile saved');
+      if (onSaved) onSaved();
     } catch (e) {
       toast.error(e?.response?.data?.error || e.message || 'Failed to save');
     } finally {
@@ -305,7 +320,7 @@ export default function PublicProfileSettings({ profile }) {
         </CardHeader>
         <CardContent>
           <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-            <ProfileCustomizer value={custom} onChange={setCustom} />
+            <ProfileCustomizer value={custom} onChange={(patch) => setCustom((prev) => ({ ...prev, ...patch }))} />
             <div className="lg:sticky lg:top-20 h-fit">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Live preview</p>
               <ProfilePreview
@@ -319,12 +334,21 @@ export default function PublicProfileSettings({ profile }) {
             </div>
           </div>
 
-          <div className="mt-6">
-            <Button onClick={save} disabled={saving || handleBlocked}>
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              {saving ? 'Saving…' : 'Save customisation'}
-            </Button>
-          </div>
+          {/* Unsaved-changes bar — the Save action travels with the dirty
+              state, so it's always reachable right after editing */}
+          {customDirty ? (
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3">
+              <p className="text-sm font-medium text-foreground">You have unsaved changes</p>
+              <Button onClick={save} disabled={saving || handleBlocked}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                {saving ? 'Saving…' : 'Save customisation'}
+              </Button>
+            </div>
+          ) : (
+            <p className="mt-6 text-xs text-muted-foreground flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-success" /> All changes saved
+            </p>
+          )}
         </CardContent>
       </Card>
     </>
