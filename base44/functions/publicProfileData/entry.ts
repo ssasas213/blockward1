@@ -164,6 +164,13 @@ export default async function (req: Request): Promise<Response> {
     // each carries the endorser's name, handle and affiliation only.
     let endorsements = [];
     try { endorsements = await svc.entities.Endorsement.filter({ recipient_id: profile.id, status: 'active' }); } catch (e) { /* entity not present yet */ }
+
+    // Endorser avatars for the achievement cards (public display data only).
+    const avatarById: Record<string, string | null> = {};
+    const endorserIds = [...new Set(endorsements.map((e) => e.endorser_id).filter(Boolean))];
+    for (const eid of endorserIds) {
+      try { const rows = await svc.entities.UserProfile.filter({ id: eid }); if (rows[0]) avatarById[eid] = rows[0].avatar_url || null; } catch (e) { /* ignore */ }
+    }
     const byRegistry = {};
     const unattached = [];
     for (const e of endorsements) {
@@ -175,6 +182,7 @@ export default async function (req: Request): Promise<Response> {
           name: e.endorser_name,
           handle: e.endorser_handle || null,
           affiliation: e.endorser_affiliation || null,
+          avatar_url: avatarById[e.endorser_id] || null,
         },
         created_date: e.created_date || null,
       };
@@ -272,6 +280,7 @@ export default async function (req: Request): Promise<Response> {
         avatar_url: profile.avatar_url || null,
         grade_level: profile.grade_level || null,
         og_image_url: profile.og_image_url || null,
+        profile_views: profile.profile_views || 0,
         link_only: profile.profile_visibility === 'link_only',
         // Student-chosen visual customisation (validated presets).
         banner_url: profile.banner_url || null,
@@ -296,6 +305,7 @@ export default async function (req: Request): Promise<Response> {
       is_owner,
       endorsements_unattached: unattached,
       count: achievements.length,
+      endorsement_count: endorsements.length,
     });
   } catch (error) {
     return Response.json({ ok: false, error: error.message }, { status: 500 });

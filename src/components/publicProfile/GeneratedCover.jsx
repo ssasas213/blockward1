@@ -31,7 +31,7 @@ const ANGLES = [135, 160, 115, 200];
  * same image, and a profile of many achievements shows varied, branded covers
  * instead of identical placeholders.
  */
-export default function GeneratedCover({ title, category, orgName, orgLogo, className = '', compact = false }) {
+export default function GeneratedCover({ title, category, orgName, orgLogo, className = '', compact = false, bare = false }) {
   const palette = PALETTES[category] || PALETTES.special;
   const h = hashString(`${title}|${category}|${orgName}`);
   const angle = ANGLES[h % ANGLES.length];
@@ -50,15 +50,17 @@ export default function GeneratedCover({ title, category, orgName, orgLogo, clas
         <path d={`M -5 ${20 + (h % 15)} Q 50 ${5 + ((h >> 4) % 20)}, 105 ${30 + ((h >> 6) % 15)}`} stroke="rgba(255,255,255,0.14)" strokeWidth="0.8" fill="none" />
       </svg>
 
-      {/* Organisation badge */}
-      <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-black/25 px-2 py-0.5 backdrop-blur-sm">
-        {orgLogo ? (
-          <img src={orgLogo} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
-        ) : (
-          <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
-        )}
-        <span className="max-w-[100px] truncate text-[10px] font-medium text-white/90">{orgName || 'Verified'}</span>
-      </div>
+      {/* Organisation badge — hidden in `bare` mode when the card renders its own base line */}
+      {!bare && (
+        <div className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full bg-black/25 px-2 py-0.5 backdrop-blur-sm">
+          {orgLogo ? (
+            <img src={orgLogo} alt="" className="h-3.5 w-3.5 rounded-full object-cover" />
+          ) : (
+            <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
+          )}
+          <span className="max-w-[100px] truncate text-[10px] font-medium text-white/90">{orgName || 'Verified'}</span>
+        </div>
+      )}
 
       {/* Title — compact mode (small thumbnails) hides it */}
       {!compact && (

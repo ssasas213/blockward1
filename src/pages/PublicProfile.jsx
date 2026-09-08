@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import AchievementTile from '@/components/publicProfile/AchievementTile';
 import AchievementListRow from '@/components/publicProfile/AchievementListRow';
-import ShowcaseHero from '@/components/publicProfile/ShowcaseHero';
 import SocialLinks from '@/components/publicProfile/SocialLinks';
 import FeaturedLink from '@/components/publicProfile/FeaturedLink';
 import AchievementDetailModal from '@/components/publicProfile/AchievementDetailModal';
@@ -205,7 +204,6 @@ export default function PublicProfile() {
   // Student-chosen visual customisation (presets only).
   const vars = themeVars(student.theme_id, student.accent_colour, student.display_font);
   const bannerCss = bannerStyle(student.banner_url);
-  const themeStrip = !bannerCss && student.theme_id && student.theme_id !== 'slate';
   const layout = student.profile_layout || 'grid';
 
   // Category counts for the filter chips.
@@ -263,11 +261,13 @@ export default function PublicProfile() {
   };
 
   const openAchievement = (a) => setSelected(a);
+  const canEndorse = !!viewerEmail && !is_owner;
+  const endorseTile = (a) => { setSelected(a); setEndorseOpen(true); };
 
   return (
     <div className="min-h-screen bg-background font-sans antialiased" style={vars}>
       {/* Slim header */}
-      <header className="fixed top-0 left-0 right-0 z-40 glass border-b border-border">
+      <header className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <a href={createPageUrl('Home')} className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -295,69 +295,85 @@ export default function PublicProfile() {
         </div>
       </header>
 
-      <main className="pt-14 max-w-5xl mx-auto px-4 sm:px-6 pb-24">
-        {/* Profile header — banner + identity */}
-        <div
-          className="mt-8 sm:mt-12 overflow-hidden border border-border bg-card/60 backdrop-blur-md"
-          style={{ borderRadius: 'var(--pf-radius, 16px)', boxShadow: 'var(--pf-shadow, none)' }}
-        >
-          {bannerCss && (
-            <div className="h-36 sm:h-52 w-full" style={bannerCss} role="img" aria-label="Profile banner" />
-          )}
-          {themeStrip && (
-            <div className="h-16 sm:h-20 w-full" style={{ background: 'var(--pf-banner)' }} aria-hidden="true" />
-          )}
+      <main className="pb-24">
+        {/* HERO — full-bleed banner edge to edge, identity block overlapping
+            its lower edge. Everything above the grid fits one mobile screen. */}
+        <section className="relative">
+          <div className="absolute inset-x-0 top-0 h-36 sm:h-52 lg:h-64 overflow-hidden">
+            <div className="absolute inset-0" style={bannerCss || { background: 'var(--pf-banner)' }} role="img" aria-label="Profile banner" />
+            {/* Subtle accent glow — a profile with no banner still looks designed */}
+            <div className="absolute inset-0" style={{ background: 'radial-gradient(80% 90% at 78% 0%, hsl(var(--primary) / 0.18), transparent 70%)' }} aria-hidden="true" />
+            {/* Fade into the page so the overlapping content stays legible */}
+            <div className="absolute inset-x-0 bottom-0 h-24 sm:h-28 bg-gradient-to-b from-transparent to-background" aria-hidden="true" />
+          </div>
 
-          <div className="p-6 sm:p-8">
-            <div className={`flex flex-col sm:flex-row sm:items-end gap-5 ${(bannerCss || themeStrip) ? '-mt-12 sm:-mt-16' : ''}`}>
-              <div className="rounded-full bg-background/80 p-1 backdrop-blur-sm flex-shrink-0">
-                <InitialsAvatar name={student.name} src={student.avatar_url} size="xl" ring />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="font-heading text-2xl sm:text-4xl font-bold text-foreground leading-tight">{student.name}</h1>
-                <p className="text-base text-primary font-semibold mt-0.5">@{student.handle}</p>
-                {student.bio && <p className="text-sm sm:text-base text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{student.bio}</p>}
-                {student.social_links?.length > 0 && (
-                  <div className="mt-3">
-                    <SocialLinks links={student.social_links} />
-                  </div>
-                )}
-              </div>
-              <div className="flex-shrink-0 rounded-xl bg-background/60 border border-border px-5 py-3 text-center">
-                <p className="text-2xl sm:text-3xl font-bold text-foreground leading-none">{count}</p>
-                <p className="text-[11px] text-muted-foreground mt-1">verified{count === 1 ? ' achievement' : ' achievements'}</p>
-              </div>
-            </div>
-
-            {/* Every organisation this person belongs to */}
-            {orgs.length > 0 && (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                {orgs.map((o) => (
-                  <span key={o.id || o.name} className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1">
-                    {o.logo_url ? (
-                      <img src={o.logo_url} alt="" className="h-4 w-4 rounded object-cover" />
-                    ) : (
-                      <InitialsAvatar name={o.name} size="xs" />
-                    )}
-                    <span className="text-xs font-medium text-foreground">{o.name}</span>
-                    {(o.city || o.country) && (
-                      <span className="text-[11px] text-tertiary hidden sm:inline">
-                        · {[o.city, o.country].filter(Boolean).join(', ')}
+          <div className="relative max-w-5xl mx-auto px-4 sm:px-6 pt-20 sm:pt-28">
+            <div className="pf-rise">
+              <div className="flex items-end gap-4 sm:gap-5">
+                {/* Avatar — overlaps the banner boundary, ring in the accent colour */}
+                <div className="rounded-full flex-shrink-0" style={{ boxShadow: '0 0 0 4px hsl(var(--primary)), 0 10px 30px rgba(0,0,0,0.25)' }}>
+                  <InitialsAvatar name={student.name} src={student.avatar_url} size="xl" />
+                </div>
+                <div className="min-w-0 pb-1">
+                  <h1 className="font-heading text-3xl sm:text-5xl font-bold text-foreground leading-tight break-words">{student.name}</h1>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <p className="text-sm sm:text-base font-medium text-muted-foreground">@{student.handle}</p>
+                    {count > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success">
+                        <BadgeCheck className="h-3.5 w-3.5" /> Verified
                       </span>
                     )}
-                  </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Single stats row — numbers large, labels small */}
+              <div className="mt-6 flex divide-x divide-border rounded-xl border border-border bg-card/70 backdrop-blur-md">
+                {[
+                  { label: 'Verified', value: count },
+                  { label: 'Organisations', value: orgs.length },
+                  { label: 'Endorsements', value: data.endorsement_count || 0 },
+                  { label: 'Views', value: student.profile_views || 0 },
+                ].map((s) => (
+                  <div key={s.label} className="flex-1 px-2 py-3 sm:px-4 sm:py-4 text-center">
+                    <p className="text-xl sm:text-3xl font-bold text-foreground leading-none">{s.value}</p>
+                    <p className="text-[10px] sm:text-[11px] uppercase tracking-wide text-muted-foreground mt-1.5">{s.label}</p>
+                  </div>
                 ))}
               </div>
-            )}
 
-            {/* The link-in-bio moment: one prominent call-to-action */}
-            <FeaturedLink link={student.featured_link} />
+              {orgs.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {orgs.map((o) => (
+                    <span key={o.id || o.name} className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary/40 px-3 py-1">
+                      {o.logo_url ? (
+                        <img src={o.logo_url} alt="" className="h-4 w-4 rounded object-cover" />
+                      ) : (
+                        <InitialsAvatar name={o.name} size="xs" />
+                      )}
+                      <span className="text-xs font-medium text-foreground">{o.name}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {student.bio && <p className="text-sm sm:text-base text-muted-foreground mt-4 leading-relaxed whitespace-pre-line max-w-2xl">{student.bio}</p>}
+
+              {student.social_links?.length > 0 && (
+                <div className="mt-3">
+                  <SocialLinks links={student.social_links} />
+                </div>
+              )}
+
+              <div className="mt-4">
+                <FeaturedLink link={student.featured_link} />
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
-        {/* Highlights — pinned by the student (max 6).
-            Showcase layout gives the top pin a hero treatment instead. */}
-        {layout !== 'showcase' && <HighlightsRow items={pinnedItems} onOpen={openAchievement} />}
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+        <HighlightsRow items={pinnedItems} onOpen={openAchievement} />
 
         {achievements.length > 0 ? (
           <>
@@ -373,15 +389,6 @@ export default function PublicProfile() {
 
             {view === 'timeline' ? (
               <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
-            ) : layout === 'showcase' && pinnedItems[0] ? (
-              <div className="space-y-4">
-                <ShowcaseHero achievement={pinnedItems[0]} onOpen={openAchievement} />
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {sorted.filter((a) => a.registry_id !== pinnedItems[0].registry_id).map((a) => (
-                    <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
-                  ))}
-                </div>
-              </div>
             ) : layout === 'list' ? (
               <div className="space-y-2">
                 {sort === 'category' ? (
@@ -414,25 +421,27 @@ export default function PublicProfile() {
                       <BadgeCheck className="h-4 w-4 text-success" />
                       <span className="text-xs text-tertiary">{items.length}</span>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
                       {items.map((a) => (
-                        <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                        <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} />
                       ))}
                     </div>
                   </section>
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
                 {sorted.map((a) => (
-                  <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                  <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} />
                 ))}
               </div>
             )}
           </>
         ) : self_reported.length === 0 ? (
-          <div className="mt-10 rounded-xl border border-border bg-card/40 p-8 text-center">
-            <p className="text-sm text-muted-foreground">No achievements published on this profile yet.</p>
+          <div className="mt-16 mb-8 text-center pf-rise" style={{ '--pf-delay': '60ms' }}>
+            <p className="text-sm text-muted-foreground">
+              Nothing published here yet — check back soon to see {student.name.split(' ')[0]}'s verified achievements.
+            </p>
           </div>
         ) : null}
 
@@ -459,6 +468,7 @@ export default function PublicProfile() {
           <Button className="mt-5" onClick={() => window.location.href = createPageUrl('Signup')}>
             Claim your profile <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
+        </div>
         </div>
       </main>
 

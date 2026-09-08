@@ -455,3 +455,11 @@ img, video { max-width: 100%; height: auto; }
 @keyframes scale-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: scale(1); } }
 @keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ===== Public profile — a single staggered entrance, nothing looping.
+       Disabled entirely under prefers-reduced-motion. ===== */
+@keyframes pf-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+.pf-rise { animation: pf-rise 200ms ease-out both; animation-delay: var(--pf-delay, 0ms); }
+@media (prefers-reduced-motion: reduce) {
+  .pf-rise { animation: none; }
+}
