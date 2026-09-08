@@ -168,7 +168,27 @@ function StudentBlockWardsContent() {
     }
   };
 
-  const openRequestCount = (requests || []).filter(r => !['minted', 'archived', 'rejected', 'expired'].includes(r.status)).length;
+  const openRequestCount = (requests || []).filter(r => !['minted', 'archived', 'rejected', 'expired', 'withdrawn'].includes(r.status)).length;
+
+  // Student-initiated cancel — see the withdraw action server-side.
+  const handleWithdraw = async (r) => {
+    try {
+      const res = await base44.functions.invoke('achievementRequestAction', { action: 'withdraw', request_id: r.id });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not withdraw');
+      toast.success('Request withdrawn');
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e.message || 'Could not withdraw');
+    }
+  };
+
+  // Duplicate a withdrawn request into a fresh draft — the form opens with
+  // every detail prefilled; saving creates a NEW request (the withdrawn one
+  // stays untouched for the audit trail).
+  const handleDuplicate = (r) => {
+    setEditing({ ...r, id: null, status: 'draft' });
+    setFormOpen(true);
+  };
   const unverifiedCount = (selfReported || []).filter(s => s.status !== 'verified').length;
   // Distinct achievements: verified + open requests + unverified self-reported.
   // Archived/minted requests already exist as verified achievements, and
@@ -251,6 +271,8 @@ function StudentBlockWardsContent() {
             requests={requests || []}
             caps={caps}
             onEdit={(r) => { setEditing(r); setFormOpen(true); }}
+            onWithdraw={handleWithdraw}
+            onDuplicate={handleDuplicate}
             loading={requests === null}
           />
         </TabsContent>

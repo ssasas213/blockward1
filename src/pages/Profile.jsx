@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, Loader2, RefreshCw, Bell, Wallet, Copy, Check, Palette, Sparkles, FlaskConical } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Wallet, Copy, Check, Palette, Sparkles, FlaskConical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -25,61 +24,24 @@ import { useSchool } from '@/lib/SchoolContext';
 import { resetTour } from '@/lib/tour';
 
 function ProfileContent() {
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-  const [school, setSchool] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // ── Identity: SchoolContext owns it (auth.me + UserProfile, fetched ONCE
+  // per session). This page performs ZERO identity requests of its own —
+  // it renders straight from the context, and every save calls refresh()
+  // so the whole app re-renders from the same source of truth.
+  const {
+    user: ctxUser, profile: ctxProfile, effectiveProfile,
+    activeSchool, loading, testMode, refresh,
+  } = useSchool();
+
+  const isTest = !!testMode?.isTestSuperUser;
+  const controllerEmail = ctxUser?.email;
+  // In Test Mode the page shows the active persona's profile, not the
+  // controller's.
+  const user = isTest && testMode.effectiveEmail ? { ...ctxUser, email: testMode.effectiveEmail } : ctxUser;
+  const profile = isTest ? (effectiveProfile || ctxProfile) : ctxProfile;
+  const school = isTest ? (testMode.testSchool || null) : activeSchool;
+
   const [copiedWallet, setCopiedWallet] = useState(false);
-  const [controllerEmail, setControllerEmail] = useState(null);
-  const { refresh: refreshSchool, testMode } = useSchool();
-
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const currentUser = await base44.auth.me();
-      if (!currentUser) { setLoading(false); return; }
-      setControllerEmail(currentUser.email);
-
-      // In Test Mode, show the active persona's profile (not the controller's).
-      const targetEmail = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : currentUser.email;
-      setUser({ ...currentUser, email: targetEmail });
-
-      const profiles = await base44.entities.UserProfile.filter({ user_email: targetEmail });
-      const p = profiles[0] || null;
-      setProfile(p);
-
-      // Refresh school context so sidebar avatar/name updates
-      if (refreshSchool) refreshSchool();
-
-      if (testMode?.isTestSuperUser && testMode.testSchool) {
-        setSchool(testMode.testSchool);
-      } else if (p?.school_id) {
-        try {
-          const schools = await base44.entities.School.filter({ id: p.school_id });
-          if (schools.length) setSchool(schools[0]);
-        } catch (_) {}
-      } else if (p?.user_type === 'teacher') {
-        // Teachers may have an active StaffMembership without school_id on profile
-        try {
-          const staff = await base44.entities.StaffMembership.filter({ user_email: currentUser.email });
-          const active = staff.find(s => s.status === 'active');
-          if (active) {
-            const schools = await base44.entities.School.filter({ id: active.school_id });
-            if (schools.length) setSchool(schools[0]);
-          }
-        } catch (_) {}
-      }
-    } catch (e) {
-      console.error('[Profile] Load failed:', e?.message || e);
-      setError(e?.message || 'Failed to load profile');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const copyWallet = () => {
     if (profile?.wallet_address) {
@@ -90,6 +52,8 @@ function ProfileContent() {
     }
   };
 
+  // The context is still resolving the session identity (first paint of the
+  // app) — skeleton shapes mirror the real sections.
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
@@ -97,26 +61,6 @@ function ProfileContent() {
         <Skeleton className="h-32 w-full" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-48 w-full" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-lg mx-auto mt-16">
-        <Card className="shadow-sm text-center">
-          <CardContent className="py-8">
-            <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center mx-auto mb-4">
-              <AlertTriangle className="h-6 w-6 text-destructive" />
-            </div>
-            <p className="font-medium text-foreground mb-1">Unable to load profile</p>
-            <p className="text-sm text-muted-foreground mb-2">{error}</p>
-            <p className="text-xs text-muted-foreground mb-4">Please refresh or contact your administrator.</p>
-            <Button onClick={load} variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" /> Try Again
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -146,7 +90,7 @@ function ProfileContent() {
     <div className="max-w-4xl mx-auto space-y-6">
       <PageHeader title="My Profile" description="Manage your account, contact details and integrations" />
 
-      {testMode?.isTestSuperUser && (
+      {isTest && (
         <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
           <FlaskConical className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -177,7 +121,7 @@ function ProfileContent() {
 
       {/* Public profile link — claim it or share it */}
       {profile?.user_type === 'student' && (
-        <PublicProfileLinkCard profile={profile} onSaved={load} />
+        <PublicProfileLinkCard profile={profile} onSaved={refresh} />
       )}
 
       {/* User Info */}
@@ -197,15 +141,15 @@ function ProfileContent() {
 
       {/* School Membership */}
       {profile && (
-        <SchoolMembershipSection profile={profile} user={user} school={school} onRefresh={load} />
+        <SchoolMembershipSection profile={profile} user={user} school={school} onRefresh={refresh} />
       )}
 
       {/* Edit Profile Form (includes profile picture uploader) */}
-      <EditProfileForm profile={profile} onSaved={load} />
+      <EditProfileForm profile={profile} onSaved={refresh} />
 
       {/* Public profile customisation — handle, bio, banner, theme, links, live preview */}
       {profile?.user_type === 'student' && (
-        <PublicProfileSettings profile={profile} onSaved={load} />
+        <PublicProfileSettings profile={profile} onSaved={refresh} />
       )}
 
       {/* Digital Custodian Status */}
@@ -221,7 +165,7 @@ function ProfileContent() {
 
       {/* Blockchain Wallet */}
       {profile?.wallet_address && (
-        <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+        <Card className="border-border bg-card shadow-sm">
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2 text-foreground">
               <Wallet className="h-4 w-4 text-primary" /> Blockchain Wallet
@@ -267,14 +211,14 @@ function ProfileContent() {
       )}
 
       {/* Preferences — Appearance + Notifications */}
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2 text-foreground">
             <Palette className="h-4 w-4 text-primary" /> Preferences
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <AppearanceSettings profile={profile} onPreferenceChange={() => load()} />
+          <AppearanceSettings profile={profile} onPreferenceChange={() => refresh()} />
           <div className="pt-4 border-t border-border">
             <NotificationPreferences userEmail={user?.email} />
           </div>
@@ -282,7 +226,7 @@ function ProfileContent() {
       </Card>
 
       {/* Help — Replay BlockWard Tour */}
-      <Card className="border-border bg-card/60 backdrop-blur-md shadow-sm">
+      <Card className="border-border bg-card shadow-sm">
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">

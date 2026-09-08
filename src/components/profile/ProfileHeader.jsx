@@ -34,13 +34,6 @@ export default function ProfileHeader({ profile, user, school }) {
       <div className="relative h-24 sm:h-28 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/30 via-card to-black" />
         <div className="absolute inset-0 accent-glow" />
-        {/* Faint decorative lines */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 12px, rgba(255,255,255,0.5) 12px, rgba(255,255,255,0.5) 13px)',
-          }}
-        />
       </div>
 
       {/* Main content */}

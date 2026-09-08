@@ -14,6 +14,7 @@ export const STATUS_LABELS = {
   archived: 'Verified',
   rejected: 'Not approved',
   expired: 'Expired',
+  withdrawn: 'Withdrawn',
 };
 
 export const STATUS_BADGE_VARIANTS = {
@@ -29,6 +30,7 @@ export const STATUS_BADGE_VARIANTS = {
   archived: 'success',
   rejected: 'destructive',
   expired: 'secondary',
+  withdrawn: 'secondary',
 };
 
 // Roles an independent verifier can hold — the fixed whitelist the backend

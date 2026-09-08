@@ -259,10 +259,11 @@
         "minted",
         "archived",
         "rejected",
-        "expired"
+        "expired",
+        "withdrawn"
       ],
       "default": "draft",
-      "description": "Lifecycle status. The canonical TERMINAL state is 'archived' (verified and published). 'minted' is a deprecated legacy terminal kept only for pre-migration rows \u2014 never set it in new code."
+      "description": "Lifecycle status. The canonical TERMINAL state is 'archived' (verified and published). 'minted' is a deprecated legacy terminal kept only for pre-migration rows \u2014 never set it in new code. 'withdrawn' \u2014 the student cancelled it before verification; it leaves the Pending count, is hidden by default, and can be duplicated into a new draft. A request that is approved or beyond can never be withdrawn \u2014 a verified credential cannot be silently unmade."
     },
     "external_verifier_email": {
       "type": "string",
@@ -471,7 +472,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | external_declined | reported_false | changes_requested | rejected | reminded | expired | minted | migrated | flagged"
+            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | external_declined | reported_false | changes_requested | rejected | reminded | expired | minted | migrated | flagged | withdrawn"
           },
           "actor_email": {
             "type": "string"

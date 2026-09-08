@@ -16,7 +16,7 @@ export default function AllTab({ verified, requests, selfReported, onSelectVerif
     const merged = [
       ...verified.map(v => ({ type: 'verified', card: cardFromVault(v), raw: v, date: v.minted_at || v.created_date })),
       ...requests
-        .filter(r => !['archived', 'minted'].includes(r.status))
+        .filter(r => !['archived', 'minted', 'withdrawn'].includes(r.status))
         .map(r => ({ type: 'request', card: cardFromRequest(r), raw: r, date: r.submitted_at || r.created_date })),
       ...selfReported
         .filter(s => s.status !== 'verified')

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import ProfileHero from '@/components/publicProfile/ProfileHero';
 import TrustStrip from '@/components/publicProfile/TrustStrip';
-import HandleClaimCta from '@/components/publicProfile/HandleClaimCta';
+import ClaimBanner from '@/components/publicProfile/ClaimBanner';
 import AchievementTile from '@/components/publicProfile/AchievementTile';
 import AchievementListRow from '@/components/publicProfile/AchievementListRow';
 import AchievementDetailModal from '@/components/publicProfile/AchievementDetailModal';
@@ -406,9 +406,13 @@ export default function PublicProfile({ handle }) {
           </div>
         )}
 
-        {/* Visitor conversion — inline handle claim, signed-out visitors only.
-            Signed-in viewers get Follow and the endorse actions instead. */}
-        {authChecked && !viewerEmail && <HandleClaimCta />}
+        {/* Visitor conversion — dismissible claim bar, signed-out visitors only.
+            Signed-in viewers get Follow and the endorse actions instead; the
+            owner never sees it. Dismissal is stored against bw_anon_id for
+            30 days across every profile. */}
+        {authChecked && !viewerEmail && !is_owner && (
+          <ClaimBanner anonId={anonId} hasAchievements={achievements.length > 0} />
+        )}
         </div>
       </main>
 

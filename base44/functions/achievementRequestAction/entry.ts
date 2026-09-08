@@ -227,6 +227,51 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, request: saved, status }, { headers: CORS });
     }
 
+    // ═════════════════════ STUDENT WITHDRAW ═════════════════════
+    // The student's way out of a mistake: wrong verifier, wrong details,
+    // wrong org. Once a request is approved it exists publicly — a verified
+    // credential can never be silently unmade, so withdrawal is refused.
+    if (action === 'withdraw') {
+      if (role !== 'student') return bad('Only students can withdraw their requests', 403);
+      let request = null;
+      try {
+        const rows = await svc.entities.AchievementRequest.filter({ id: body.request_id || 'none' });
+        request = rows?.[0] || null;
+      } catch { /* invalid id — treated as not found */ }
+      if (!request) return bad('Request not found', 404);
+      if (request.student_email !== email) return bad('This is not your request', 403);
+      const WITHDRAWABLE = ['draft', 'submitted', 'under_review', 'changes_requested', 'awaiting_external_verification'];
+      if (!WITHDRAWABLE.includes(request.status)) {
+        return bad('This request has already been verified — it cannot be withdrawn');
+      }
+      const now = new Date().toISOString();
+      await svc.entities.AchievementRequest.update(request.id, {
+        status: 'withdrawn',
+        // Kill the outstanding verifier link so it stops working immediately.
+        external_token: null,
+        external_token_expires_at: null,
+        last_reviewer_action_at: now,
+        event_log: appendEvent(request.event_log, logEvent('withdrawn', email, `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || null, 'student', null)),
+      });
+      // Courtesy note to whoever was asked to verify — no response needed.
+      const notifyTo = request.verification_mode === 'independent'
+        ? request.external_verifier_email
+        : request.nominated_verifier_email;
+      if (notifyTo && request.status !== 'draft') {
+        const html = requestEmailHtml(
+          'No action needed — a verification request was withdrawn',
+          [
+            `<strong>${request.student_name || 'A student'}</strong> withdrew their request for <strong>${request.title}</strong> before you reviewed it.`,
+            `No response is needed — this is just a courtesy note.`,
+          ],
+          appUrl(),
+          'Go to BlockWard'
+        );
+        await notifyRequest(notifyTo, `Request withdrawn: "${request.title}"`, html);
+      }
+      return Response.json({ ok: true, status: 'withdrawn' }, { headers: CORS });
+    }
+
     // ═════════════════════ REVIEWER ACTIONS ═════════════════════
 
     const rows = await svc.entities.AchievementRequest.filter({ id: body.request_id || 'none' });

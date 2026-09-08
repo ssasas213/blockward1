@@ -120,7 +120,7 @@ export default function ExternalVerify() {
         )}
 
         {state === 'error' && (
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardContent className="p-8 text-center">
               <XCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
               <p className="text-foreground font-medium">We can't verify with this link</p>
@@ -130,7 +130,7 @@ export default function ExternalVerify() {
         )}
 
         {state === 'success' && (
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardContent className="p-8 text-center">
               <ShieldCheck className="h-10 w-10 text-success mx-auto mb-4" />
               <h2 className="text-lg font-bold text-foreground">Thank you — verification complete</h2>
@@ -146,7 +146,7 @@ export default function ExternalVerify() {
         )}
 
         {state === 'form' && outcome === 'declined' && (
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardContent className="p-8 text-center">
               <XCircle className="h-10 w-10 text-warning mx-auto mb-4" />
               <h2 className="text-lg font-bold text-foreground">Declined</h2>
@@ -158,7 +158,7 @@ export default function ExternalVerify() {
         )}
 
         {state === 'form' && outcome === 'reported' && (
-          <Card className="border-border bg-card/60 backdrop-blur-md">
+          <Card className="border-border bg-card">
             <CardContent className="p-8 text-center">
               <Flag className="h-10 w-10 text-destructive mx-auto mb-4" />
               <h2 className="text-lg font-bold text-foreground">Reported as false</h2>
@@ -215,7 +215,7 @@ export default function ExternalVerify() {
             </Card>
 
             {/* Your details */}
-            <Card className="border-border bg-card/60 backdrop-blur-md">
+            <Card className="border-border bg-card">
               <CardContent className="p-6 space-y-4">
                 <h3 className="font-semibold text-foreground text-sm">Your details as external verifier</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
