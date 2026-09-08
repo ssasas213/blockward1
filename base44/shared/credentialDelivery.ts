@@ -28,6 +28,25 @@ export async function mintRequestCredential(svc: any, request: any) {
     return { ok: false, error: `Request status must be 'approved' to mint. Current: '${request.status}'` };
   }
 
+  // ── Resolve the issuer — the named person who stands behind this
+  // credential. Organisation flow: admin → nominated staff verifier.
+  // Independent flow: the account-free external/independent verifier.
+  // Fails BEFORE any writes, with a clear human message naming the request —
+  // never a raw schema error reaching a verifier or a student. ──
+  const issuerEmail: string | null = request.admin_signoff?.signer_email
+    || request.nominated_verifier_email
+    || request.external_signoff?.email
+    || request.independent_verifier?.email
+    || null;
+  const issuerName: string | null = request.admin_signoff?.signer_name
+    || request.nominated_verifier_name
+    || request.external_signoff?.name
+    || request.independent_verifier?.name
+    || null;
+  if (!issuerEmail || !issuerName) {
+    return { ok: false, error: `Cannot publish "${request.title}" — no issuer could be resolved on request ${request.id || '(unknown id)'}. The sign-off chain is incomplete.` };
+  }
+
   // ── Resolve the student's UserProfile (permanent owner) ──
   let studentProfile: any = null;
   try {
@@ -86,13 +105,13 @@ export async function mintRequestCredential(svc: any, request: any) {
       owner_school_id: request.school_id,
       origin: 'student',
       teacher_id: request.nominated_verifier_id || null,
-      teacher_email: request.nominated_verifier_email || null,
-      teacher_name: request.nominated_verifier_name || null,
+      teacher_email: request.nominated_verifier_email || request.external_signoff?.email || request.independent_verifier?.email || null,
+      teacher_name: request.nominated_verifier_name || request.external_signoff?.name || request.independent_verifier?.name || null,
       teacher_signed: true,
       teacher_signed_at: request.verifier_signoff?.signed_at || null,
       admin_id: request.admin_signoff?.signer_id || null,
-      admin_email: request.admin_signoff?.signer_email || null,
-      admin_name: request.admin_signoff?.signer_name || null,
+      admin_email: issuerEmail,
+      admin_name: issuerName,
       admin_signed: !!request.admin_signoff,
       admin_signed_at: request.admin_signoff?.signed_at || null,
       title: request.title,
@@ -120,8 +139,8 @@ export async function mintRequestCredential(svc: any, request: any) {
     owner_student_id: studentId,
     owner_student_email: request.student_email,
     owner_school_id: request.school_id,
-    issuer_email: request.admin_signoff?.signer_email || request.nominated_verifier_email,
-    issuer_name: request.admin_signoff?.signer_name || request.nominated_verifier_name,
+    issuer_email: issuerEmail,
+    issuer_name: issuerName,
     teacher_id: request.nominated_verifier_id || null,
     admin_id: request.admin_signoff?.signer_id || null,
     title: request.title,

@@ -22,6 +22,9 @@ export default function ExternalVerify() {
   const [state, setState] = useState('loading'); // loading | form | error | success
   const [request, setRequest] = useState(null);
   const [error, setError] = useState('');
+  // invalid | used | expired | withdrawn — distinct outcomes so a first-time
+  // verifier is never told "invalid" for a link that merely expired.
+  const [errCode, setErrCode] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const [form, setForm] = useState({ name: '', role: '', organisation: '', email: '', method: '', methodNote: '', attestation: false, signature: '' });
@@ -48,9 +51,13 @@ export default function ExternalVerify() {
               organisation: f.organisation || r.verifier.organisation_label || '',
             }));
           }
-        } else { setError(res.data?.error || 'This verification link is invalid.'); setState('error'); }
+        } else {
+          setErrCode(res.data?.code || null);
+          setError(res.data?.error || 'This verification link is invalid.');
+          setState('error');
+        }
       })
-      .catch(() => { setError('This verification link is invalid.'); setState('error'); });
+      .catch(() => { setErrCode('invalid'); setError('This verification link is invalid.'); setState('error'); });
   }, [token]);
 
   const submit = async () => {
@@ -62,11 +69,18 @@ export default function ExternalVerify() {
         method: form.method, method_note: form.methodNote, attestation: form.attestation === true,
         signature: form.signature,
       });
-      if (!res.data?.ok) throw new Error(res.data?.error || 'Verification failed');
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Something went wrong publishing this — the student has been notified.');
       setRequest((r) => ({ ...r, verification_id: res.data.verification_id }));
       setState('success');
     } catch (e) {
-      setError(e?.response?.data?.error || e.message);
+      // Never surface a raw database/schema error to the verifier — the
+      // backend returns friendly text; anything else is masked.
+      const raw = e?.response?.data?.error || e?.message || '';
+      const friendly = /publishing|confirmation|notified|recorded/i.test(raw)
+        ? raw
+        : 'Something went wrong publishing this — the student has been notified. Your confirmation was recorded.';
+      setError(friendly);
+      setErrCode(null);
       setState('error');
     } finally {
       setBusy(false);
@@ -122,9 +136,26 @@ export default function ExternalVerify() {
         {state === 'error' && (
           <Card className="border-border bg-card">
             <CardContent className="p-8 text-center">
-              <XCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
-              <p className="text-foreground font-medium">We can't verify with this link</p>
+              {errCode === 'expired' ? (
+                <Clock className="h-8 w-8 text-warning mx-auto mb-3" />
+              ) : errCode === 'used' || errCode === 'withdrawn' ? (
+                <Clock className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+              ) : (
+                <XCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
+              )}
+              <p className="text-foreground font-medium">
+                {errCode === 'used' && 'This verification link has already been used'}
+                {errCode === 'expired' && 'This verification link has expired'}
+                {errCode === 'withdrawn' && 'No longer needed'}
+                {errCode === 'invalid' && "This link doesn't work"}
+                {!errCode && "We can't verify with this link"}
+              </p>
               <p className="text-sm text-muted-foreground mt-1.5">{error}</p>
+              {(errCode === 'expired' || errCode === 'invalid') && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Ask the student to send a fresh verification request.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
@@ -173,7 +204,7 @@ export default function ExternalVerify() {
         {state === 'form' && !outcome && request && (
           <>
             {/* Request summary */}
-            <Card className="border-border bg-card/60 backdrop-blur-md mb-4">
+            <Card className="border-border bg-card mb-4">
               <CardContent className="p-6">
                 <h2 className="text-lg font-semibold text-foreground">{request.title}</h2>
                 <p className="text-sm text-muted-foreground mt-1">

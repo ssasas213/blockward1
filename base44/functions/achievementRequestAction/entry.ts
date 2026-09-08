@@ -241,8 +241,14 @@ Deno.serve(async (req) => {
       if (!request) return bad('Request not found', 404);
       if (request.student_email !== email) return bad('This is not your request', 403);
       const WITHDRAWABLE = ['draft', 'submitted', 'under_review', 'changes_requested', 'awaiting_external_verification'];
-      if (!WITHDRAWABLE.includes(request.status)) {
-        return bad('This request has already been verified — it cannot be withdrawn');
+      // Recovery hatch: a request that was verified but never published
+      // (mint failed) has no public credential to unmake — the student may
+      // withdraw it, or republish via retry_mint. Once a BlockWard exists
+      // (blockward_id / verification_id) the credential is public and can
+      // never be silently withdrawn.
+      const published = !!request.blockward_id || !!request.verification_id;
+      if (!WITHDRAWABLE.includes(request.status) && !(request.status === 'approved' && !published)) {
+        return bad('This credential has already been verified and published — it cannot be withdrawn');
       }
       const now = new Date().toISOString();
       await svc.entities.AchievementRequest.update(request.id, {
@@ -270,6 +276,40 @@ Deno.serve(async (req) => {
         await notifyRequest(notifyTo, `Request withdrawn: "${request.title}"`, html);
       }
       return Response.json({ ok: true, status: 'withdrawn' }, { headers: CORS });
+    }
+
+    // ═════════════════════ STUDENT REPUBLISH ═════════════════════
+    // Recovery for verified-but-unpublished requests (a mint failure). The
+    // student re-runs the mint; on repeated failure they're pointed at
+    // withdraw-and-resubmit. Only the requesting student, only before the
+    // credential exists publicly.
+    if (action === 'retry_mint') {
+      if (role !== 'student') return bad('Only students can republish their requests', 403);
+      let request = null;
+      try {
+        const rows = await svc.entities.AchievementRequest.filter({ id: body.request_id || 'none' });
+        request = rows?.[0] || null;
+      } catch { /* invalid id — treated as not found */ }
+      if (!request) return bad('Request not found', 404);
+      if (request.student_email !== email) return bad('This is not your request', 403);
+      if (request.status !== 'approved' || request.blockward_id || request.verification_id) {
+        return bad('Only requests that were verified but never published can be republished');
+      }
+      let mint: any = null;
+      try {
+        mint = await mintRequestCredential(svc, request);
+      } catch (e: any) {
+        console.error(`[retry_mint] request ${request.id} threw`, e?.message || e);
+        mint = { ok: false, error: 'publishing failed' };
+      }
+      if (!mint.ok) {
+        console.error(`[retry_mint] request ${request.id} failed`, mint.error);
+        await svc.entities.AchievementRequest.update(request.id, {
+          event_log: appendEvent(request.event_log, logEvent('mint_failed', email, `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || null, 'student', mint.error)),
+        });
+        return bad('Publishing still fails for this request — you can withdraw it and resubmit');
+      }
+      return Response.json({ ok: true, status: 'archived', verification_id: mint.verificationId }, { headers: CORS });
     }
 
     // ═════════════════════ REVIEWER ACTIONS ═════════════════════
@@ -722,14 +762,25 @@ async function normalizeForm(svc, actor, form) {
 // ── External verifier: public, token-authenticated ──
 async function handleExternal(svc, body, req) {
   const token = body.token;
-  if (!token) return bad('This verification link is invalid');
+  if (!token) {
+    return Response.json({ ok: false, code: 'invalid', error: 'This link is invalid — check you opened the exact link from the email.' }, { headers: CORS });
+  }
   const rows = await svc.entities.AchievementRequest.filter({ external_token: token });
   const request = rows?.[0] || null;
-  if (!request || request.status !== 'awaiting_external_verification') {
-    return bad('This verification link is invalid or has already been used');
+  // Distinct outcomes for distinct situations — a coach or examiner seeing
+  // BlockWard for the first time must never get a generic "invalid link" for
+  // a link that actually expired, was used, or the student withdrew.
+  if (!request) {
+    return Response.json({ ok: false, code: 'invalid', error: 'This link is invalid — check you opened the exact link from the email.' }, { headers: CORS });
+  }
+  if (request.status === 'withdrawn') {
+    return Response.json({ ok: false, code: 'withdrawn', error: 'The student withdrew this request before you reviewed it. No action is needed.' }, { headers: CORS });
+  }
+  if (request.status !== 'awaiting_external_verification') {
+    return Response.json({ ok: false, code: 'used', error: 'This verification has already been completed or is no longer awaiting your confirmation.' }, { headers: CORS });
   }
   if (request.external_token_expires_at && new Date(request.external_token_expires_at) < new Date()) {
-    return Response.json({ ok: false, error: 'This verification link has expired. Ask the organisation to resend it.', expired: true }, { headers: CORS });
+    return Response.json({ ok: false, code: 'expired', error: 'This verification link has expired. Ask the student to send a fresh verification request.' }, { headers: CORS });
   }
 
   if (body.action === 'external_get') {
@@ -896,13 +947,43 @@ async function handleExternal(svc, body, req) {
     })(),
   });
 
-  const fresh = (await svc.entities.AchievementRequest.filter({ id: request.id }))[0];
-  const mint = await mintRequestCredential(svc, fresh);
+  // Publishing must never surface a raw database error to the verifier.
+  // The real error is logged server-side, the student is notified with a
+  // recovery path, and the verifier sees one calm sentence.
+  let fresh: any = null;
+  let mint: any = null;
+  try {
+    fresh = (await svc.entities.AchievementRequest.filter({ id: request.id }))[0];
+    mint = await mintRequestCredential(svc, fresh);
+  } catch (e: any) {
+    console.error(`[mint] request ${request.id} threw`, e?.message || e);
+    mint = { ok: false, error: 'publishing failed' };
+  }
   if (!mint.ok) {
+    console.error(`[mint] request ${request.id} failed`, mint.error);
+    const freshLog = fresh?.event_log || request.event_log || [];
     await svc.entities.AchievementRequest.update(request.id, {
-      event_log: appendEvent(fresh.event_log, logEvent('mint_failed', email, name, 'external_verifier', mint.error)),
+      event_log: appendEvent(freshLog, logEvent('mint_failed', email, name, 'external_verifier', mint.error)),
     });
-    return Response.json({ ok: false, error: 'Your confirmation was recorded, but publishing failed. The organisation has been notified.' }, { status: 500, headers: CORS });
+    const failHtml = requestEmailHtml(
+      'Publishing your verified achievement hit a snag',
+      [
+        `<strong>${request.title}</strong> was verified, but publishing it to your profile failed on our side.`,
+        `Open the request and press "Finish publishing" to retry. If it keeps failing, you can withdraw it and resubmit.`,
+      ],
+      `${appUrl()}/StudentBlockWards`,
+      'Open my credentials'
+    );
+    await notifyRequest(request.student_email, `Publishing "${request.title}" failed — action needed`, failHtml);
+    await notifyEvent(svc, {
+      to_email: request.student_email,
+      school_id: request.school_id,
+      event_type: 'request_signed_off',
+      title: `Publishing "${request.title}" failed`,
+      body: 'Your verifier confirmed it, but publishing failed on our side. Open the request to retry or withdraw it.',
+      related_id: request.id,
+    });
+    return Response.json({ ok: false, error: 'Something went wrong publishing this — the student has been notified. Your confirmation was recorded; nothing more is needed from you.' }, { status: 500, headers: CORS });
   }
 
   const ivName = isIndependent ? (name || request.independent_verifier?.name || 'your verifier') : null;
