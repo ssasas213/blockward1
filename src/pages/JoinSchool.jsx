@@ -142,9 +142,9 @@ export default function JoinSchool() {
                   <Building2 className="h-5 w-5 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">Setting up a new school?</p>
+                  <p className="text-sm font-medium text-foreground">Setting up a new school or organisation?</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    You'll be the administrator of your school. New schools start unverified.
+                    You'll be the administrator. New schools and organisations start unverified.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" asChild className="flex-shrink-0">

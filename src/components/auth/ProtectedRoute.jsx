@@ -31,9 +31,13 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       return;
     }
 
-    // Profile without a role yet — legacy signup: join or create a school
+    // Legacy 'pending' profiles — only genuinely pending role grants remain
+    // (a teacher/admin awaiting approval). They belong on the login holding
+    // screen, NOT JoinSchool: a teacher awaiting approval re-joining a school
+    // is not the fix for their situation, and school-less students must never
+    // be trapped here.
     if (profile.user_type === 'pending') {
-      window.location.href = createPageUrl('JoinSchool');
+      window.location.href = '/Login';
       return;
     }
 

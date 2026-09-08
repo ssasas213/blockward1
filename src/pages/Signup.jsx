@@ -62,7 +62,9 @@ async function provisionAccount(payload) {
     window.location.href = '/Login';
     return;
   }
-  window.location.href = NEXT_URL[data.next] || '/JoinSchool';
+  // Unrecognised `next` values default to the student dashboard — an unknown
+  // response must never land anyone on a join screen.
+  window.location.href = NEXT_URL[data.next] || '/StudentDashboard';
 }
 
 export default function Signup() {

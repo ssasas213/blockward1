@@ -46,7 +46,7 @@ export default function CodeJoinCard({ onJoined }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>School code</Label>
+          <Label>Join code</Label>
           <Input
             value={joinCode}
             onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
@@ -82,7 +82,7 @@ export default function CodeJoinCard({ onJoined }) {
 
         {!result?.success && !result?.pending && (
           <Button onClick={handleJoin} disabled={submitting || !joinCode.trim()} className="w-full">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Join School <ArrowRight className="h-4 w-4 ml-2" /></>}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Join <ArrowRight className="h-4 w-4 ml-2" /></>}
           </Button>
         )}
       </CardContent>

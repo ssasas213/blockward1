@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Shield, Loader2, Building2, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSchool } from '@/lib/SchoolContext';
 
 // Shown at login when a user belongs to more than one school — they pick
 // instead of the app silently defaulting. The switch is authorized and applied
@@ -15,6 +16,8 @@ const DASHBOARDS = {
 };
 
 export default function SchoolPicker() {
+  // Session identity from context — routing falls back to the profile's role.
+  const { profile } = useSchool();
   const [loading, setLoading] = useState(true);
   const [schools, setSchools] = useState([]);
   const [role, setRole] = useState(null);
@@ -29,8 +32,15 @@ export default function SchoolPicker() {
         setSchools(list);
         setRole(res.data?.role || null);
         if (list.length <= 1) {
-          // Nothing to pick — go straight to the dashboard.
-          window.location.href = DASHBOARDS[res.data?.role] || '/JoinSchool';
+          // Nothing to pick — go straight to the dashboard. A student with no
+          // organisation has an empty school list and must still reach their
+          // dashboard: route by the response role, then the profile's
+          // user_type, then default to StudentDashboard. JoinSchool is NEVER
+          // a fallback destination for anyone.
+          window.location.href =
+            DASHBOARDS[res.data?.role] ||
+            DASHBOARDS[profile?.user_type] ||
+            '/StudentDashboard';
         }
       } catch {
         setError('Could not load your schools. Please try again.');
