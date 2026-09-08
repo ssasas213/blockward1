@@ -1,26 +1,56 @@
 import { defaultAdminPermissions } from './adminPermissions.ts';
+import { sendResendEmail } from './resendEmail.ts';
 
 // ============================================================================
 // profileProvisioning — the SINGLE server-side path for creating a UserProfile
-// and for auditing every role grant. UserProfile create/update are locked to
-// the service role, so this module is the only way a profile can come into
+// and for auditing every role grant. UserProfile create is locked to the
+// service role, so this module is the only way a profile can come into
 // existence. Role and school are derived ENTIRELY server-side:
 //
-//   - No code and no invitation  → user_type 'pending', no school_id. The user
-//     lands on the "join or create a school" screen (JoinSchool).
+//   - No code and no invitation  → user_type 'pending', no school_id.
 //   - Join code                   → role read from the SchoolCode RECORD (teacher
-//     or student only — never admin). Teachers start pending_approval and are
-//     queued for admin approval. Students join immediately.
+//     or student only). Teachers start pending_approval, students join immediately.
 //   - Invitation token            → role and school read from the SchoolInvitation
-//     record. Verified unused and unexpired, and the signed-in email must match.
+//     record, verified unused/unexpired, signed-in email must match.
 //   - New school (setupSchool)    → user_type 'admin', admin_level 'super_admin',
 //     scoped to the newly created school only.
 //
-// The request body NEVER carries a role.
+// AGE HANDLING (compliance): when date_of_birth is provided, age is DERIVED
+// here — never asked or trusted from the client:
+//   - Under 13: a parent/guardian email is REQUIRED. The account is created
+//     'awaiting_guardian_consent' and stays inactive until the guardian
+//     consents via the emailed link (guardianConsentAction records the
+//     timestamped consent event).
+//   - Under 16: safe defaults — profile 'private', new credentials
+//     'link_only'. The student can change both later.
+//   - 16+: normal defaults.
+//
+// The request body NEVER carries a role, status or age.
 // ============================================================================
 
 export function normalizeEmail(e) {
   return (e || '').trim().toLowerCase();
+}
+
+function appUrl() {
+  return Deno.env.get('APP_URL') || 'https://blockward.base44.app';
+}
+
+// Derive age in whole years from a yyyy-MM-dd date of birth. Returns null when
+// the value is not a real, past date.
+export function computeAge(dob) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dob || '');
+  if (!m) return null;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  const todayUtc = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  if (d.getTime() > todayUtc) return null; // future date
+  let age = now.getFullYear() - +m[1];
+  const beforeBirthday = now.getMonth() < +m[2] - 1 ||
+    (now.getMonth() === +m[2] - 1 && now.getDate() < +m[3]);
+  if (beforeBirthday) age--;
+  return age;
 }
 
 // Join codes are shown with dashes and may be typed in any case with stray
@@ -114,14 +144,49 @@ export async function ensureTeacherMembership(svc, opts) {
   return 'pending';
 }
 
+function guardianEmailHtml(firstName, link) {
+  return `<div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;color:#0f172a">
+    <p style="font-size:20px;font-weight:700;margin:0 0 16px;">Confirm ${firstName}'s BlockWard account</p>
+    <p style="margin:0 0 12px;">${firstName} used this email address to sign up for <strong>BlockWard</strong> — a platform where students collect verified school achievements that are permanently recorded.</p>
+    <p style="margin:0 0 24px;">Because they are under 13, the account stays inactive until a parent or guardian consents. If you are ${firstName}'s parent or guardian, please confirm:</p>
+    <p style="margin:0 0 24px;">
+      <a href="${link}" style="background:#7c3aed;color:#ffffff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:600;display:inline-block;">I consent to ${firstName} using BlockWard</a>
+    </p>
+    <p style="color:#64748b;font-size:13px;margin:0 0 8px;">If you did not expect this email, you can ignore it — nothing is activated without your confirmation.</p>
+    <p style="color:#64748b;font-size:13px;margin:0;">Your consent is recorded with the date and time you confirm.</p>
+  </div>`;
+}
+
 // THE profile creation path. svc must be a service-role client.
 export async function provisionProfile(svc, user, opts) {
   const existing = await svc.entities.UserProfile.filter({ user_email: user.email });
   if (existing.length > 0) return { profile: existing[0], already_exists: true };
 
+  const now = new Date().toISOString();
   const fallbackParts = (user.full_name || user.email || 'User').trim().split(/\s+/);
   const first_name = (opts.first_name || fallbackParts[0] || 'User').trim();
   const last_name = (opts.last_name || fallbackParts.slice(1).join(' ') || '').trim();
+
+  // ── Age derivation (compliance) ──
+  let age = null;
+  if (opts.date_of_birth) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(opts.date_of_birth)) {
+      throw new Error('Please enter a valid date of birth.');
+    }
+    age = computeAge(opts.date_of_birth);
+    if (age === null || age > 120) throw new Error('Please enter a valid date of birth.');
+  }
+
+  // Under 13: guardian email REQUIRED — the account cannot activate without consent.
+  let guardianEmail = null;
+  let consentToken = null;
+  if (age !== null && age < 13) {
+    guardianEmail = normalizeEmail(opts.guardian_email);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(guardianEmail)) {
+      throw new Error("Students under 13 need a parent or guardian's email address — we'll email them a consent link to activate the account.");
+    }
+    consentToken = crypto.randomUUID().replace(/-/g, '');
+  }
 
   let grant = {
     role: 'pending',
@@ -192,10 +257,38 @@ export async function provisionProfile(svc, user, opts) {
     user_type: grant.role,
     first_name,
     last_name,
-    status: grant.status,
     total_achievement_points: 0,
     total_behaviour_points: 0,
   };
+
+  // Under-13 consent gate overrides the normal status (a pending-approval
+  // teacher becomes pending_approval again automatically when consent is
+  // recorded — guardianConsentAction resolves the follow-on status).
+  data.status = guardianEmail ? 'awaiting_guardian_consent' : grant.status;
+
+  if (opts.date_of_birth) data.date_of_birth = opts.date_of_birth;
+
+  // Under-16 safe defaults: private profile, link-only credentials.
+  if (age !== null && age < 16) {
+    data.profile_visibility = 'private';
+    data.default_credential_visibility = 'link_only';
+  }
+
+  if (guardianEmail) {
+    // The guardian email IS the parent contact field managed on the student
+    // dashboard — one field, never a separate one.
+    data.parent_email = guardianEmail;
+    data.guardian_consent = {
+      status: 'pending',
+      guardian_email: guardianEmail,
+      token: consentToken,
+      requested_at: now,
+      granted_at: null,
+      granted_via: null,
+    };
+    data.guardian_consent_token = consentToken;
+  }
+
   if (grant.school_id) {
     data.school_id = grant.school_id;
     data.active_school_id = grant.school_id;
@@ -232,14 +325,40 @@ export async function provisionProfile(svc, user, opts) {
     });
   }
 
+  // Under-13: email the guardian the consent link. Delivery is best-effort —
+  // the student can resend from the sign-in screen — but the request itself is
+  // always audited.
+  if (guardianEmail && consentToken) {
+    const link = `${appUrl()}/guardian-consent/${consentToken}`;
+    const mail = await sendResendEmail(
+      guardianEmail,
+      `Confirm ${first_name}'s BlockWard account`,
+      guardianEmailHtml(first_name, link),
+    );
+    await svc.entities.AuditLog.create({
+      record_id: profile.id,
+      school_id: grant.school_id || 'unassigned',
+      actor_email: user.email,
+      actor_name: `${first_name} ${last_name}`.trim(),
+      actor_role: 'system',
+      action: 'guardian_consent_requested',
+      old_status: null,
+      new_status: 'awaiting_guardian_consent',
+      notes: `Consent link emailed to ${guardianEmail} for under-13 account (derived age ${age}). Delivered: ${mail.delivered}${mail.error ? ' — ' + mail.error : ''}`,
+      timestamp: now,
+    });
+  }
+
   return {
     profile,
     already_exists: false,
     role: grant.role,
-    status: grant.status,
+    status: data.status,
     school_id: grant.school_id,
     school_name: grant.school ? grant.school.name : null,
     mechanism: grant.mechanism,
     teacher_membership,
+    age,
+    guardian_consent_pending: !!(guardianEmail && consentToken),
   };
 }
