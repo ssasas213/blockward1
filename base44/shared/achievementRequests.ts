@@ -73,7 +73,12 @@ export function buildSignerChain(request: any): any[] {
   };
   s(request.verifier_signoff, 'Nominated verifier');
   s(request.admin_signoff, 'Organisation admin');
-  s(request.external_signoff, 'External verifier');
+  // For independently verified credentials the signer's real role is shown
+  // (e.g. "Coach") so the verification chain reads as a personal attestation,
+  // not an institutional one.
+  s(request.external_signoff, request.verification_mode === 'independent'
+    ? (request.external_signoff?.role || 'Independent verifier')
+    : 'External verifier');
   return chain;
 }
 

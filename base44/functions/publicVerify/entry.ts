@@ -115,6 +115,8 @@ Deno.serve(async (req) => {
           certificate_url: reg.certificate_url,
           public_verification_url: reg.public_verification_url,
           student_requested: reg.student_requested === true,
+          verification_mode: reg.verification_mode || 'organisation',
+          independent_verifier: reg.independent_verifier || null,
           signer_chain: (reg.signer_chain || []).map((s) => ({
             role: s.role,
             name: s.name,

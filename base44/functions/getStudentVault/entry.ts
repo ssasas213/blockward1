@@ -210,6 +210,8 @@ Deno.serve(async (req) => {
         nft_transaction_hash: bw?.transaction_hash || rec.nft_transaction_hash || null,
         teacher_name: rec.teacher_name,
         admin_name: rec.admin_name,
+        verification_mode: rec.verification_mode || 'organisation',
+        independent_verifier: rec.independent_verifier || null,
         teacher_signed: rec.teacher_signed,
         admin_signed: rec.admin_signed,
         teacher_signature_id: rec.teacher_signature_id || null,

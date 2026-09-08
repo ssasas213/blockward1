@@ -9,7 +9,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, Shield, ShieldCheck, FileText, LinkIcon, Clock, XCircle } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Shield, ShieldCheck, FileText, LinkIcon, Clock, XCircle, X, Flag } from 'lucide-react';
+import { INDEPENDENT_ROLE_OPTIONS } from '@/lib/achievementRequests';
 import { METHOD_OPTIONS, ATTESTATION_TEXT, CATEGORY_LABELS } from '@/lib/achievementRequests';
 
 // Public, token-authenticated page where a Tier 3 external verifier
@@ -23,13 +25,30 @@ export default function ExternalVerify() {
   const [busy, setBusy] = useState(false);
 
   const [form, setForm] = useState({ name: '', role: '', organisation: '', email: '', method: '', methodNote: '', attestation: false, signature: '' });
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [outcome, setOutcome] = useState(null); // 'declined' | 'reported'
+  const [actionError, setActionError] = useState('');
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   useEffect(() => {
     base44.functions.invoke('achievementRequestAction', { action: 'external_get', token })
       .then((res) => {
-        if (res.data?.ok) { setRequest(res.data.request); setState('form'); }
-        else { setError(res.data?.error || 'This verification link is invalid.'); setState('error'); }
+        if (res.data?.ok) {
+          const r = res.data.request;
+          setRequest(r);
+          setState('form');
+          // Independent verifiers were named by the student — pre-fill the
+          // details they gave so the verifier only confirms them.
+          if (r.verifier) {
+            setForm((f) => ({
+              ...f,
+              name: f.name || r.verifier.name || '',
+              role: f.role || r.verifier.role || '',
+              organisation: f.organisation || r.verifier.organisation_label || '',
+            }));
+          }
+        } else { setError(res.data?.error || 'This verification link is invalid.'); setState('error'); }
       })
       .catch(() => { setError('This verification link is invalid.'); setState('error'); });
   }, [token]);
@@ -52,6 +71,32 @@ export default function ExternalVerify() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const decline = async () => {
+    setBusy(true); setActionError('');
+    try {
+      const res = await base44.functions.invoke('achievementRequestAction', {
+        action: 'external_decline', token, name: form.name.trim(),
+      });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not decline');
+      setOutcome('declined');
+    } catch (e) {
+      setActionError(e?.response?.data?.error || e.message || 'Could not decline — try again');
+    } finally { setBusy(false); }
+  };
+
+  const reportFalse = async () => {
+    setBusy(true); setActionError('');
+    try {
+      const res = await base44.functions.invoke('achievementRequestAction', {
+        action: 'external_report_false', token, name: form.name.trim(), reason: reportReason.trim(),
+      });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not send the report');
+      setOutcome('reported');
+    } catch (e) {
+      setActionError(e?.response?.data?.error || e.message || 'Could not send the report — try again');
+    } finally { setBusy(false); }
   };
 
   const canSubmit = form.name.trim() && form.role.trim() && form.organisation.trim() &&
@@ -100,7 +145,32 @@ export default function ExternalVerify() {
           </Card>
         )}
 
-        {state === 'form' && request && (
+        {state === 'form' && outcome === 'declined' && (
+          <Card className="border-border bg-card/60 backdrop-blur-md">
+            <CardContent className="p-8 text-center">
+              <XCircle className="h-10 w-10 text-warning mx-auto mb-4" />
+              <h2 className="text-lg font-bold text-foreground">Declined</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                The student has been told and can nominate a different verifier.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {state === 'form' && outcome === 'reported' && (
+          <Card className="border-border bg-card/60 backdrop-blur-md">
+            <CardContent className="p-8 text-center">
+              <Flag className="h-10 w-10 text-destructive mx-auto mb-4" />
+              <h2 className="text-lg font-bold text-foreground">Reported as false</h2>
+              <p className="text-sm text-muted-foreground mt-2">
+                Thank you. The request has been withdrawn and the claim will not appear on any profile.
+                The student has been notified.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {state === 'form' && !outcome && request && (
           <>
             {/* Request summary */}
             <Card className="border-border bg-card/60 backdrop-blur-md mb-4">
@@ -125,11 +195,22 @@ export default function ExternalVerify() {
                     ))}
                   </div>
                 )}
-                <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  Internally verified by {request.nominated_verifier_name}. This one-time link expires{' '}
-                  {new Date(request.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.
-                </p>
+                {request.verification_mode === 'independent' ? (
+                  <p className="text-xs text-muted-foreground mt-4 flex items-start gap-1.5">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {request.student_name} nominated you{request.relationship ? ` — "${request.relationship}"` : ''}.
+                      You'll confirm this by email — no account needed. This one-time link expires{' '}
+                      {new Date(request.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    Internally verified by {request.nominated_verifier_name}. This one-time link expires{' '}
+                    {new Date(request.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -144,7 +225,18 @@ export default function ExternalVerify() {
                   </div>
                   <div className="space-y-1.5">
                     <Label>Role</Label>
-                    <Input value={form.role} onChange={(e) => set('role', e.target.value)} placeholder="e.g. Head referee" />
+                    {request.verification_mode === 'independent' ? (
+                      <Select value={form.role} onValueChange={(v) => set('role', v)}>
+                        <SelectTrigger><SelectValue placeholder="Confirm your role" /></SelectTrigger>
+                        <SelectContent>
+                          {INDEPENDENT_ROLE_OPTIONS.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input value={form.role} onChange={(e) => set('role', e.target.value)} placeholder="e.g. Head referee" />
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Organisation</Label>
@@ -188,6 +280,38 @@ export default function ExternalVerify() {
                   {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
                   Confirm & verify this achievement
                 </Button>
+
+                {/* Decline / report — the verifier is never forced to confirm */}
+                <div className="pt-4 mt-2 border-t border-border space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Can't confirm this? You can decline — or, if the claim is false, report it.
+                  </p>
+                  {!reportOpen && (
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button variant="outline" className="flex-1" disabled={busy} onClick={decline}>
+                        <X className="h-4 w-4 mr-1.5" /> I can't verify this
+                      </Button>
+                      <Button variant="ghost" className="flex-1 text-destructive hover:bg-destructive/10" disabled={busy} onClick={() => setReportOpen(true)}>
+                        <Flag className="h-4 w-4 mr-1.5" /> Report as false
+                      </Button>
+                    </div>
+                  )}
+                  {reportOpen && (
+                    <div className="space-y-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                      <Label className="text-foreground">Why is this claim false?</Label>
+                      <Textarea value={reportReason} onChange={(e) => setReportReason(e.target.value)} rows={2}
+                        placeholder="What's inaccurate? The student is told, and it stays private." />
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="destructive" size="sm" disabled={!reportReason.trim() || busy} onClick={reportFalse}>
+                          {busy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Flag className="h-4 w-4 mr-1.5" />}
+                          Report as false
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setReportOpen(false)}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
+                  {actionError && <p className="text-xs text-destructive">{actionError}</p>}
+                </div>
               </CardContent>
             </Card>
           </>

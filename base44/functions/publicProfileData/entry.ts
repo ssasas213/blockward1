@@ -152,6 +152,8 @@ export default async function (req: Request): Promise<Response> {
       date_delivered: r.date_delivered || null,
       teacher_name: r.teacher_name || null,
       admin_name: r.admin_name || null,
+      verification_mode: r.verification_mode || 'organisation',
+      independent_verifier: r.independent_verifier || null,
       organisation_name: r.organisation_name || school?.name || null,
       organisation_logo: orgLogos[r.school_id] || school?.logo_url || null,
       nft_status: r.nft_status,

@@ -8,7 +8,7 @@ export const STATUS_LABELS = {
   changes_requested: 'Needs changes',
   verifier_signed: 'Waiting on approval',
   awaiting_second_approval: 'Waiting on approval',
-  awaiting_external_verification: 'Waiting on approval',
+  awaiting_external_verification: 'Waiting on your verifier',
   approved: 'Verified',
   minted: 'Verified',
   archived: 'Verified',
@@ -30,6 +30,21 @@ export const STATUS_BADGE_VARIANTS = {
   rejected: 'destructive',
   expired: 'secondary',
 };
+
+// Roles an independent verifier can hold — the fixed whitelist the backend
+// enforces on submit.
+export const INDEPENDENT_ROLE_OPTIONS = [
+  { value: 'coach', label: 'Coach' },
+  { value: 'teacher', label: 'Teacher' },
+  { value: 'instructor', label: 'Instructor' },
+  { value: 'examiner', label: 'Examiner' },
+  { value: 'referee', label: 'Referee' },
+  { value: 'club_official', label: 'Club official' },
+  { value: 'event_organiser', label: 'Event organiser' },
+  { value: 'employer', label: 'Employer' },
+  { value: 'mentor', label: 'Mentor' },
+  { value: 'other', label: 'Other' },
+];
 
 export const TIER_LABELS = {
   1: 'Tier 1 — verifier sign-off',

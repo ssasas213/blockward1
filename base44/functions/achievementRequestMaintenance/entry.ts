@@ -32,6 +32,55 @@ Deno.serve(async (req) => {
     let reminded = 0;
 
     for (const request of pending) {
+      // Independent verification — a personal email, not an institutional
+      // queue: the one-time link expires after 14 days with two reminders
+      // (day 3 and day 7). Runs before the generic 30-day organisation logic.
+      if (request.verification_mode === 'independent' && request.status === 'awaiting_external_verification') {
+        const ivAnchor = request.last_reviewer_action_at || request.submitted_at;
+        if (ivAnchor) {
+          const ivIdle = (now - new Date(ivAnchor).getTime()) / DAY_MS;
+          const expiresAt = request.external_token_expires_at ? new Date(request.external_token_expires_at).getTime() : null;
+          if (expiresAt && now >= expiresAt) {
+            await svc.entities.AchievementRequest.update(request.id, {
+              status: 'expired',
+              event_log: appendEvent(request.event_log, logEvent('expired', 'system', 'BlockWard', 'system', 'Independent verification link expired after 14 days')),
+            });
+            expired++;
+            const html = requestEmailHtml(
+              'Your verification request expired',
+              [
+                `The person you nominated to verify <strong>${request.title}</strong> didn't respond within 14 days.`,
+                `You can submit it again — or nominate a different verifier.`,
+              ],
+              `${appUrl()}/AchievementRequests`,
+              'View my requests'
+            );
+            await notifyRequest(request.student_email, `Your verification request for "${request.title}" expired`, html);
+            continue;
+          }
+          const second = ivIdle >= 7 && !request.reminder_2_at;
+          if ((ivIdle >= 7 && !request.reminder_2_at) || (ivIdle >= 3 && !request.reminder_1_at)) {
+            if (request.external_verifier_email && request.external_token) {
+              const html = requestEmailHtml(
+                `Reminder: verification request from ${request.student_name || 'a student'}`,
+                [
+                  `<strong>${request.student_name || 'A student'}</strong> is waiting for you to verify: <strong>${request.title}</strong>.`,
+                  `The one-time link expires ${request.external_token_expires_at ? `on ${new Date(request.external_token_expires_at).toUTCString()}` : 'soon'}.`,
+                ],
+                `${appUrl()}/external-verify/${request.external_token}`,
+                'Verify this achievement'
+              );
+              await notifyRequest(request.external_verifier_email, `Reminder: verify "${request.title}"`, html);
+              await svc.entities.AchievementRequest.update(request.id, second
+                ? { reminder_2_at: new Date().toISOString() }
+                : { reminder_1_at: new Date().toISOString() });
+              reminded++;
+            }
+          }
+        }
+        continue;
+      }
+
       const anchor = request.last_reviewer_action_at || request.resubmitted_at || request.submitted_at;
       if (!anchor) continue;
       const idleDays = (now - new Date(anchor).getTime()) / DAY_MS;

@@ -9,6 +9,16 @@ import { ensureTeamCredential, generateTeamSlug } from './teamCredentials.ts';
 export async function mintRequestCredential(svc: any, request: any) {
   const now = new Date().toISOString();
 
+  // Independent credentials carry their own identity: the verifier's
+  // free-text organisation label as the display "organisation" and the
+  // verifier as the named verifier — never a BlockWard organisation.
+  const isIndependent = request.verification_mode === 'independent';
+  const ivSnapshot = isIndependent ? {
+    name: request.external_signoff?.name || request.independent_verifier?.name || null,
+    role: request.external_signoff?.role || request.independent_verifier?.role || null,
+    organisation_label: request.external_signoff?.organisation || request.independent_verifier?.organisation_label || null,
+  } : null;
+
   // Canonical terminal state is 'archived' ('minted' is the deprecated legacy
   // name kept only so pre-migration rows still match).
   if (request.status === 'minted' || request.status === 'archived') {
@@ -66,6 +76,8 @@ export async function mintRequestCredential(svc: any, request: any) {
   if (!record) {
     record = await svc.entities.StudentRecord.create({
       school_id: request.school_id,
+      verification_mode: request.verification_mode || 'organisation',
+      independent_verifier: ivSnapshot,
       student_id: studentId,
       student_email: request.student_email,
       student_name: request.student_name || null,
@@ -142,6 +154,8 @@ export async function mintRequestCredential(svc: any, request: any) {
     await svc.entities.BlockWardVerificationRegistry.update(existingRegs[0].id, {
       blockward_id: blockWard.id,
       student_requested: true,
+      verification_mode: request.verification_mode || 'organisation',
+      independent_verifier: ivSnapshot,
       signer_chain: buildSignerChain(request),
       approval_status: 'approved',
       vault_status: 'delivered',
@@ -169,9 +183,13 @@ export async function mintRequestCredential(svc: any, request: any) {
       blockward_id: blockWard.id,
       student_record_id: record.id,
       organisation_id: request.school_id,
-      organisation_type: school?.org_type || 'school',
-      organisation_name: school?.name || request.school_name || null,
+      organisation_type: isIndependent ? 'other' : (school?.org_type || 'school'),
+      organisation_name: isIndependent
+        ? (ivSnapshot?.organisation_label || 'Independent verification')
+        : (school?.name || request.school_name || null),
       school_id: request.school_id,
+      verification_mode: request.verification_mode || 'organisation',
+      independent_verifier: ivSnapshot,
       student_id: studentId,
       student_name: request.student_name || null,
       student_email: request.student_email,
@@ -183,8 +201,8 @@ export async function mintRequestCredential(svc: any, request: any) {
       date_achieved: request.date_achieved || null,
       date_approved: request.approved_at || now,
       date_delivered: now,
-      teacher_id: request.nominated_verifier_id || null,
-      teacher_name: request.nominated_verifier_name || null,
+      teacher_id: isIndependent ? null : (request.nominated_verifier_id || null),
+      teacher_name: isIndependent ? ivSnapshot?.name : (request.nominated_verifier_name || null),
       admin_id: request.admin_signoff?.signer_id || null,
       admin_name: request.admin_signoff?.signer_name || null,
       student_requested: true,

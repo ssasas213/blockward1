@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight } from 'lucide-react';
+import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight, UserCheck } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import GeneratedCover from '@/components/publicProfile/GeneratedCover';
 
@@ -34,6 +34,14 @@ export const STATUS_BADGE = {
     card: 'border-transparent bg-success text-success-foreground',
     row: 'border-success/30 bg-success/10 text-success',
   },
+  // Independently verified — deliberately different colour AND icon from the
+  // green organisation-verified badge, so the two tiers can never be
+  // confused at a glance.
+  independent: {
+    label: 'Verified', Icon: UserCheck,
+    card: 'border-transparent bg-info text-info-foreground',
+    row: 'border-info/30 bg-info/10 text-info',
+  },
   pending: {
     label: 'Pending', Icon: Clock,
     card: 'border-transparent bg-warning text-warning-foreground',
@@ -65,7 +73,7 @@ const SELF_CATEGORY = {
 export function cardFromVault(v) {
   return {
     id: v.record_id || v.id,
-    status: 'verified',
+    status: v.verification_mode === 'independent' ? 'independent' : 'verified',
     title: v.title,
     cover: v.image_url || null,
     category: v.category || 'special',
@@ -81,7 +89,7 @@ export function cardFromVault(v) {
 export function cardFromRegistry(r) {
   return {
     id: r.registry_id || r.id,
-    status: 'verified',
+    status: r.verification_mode === 'independent' ? 'independent' : 'verified',
     title: r.title,
     cover: r.image_url || null,
     category: r.category || 'special',
