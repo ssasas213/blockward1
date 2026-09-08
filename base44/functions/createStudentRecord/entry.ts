@@ -92,6 +92,11 @@ export default async function(req: Request): Promise<Response> {
       record.is_custom_award = false;
     }
 
+    // Teacher-attached cover photo (team photos, prize-giving shots, match
+    // photos) — applies to template awards too, not just custom awards. This
+    // is the image shown on the student's public profile once delivered.
+    if (body.custom_nft_image_url) record.custom_nft_image_url = body.custom_nft_image_url;
+
     const created = await base44.asServiceRole.entities.StudentRecord.create(record);
     return Response.json({ ok: true, record: created });
   } catch (error) {

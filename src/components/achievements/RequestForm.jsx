@@ -14,11 +14,13 @@ import { Loader2, Upload, LinkIcon, X, Shield, FileText, Users } from 'lucide-re
 import { Switch } from '@/components/ui/switch';
 import TeamParticipantsEditor from '@/components/achievements/TeamParticipantsEditor';
 import { base44 } from '@/api/base44Client';
+import CoverImagePicker from '@/components/achievements/CoverImagePicker';
+import { validateEvidenceFile, processEvidenceImage } from '@/lib/achievementImages';
 import { CATEGORY_LABELS, TIER_LABELS } from '@/lib/achievementRequests';
 
 const EMPTY = {
   orgId: '', credentialTypeId: '', customLabel: '', category: '', tier: '',
-  title: '', description: '', date: '', verifierEmail: '', externalEmail: '',
+  title: '', description: '', imageUrl: '', date: '', verifierEmail: '', externalEmail: '',
   evidence: [], linkUrl: '', linkName: '',
   isTeam: false, myRole: '', participants: [],
 };
@@ -43,6 +45,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
         tier: initial.verification_tier ? String(initial.verification_tier) : '',
         title: initial.title || '',
         description: initial.description || '',
+        imageUrl: initial.image_url || '',
         date: initial.date_achieved || '',
         verifierEmail: initial.nominated_verifier_email || '',
         externalEmail: initial.external_verifier_email || '',
@@ -77,14 +80,20 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
 
   const uploadFiles = async (files) => {
     if (!files?.length) return;
+    const room = 5 - form.evidence.length;
+    if (room <= 0) { toast.error('You can attach up to 5 pieces of evidence'); return; }
     setUploading(true);
     try {
       const added = [];
-      for (const file of Array.from(files).slice(0, 5)) {
-        const res = await base44.integrations.Core.UploadFile({ file });
+      for (const file of Array.from(files).slice(0, room)) {
+        const err = validateEvidenceFile(file);
+        if (err) { toast.error(`${file.name}: ${err}`); continue; }
+        // Images are compressed client-side; PDFs pass through untouched.
+        const processed = await processEvidenceImage(file);
+        const res = await base44.integrations.Core.UploadFile({ file: processed });
         if (res?.file_url) added.push({ type: 'file', url: res.file_url, name: file.name });
       }
-      set('evidence', [...form.evidence, ...added]);
+      if (added.length) set('evidence', [...form.evidence, ...added]);
     } catch (e) {
       toast.error('Upload failed — try again');
     } finally {
@@ -100,6 +109,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
     verification_tier: effectiveTier,
     title: form.title,
     description: form.description,
+    image_url: form.imageUrl || null,
     date_achieved: form.date,
     evidence: form.evidence,
     nominated_verifier_email: form.verifierEmail,
@@ -275,9 +285,24 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
             </div>
           )}
 
+          {/* Cover image — public, decorative */}
+          <div className="space-y-2 sm:col-span-2 rounded-lg border border-border bg-secondary/30 p-3">
+            <div>
+              <Label className="text-foreground">Cover photo (public)</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Shown on your public profile — team photos, prize-giving shots, match photos.
+                Without one, we generate a branded cover automatically.
+              </p>
+            </div>
+            <CoverImagePicker imageUrl={form.imageUrl} onChange={(v) => set('imageUrl', v)} />
+          </div>
+
           {/* Evidence */}
           <div className="space-y-2 sm:col-span-2">
             <Label>Evidence</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Photos, certificate scans or PDFs for your verifiers — kept separate from your public cover photo.
+            </p>
             {form.evidence.length > 0 && (
               <div className="space-y-1.5">
                 {form.evidence.map((e, i) => (
@@ -293,7 +318,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
             )}
             <div className="flex flex-wrap items-center gap-2">
               <label className="cursor-pointer">
-                <input type="file" multiple className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
                 <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-hover transition-colors">
                   {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload file
                 </span>

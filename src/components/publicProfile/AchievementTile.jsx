@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
+import GeneratedCover from '@/components/publicProfile/GeneratedCover';
 
 export const CATEGORY_STYLE = {
   academic: { Icon: Medal, grad: 'linear-gradient(135deg, #8B5CF6, #6366F1)' },
@@ -36,9 +37,15 @@ export default function AchievementTile({ achievement, onClick }) {
         {achievement.image_url ? (
           <img src={achievement.image_url} alt={achievement.title} className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center" style={{ background: cat.grad }}>
-            <cat.Icon className="h-14 w-14 text-white/80" />
-          </div>
+          // No uploaded photo — deterministic branded cover built from the
+          // category, issuing organisation and title. Same achievement always
+          // renders the same cover.
+          <GeneratedCover
+            title={achievement.title}
+            category={achievement.category}
+            orgName={achievement.organisation_name}
+            orgLogo={achievement.organisation_logo}
+          />
         )}
         <span className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm border border-success/40">
           <BadgeCheck className="h-4 w-4 text-success" />

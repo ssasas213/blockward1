@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { BadgeCheck } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import { CATEGORY_STYLE, fmtDate } from '@/components/publicProfile/AchievementTile';
+import GeneratedCover from '@/components/publicProfile/GeneratedCover';
 
 // Compact row — the 'list' layout, best for a long verified record.
 export default function AchievementListRow({ achievement, onClick }) {
@@ -19,9 +20,14 @@ export default function AchievementListRow({ achievement, onClick }) {
         {achievement.image_url ? (
           <img src={achievement.image_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center" style={{ background: cat.grad }}>
-            <cat.Icon className="h-6 w-6 text-white/80" />
-          </div>
+          // No uploaded photo — deterministic branded cover, compact variant.
+          <GeneratedCover
+            compact
+            title={achievement.title}
+            category={achievement.category}
+            orgName={achievement.organisation_name}
+            orgLogo={achievement.organisation_logo}
+          />
         )}
       </div>
 

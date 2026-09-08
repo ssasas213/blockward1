@@ -13,11 +13,12 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import RequestForm from '@/components/achievements/RequestForm';
+import CoverImagePicker from '@/components/achievements/CoverImagePicker';
 import { domainLabel, DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 import { toast } from 'sonner';
 import { Plus, Loader2, ShieldQuestion, Clock, BadgeCheck, Trash2 } from 'lucide-react';
 
-const EMPTY_ADD = { title: '', domain: '', date: '', description: '', linkUrl: '' };
+const EMPTY_ADD = { title: '', domain: '', date: '', description: '', imageUrl: '', linkUrl: '' };
 
 /**
  * SelfAchievementsCard — the instant, self-reported achievements section.
@@ -82,6 +83,7 @@ export default function SelfAchievementsCard({ profile, userEmail }) {
         student_name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || userEmail,
         title: addForm.title.trim(),
         description: addForm.description.trim() || null,
+        image_url: addForm.imageUrl || null,
         domain: addForm.domain || 'other',
         date_achieved: addForm.date || null,
         evidence: addForm.linkUrl.trim() ? [{ type: 'link', url: addForm.linkUrl.trim(), name: addForm.linkUrl.trim() }] : [],
@@ -113,6 +115,7 @@ export default function SelfAchievementsCard({ profile, userEmail }) {
           school_id: res.data.orgs[0].id,
           title: item.title,
           description: item.description || '',
+          image_url: item.image_url || '',
           date_achieved: item.date_achieved || '',
           evidence: item.evidence || [],
         },
@@ -265,6 +268,13 @@ export default function SelfAchievementsCard({ profile, userEmail }) {
                 onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Where, who awarded it, anything that helps a verifier later"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-foreground">Cover photo (public)</Label>
+              <p className="text-xs text-muted-foreground -mt-0.5">
+                Optional — shown on your public profile. Without one we generate a branded cover automatically.
+              </p>
+              <CoverImagePicker imageUrl={addForm.imageUrl} onChange={(v) => setAddForm((f) => ({ ...f, imageUrl: v }))} />
             </div>
             <div className="space-y-1.5">
               <Label>Evidence link (optional)</Label>

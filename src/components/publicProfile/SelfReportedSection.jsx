@@ -33,8 +33,13 @@ export default function SelfReportedSection({ items }) {
         {items.map((s) => (
           <div
             key={s.id}
-            className="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-4"
+            className="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-4 overflow-hidden"
           >
+            {s.image_url && (
+              <div className="aspect-[4/3] rounded-lg overflow-hidden border border-warning/20 mb-3">
+                <img src={s.image_url} alt={s.title} className="h-full w-full object-cover" />
+              </div>
+            )}
             <div className="flex items-start justify-between gap-2">
               <h3 className="text-sm font-semibold text-foreground leading-snug">{s.title}</h3>
               {s.status === 'verification_requested' ? (

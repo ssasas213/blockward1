@@ -202,6 +202,7 @@ export default async function (req: Request): Promise<Response> {
         id: s.id,
         title: s.title,
         description: s.description || null,
+        image_url: s.image_url || null,
         domain: s.domain || 'other',
         date_achieved: s.date_achieved || null,
         evidence: s.evidence || [],

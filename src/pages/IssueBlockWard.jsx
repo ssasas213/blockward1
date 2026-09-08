@@ -17,6 +17,7 @@ import BlockWardPreviewCard from '@/components/blockwards/BlockWardPreviewCard';
 import SignatureStep from '@/components/blockwards/SignatureStep';
 import CustomAwardForm from '@/components/blockwards/CustomAwardForm';
 import EvidenceUpload from '@/components/blockwards/EvidenceUpload';
+import CoverImagePicker from '@/components/achievements/CoverImagePicker';
 import { useEffectiveRole } from '@/lib/useEffectiveRole';
 
 // ─── Stepper ──────────────────────────────────────────────────────────────────
@@ -170,6 +171,7 @@ function IssueBlockWardContent() {
   const [dateAchieved, setDateAchieved] = useState('');
   const [evidenceUrl, setEvidenceUrl] = useState('');
   const [evidenceType, setEvidenceType] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
   const [certificateUrl, setCertificateUrl] = useState('');
   const [certificateType, setCertificateType] = useState('');
   const [teacherNotes, setTeacherNotes] = useState('');
@@ -325,6 +327,8 @@ function IssueBlockWardContent() {
         date_achieved: dateAchieved || null,
         file_url: evidenceUrl,
         file_type: evidenceType,
+        // Teacher-attached cover photo — carried to the public profile on delivery.
+        custom_nft_image_url: coverImageUrl || null,
         certificate_url: certificateUrl || null,
         teacher_notes: teacherNotes || null,
         teacher_signature_url: signatureUrl,
@@ -337,7 +341,7 @@ function IssueBlockWardContent() {
         recordData.custom_award_icon = customAwardData.icon;
         recordData.custom_award_color = customAwardData.color;
         recordData.points = customAwardData.points || 0;
-        recordData.custom_nft_image_url = customAwardData.nftImageUrl || null;
+        recordData.custom_nft_image_url = coverImageUrl || customAwardData.nftImageUrl || null;
       } else {
         recordData.award_type_id = selectedAward?.id || null;
         recordData.award_type_title = selectedAward?.title || null;
@@ -393,6 +397,7 @@ function IssueBlockWardContent() {
     setDateAchieved('');
     setEvidenceUrl('');
     setEvidenceType('');
+    setCoverImageUrl('');
     setCertificateUrl('');
     setCertificateType('');
     setTeacherNotes('');
@@ -590,6 +595,15 @@ function IssueBlockWardContent() {
                     onClear={() => { setEvidenceUrl(''); setEvidenceType(''); }}
                     required
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Cover Photo (Optional)</label>
+                  <p className="text-xs text-slate-500 -mt-1">
+                    Team photos, prize-giving shots, match photos — shown on the student's public profile.
+                    Without one, a branded cover is generated automatically.
+                  </p>
+                  <CoverImagePicker imageUrl={coverImageUrl} onChange={setCoverImageUrl} />
                 </div>
 
                 <div className="space-y-2">
