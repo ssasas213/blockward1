@@ -14,6 +14,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 // Explicit imports for pages that must always be routable (not relying on pagesConfig loop)
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import SchoolPicker from './pages/SchoolPicker';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
@@ -114,6 +115,7 @@ const AuthenticatedApp = () => {
       {/* Explicit routes for critical pages — guaranteed to resolve regardless of pagesConfig loop */}
       <Route path="/Login" element={<Login />} />
       <Route path="/Signup" element={<Signup />} />
+      <Route path="/SchoolPicker" element={<ProtectedRoute><SchoolPicker /></ProtectedRoute>} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><ProtectedRoute><RecordDetail /></ProtectedRoute></LayoutWrapper>} />
@@ -131,8 +133,7 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolSetup" element={<SchoolSetup />} />
       <Route path="/JoinClass" element={<JoinClass />} />
       <Route path="/JoinSchool" element={<JoinSchool />} />
-      <Route path="/StudentOnboarding" element={<LayoutWrapper currentPageName="StudentOnboarding"><StudentOnboarding /></LayoutWrapper>} />
-      <Route path="/join/:code" element={<Signup />} />
+      <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
       <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentGrades" element={<LayoutWrapper currentPageName="StudentGrades"><ProtectedRoute><StudentGrades /></ProtectedRoute></LayoutWrapper>} />

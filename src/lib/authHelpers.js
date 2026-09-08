@@ -57,8 +57,8 @@ export async function handlePostLoginRedirect() {
   } catch { /* not test super user or test mode disabled — continue normal flow */ }
 
   if (profiles.length === 0) {
-    // Authenticated but no BlockWard profile — the join flow starts at Signup
-    window.location.href = '/Signup';
+    // Authenticated but no BlockWard profile — send to onboarding
+    window.location.href = '/Onboarding';
     return null;
   }
 
@@ -113,6 +113,15 @@ export async function handlePostLoginRedirect() {
     window.location.href = role === 'admin' ? '/SchoolSetup' : '/JoinSchool';
     return null;
   }
+
+  // ===== Multi-school users pick a school instead of a silent default =====
+  try {
+    const res = await base44.functions.invoke('loginSchoolOptions');
+    if ((res.data?.schools || []).length > 1) {
+      window.location.href = '/SchoolPicker';
+      return null;
+    }
+  } catch { /* ignore — fall through to dashboard routing */ }
 
   // ===== Determine platform (organisations vs schools) =====
   const roleLabel = (profile.role_label || '').toLowerCase();
