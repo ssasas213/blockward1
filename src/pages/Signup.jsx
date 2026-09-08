@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound } from 'lucide-react';
+import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -77,6 +77,19 @@ export default function Signup() {
   // here instead of hitting a dead-end error).
   const [email, setEmail] = useState(() => {
     try { return new URLSearchParams(window.location.search).get('email') || ''; } catch { return ''; }
+  });
+  // Handle claimed from a public profile (HandleClaimCta) — stashed in
+  // sessionStorage so it survives provisioning and the Google redirect, then
+  // pre-filled into the Profile page's claim card once the account exists.
+  const [claimHandle] = useState(() => {
+    try {
+      const h = new URLSearchParams(window.location.search).get('claim_handle');
+      if (h && /^[a-z0-9_]{3,20}$/.test(h)) {
+        sessionStorage.setItem('blockward_claim_handle', h);
+        return h;
+      }
+    } catch { /* ignore */ }
+    return '';
   });
   const [password, setPassword] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
@@ -279,6 +292,12 @@ export default function Signup() {
           <AnimatePresence mode="wait">
             {step === 'details' && (
               <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                {claimHandle && (
+                  <div className="flex items-center gap-2 rounded-lg border border-success/25 bg-success/5 px-3 py-2 text-sm text-success">
+                    <AtSign className="h-4 w-4 flex-shrink-0" />
+                    <span>blockward.me/@{claimHandle} will be yours — finish creating your account to claim it.</span>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>First Name</Label>

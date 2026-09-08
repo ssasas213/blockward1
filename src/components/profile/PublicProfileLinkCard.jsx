@@ -22,7 +22,11 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
   const [copied, setCopied] = useState(false);
   const [count, setCount] = useState(0);
 
-  const [handleInput, setHandleInput] = useState('');
+  // Prefilled when the visitor claimed a handle from a public profile before
+  // signing up (HandleClaimCta stashes it for exactly this moment).
+  const [handleInput, setHandleInput] = useState(() => {
+    try { return sessionStorage.getItem('blockward_claim_handle') || ''; } catch { return ''; }
+  });
   const [availability, setAvailability] = useState({ state: 'idle', reason: null });
   const [claiming, setClaiming] = useState(false);
   const timer = useRef(null);
@@ -81,6 +85,7 @@ export default function PublicProfileLinkCard({ profile, onSaved }) {
       const res = await base44.functions.invoke('updatePublicProfile', { handle: h });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Could not claim that handle');
       toast.success(`Your profile link is blockward.me/@${h}`);
+      try { sessionStorage.removeItem('blockward_claim_handle'); } catch { /* ignore */ }
       if (onSaved) onSaved();
     } catch (e) {
       toast.error(e?.response?.data?.error || e.message);
