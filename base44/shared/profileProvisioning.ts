@@ -257,6 +257,9 @@ export async function provisionProfile(svc, user, opts) {
     user_type: grant.role,
     first_name,
     last_name,
+    // Public portfolio ID exists from the moment the profile does, so shared
+    // links never contain the internal profile id.
+    portfolio_public_id: 'prt-' + Math.random().toString(36).substring(2, 10),
     total_achievement_points: 0,
     total_behaviour_points: 0,
   };

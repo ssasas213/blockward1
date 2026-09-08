@@ -30,7 +30,19 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'No permitted fields to update' }, { status: 400 });
     }
 
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    // Find the caller's profile, matching the email case-insensitively on both
+    // sides — profiles created before provisioning may store the email with
+    // different casing than the auth account, and an exact-match filter would
+    // then miss them and every save would 404.
+    const email = (user.email || '').trim().toLowerCase();
+    let profiles: any[] = await base44.asServiceRole.entities.UserProfile.filter({ user_email: user.email });
+    if (profiles.length === 0) {
+      profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: email });
+    }
+    if (profiles.length === 0) {
+      const all = await base44.asServiceRole.entities.UserProfile.list('-created_date', 1000);
+      profiles = all.filter((p) => (p.user_email || '').trim().toLowerCase() === email);
+    }
     if (profiles.length === 0) return Response.json({ error: 'Profile not found' }, { status: 404 });
 
     const updated = await base44.asServiceRole.entities.UserProfile.update(profiles[0].id, clean);

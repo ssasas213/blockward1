@@ -42,7 +42,9 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
       toast.success('Profile picture updated');
       if (onUpdated) onUpdated({ ...profile, avatar_url: file_url });
     } catch (err) {
-      toast.error(err?.message || 'Failed to upload image');
+      const detail = err?.response?.data?.error || err?.message || 'Failed to upload image';
+      const status = err?.response?.status ? ` (HTTP ${err.response.status})` : '';
+      toast.error(`${detail}${status}`);
     } finally {
       setUploading(false);
     }
@@ -57,7 +59,7 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
       toast.success('Profile picture removed');
       if (onUpdated) onUpdated({ ...profile, avatar_url: '' });
     } catch (err) {
-      toast.error('Failed to remove picture');
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to remove picture');
     } finally {
       setUploading(false);
     }
@@ -73,7 +75,7 @@ export default function ProfilePictureUploader({ profile, onUpdated }) {
       toast.success('Avatar URL saved');
       if (onUpdated) onUpdated({ ...profile, avatar_url: avatarUrlInput.trim() });
     } catch (err) {
-      toast.error('Failed to save URL');
+      toast.error(err?.response?.data?.error || err?.message || 'Failed to save URL');
     } finally {
       setUploading(false);
     }

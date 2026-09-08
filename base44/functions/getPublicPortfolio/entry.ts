@@ -42,9 +42,8 @@ Deno.serve(async (req) => {
     } catch (e) { /* ignore */ }
     if (!profile) {
       try {
-        const byId = await base44.asServiceRole.entities.UserProfile.filter({ id: student_id });
-        profile = byId[0] || null;
-      } catch (e) { /* ignore */ }
+        profile = await base44.asServiceRole.entities.UserProfile.get(student_id);
+      } catch (e) { /* not found by raw id — fall through to the 404 */ }
     }
 
     if (!profile || profile.user_type !== 'student') {
@@ -73,7 +72,7 @@ Deno.serve(async (req) => {
     // 3. Public achievements from the permanent registry
     let registryRecords = [];
     try {
-      registryRecords = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_id });
+      registryRecords = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_id: profile.id });
     } catch (e) { /* entity may be empty */ }
 
     const publicAchievements = registryRecords

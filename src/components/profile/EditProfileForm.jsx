@@ -86,7 +86,11 @@ export default function EditProfileForm({ profile, onSaved }) {
       toast.success('Profile saved successfully');
       if (onSaved) onSaved();
     } catch (e) {
-      toast.error(e.message || 'Failed to save');
+      // Show the real backend message and status — never a generic toast that
+      // hides the failure.
+      const detail = e?.response?.data?.error || e?.message || 'Failed to save';
+      const status = e?.response?.status ? ` (HTTP ${e.response.status})` : '';
+      toast.error(`${detail}${status}`);
     } finally {
       setSaving(false);
     }

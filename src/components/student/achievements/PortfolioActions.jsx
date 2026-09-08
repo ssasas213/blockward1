@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { jsPDF } from 'jspdf';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import SharePortfolioDialog from '@/components/portfolio/SharePortfolioDialog';
+import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
 import { Download, FileText, GraduationCap, Briefcase, Award, Share2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -18,6 +20,7 @@ const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, commun
  * entry point moved into the My BlockWards header.
  */
 export default function PortfolioActions({ records, profile, user }) {
+  const navigate = useNavigate();
   const [exporting, setExporting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
@@ -101,6 +104,17 @@ export default function PortfolioActions({ records, profile, user }) {
 
     const fileName = `BlockWard_${type === 'university' ? 'University' : type === 'cv' ? 'CV' : 'Portfolio'}_${studentName.replace(/\s+/g, '_')}.pdf`;
     doc.save(fileName);
+  };
+
+  // Share flows through the public /@handle page. A student without a handle
+  // is sent to the claim card at the top of their Profile page first.
+  const openShare = () => {
+    if (!profile?.handle) {
+      toast.info('Claim your profile link first — it takes seconds');
+      navigate(createPageUrl('Profile'));
+      return;
+    }
+    setShareOpen(true);
   };
 
   const handleExport = (type) => {
@@ -210,14 +224,20 @@ export default function PortfolioActions({ records, profile, user }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Button variant="outline" onClick={() => setShareOpen(true)}>
-        <Share2 className="h-4 w-4 mr-2" /> Share profile
+      <Button variant="outline" onClick={openShare}>
+        <Share2 className="h-4 w-4 mr-2" /> Share my page
       </Button>
 
-      <SharePortfolioDialog
+      <ProfileShareDialog
         open={shareOpen}
         onOpenChange={setShareOpen}
-        studentId={profile?.portfolio_public_id || profile?.id}
+        profile={{
+          name: profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '',
+          handle: profile?.handle,
+          bio: profile?.bio || null,
+          avatar_url: profile?.avatar_url || null,
+          count: records.length,
+        }}
       />
     </>
   );
