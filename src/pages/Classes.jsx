@@ -18,6 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { isSchoollessStaff, blockIfSchoolless } from "@/lib/schoolScope";
 import PageHeader from '@/components/ui/page-header';
 import EmptyState from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
@@ -54,6 +56,7 @@ function ClassesContent() {
     name: '', subject: '', description: '', room: '', grade_level: ''
   });
   const { effectiveRole, effectiveEmail } = useEffectiveRole();
+  const schoolless = isSchoollessStaff(profile);
 
   useEffect(() => {
     loadData();
@@ -121,6 +124,7 @@ function ClassesContent() {
 
   const handleCreateClass = async () => {
     if (!newClass.name || !user) return;
+    if (await blockIfSchoolless(profile, 'create classes')) return;
     setCreating(true);
     try {
       const classData = {
@@ -254,13 +258,26 @@ function ClassesContent() {
           </Dialog>
         )}
         {(effectiveRole === 'teacher' || effectiveRole === 'admin') && (
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Button onClick={() => setShowCreateDialog(true)} disabled={schoolless}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Class
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {schoolless && (
+                <TooltipContent side="bottom" className="max-w-[260px] text-center leading-relaxed">
+                  You're not linked to a school yet, so you can't create classes. Your request to join a school is waiting for an administrator.
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+        )}
+        {(effectiveRole === 'teacher' || effectiveRole === 'admin') && (
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Class
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Create New Class</DialogTitle>

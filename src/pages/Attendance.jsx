@@ -84,7 +84,15 @@ function AttendanceContent() {
       {loadingClasses ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : !selectedClass ? (
-        <EmptyState icon={ClipboardCheck} title="No classes yet" description="Create a class first to take attendance." />
+        !activeSchool?.id ? (
+          <EmptyState
+            icon={ClipboardCheck}
+            title="No school linked yet"
+            description="You're not linked to a school yet, so you can't take attendance. Your request to join a school is waiting for an administrator."
+          />
+        ) : (
+          <EmptyState icon={ClipboardCheck} title="No classes yet" description="Create a class first to take attendance." />
+        )
       ) : (
         <AttendanceRegister classId={selectedClass} date={date} />
       )}

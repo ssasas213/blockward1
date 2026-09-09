@@ -27,6 +27,7 @@ import {
 import GoogleCalendarPanel from '@/components/timetable/GoogleCalendarPanel';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
+import { blockIfSchoolless } from '@/lib/schoolScope';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const TIME_SLOTS = [
@@ -94,7 +95,8 @@ export default function Timetable() {
 
   const handleAddEntry = async () => {
     if (!newEntry.class_id || !newEntry.start_time || !newEntry.end_time) return;
-    
+    if (await blockIfSchoolless(profile, 'add timetable entries')) return;
+
     setAdding(true);
     try {
       const user = await base44.auth.me();

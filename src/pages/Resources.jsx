@@ -29,6 +29,7 @@ import {
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { blockIfSchoolless } from '@/lib/schoolScope';
 import EmptyState from '@/components/ui/empty-state';
 
 export default function Resources() {
@@ -116,6 +117,7 @@ export default function Resources() {
 
   const handleUpload = async () => {
     if (!selectedFile || !newResource.class_id || !newResource.title) return;
+    if (await blockIfSchoolless(profile, 'upload resources')) return;
 
     setUploading(true);
     try {
