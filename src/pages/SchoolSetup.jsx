@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { toLogin } from '@/lib/authRedirectGuard';
+import { toLogin, setPostAuthRedirect } from '@/lib/authRedirectGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,9 +32,13 @@ export default function SchoolSetup() {
     (async () => {
       try {
         const currentUser = await base44.auth.me();
+        if (!currentUser) throw new Error('Not authenticated');
         setUser(currentUser);
-        if (currentUser) setForm(f => ({ ...f, contact_email: currentUser.email }));
+        setForm(f => ({ ...f, contact_email: currentUser.email }));
       } catch {
+        // Not signed in — remember the intent so the user lands straight back
+        // here after signing in, instead of a dead-end redirect to /Login.
+        setPostAuthRedirect('/SchoolSetup');
         toLogin();
       } finally {
         setLoading(false);

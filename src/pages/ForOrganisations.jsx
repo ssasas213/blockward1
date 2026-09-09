@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createPageUrl } from '@/utils';
+import { setPostAuthRedirect } from '@/lib/authRedirectGuard';
 import SiteHeader from '@/components/home/SiteHeader';
 import HeroSection from '@/components/home/HeroSection';
 import TrustSection from '@/components/home/TrustSection';
@@ -55,7 +56,13 @@ export default function ForOrganisations() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Setting up BlockWard for a school, club or academy?{' '}
-              <a href={createPageUrl('SchoolSetup')} className="text-primary font-medium hover:underline">Create an organisation</a>
+              <a
+                href={createPageUrl('SchoolSetup')}
+                onClick={() => setPostAuthRedirect('/SchoolSetup')}
+                className="text-primary font-medium hover:underline"
+              >
+                Create an organisation
+              </a>
             </p>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { guardedRedirect } from '@/lib/authRedirectGuard';
+import { consumePostAuthRedirect, guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
 import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
 
 function GoogleIcon({ className }) {
@@ -57,6 +57,13 @@ async function provisionAccount(payload) {
   // consents. The sign-in screen shows the waiting card with the guardian email.
   if (data.next === 'guardian_consent') {
     guardedRedirect('/Login');
+    return;
+  }
+  // A pre-auth intent (e.g. "Create an organisation") overrides the default
+  // landing page — except for blocked states (approval/consent waiting).
+  const postAuthIntent = consumePostAuthRedirect();
+  if (postAuthIntent && data.next !== 'awaiting_approval') {
+    guardedRedirect(postAuthIntent);
     return;
   }
   // Unrecognised `next` values default to the student dashboard — an unknown
@@ -201,6 +208,14 @@ export default function Signup() {
       setError(err?.message || 'Failed to create account');
       setLoading(false);
     }
+  };
+
+  const handleCreateOrganisation = () => {
+    // Finish the account first; the stored intent lands the user on
+    // /SchoolSetup straight after provisioning instead of bouncing through
+    // the login page.
+    setPostAuthRedirect('/SchoolSetup');
+    toast.info("Finish creating your account — you'll go straight to organisation setup.");
   };
 
   const handleGoogleSignup = () => {
@@ -516,7 +531,7 @@ export default function Signup() {
           <div className="mt-4 pt-4 border-t border-border space-y-1.5 text-center">
             <p className="text-sm text-muted-foreground">
               Setting up BlockWard for a school, club or academy?{' '}
-              <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">Create an organisation</Link>
+              <button type="button" onClick={handleCreateOrganisation} className="text-primary font-medium hover:underline">Create an organisation</button>
             </p>
             <p className="text-xs text-muted-foreground">
               A teacher? Ask your administrator for a staff invite or join code.

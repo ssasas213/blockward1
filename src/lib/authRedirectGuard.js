@@ -67,6 +67,26 @@ export function toLogin() {
   return guardedRedirect('/Login');
 }
 
+// ── Post-auth intent ──────────────────────────────────────────────────
+// Lets a pre-auth page (Login, Signup, marketing CTAs) record where the
+// visitor wants to go AFTER signing in — e.g. "Create an organisation"
+// clicked while signed out. Consumed by the post-auth redirect helpers.
+const POST_AUTH_INTENT_KEY = 'blockward_post_auth_intent';
+
+export function setPostAuthRedirect(url) {
+  try { sessionStorage.setItem(POST_AUTH_INTENT_KEY, url); } catch { /* ignore */ }
+}
+
+export function consumePostAuthRedirect() {
+  try {
+    const value = sessionStorage.getItem(POST_AUTH_INTENT_KEY);
+    if (value) sessionStorage.removeItem(POST_AUTH_INTENT_KEY);
+    return value || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Sign out with an explicit destination. NEVER pass the current URL to
  * base44.auth.logout — that reload-loops any page where logout can be

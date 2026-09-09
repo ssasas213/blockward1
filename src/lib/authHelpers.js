@@ -1,5 +1,5 @@
 import { base44 } from '@/api/base44Client';
-import { guardedRedirect } from '@/lib/authRedirectGuard';
+import { consumePostAuthRedirect, guardedRedirect } from '@/lib/authRedirectGuard';
 
 const SCHOOLS_DASHBOARD_MAP = {
   admin: '/AdminDashboard',
@@ -114,6 +114,14 @@ export async function handlePostLoginRedirect() {
 
   // Pending join request — show the awaiting-approval state on the Login page
   if (pendingMembership) return 'pending';
+
+  // A pre-auth intent (e.g. "Create an organisation" clicked on the sign-in
+  // page) wins over dashboard routing — the user explicitly asked to go there.
+  const postAuthIntent = consumePostAuthRedirect();
+  if (postAuthIntent) {
+    guardedRedirect(postAuthIntent);
+    return null;
+  }
 
   // No school linked yet. Teachers and admins genuinely cannot function
   // without an organisation, so they go to setup. A school-less student is a

@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
 import { hasSignupContext } from '@/lib/signupSession';
-import { logoutToLogin } from '@/lib/authRedirectGuard';
+import { logoutToLogin, setPostAuthRedirect } from '@/lib/authRedirectGuard';
+import { toast } from 'sonner';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -54,6 +55,14 @@ export default function Login() {
       }
     })();
   }, []);
+
+  const handleCreateOrganisation = () => {
+    // Organisation setup needs a signed-in owner. Store the intent so the
+    // user lands on /SchoolSetup the moment they sign in — instead of a
+    // dead-end bounce back to this page.
+    setPostAuthRedirect('/SchoolSetup');
+    toast.info("Sign in to continue — you'll go straight to organisation setup.");
+  };
 
   const handleGoogleLogin = () => {
     try { localStorage.setItem(METHOD_KEY, 'google'); } catch { /* ignore */ }
@@ -305,7 +314,7 @@ export default function Login() {
         </p>
         <p className="text-center text-sm text-muted-foreground mt-2">
           Setting up BlockWard for a school, club or academy?{' '}
-          <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">Create an organisation</Link>
+          <button type="button" onClick={handleCreateOrganisation} className="text-primary font-medium hover:underline">Create an organisation</button>
         </p>
         <p className="text-center text-xs text-muted-foreground mt-4">
           © 2026 BlockWard · Blockchain-Secured Achievements
