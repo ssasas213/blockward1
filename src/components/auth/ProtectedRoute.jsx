@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { createPageUrl } from '@/utils';
+import { guardedRedirect } from '@/lib/authRedirectGuard';
 import { Shield } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 
@@ -19,7 +20,7 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
     // Not authenticated - redirect to login
     if (!user) {
-      window.location.href = '/Login';
+      guardedRedirect('/Login');
       return;
     }
 
@@ -27,7 +28,7 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
 
     // Authenticated but no profile - the new join flow starts at Signup
     if (!profile) {
-      window.location.href = createPageUrl('Signup');
+      guardedRedirect(createPageUrl('Signup'));
       return;
     }
 
@@ -37,19 +38,19 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     // is not the fix for their situation, and school-less students must never
     // be trapped here.
     if (profile.user_type === 'pending') {
-      window.location.href = '/Login';
+      guardedRedirect('/Login');
       return;
     }
 
     // Admin with no school linked — redirect to school setup
     if (profile.user_type === 'admin' && !profile.school_id) {
-      window.location.href = createPageUrl('SchoolSetup');
+      guardedRedirect(createPageUrl('SchoolSetup'));
       return;
     }
 
     // Teacher with no school linked — redirect to join school page
     if (profile.user_type === 'teacher' && !profile.school_id) {
-      window.location.href = createPageUrl('JoinSchool');
+      guardedRedirect(createPageUrl('JoinSchool'));
       return;
     }
 
@@ -64,7 +65,7 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
       profile.status === 'suspended' ||
       profile.status === 'inactive'
     ) {
-      window.location.href = '/Login';
+      guardedRedirect('/Login');
     }
   }, [user, profile, loading, requireProfile]);
 

@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { guardedRedirect } from '@/lib/authRedirectGuard';
 
 const SCHOOLS_DASHBOARD_MAP = {
   admin: '/AdminDashboard',
@@ -50,15 +51,16 @@ export async function handlePostLoginRedirect() {
         const tp = fresh[0];
         if (tp.status === 'inactive' || tp.status === 'suspended') return 'suspended';
         const persona = testRes.data.active_persona || 'admin';
-        window.location.href = SCHOOLS_DASHBOARD_MAP[persona] || '/AdminDashboard';
+        guardedRedirect(SCHOOLS_DASHBOARD_MAP[persona] || '/AdminDashboard');
         return null;
       }
     }
   } catch { /* not test super user or test mode disabled — continue normal flow */ }
 
   if (profiles.length === 0) {
-    // Authenticated but no BlockWard profile — send to onboarding
-    window.location.href = '/Onboarding';
+    // Authenticated but no BlockWard profile — the ONE canonical destination
+    // is /Signup (matching ProtectedRoute). Never a separate onboarding page.
+    guardedRedirect('/Signup');
     return null;
   }
 
@@ -117,9 +119,9 @@ export async function handlePostLoginRedirect() {
   // without an organisation, so they go to setup. A school-less student is a
   // complete account — straight to the dashboard.
   if (!hasSchool) {
-    if (role === 'admin') window.location.href = '/SchoolSetup';
-    else if (role === 'student') window.location.href = '/StudentDashboard';
-    else window.location.href = '/JoinSchool'; // 'pending' or teacher with no membership
+    if (role === 'admin') guardedRedirect('/SchoolSetup');
+    else if (role === 'student') guardedRedirect('/StudentDashboard');
+    else guardedRedirect('/JoinSchool'); // 'pending' or teacher with no membership
     return null;
   }
 
@@ -127,7 +129,7 @@ export async function handlePostLoginRedirect() {
   try {
     const res = await base44.functions.invoke('loginSchoolOptions');
     if ((res.data?.schools || []).length > 1) {
-      window.location.href = '/SchoolPicker';
+      guardedRedirect('/SchoolPicker');
       return null;
     }
   } catch { /* ignore — fall through to dashboard routing */ }
@@ -153,9 +155,9 @@ export async function handlePostLoginRedirect() {
   }
 
   if (platform === 'organisations') {
-    window.location.href = ORGS_DASHBOARD_MAP[role] || '/organisations/dashboard';
+    guardedRedirect(ORGS_DASHBOARD_MAP[role] || '/organisations/dashboard');
   } else {
-    window.location.href = SCHOOLS_DASHBOARD_MAP[role] || '/StudentDashboard';
+    guardedRedirect(SCHOOLS_DASHBOARD_MAP[role] || '/StudentDashboard');
   }
   return null;
 }

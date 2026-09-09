@@ -14,6 +14,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 // Explicit imports for pages that must always be routable (not relying on pagesConfig loop)
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import AuthLoopError from './pages/AuthLoopError';
 import SchoolPicker from './pages/SchoolPicker';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -117,6 +118,9 @@ const AuthenticatedApp = () => {
       {/* Explicit routes for critical pages — guaranteed to resolve regardless of pagesConfig loop */}
       <Route path="/Login" element={<Login />} />
       <Route path="/Signup" element={<Signup />} />
+      <Route path="/AuthLoopError" element={<AuthLoopError />} />
+      {/* Legacy onboarding URL — the flow now lives in /Signup */}
+      <Route path="/Onboarding" element={<Navigate to="/Signup" replace />} />
       <Route path="/SchoolPicker" element={<ProtectedRoute><SchoolPicker /></ProtectedRoute>} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />

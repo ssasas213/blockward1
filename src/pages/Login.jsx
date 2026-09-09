@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
+import { hasSignupContext } from '@/lib/signupSession';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -57,8 +58,12 @@ export default function Login() {
     try { localStorage.setItem(METHOD_KEY, 'google'); } catch { /* ignore */ }
     setLoading(true);
     setError('');
+    // Details stashed on the Signup form (name/dob/code) survive the OAuth
+    // redirect in sessionStorage — return to /Signup so provisioning runs
+    // with them instead of landing back on /Login.
+    const returnUrl = hasSignupContext() ? '/Signup' : '/Login';
     try {
-      base44.auth.loginWithProvider('google', window.location.origin + '/Login');
+      base44.auth.loginWithProvider('google', window.location.origin + returnUrl);
     } catch (err) {
       setError(err?.message || 'Google sign-in failed. Please try again.');
       setLoading(false);

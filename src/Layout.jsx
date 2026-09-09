@@ -32,7 +32,7 @@ export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, activeSchool: school, loading, testMode } = useSchool();
 
-  const publicPages = ['Home', 'Login', 'Onboarding', 'Signup', 'SchoolSetup'];
+  const publicPages = ['Home', 'Login', 'Signup', 'SchoolSetup'];
   const isPublicPage = publicPages.includes(currentPageName);
 
   const logout = () => {

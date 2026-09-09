@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { guardedRedirect } from '@/lib/authRedirectGuard';
+import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
 
 function GoogleIcon({ className }) {
   return (
@@ -20,13 +22,8 @@ function GoogleIcon({ className }) {
   );
 }
 
-const SIGNUP_STORAGE_KEYS = {
-  first: 'blockward_signup_first',
-  last: 'blockward_signup_last',
-  code: 'blockward_signup_code',
-  dob: 'blockward_signup_dob',
-  guardian: 'blockward_signup_guardian',
-};
+// Signup details are stashed via src/lib/signupSession.js so they survive the
+// Google OAuth redirect and feed provisioning on return.
 
 // Client-side mirror of the server's age derivation — used ONLY to reveal the
 // guardian email field at the right moment. The server re-derives the age from
@@ -59,17 +56,20 @@ async function provisionAccount(payload) {
   // Under-13: the account exists but stays inactive until the guardian
   // consents. The sign-in screen shows the waiting card with the guardian email.
   if (data.next === 'guardian_consent') {
-    window.location.href = '/Login';
+    guardedRedirect('/Login');
     return;
   }
   // Unrecognised `next` values default to the student dashboard — an unknown
   // response must never land anyone on a join screen.
-  window.location.href = NEXT_URL[data.next] || '/StudentDashboard';
+  guardedRedirect(NEXT_URL[data.next] || '/StudentDashboard');
 }
 
 export default function Signup() {
   const [authChecking, setAuthChecking] = useState(true);
   const [step, setStep] = useState('details'); // 'details' | 'otp'
+  // Set when the visitor is already authenticated (e.g. back from Google) but
+  // has no BlockWard profile — the details form then finishes the account.
+  const [authedUser, setAuthedUser] = useState(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [joinCode, setJoinCode] = useState('');
@@ -125,7 +125,7 @@ export default function Signup() {
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
           // Already has an account — hand off to the normal post-login router.
-          window.location.href = '/Login';
+          guardedRedirect('/Login');
           return;
         }
 
@@ -156,14 +156,52 @@ export default function Signup() {
           return;
         }
 
-        // Authenticated but no profile and no pending details → Onboarding is the fallback.
-        window.location.href = '/Onboarding';
+        // Authenticated, no profile, no pending details. We are ALREADY on
+        // /Signup — the details form exists to resolve exactly this state.
+        // Render it (prefilled from the Google account) instead of redirecting.
+        const nameParts = (currentUser.full_name || '').trim().split(/\s+/).filter(Boolean);
+        if (nameParts.length) {
+          setFirstName(nameParts[0]);
+          setLastName(nameParts.slice(1).join(' '));
+        }
+        if (currentUser.email) setEmail(currentUser.email);
+        setAuthedUser(currentUser);
+        setAuthChecking(false);
       } catch {
         // Not authenticated — show the signup form.
         setAuthChecking(false);
       }
     })();
   }, []);
+
+  // Already authenticated (e.g. via Google) with no profile — the details
+  // form creates the profile directly; no password or email code needed.
+  const handleCompleteProfile = async (e) => {
+    e?.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('Please enter your name.');
+      return;
+    }
+    const ageError = validateAgeFields();
+    if (ageError) {
+      setError(ageError);
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      await provisionAccount({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        join_code: joinCode.trim() || undefined,
+        date_of_birth: dateOfBirth,
+        guardian_email: ageFromDob(dateOfBirth) < 13 ? guardianEmail.trim() : undefined,
+      });
+    } catch (err) {
+      setError(err?.message || 'Failed to create account');
+      setLoading(false);
+    }
+  };
 
   const handleGoogleSignup = () => {
     if (!firstName.trim() || !lastName.trim()) {
@@ -354,48 +392,66 @@ export default function Signup() {
                   </p>
                 </div>
 
-                <Button onClick={handleGoogleSignup} disabled={loading} variant="outline" className="w-full font-medium py-2.5">
-                  {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <GoogleIcon className="mr-2.5" />}
-                  Continue with Google
-                </Button>
+                {authedUser ? (
+                  <>
+                    {/* Google return with no profile — just finish the details */}
+                    <div className="flex items-center gap-2 rounded-lg border border-info/25 bg-info/5 px-3 py-2 text-sm text-muted-foreground">
+                      <AtSign className="h-4 w-4 flex-shrink-0 text-info" />
+                      <span className="truncate">
+                        Signed in as <strong className="text-foreground">{authedUser.email}</strong> — add your details to finish your account.
+                      </span>
+                    </div>
+                    <Button onClick={handleCompleteProfile} disabled={loading} className="w-full">
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Create My Account <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button onClick={handleGoogleSignup} disabled={loading} variant="outline" className="w-full font-medium py-2.5">
+                      {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <GoogleIcon className="mr-2.5" />}
+                      Continue with Google
+                    </Button>
 
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-border" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-card px-2 text-muted-foreground">or sign up with email</span>
-                  </div>
-                </div>
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t border-border" />
+                      </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="bg-card px-2 text-muted-foreground">or sign up with email</span>
+                      </div>
+                    </div>
 
-                <form onSubmit={handleEmailRegister} className="space-y-3">
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@school.ac.uk"
-                      autoComplete="email"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Password</Label>
-                    <Input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="At least 6 characters"
-                      autoComplete="new-password"
-                      disabled={loading}
-                    />
-                  </div>
-                  <Button type="submit" disabled={loading} className="w-full">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Create Account <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
-                </form>
+                    <form onSubmit={handleEmailRegister} className="space-y-3">
+                      <div className="space-y-2">
+                        <Label>Email</Label>
+                        <Input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="you@school.ac.uk"
+                          autoComplete="email"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Password</Label>
+                        <Input
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="At least 6 characters"
+                          autoComplete="new-password"
+                          disabled={loading}
+                        />
+                      </div>
+                      <Button type="submit" disabled={loading} className="w-full">
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Create Account <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    </form>
+                  </>
+                )}
               </motion.div>
             )}
 

@@ -65,7 +65,6 @@ import IssuePoints from './pages/IssuePoints';
 import ManageUsers from './pages/ManageUsers';
 import Messages from './pages/Messages';
 import MyPoints from './pages/MyPoints';
-import Onboarding from './pages/Onboarding';
 import ParentComms from './pages/ParentComms';
 import PointCategories from './pages/PointCategories';
 import Profile from './pages/Profile';
@@ -102,7 +101,6 @@ export const PAGES = {
     "ManageUsers": ManageUsers,
     "Messages": Messages,
     "MyPoints": MyPoints,
-    "Onboarding": Onboarding,
     "ParentComms": ParentComms,
     "PointCategories": PointCategories,
     "Profile": Profile,
