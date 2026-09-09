@@ -76,6 +76,48 @@
       ],
       "default": "draft"
     },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name of the attached file"
+          },
+          "url": {
+            "type": "string",
+            "description": "Uploaded file URL"
+          },
+          "file_type": {
+            "type": "string",
+            "enum": [
+              "pdf",
+              "document",
+              "image",
+              "video",
+              "link",
+              "other"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Files attached to this announcement, shown on the class Stream post. Uploaded via the createAnnouncement flow."
+    },
+    "pinned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pinned to the top of the class Stream by the teacher. Only meaningful for CLASS-scoped announcements; set through the streamAction function."
+    },
+    "allow_comments": {
+      "type": "boolean",
+      "description": "Per-post override for Stream comments. null/undefined = follow the class setting (Class.allow_student_comments). true = comments open even if the class default is off. false = comments closed for this post regardless."
+    },
     "created_by": {
       "type": "string"
     },
@@ -98,46 +140,69 @@
       "data.school_id": "__service_role_only__"
     },
     "read": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "data.scope_type": "SCHOOL"
-        },
-        {
-          "created_by_id": "{{user.id}}"
-        },
-        {
-          "data.student_emails": {
-            "$in": [
-              "{{user.email}}"
-            ]
-          }
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "data.scope_type": "SCHOOL"
+            },
+            {
+              "created_by_id": "{{user.id}}"
+            },
+            {
+              "data.student_emails": {
+                "$in": [
+                  "{{user.email}}"
+                ]
+              }
+            },
+            {
+              "data.class_id": {
+                "$in": "{{user.data.class_ids}}"
+              }
+            }
+          ]
         }
       ]
     },
     "update": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "$or": [
+      "$and": [
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.school_id": "{{user.profile.school_id}}"
         },
         {
-          "created_by_id": "{{user.id}}"
+          "$or": [
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            },
+            {
+              "created_by_id": "{{user.id}}"
+            }
+          ]
         }
       ]
     },
     "delete": {
-      "data.school_id": "{{user.profile.school_id}}",
-      "user_condition": {
-        "role": "admin"
-      }
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
     }
   }
 }

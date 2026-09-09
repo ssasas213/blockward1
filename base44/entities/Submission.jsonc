@@ -1,0 +1,183 @@
+{
+  "name": "Submission",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School of the class this submission belongs to"
+    },
+    "assignment_id": {
+      "type": "string",
+      "description": "Assignment.id this submission is for"
+    },
+    "assignment_title": {
+      "type": "string",
+      "description": "Denormalised post title for lists"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class this submission belongs to"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalised class name"
+    },
+    "teacher_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Teachers of the class (denormalised from the Assignment at creation). Anchors the teacher read rule \u2014 a teacher of the class may read and act on ALL submissions for that class."
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Owning student's email. A student may only ever read/act on the submission that is theirs."
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Student display name (denormalised)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "assigned",
+        "submitted",
+        "returned",
+        "resubmitted"
+      ],
+      "default": "assigned",
+      "description": "assigned: created at publish, no work yet. submitted: student turned in. returned: teacher returned it with a grade. resubmitted: student turned in again after a return."
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Files the student attached when turning in"
+    },
+    "text_response": {
+      "type": "string",
+      "description": "Typed response (required for 'question' posts without files)"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_late": {
+      "type": "boolean",
+      "default": false,
+      "description": "Computed server-side against the post's due_at at turn-in time"
+    },
+    "grade": {
+      "type": "number",
+      "description": "Final grade \u2014 only ever written by a teacher through submissionAction (service role). A student can NEVER write this field: all entity writes are service-role only and the function authorises the actor."
+    },
+    "draft_grade": {
+      "type": "number",
+      "description": "Teacher's grade-in-progress. Promoted to `grade` when the work is returned. Written only by submissionAction (service role)."
+    },
+    "graded_by": {
+      "type": "string",
+      "description": "Email of the teacher who graded"
+    },
+    "graded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "returned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the teacher returned this work to the student"
+    },
+    "private_comment_thread": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author_email": {
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "author_email",
+          "body",
+          "created_at"
+        ]
+      },
+      "default": [],
+      "description": "Private comments between the student and the class teachers \u2014 lives on the submission so one read fetches it. Only written via submissionAction."
+    }
+  },
+  "required": [
+    "assignment_id",
+    "class_id",
+    "student_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.class_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "data.teacher_emails": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.class_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.class_id": "__service_role_only__"
+    }
+  }
+}

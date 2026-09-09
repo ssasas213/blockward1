@@ -22,6 +22,9 @@ const TYPE_LABELS: Record<string, string> = {
   opportunity_match: 'Opportunity match',
   view_milestone: 'Profile milestone',
   org_approved: 'Organisation approval',
+  classwork_posted: 'New classwork',
+  classwork_due_soon: 'Due soon',
+  classwork_returned: 'Classwork returned',
 };
 
 function escapeHtml(s: string): string {

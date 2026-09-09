@@ -19,6 +19,10 @@ export const EVENT_TYPES = [
   'opportunity_match',
   'view_milestone',
   'org_approved',
+  // Classwork events — same opt-out prefs + daily-digest batching as the rest.
+  'classwork_posted',
+  'classwork_due_soon',
+  'classwork_returned',
 ];
 
 export async function notifyEvent(svc: any, opts: {

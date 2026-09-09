@@ -1,0 +1,69 @@
+{
+  "name": "Topic",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this topic belongs to"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class whose classwork this topic groups"
+    },
+    "teacher_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Primary teacher + co-teachers of the class (denormalised). Anchors the teacher read rule."
+    },
+    "title": {
+      "type": "string",
+      "description": "Topic name, e.g. 'Term 1 \u2014 Algebra'"
+    },
+    "position": {
+      "type": "number",
+      "default": 0,
+      "description": "Sort order within the class \u2014 maintained by drag-to-reorder"
+    }
+  },
+  "required": [
+    "class_id",
+    "title"
+  ],
+  "rls": {
+    "create": {
+      "data.class_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.teacher_emails": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.class_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.class_id": "__service_role_only__"
+    }
+  }
+}
