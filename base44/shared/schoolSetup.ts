@@ -36,9 +36,14 @@ export async function createSchoolForAdmin(svc, opts) {
   const user = opts.user;
 
   // ── Resolve the creator's profile ──
-  // Creating a school makes you its owner-admin. Existing admins may create
-  // additional schools; a brand-new 'pending' account may create its FIRST
-  // school. Teachers and students may not — that would grant them admin.
+  // Creating a school makes you its owner-admin. EXISTING teachers/students may
+  // not create a school (that would grant them admin); existing admins may
+  // create additional schools. A brand-NEW account is provisioned here (as the
+  // real first-admin signup does) and then upgraded below — so the guard only
+  // applies to profiles that already existed.
+  if (opts.profile && !['admin', 'pending'].includes(opts.profile.user_type)) {
+    throw new Error('Only administrators can create a school');
+  }
   let profile = opts.profile || null;
   if (!profile) {
     const parts = (opts.admin_full_name || user.full_name || user.email || 'Admin').trim().split(/\s+/);
@@ -46,9 +51,6 @@ export async function createSchoolForAdmin(svc, opts) {
       first_name: parts[0],
       last_name: parts.slice(1).join(' '),
     })).profile;
-  }
-  if (profile && !['admin', 'pending'].includes(profile.user_type)) {
-    throw new Error('Only administrators can create a school');
   }
 
   // 1. Create School — self-service schools start unverified.

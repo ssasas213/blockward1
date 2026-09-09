@@ -181,18 +181,27 @@ export default async function(req) {
       teacherProfiles.push(r.profile);
     }
 
-    // 3 — Twenty students through the real student-code path
-    const students = await Promise.all(STUDENT_FIRSTS.map((first, i) => {
-      const last = STUDENT_LASTS[i];
-      const email = `student${String(i + 1).padStart(2, '0')}@${DEMO_DOMAIN}`;
-      const dob = `2010-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`;
-      return provisionProfile(svc, { email, full_name: `${first} ${last}` }, {
-        first_name: first,
-        last_name: last,
-        join_code: created.codes.student,
-        date_of_birth: dob,
-      }).then(r => ({ email, profile: r.profile, name: `${first} ${last}` }));
+    // 3 — Twenty students through the real student-code path, provisioned in
+    // small batches: 20 simultaneous signups overload the database (the join-
+    // code lookup inside provisionProfile is school-wide), so we pace them.
+    const students = [];
+    const studentSpecs = STUDENT_FIRSTS.map((first, i) => ({
+      email: `student${String(i + 1).padStart(2, '0')}@${DEMO_DOMAIN}`,
+      first,
+      last: STUDENT_LASTS[i],
+      dob: `2010-${String((i % 12) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
     }));
+    for (let c = 0; c < studentSpecs.length; c += 5) {
+      const batch = await Promise.all(studentSpecs.slice(c, c + 5).map(spec =>
+        provisionProfile(svc, { email: spec.email, full_name: `${spec.first} ${spec.last}` }, {
+          first_name: spec.first,
+          last_name: spec.last,
+          join_code: created.codes.student,
+          date_of_birth: spec.dob,
+        }).then(r => ({ email: spec.email, profile: r.profile, name: `${spec.first} ${spec.last}` }))
+      ));
+      students.push(...batch);
+    }
 
     // 4 — One class taught by teacher 1
     const cls = await svc.entities.Class.create({
@@ -363,11 +372,15 @@ export default async function(req) {
 
     // 9 — Give the seeder member access to the demo school so they can browse
     // it (member, not owner — the owner is the demo admin).
+    const callerProfiles = await svc.entities.UserProfile.filter({ user_email: callerEmail });
+    const callerProfile = callerProfiles[0];
     await svc.entities.AdminSchoolMembership.create({
+      admin_user_id: callerProfile ? callerProfile.id : callerEmail,
       admin_email: callerEmail,
+      admin_name: callerProfile ? `${callerProfile.first_name} ${callerProfile.last_name}`.trim() : callerEmail,
       school_id: school.id,
       school_name: school.name,
-      role: 'member',
+      role: 'admin',
       status: 'active',
       is_primary: false,
       joined_at: new Date().toISOString(),
