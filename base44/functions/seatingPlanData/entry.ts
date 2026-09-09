@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     if (!actor.authorized) return new Response(JSON.stringify({ error: actor.reason || 'Unauthorized' }), { status: actor.status || 401, headers: cors });
 
     const body = await req.json();
-    const { class_id } = body;
+    const { class_id, plan_id } = body;
     if (!class_id) return new Response(JSON.stringify({ error: 'class_id is required' }), { status: 400, headers: cors });
 
     const svc = base44.asServiceRole;
@@ -27,15 +27,20 @@ Deno.serve(async (req) => {
       svc.entities.SeatingPlan.filter({ class_id, school_id: actor.school_id }, 'is_default', 100),
       buildClassRoster(svc, actor.school_id, class_id),
     ]);
-    // Ensure exactly one default; pick the first if none flagged.
-    let defaultPlan = plans.find(p => p.is_default) || plans[0] || null;
+    // Ensure exactly one default; pick the first if none flagged. An explicit
+    // plan_id (switching between a class's named plans) wins when it exists.
+    let activePlan = plans.find(p => p.is_default) || plans[0] || null;
+    if (plan_id) {
+      const requested = plans.find(p => p.id === plan_id);
+      if (requested) activePlan = requested;
+    }
     const safePlans = plans.map(p => ({ id: p.id, name: p.name, is_default: p.is_default, updated_at: p.updated_at }));
     return new Response(JSON.stringify({
       class: { id: cls.id, name: cls.name, room: cls.room || '' },
       roster,
       plans: safePlans,
-      active_plan: defaultPlan,
-      active_layout: defaultPlan?.layout_json || null,
+      active_plan: activePlan,
+      active_layout: activePlan?.layout_json || null,
       can_edit: actor.actor_role === 'admin' || actor.actor_role === 'teacher',
     }), { status: 200, headers: cors });
   } catch (e) {

@@ -26,7 +26,7 @@ export default function SeatCard({ student, status, mode, selected, onClick, onU
               <Ic className="h-2.5 w-2.5" />{st.label}
             </span>
           )}
-          {mode === 'edit' && onUnassign && (
+          {mode === 'assign' && onUnassign && (
             <span
               role="button"
               onClick={(e) => { e.stopPropagation(); onUnassign(); }}
