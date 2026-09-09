@@ -54,6 +54,19 @@
         "archived"
       ],
       "default": "active"
+    },
+    "allow_student_comments": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether students can comment on Stream posts in this class. Default ON. Individual posts can override this per-post (Announcement.allow_comments), and individual students can be muted below. Managed through the streamAction function."
+    },
+    "comment_muted_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Students muted from commenting on this class's Stream. A muted student can read but not post; only the class teacher/admin can mute or unmute, via the streamAction function."
     }
   },
   "required": [

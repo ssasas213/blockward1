@@ -34,6 +34,8 @@ export default async function(req: Request): Promise<Response> {
       team_name: body.team_name || undefined,
       student_emails: body.student_emails || undefined,
       student_names: body.student_names || undefined,
+      attachments: Array.isArray(body.attachments) ? body.attachments : undefined,
+      allow_comments: body.allow_comments === true || body.allow_comments === false ? body.allow_comments : undefined,
       status: body.status || 'draft',
       created_by: user.email,
       school_id: profile.school_id,

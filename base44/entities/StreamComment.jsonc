@@ -1,0 +1,59 @@
+{
+  "name": "StreamComment",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this comment belongs to"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class whose Stream this comment was posted in"
+    },
+    "announcement_id": {
+      "type": "string",
+      "description": "Announcement (Stream post) this comment is attached to"
+    },
+    "author_email": {
+      "type": "string",
+      "description": "Commenter's email"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Commenter's display name"
+    },
+    "author_role": {
+      "type": "string",
+      "enum": [
+        "teacher",
+        "student",
+        "admin"
+      ],
+      "description": "Commenter's role at post time \u2014 staff comments render with a badge. Class-visible by design: unlike a private submission thread, everyone in the class can read these."
+    },
+    "body": {
+      "type": "string",
+      "description": "Comment text (max 2000 chars). Enforced server-side by streamAction, which is the only writer."
+    }
+  },
+  "required": [
+    "class_id",
+    "announcement_id",
+    "author_email",
+    "body"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": {
+      "data.school_id": "__service_role_only__"
+    },
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}
