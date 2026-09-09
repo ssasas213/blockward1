@@ -48,11 +48,15 @@ export default function ForOrganisations() {
           <p className="text-base text-muted-foreground mt-4 max-w-xl mx-auto">
             Join schools, clubs, and organisations using BlockWard to verify, preserve, and showcase achievements permanently.
           </p>
-          <div className="mt-8">
+          <div className="mt-8 flex flex-col items-center gap-4">
             <Button size="lg" onClick={() => window.location.href = createPageUrl('Signup')}>
               Get Started
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
+            <p className="text-sm text-muted-foreground">
+              Setting up BlockWard for a school, club or academy?{' '}
+              <a href={createPageUrl('SchoolSetup')} className="text-primary font-medium hover:underline">Create an organisation</a>
+            </p>
           </div>
         </div>
       </section>

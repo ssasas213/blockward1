@@ -108,6 +108,9 @@ export default function JoinSchool() {
           <p className="text-sm text-muted-foreground mt-2">
             Optional — you can use BlockWard without one. Schools, clubs, academies, dojos and teams can all verify your achievements.
           </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            A teacher? Ask your administrator for a staff invite or join code.
+          </p>
         </div>
 
         <div className="space-y-4">

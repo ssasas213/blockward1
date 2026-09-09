@@ -512,6 +512,16 @@ export default function Signup() {
           <p className="text-center text-sm text-muted-foreground mt-6">
             Already have an account? <Link to="/Login" className="text-primary font-medium hover:underline">Sign in</Link>
           </p>
+
+          <div className="mt-4 pt-4 border-t border-border space-y-1.5 text-center">
+            <p className="text-sm text-muted-foreground">
+              Setting up BlockWard for a school, club or academy?{' '}
+              <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">Create an organisation</Link>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              A teacher? Ask your administrator for a staff invite or join code.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

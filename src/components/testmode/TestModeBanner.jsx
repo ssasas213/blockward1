@@ -1,5 +1,6 @@
 import React from 'react';
-import { FlaskConical, GraduationCap, Users, Shield, RotateCcw } from 'lucide-react';
+import { FlaskConical, GraduationCap, Users, Shield, RotateCcw, Sprout, Trash2 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
@@ -24,6 +25,28 @@ export function TestModeBanner() {
   const navigate = useNavigate();
   if (!testMode?.isTestSuperUser) return null;
   const active = testMode.activePersona || 'admin';
+
+  const handleSeedDemo = async () => {
+    if (!window.confirm('Seed a complete demo organisation?\n\nOne admin, two pending teachers, twenty students, a class, timetable, attendance and achievements — removable in one action.')) return;
+    try {
+      const res = await base44.functions.invoke('seedDemoOrganisation', { action: 'seed' });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Seed failed');
+      toast.success(`Demo organisation "${res.data.school?.name || ''}" created`);
+    } catch (e) {
+      toast.error(e?.message || 'Seed failed');
+    }
+  };
+
+  const handleRemoveDemo = async () => {
+    if (!window.confirm('Remove the demo organisation and all its records?')) return;
+    try {
+      const res = await base44.functions.invoke('seedDemoOrganisation', { action: 'remove' });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Removal failed');
+      toast.success('Demo organisation removed');
+    } catch (e) {
+      toast.error(e?.message || 'Removal failed');
+    }
+  };
 
   const switchTo = async (persona) => {
     try {
@@ -68,6 +91,13 @@ export function TestModeBanner() {
         <DropdownMenuSeparator />
         <TestFlowIndicator />
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSeedDemo}>
+          <Sprout className="h-4 w-4 mr-2" /> Seed Demo Organisation
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleRemoveDemo}>
+          <Trash2 className="h-4 w-4 mr-2" /> Remove Demo Data
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleReset} className="text-destructive">
           <RotateCcw className="h-4 w-4 mr-2" /> Reset Test Data
         </DropdownMenuItem>
@@ -81,6 +111,28 @@ export function TestModeMenuItems() {
   const navigate = useNavigate();
   if (!testMode?.isTestSuperUser) return null;
   const active = testMode.activePersona || 'admin';
+
+  const handleSeedDemo = async () => {
+    if (!window.confirm('Seed a complete demo organisation?\n\nOne admin, two pending teachers, twenty students, a class, timetable, attendance and achievements — removable in one action.')) return;
+    try {
+      const res = await base44.functions.invoke('seedDemoOrganisation', { action: 'seed' });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Seed failed');
+      toast.success(`Demo organisation "${res.data.school?.name || ''}" created`);
+    } catch (e) {
+      toast.error(e?.message || 'Seed failed');
+    }
+  };
+
+  const handleRemoveDemo = async () => {
+    if (!window.confirm('Remove the demo organisation and all its records?')) return;
+    try {
+      const res = await base44.functions.invoke('seedDemoOrganisation', { action: 'remove' });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Removal failed');
+      toast.success('Demo organisation removed');
+    } catch (e) {
+      toast.error(e?.message || 'Removal failed');
+    }
+  };
 
   const switchTo = async (persona) => {
     await setTestPersona(persona);
@@ -110,6 +162,13 @@ export function TestModeMenuItems() {
       })}
       <DropdownMenuSeparator />
       <TestFlowIndicator />
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleSeedDemo}>
+        <Sprout className="h-4 w-4 mr-2" /> Seed Demo Organisation
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={handleRemoveDemo}>
+        <Trash2 className="h-4 w-4 mr-2" /> Remove Demo Data
+      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem onClick={handleReset} className="text-destructive">
         <RotateCcw className="h-4 w-4 mr-2" /> Reset Test Data

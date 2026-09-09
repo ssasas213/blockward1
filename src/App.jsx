@@ -21,6 +21,7 @@ import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
 import AdminApprovalPage from './pages/AdminApprovalPage';
 import Records from './pages/Records';
+import People from './pages/People';
 import TeacherRecords from './pages/TeacherRecords';
 import Verify from './pages/Verify';
 import PublicPortfolio from './pages/PublicPortfolio';
@@ -130,6 +131,7 @@ const AuthenticatedApp = () => {
       <Route path="/AdminRecords" element={<Navigate to="/Records" replace />} />
       <Route path="/Records" element={<LayoutWrapper currentPageName="Records"><ProtectedRoute><Records /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/People" element={<LayoutWrapper currentPageName="People"><ProtectedRoute><People /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentMyRecords" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/StudentPortfolioVault" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />

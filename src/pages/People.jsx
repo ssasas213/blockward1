@@ -13,6 +13,8 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import RoleGuard from '@/components/auth/RoleGuard';
+import PendingTeacherRequests from '@/components/onboarding/PendingTeacherRequests';
+import DemoDataCard from '@/components/people/DemoDataCard';
 
 export default function People() {
   return <RoleGuard roles={['admin']}><PeopleImpl /></RoleGuard>;
@@ -21,6 +23,7 @@ export default function People() {
 function PeopleImpl() {
   const [loading, setLoading] = useState(true);
   const [school, setSchool] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [codes, setCodes] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [copied, setCopied] = useState({});
@@ -35,6 +38,7 @@ function PeopleImpl() {
       const user = await base44.auth.me();
       const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
       const p = profiles[0];
+      setProfile(p);
       if (!p?.school_id) { setLoading(false); return; }
       const schools = await base44.entities.School.filter({ id: p.school_id });
       if (schools.length) setSchool(schools[0]);
@@ -162,6 +166,9 @@ function PeopleImpl() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       <PageHeader title="People" description={`Invite and manage people for ${school?.name || 'your school'}`} />
+
+      {/* Teachers waiting for approval — approve or reject with one click */}
+      <PendingTeacherRequests />
 
       {/* PRIMARY — Invite by email */}
       <Card className="border-border bg-card">
@@ -307,6 +314,9 @@ function PeopleImpl() {
           </div>
         )}
       </section>
+
+      {/* Super admins only — seed/remove a complete demo organisation */}
+      {profile?.admin_level === 'super_admin' && <DemoDataCard />}
     </div>
   );
 }

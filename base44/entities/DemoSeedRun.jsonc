@@ -1,0 +1,69 @@
+{
+  "name": "DemoSeedRun",
+  "type": "object",
+  "properties": {
+    "run_label": {
+      "type": "string",
+      "description": "Identifier for this seeding run (e.g. demo-1718000000000)."
+    },
+    "school_id": {
+      "type": "string",
+      "description": "The demo School this run created \u2014 every seeded record is scoped to this school, which is what makes the run cleanly removable."
+    },
+    "school_name": {
+      "type": "string"
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "Email of the super admin / test super user who ran the seed."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "removed"
+      ],
+      "default": "active",
+      "description": "active: the demo organisation exists. removed: every record it created has been deleted."
+    },
+    "teacher_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Seeded teacher emails \u2014 their profiles carry no school_id while pending approval, so removal deletes them by email."
+    },
+    "student_count": {
+      "type": "number",
+      "default": 0
+    },
+    "seeded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "removed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "run_label",
+    "school_id",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.run_label": "__service_role_only__"
+    },
+    "read": {
+      "data.run_label": "__service_role_only__"
+    },
+    "update": {
+      "data.run_label": "__service_role_only__"
+    },
+    "delete": {
+      "data.run_label": "__service_role_only__"
+    }
+  }
+}

@@ -303,6 +303,10 @@ export default function Login() {
         <p className="text-center text-sm text-muted-foreground mt-6">
           New here? <Link to="/Signup" className="text-primary font-medium hover:underline">Create an account</Link>
         </p>
+        <p className="text-center text-sm text-muted-foreground mt-2">
+          Setting up BlockWard for a school, club or academy?{' '}
+          <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">Create an organisation</Link>
+        </p>
         <p className="text-center text-xs text-muted-foreground mt-4">
           © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
