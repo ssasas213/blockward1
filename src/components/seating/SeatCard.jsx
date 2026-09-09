@@ -1,19 +1,22 @@
 import React from 'react';
-import { Check, Clock, X, ClipboardCheck, Circle, UserX } from 'lucide-react';
+import { Check, Clock, X, ClipboardCheck, Circle, GripVertical } from 'lucide-react';
 import { STATUS_OF } from './templates';
 
 const ICONS = { Check, Clock, X, ClipboardCheck, Circle };
 
-export default function SeatCard({ student, status, mode, selected, onClick, onUnassign }) {
+export default function SeatCard({ student, status, mode, selected, onClick, onUnassign, onDragStart }) {
   const st = status ? STATUS_OF[status] : STATUS_OF.unmarked;
   const Ic = ICONS[st.icon] || Circle;
   const initials = student ? (student.student_name || '').split(' ').map(p => p[0]).slice(0, 2).join('').toUpperCase() : '';
+  const draggable = !!onDragStart;
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group relative w-full h-full min-h-[58px] rounded-lg border ${st.ring} ${student ? 'bg-card' : 'bg-muted/20 border-dashed'} ${st.bg} ${selected ? 'ring-2 ring-primary' : ''} flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-center transition-all hover:border-primary/40`}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      className={`group relative w-full h-full min-h-[58px] rounded-lg border ${st.ring} ${student ? 'bg-card' : 'bg-muted/20 border-dashed'} ${st.bg} ${selected ? 'ring-2 ring-primary' : ''} ${draggable ? 'cursor-grab active:cursor-grabbing' : ''} flex flex-col items-center justify-center gap-0.5 px-1 py-1.5 text-center transition-all ${mode === 'assign' || mode === 'attendance' ? 'hover:border-primary/40' : ''}`}
     >
       {student ? (
         <>
@@ -24,6 +27,11 @@ export default function SeatCard({ student, status, mode, selected, onClick, onU
           {mode === 'attendance' && (
             <span className={`inline-flex items-center gap-0.5 text-[10px] ${st.text} font-medium`}>
               <Ic className="h-2.5 w-2.5" />{st.label}
+            </span>
+          )}
+          {mode === 'assign' && (
+            <span className="absolute top-0.5 left-0.5 text-muted-foreground opacity-0 group-hover:opacity-100">
+              <GripVertical className="h-3 w-3" />
             </span>
           )}
           {mode === 'assign' && onUnassign && (

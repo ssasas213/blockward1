@@ -1,49 +1,43 @@
 import React from 'react';
-import { Presentation, DoorOpen, Square, Table2, Trash2 } from 'lucide-react';
+import { Presentation, DoorOpen, Square, Table2, Trash2, ArrowDownToLine } from 'lucide-react';
 import SeatCard from './SeatCard';
 
-// Canvas is drawn from the teacher's POV: the front wall is the BOTTOM edge.
-// `mirror` rotates the whole plan 180° (students' viewpoint) without
-// redrawing it — used by presentation and print.
-function elementStyle(el, room, mirror) {
-  const x = mirror ? room.width - el.x - el.w : el.x;
-  const y = mirror ? room.height - el.y - el.h : el.y;
+function elementStyle(el, room) {
   return {
-    left: `${(x / room.width) * 100}%`,
-    top: `${(y / room.height) * 100}%`,
+    left: `${(el.x / room.width) * 100}%`,
+    top: `${(el.y / room.height) * 100}%`,
     width: `${(el.w / room.width) * 100}%`,
     height: `${(el.h / room.height) * 100}%`,
   };
 }
 
-function SeatGrid({ el, students, marks, mode, selectedEmail, onSeatClick, onUnassign, onDropStudentAtSeat }) {
+function SeatGrid({ el, students, marks, mode, selectedEmail, onSeatClick, onSeatDrop, onUnassign }) {
   const n = el.seats || 1;
-  const seatLayout = el.seatLayout || 'row';
-  const cols = seatLayout === 'group' ? 2 : Math.min(n, 2);
+  const layout = el.seatLayout || 'row';
+  const cols = layout === 'group' ? 2 : Math.min(n, 2);
   const rows = Math.ceil(n / cols);
-  const assignable = mode === 'assign';
   return (
     <div className="absolute inset-0.5 grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, gridTemplateRows: `repeat(${rows}, 1fr)` }}>
       {Array.from({ length: n }).map((_, i) => {
         const email = (el.assignments || [])[i] || null;
         const student = email ? students.find(s => s.student_email === email) || { student_email: email, student_name: email } : null;
+        const draggable = mode === 'assign' && !!student;
         return (
           <div
             key={i}
-            className="h-full"
-            draggable={assignable && !!email}
-            onDragStart={(e) => {
-              if (!assignable || !email) return;
-              e.dataTransfer.setData('kind', 'student');
-              e.dataTransfer.setData('email', email);
-            }}
-            onDragOver={(e) => { if (assignable) e.preventDefault(); }}
+            onDragOver={(e) => { if (mode === 'assign') e.preventDefault(); }}
             onDrop={(e) => {
-              if (!assignable || e.dataTransfer.getData('kind') !== 'student') return;
+              if (mode !== 'assign') return;
               e.preventDefault();
               e.stopPropagation();
-              const droppedEmail = e.dataTransfer.getData('email');
-              if (droppedEmail && onDropStudentAtSeat) onDropStudentAtSeat(droppedEmail, el.id, i);
+              if (e.dataTransfer.getData('kind') !== 'student') return;
+              onSeatDrop && onSeatDrop(
+                el.id,
+                i,
+                e.dataTransfer.getData('email'),
+                e.dataTransfer.getData('fromElement') || null,
+                e.dataTransfer.getData('fromSeat') === '' ? null : Number(e.dataTransfer.getData('fromSeat')),
+              );
             }}
           >
             <SeatCard
@@ -52,7 +46,13 @@ function SeatGrid({ el, students, marks, mode, selectedEmail, onSeatClick, onUna
               mode={mode}
               selected={selectedEmail && selectedEmail === email}
               onClick={() => onSeatClick && onSeatClick(el.id, i, email)}
-              onUnassign={assignable ? () => onUnassign && onUnassign(el.id, i) : null}
+              onUnassign={mode === 'assign' ? () => onUnassign && onUnassign(el.id, i) : null}
+              onDragStart={draggable ? (e) => {
+                e.dataTransfer.setData('kind', 'student');
+                e.dataTransfer.setData('email', email);
+                e.dataTransfer.setData('fromElement', el.id);
+                e.dataTransfer.setData('fromSeat', String(i));
+              } : null}
             />
           </div>
         );
@@ -61,35 +61,34 @@ function SeatGrid({ el, students, marks, mode, selectedEmail, onSeatClick, onUna
   );
 }
 
-export default function ClassroomCanvas({
-  layout, students, marks, mode, selectedEmail, mirror,
-  onSeatClick, onUnassign, onDropStudent, onDropStudentAtSeat, onDropElement, onDeleteElement,
-}) {
-  const room = layout?.room || { width: 12, height: 9 };
+/**
+ * ClassroomCanvas — the room is drawn from the teacher's point of view:
+ * the FRONT of the class is the BOTTOM edge (labelled below), where every
+ * fresh template places the teacher desk, centred.
+ *
+ * mode: 'view' (read-only) | 'layout' (place/move furniture) | 'assign'
+ * (fill/swap seats by drag) | 'attendance' (tap seats to mark).
+ */
+export default function ClassroomCanvas({ layout, students, marks, mode, selectedEmail, onSeatClick, onSeatDrop, onUnassign, onUnassignByEmail, onDropElement, onDeleteElement }) {
+  const room = layout?.room || { width: 12, height: 10 };
   const els = layout?.elements || [];
 
   const handleDrop = (e) => {
     e.preventDefault();
     const kind = e.dataTransfer.getData('kind');
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width * room.width;
-    const py = (e.clientY - rect.top) / rect.height * room.height;
     if (kind === 'student') {
-      // Dropped on the room but not on a specific seat — fill the first free
-      // seat of the desk under the cursor.
-      const email = e.dataTransfer.getData('email');
-      const desk = els.find(el => el.type === 'desk' && px >= el.x && px <= el.x + el.w && py >= el.y && py <= el.y + el.h);
-      if (desk && onDropStudent) onDropStudent(email, desk.id);
+      // A drop that reached the canvas background missed every seat —
+      // dragging a seated student off the plan unassigns them.
+      if (mode === 'assign' && onUnassignByEmail) onUnassignByEmail(e.dataTransfer.getData('email'));
     } else if (kind === 'element') {
-      if (onDropElement) onDropElement(e.dataTransfer.getData('id'), px, py);
+      if (mode !== 'layout') return;
+      const id = e.dataTransfer.getData('id');
+      const rect = e.currentTarget.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width * room.width;
+      const py = (e.clientY - rect.top) / rect.height * room.height;
+      onDropElement && onDropElement(id, px, py);
     }
   };
-
-  const frontLabel = (
-    <div className="text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground select-none">
-      ─── Front of class ───
-    </div>
-  );
 
   return (
     <div
@@ -97,27 +96,32 @@ export default function ClassroomCanvas({
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
     >
-      {mirror && <div className="mb-2">{frontLabel}</div>}
       <div className="relative w-full" style={{ aspectRatio: `${room.width} / ${room.height}`, minHeight: 320 }}>
         {els.map((el) => {
           const isDesk = el.type === 'desk';
           return (
             <div
               key={el.id}
-              className={`group absolute rounded-lg ${isDesk ? '' : 'flex items-center justify-center text-[10px] font-medium text-muted-foreground'}`}
-              style={elementStyle(el, room, mirror)}
+              className={`absolute rounded-lg group/el ${isDesk ? '' : 'flex items-center justify-center text-[10px] font-medium text-muted-foreground'}`}
+              style={elementStyle(el, room)}
               draggable={mode === 'layout' && isDesk}
-              onDragStart={(e) => {
-                if (mode !== 'layout' || !isDesk) return;
-                e.dataTransfer.setData('kind', 'element');
-                e.dataTransfer.setData('id', el.id);
-              }}
+              onDragStart={(e) => { e.dataTransfer.setData('kind', 'element'); e.dataTransfer.setData('id', el.id); }}
             >
+              {mode === 'layout' && onDeleteElement && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onDeleteElement(el.id); }}
+                  className="absolute -top-2 -right-2 z-10 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover/el:opacity-100 transition-opacity"
+                  aria-label={`Delete ${el.label || el.type}`}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
               {el.type === 'whiteboard' && (
                 <div className="w-full h-full rounded-lg bg-info/10 border border-info/30 flex items-center justify-center gap-1 text-info"><Presentation className="h-3.5 w-3.5" />{el.label || 'Whiteboard'}</div>
               )}
               {el.type === 'teacherDesk' && (
-                <div className="w-full h-full rounded-lg bg-secondary/60 border border-border flex items-center justify-center gap-1"><Table2 className="h-3.5 w-3.5" />{el.label || 'Teacher Desk'}</div>
+                <div className="w-full h-full rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center gap-1 text-primary"><Table2 className="h-3.5 w-3.5" />{el.label || 'Teacher Desk'}</div>
               )}
               {el.type === 'door' && (
                 <div className="w-full h-full rounded-lg bg-warning/10 border border-warning/30 flex items-center justify-center gap-1 text-warning"><DoorOpen className="h-3.5 w-3.5" />Door</div>
@@ -130,30 +134,17 @@ export default function ClassroomCanvas({
               )}
               {isDesk && (
                 <div className="w-full h-full rounded-lg bg-card border border-border shadow-sm">
-                  <SeatGrid
-                    el={el} students={students} marks={marks} mode={mode}
-                    selectedEmail={selectedEmail}
-                    onSeatClick={onSeatClick} onUnassign={onUnassign}
-                    onDropStudentAtSeat={onDropStudentAtSeat}
-                  />
+                  <SeatGrid el={el} students={students} marks={marks} mode={mode} selectedEmail={selectedEmail} onSeatClick={onSeatClick} onSeatDrop={onSeatDrop} onUnassign={onUnassign} />
                 </div>
-              )}
-              {mode === 'layout' && onDeleteElement && (
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); onDeleteElement(el.id); }}
-                  className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label={`Remove ${el.label || el.type}`}
-                  title={`Remove ${el.label || el.type}`}
-                >
-                  <Trash2 className="h-2.5 w-2.5" />
-                </button>
               )}
             </div>
           );
         })}
       </div>
-      {!mirror && <div className="mt-2">{frontLabel}</div>}
+      <div className="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <ArrowDownToLine className="h-3.5 w-3.5" />
+        Front of class
+      </div>
     </div>
   );
 }

@@ -27,13 +27,11 @@ Deno.serve(async (req) => {
       svc.entities.SeatingPlan.filter({ class_id, school_id: actor.school_id }, 'is_default', 100),
       buildClassRoster(svc, actor.school_id, class_id),
     ]);
-    // Ensure exactly one default; pick the first if none flagged. An explicit
-    // plan_id (switching between a class's named plans) wins when it exists.
-    let activePlan = plans.find(p => p.is_default) || plans[0] || null;
-    if (plan_id) {
-      const requested = plans.find(p => p.id === plan_id);
-      if (requested) activePlan = requested;
-    }
+    // Ensure exactly one default; pick the first if none flagged.
+    // When a plan_id is requested, serve that plan (still authorised through
+    // the class check) so co-teachers can switch plans without direct RLS reads.
+    const defaultPlan = plans.find(p => p.is_default) || plans[0] || null;
+    const activePlan = (plan_id && plans.find(p => p.id === plan_id)) || defaultPlan;
     const safePlans = plans.map(p => ({ id: p.id, name: p.name, is_default: p.is_default, updated_at: p.updated_at }));
     return new Response(JSON.stringify({
       class: { id: cls.id, name: cls.name, room: cls.room || '' },
