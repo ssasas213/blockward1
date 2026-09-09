@@ -1,0 +1,211 @@
+{
+  "name": "Assignment",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School this post belongs to \u2014 null when the class has no school. ALL writes are service-role only (classworkAction); RLS only governs reads."
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class this classwork post belongs to"
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalised class name for cross-class lists (student To do view)"
+    },
+    "teacher_email": {
+      "type": "string",
+      "description": "Primary teacher of the class (denormalised)"
+    },
+    "teacher_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Primary teacher + co-teachers (denormalised from the Class). Anchors the teacher read rule."
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "assignment",
+        "quiz",
+        "material",
+        "question"
+      ],
+      "default": "assignment",
+      "description": "Kind of post. 'assignment'/'quiz'/'question' collect student work; 'material' is reference-only (no submissions)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Post title"
+    },
+    "instructions": {
+      "type": "string",
+      "description": "Rich-text instructions (HTML from the editor)"
+    },
+    "topic_id": {
+      "type": "string",
+      "description": "Topic grouping this post. Null = ungrouped (shown at the top of the Classwork tab)."
+    },
+    "topic_title": {
+      "type": "string",
+      "description": "Denormalised topic title \u2014 students group by it without needing Topic read access"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Uploaded files (via UploadFile) attached to this post"
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "External links attached to this post"
+    },
+    "points_possible": {
+      "type": "number",
+      "description": "Points this post is graded out of. Null = ungraded post."
+    },
+    "due_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Due date/time. Null = no due date."
+    },
+    "scheduled_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Future time this post auto-publishes (status 'scheduled' until then). Null = not scheduled."
+    },
+    "allow_late": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, students can still turn in after the due date (marked late). When false, turn-in closes at due_at."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "scheduled",
+        "published",
+        "archived"
+      ],
+      "default": "draft",
+      "description": "Draft/scheduled are teacher-only (visible_to stays empty until publish). Published is visible to the audience. Archived hides it from students but keeps it for teachers."
+    },
+    "assigned_to": {
+      "type": [
+        "string",
+        "array"
+      ],
+      "items": {
+        "type": "string"
+      },
+      "default": "all",
+      "description": "'all' (the string \u2014 whole class) or an array of student emails. Service-role only: normalised to the class roster at save time."
+    },
+    "visible_to": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "The effective student audience \u2014 computed server-side from assigned_to + class roster at publish time. ONLY populated once published (empty for drafts/scheduled), which is what keeps drafts invisible to students. Anchors the student read rule. Service-role only."
+    },
+    "due_reminder_sent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set by classworkMaintenance once the 24-hour due reminder went out for this post. Service-role only."
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reused_from_id": {
+      "type": "string",
+      "description": "Assignment.id this post was reused from, when created via the reuse flow"
+    }
+  },
+  "required": [
+    "class_id",
+    "teacher_email",
+    "type",
+    "title",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.class_id": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.teacher_emails": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
+          "data.visible_to": {
+            "$in": [
+              "{{user.email}}"
+            ]
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.school_id": "{{user.profile.school_id}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "data.class_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.class_id": "__service_role_only__"
+    }
+  }
+}

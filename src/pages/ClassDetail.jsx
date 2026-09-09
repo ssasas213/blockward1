@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import SeatingPlanTab from '@/components/seating/SeatingPlanTab';
+import StreamTab from '@/components/stream/StreamTab';
 
 export default function ClassDetail() {
   const [loading, setLoading] = useState(true);
@@ -275,8 +276,9 @@ export default function ClassDetail() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="students" className="space-y-6">
+      <Tabs defaultValue="stream" className="space-y-6">
         <TabsList className="bg-slate-100">
+          <TabsTrigger value="stream">Stream</TabsTrigger>
           <TabsTrigger value="students">Students</TabsTrigger>
           {isTeacher && <TabsTrigger value="seating">Seating Plan</TabsTrigger>}
           <TabsTrigger value="announcements">
@@ -287,6 +289,10 @@ export default function ClassDetail() {
           </TabsTrigger>
           <TabsTrigger value="resources">Resources</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="stream">
+          <StreamTab classId={classId} classData={classData} profile={profile} isTeacher={isTeacher} />
+        </TabsContent>
 
         <TabsContent value="students">
           <Card className="border-0 shadow-lg">
