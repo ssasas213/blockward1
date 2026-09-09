@@ -36,12 +36,14 @@ export async function createSchoolForAdmin(svc, opts) {
   const user = opts.user;
 
   // ── Resolve the creator's profile ──
-  // Creating a school makes you its owner-admin. EXISTING teachers/students may
-  // not create a school (that would grant them admin); existing admins may
-  // create additional schools. A brand-NEW account is provisioned here (as the
-  // real first-admin signup does) and then upgraded below — so the guard only
-  // applies to profiles that already existed.
-  if (opts.profile && !['admin', 'pending'].includes(opts.profile.user_type)) {
+  // Founding an organisation is how someone BECOMES an admin, so the guard
+  // cannot require the role it grants. Allowed: existing admins (additional
+  // schools), pending profiles, and student-default accounts (self-signup
+  // defaults to 'student' with no organisation — founding converts the
+  // account to super_admin of THIS school only, on the same profile, so any
+  // achievements it already holds stay put). Teachers may not — they join via
+  // invitation or code and are approved by an admin.
+  if (opts.profile && !['admin', 'pending', 'student'].includes(opts.profile.user_type)) {
     throw new Error('Only administrators can create a school');
   }
   let profile = opts.profile || null;

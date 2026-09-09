@@ -135,6 +135,40 @@ export default function SchoolSetup() {
 
           <Card className="border-border bg-card mb-5">
             <CardHeader className="pb-3">
+              <CardTitle className="text-base">Join codes</CardTitle>
+              <CardDescription>Share these so staff and students can join your organisation.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {[
+                { label: 'Teacher code', code: result.codes?.teacher },
+                { label: 'Student code', code: result.codes?.student },
+              ].filter((c) => c.code).map((c) => (
+                <div key={c.label} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{c.label}</p>
+                    <p className="font-mono text-sm text-foreground truncate">{c.code}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-shrink-0"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(c.code);
+                      toast.success(`${c.label} copied`);
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy
+                  </Button>
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground pt-1">
+                Teachers who join with a code wait for your approval — you'll see them on the People page.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border bg-card mb-5">
+            <CardHeader className="pb-3">
               <CardTitle className="text-base">Invite your team</CardTitle>
               <CardDescription>Send email invitations — they join instantly, no codes needed.</CardDescription>
             </CardHeader>

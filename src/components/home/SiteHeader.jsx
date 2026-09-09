@@ -2,15 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { Shield, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
 export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get Started', onSignIn, onGetStarted, onDashboard }) {
   const [scrolled, setScrolled] = useState(false);
+  const [notAStudentOpen, setNotAStudentOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const ghostText = cn(
+    "text-sm transition-colors",
+    scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
+  );
 
   return (
     <header className={cn(
@@ -49,12 +56,12 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
           ) : (
             <>
               <button
-                onClick={onSignIn}
-                className={cn(
-                  "text-sm transition-colors",
-                  scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
-                )}
+                onClick={() => setNotAStudentOpen(true)}
+                className={cn(ghostText, "hidden sm:block")}
               >
+                Not a student?
+              </button>
+              <button onClick={onSignIn} className={ghostText}>
                 Sign In
               </button>
               <Button onClick={onGetStarted || onSignIn} size="sm">
@@ -64,6 +71,8 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
           )}
         </div>
       </div>
+
+      <NotAStudentDialog open={notAStudentOpen} onOpenChange={setNotAStudentOpen} context="marketing" />
     </header>
   );
 }

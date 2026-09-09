@@ -8,8 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
 import { hasSignupContext } from '@/lib/signupSession';
-import { logoutToLogin, setPostAuthRedirect } from '@/lib/authRedirectGuard';
-import { toast } from 'sonner';
+import { logoutToLogin } from '@/lib/authRedirectGuard';
+import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -28,6 +28,7 @@ function GoogleIcon({ className }) {
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
+  const [notAStudentOpen, setNotAStudentOpen] = useState(false);
   const [checking, setChecking] = useState(true);
   const [accountStatus, setAccountStatus] = useState(null);
   const [error, setError] = useState('');
@@ -55,14 +56,6 @@ export default function Login() {
       }
     })();
   }, []);
-
-  const handleCreateOrganisation = () => {
-    // Organisation setup needs a signed-in owner. Store the intent so the
-    // user lands on /SchoolSetup the moment they sign in — instead of a
-    // dead-end bounce back to this page.
-    setPostAuthRedirect('/SchoolSetup');
-    toast.info("Sign in to continue — you'll go straight to organisation setup.");
-  };
 
   const handleGoogleLogin = () => {
     try { localStorage.setItem(METHOD_KEY, 'google'); } catch { /* ignore */ }
@@ -219,9 +212,9 @@ export default function Login() {
               <div className="mx-auto h-12 w-12 rounded-xl bg-warning/10 flex items-center justify-center mb-4">
                 <Clock className="h-6 w-6 text-warning" />
               </div>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Awaiting Approval</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-2">Awaiting approval</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Your account is pending administrator approval. You'll be able to access BlockWard once an administrator approves your account.
+                Your request has been sent to your school administrator and they've been notified. Once they approve you, you'll have full access to BlockWard — you can sign out and come back any time, your request is waiting for them.
               </p>
               <Button onClick={handleSignOut} variant="outline" className="w-full">
                 Sign Out
@@ -313,13 +306,21 @@ export default function Login() {
           New here? <Link to="/Signup" className="text-primary font-medium hover:underline">Create an account</Link>
         </p>
         <p className="text-center text-sm text-muted-foreground mt-2">
-          Setting up BlockWard for a school, club or academy?{' '}
-          <button type="button" onClick={handleCreateOrganisation} className="text-primary font-medium hover:underline">Create an organisation</button>
+          Not a student?{' '}
+          <button
+            type="button"
+            onClick={() => setNotAStudentOpen(true)}
+            className="text-primary font-medium hover:underline"
+          >
+            Set up your school or join as a teacher
+          </button>
         </p>
         <p className="text-center text-xs text-muted-foreground mt-4">
           © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
       </div>
+
+      <NotAStudentDialog open={notAStudentOpen} onOpenChange={setNotAStudentOpen} context="login" />
     </div>
   );
 }

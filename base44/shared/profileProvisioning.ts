@@ -100,6 +100,34 @@ export async function logRoleGrant(svc, grant) {
   }
 }
 
+// Notify every active admin of the school that a teacher is waiting for their
+// approval. Best-effort — a delivery hiccup never blocks the join itself.
+async function notifyAdminsOfTeacherRequest(svc, opts) {
+  try {
+    const teacherName = `${opts.profile.first_name} ${opts.profile.last_name}`.trim();
+    const memberships = await svc.entities.AdminSchoolMembership.filter({
+      school_id: opts.school.id,
+      status: 'active',
+    });
+    const emails = new Set(memberships.map((m) => normalizeEmail(m.admin_email)));
+    if (opts.school.admin_email) emails.add(normalizeEmail(opts.school.admin_email));
+    for (const email of emails) {
+      if (!email) continue;
+      await svc.entities.Notification.create({
+        user_email: email,
+        school_id: opts.school.id,
+        title: 'Teacher approval needed',
+        body: `${teacherName} has joined ${opts.school.name} with a staff code and is waiting for your approval. Review them from the People page.`,
+        type: 'message',
+        priority: 'important',
+        related_id: opts.profile.id,
+      });
+    }
+  } catch (e) {
+    console.error('teacher-join admin notification failed:', e?.message || e);
+  }
+}
+
 // Queue a teacher for admin approval. Idempotent: returns 'already_active' or
 // 'already_pending' when a membership already exists, re-queues a rejected one,
 // and creates the pending StaffMembership (with audit trail) otherwise.
@@ -121,6 +149,7 @@ export async function ensureTeacherMembership(svc, opts) {
       reviewed_at: null,
       rejection_reason: null,
     });
+    await notifyAdminsOfTeacherRequest(svc, opts);
     return 'pending';
   }
   await svc.entities.StaffMembership.create({
@@ -146,6 +175,7 @@ export async function ensureTeacherMembership(svc, opts) {
     notes: `Teacher requested to join ${opts.school.name}${opts.code ? ` via code ${opts.code}` : ''}`,
     timestamp: new Date().toISOString(),
   });
+  await notifyAdminsOfTeacherRequest(svc, opts);
   return 'pending';
 }
 

@@ -47,11 +47,15 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: `You already own a school named "${duplicate.name}"` }, { status: 409 });
     }
 
-    // Teachers and students may not create a school — they would be granting
-    // themselves admin. real.profile is the controller's own profile, never a
-    // persona; it may be null for a brand-new account, which the shared path
-    // provisions below.
-    if (profile && !['admin', 'pending'].includes(profile.user_type)) {
+    // Founding an organisation is how someone BECOMES an admin, so it cannot
+    // require the role it grants. Allowed: existing admins (additional
+    // schools), pending profiles, and student-default accounts (self-signup
+    // now defaults to 'student' with no organisation — founding converts the
+    // account to admin of THIS school only). Teachers may not — they join via
+    // invitation or code and are approved by an admin. real.profile is the
+    // controller's own profile, never a persona; it may be null for a
+    // brand-new account, which the shared path provisions below.
+    if (profile && !['admin', 'pending', 'student'].includes(profile.user_type)) {
       return Response.json({ error: 'Only administrators can create a school' }, { status: 403 });
     }
 

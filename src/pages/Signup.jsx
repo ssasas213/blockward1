@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { consumePostAuthRedirect, guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
+import { consumePostAuthRedirect, guardedRedirect } from '@/lib/authRedirectGuard';
 import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
+import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
 function GoogleIcon({ className }) {
   return (
@@ -73,6 +74,7 @@ async function provisionAccount(payload) {
 
 export default function Signup() {
   const [authChecking, setAuthChecking] = useState(true);
+  const [notAStudentOpen, setNotAStudentOpen] = useState(false);
   const [step, setStep] = useState('details'); // 'details' | 'otp'
   // Set when the visitor is already authenticated (e.g. back from Google) but
   // has no BlockWard profile — the details form then finishes the account.
@@ -208,14 +210,6 @@ export default function Signup() {
       setError(err?.message || 'Failed to create account');
       setLoading(false);
     }
-  };
-
-  const handleCreateOrganisation = () => {
-    // Finish the account first; the stored intent lands the user on
-    // /SchoolSetup straight after provisioning instead of bouncing through
-    // the login page.
-    setPostAuthRedirect('/SchoolSetup');
-    toast.info("Finish creating your account — you'll go straight to organisation setup.");
   };
 
   const handleGoogleSignup = () => {
@@ -528,17 +522,22 @@ export default function Signup() {
             Already have an account? <Link to="/Login" className="text-primary font-medium hover:underline">Sign in</Link>
           </p>
 
-          <div className="mt-4 pt-4 border-t border-border space-y-1.5 text-center">
+          <div className="mt-4 pt-4 border-t border-border text-center">
             <p className="text-sm text-muted-foreground">
-              Setting up BlockWard for a school, club or academy?{' '}
-              <button type="button" onClick={handleCreateOrganisation} className="text-primary font-medium hover:underline">Create an organisation</button>
-            </p>
-            <p className="text-xs text-muted-foreground">
-              A teacher? Ask your administrator for a staff invite or join code.
+              Not a student?{' '}
+              <button
+                type="button"
+                onClick={() => setNotAStudentOpen(true)}
+                className="text-primary font-medium hover:underline"
+              >
+                Set up your school or join as a teacher
+              </button>
             </p>
           </div>
         </CardContent>
       </Card>
+
+      <NotAStudentDialog open={notAStudentOpen} onOpenChange={setNotAStudentOpen} context="signup" />
     </div>
   );
 }
