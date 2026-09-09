@@ -56,6 +56,11 @@
       "format": "date-time",
       "description": "When the join request was submitted"
     },
+    "last_reminder_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the teacher last re-sent their pending join request \u2014 anchors the 48-hour resend cooldown. Set by resendStaffJoinRequest."
+    },
     "reviewed_by": {
       "type": "string",
       "description": "Admin email who reviewed the request"

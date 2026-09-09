@@ -102,7 +102,7 @@ export async function logRoleGrant(svc, grant) {
 
 // Notify every active admin of the school that a teacher is waiting for their
 // approval. Best-effort — a delivery hiccup never blocks the join itself.
-async function notifyAdminsOfTeacherRequest(svc, opts) {
+export async function notifyAdminsOfTeacherRequest(svc, opts) {
   try {
     const teacherName = `${opts.profile.first_name} ${opts.profile.last_name}`.trim();
     const memberships = await svc.entities.AdminSchoolMembership.filter({

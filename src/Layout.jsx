@@ -10,6 +10,7 @@ import {
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
 import PendingTeachersBadge from '@/components/sidebar/PendingTeachersBadge';
+import ApprovalsCountBadge from '@/components/sidebar/ApprovalsCountBadge';
 import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
 import { Button } from '@/components/ui/button';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
@@ -63,7 +64,7 @@ export default function Layout({ children, currentPageName }) {
     admin: [
       { items: [
         { name: 'Home', icon: LayoutDashboard, page: 'AdminDashboard' },
-        { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
+        { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'approvals' },
         { name: 'Records', icon: FileText, page: 'Records' },
         { name: 'People', icon: Users, page: 'People', badge: 'pendingTeachers' },
         { name: 'School', icon: BookOpen, page: 'ManageSchool' },
@@ -275,6 +276,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
                     <item.icon className={cn("h-4 w-4 flex-shrink-0 transition-colors", isActive ? "text-primary" : "text-sidebar-foreground")} />
                     <span className="flex-1">{item.name}</span>
                     {item.badge === 'signoffs' && <SignoffCountBadge />}
+                    {item.badge === 'approvals' && <ApprovalsCountBadge />}
                     {item.badge === 'pendingTeachers' && <PendingTeachersBadge />}
                   </Link>
                 );

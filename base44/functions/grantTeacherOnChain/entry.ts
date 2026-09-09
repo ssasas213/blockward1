@@ -3,6 +3,13 @@ import { privateKeyToAccount } from "npm:viem@2.7.0/accounts";
 import { sepolia } from "npm:viem@2.7.0/chains";
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// grantTeacherOnChain — grants the on-chain TEACHER_ROLE to a wallet address
+// by calling addTeacher() on the Sepolia contract, signed with
+// ADMIN_PRIVATE_KEY. This is a BLOCKCHAIN operation only: it never touches
+// StaffMembership or UserProfile. Account approval for staff who joined with
+// a code lives in approveStaffMembership — the two must never be conflated
+// (this function was previously named approveTeacher, which caused exactly
+// that collision).
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -11,11 +18,11 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  const debugId = `AT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const debugId = `GTC-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   const log = (msg, obj = {}) => console.log(JSON.stringify({ msg, debugId, ...obj }));
 
   try {
-    log("=== APPROVE TEACHER START ===", { method: req.method });
+    log("=== GRANT TEACHER ON-CHAIN START ===", { method: req.method });
 
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders });
     if (req.method !== 'POST') return new Response(JSON.stringify({ ok: false, error: 'Method not allowed', debugId }), { status: 405, headers: corsHeaders });
@@ -101,11 +108,11 @@ Deno.serve(async (req) => {
       } catch { postCheck.mappingChecks[method] = null; }
     }
 
-    log("=== APPROVE TEACHER SUCCESS ===");
+    log("=== GRANT TEACHER ON-CHAIN SUCCESS ===");
     return new Response(JSON.stringify({ ok: true, debugId, txHash: receipt.transactionHash, adminSigner, teacherAddress, receiptStatus: receipt.status, blockNumber: receipt.blockNumber.toString(), postCheck }), { status: 200, headers: corsHeaders });
 
   } catch (err) {
-    console.error("APPROVE_TEACHER_ERROR", JSON.stringify({ debugId, error: err?.message, code: err?.code }));
+    console.error("GRANT_TEACHER_ON_CHAIN_ERROR", JSON.stringify({ debugId, error: err?.message, code: err?.code }));
     return new Response(JSON.stringify({ ok: false, error: err?.message || "Unknown error", debugId }), { status: 500, headers: corsHeaders });
   }
 });

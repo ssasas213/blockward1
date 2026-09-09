@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { logRoleGrant } from '../../shared/profileProvisioning.ts';
 import { requireRealIdentity } from '../../shared/testMode.ts';
+import { reviewStaffMembership } from '../../shared/staffApprovals.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -45,135 +46,27 @@ Deno.serve(async (req) => {
     const now = new Date().toISOString();
 
     if (membership_type === 'teacher') {
-      // Fetch the StaffMembership
-      const memberships = await base44.asServiceRole.entities.StaffMembership.filter({ id: membership_id });
-      if (memberships.length === 0) {
-        return Response.json({ error: 'Membership not found' }, { status: 404 });
+      // Delegate to the shared staff-approval engine (the same logic
+      // approveStaffMembership uses): idempotent approve/reject, audit log,
+      // in-app + email notification, and a reject that leaves the account as
+      // a school-less student instead of dead-ending at pending_approval.
+      const result = await reviewStaffMembership(base44.asServiceRole, {
+        membership_id,
+        action,
+        reason: rejection_reason,
+        approver: { email: user.email, name: adminName },
+        school_id: schoolId,
+      });
+      if (!result.ok) {
+        return Response.json({ error: result.error }, { status: result.status || 400 });
       }
-      const membership = memberships[0];
-
-      // Verify it belongs to admin's school
-      if (membership.school_id !== schoolId) {
-        return Response.json({ error: 'Permission denied: membership belongs to a different school' }, { status: 403 });
-      }
-
-      if (membership.status !== 'pending') {
-        return Response.json({ error: `Membership is already ${membership.status}` }, { status: 400 });
-      }
-
-      if (action === 'approve') {
-        // Update membership to active
-        await base44.asServiceRole.entities.StaffMembership.update(membership.id, {
-          status: 'active',
-          reviewed_by: user.email,
-          reviewed_at: now,
-        });
-
-        // Update the teacher's profile to link to this school
-        const teacherProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_email: membership.user_email });
-        if (teacherProfiles.length > 0) {
-          const tp = teacherProfiles[0];
-          await base44.asServiceRole.entities.UserProfile.update(tp.id, {
-            school_id: membership.school_id,
-            active_school_id: membership.school_id,
-            user_type: 'teacher',
-            status: 'active',
-            admin_email: user.email,
-          });
-        }
-        await logRoleGrant(base44.asServiceRole, {
-          record_id: membership.id,
-          school_id: membership.school_id,
-          granted_by_email: user.email,
-          granted_by_name: adminName,
-          granted_to_email: membership.user_email,
-          granted_to_name: membership.teacher_name || membership.user_email,
-          role: 'teacher',
-          old_role: 'teacher (pending approval)',
-          mechanism: 'admin approval of a join-code request',
-        });
-
-        // Create notification for the teacher
-        try {
-          await base44.asServiceRole.entities.Notification.create({
-            user_email: membership.user_email,
-            school_id: membership.school_id,
-            title: 'Teacher Access Approved',
-            body: `Your request to join ${membership.school_name} has been approved. You can now access the Teacher Dashboard.`,
-            type: 'announcement_important',
-            priority: 'important',
-            related_id: membership.id,
-            read: false,
-          });
-        } catch (e) {
-          console.error('Failed to create notification:', e);
-        }
-
-        // Create audit log
-        await base44.asServiceRole.entities.AuditLog.create({
-          record_id: membership.id,
-          school_id: membership.school_id,
-          actor_email: user.email,
-          actor_name: adminName,
-          actor_role: 'admin',
-          action: 'teacher_approved',
-          old_status: 'pending',
-          new_status: 'active',
-          notes: `Teacher ${membership.teacher_name || membership.user_email} approved by ${user.email}`,
-          timestamp: now,
-        });
-
-        return Response.json({
-          success: true,
-          action: 'approved',
-          teacher_name: membership.teacher_name,
-          teacher_email: membership.user_email,
-        });
-
-      } else {
-        // Reject
-        await base44.asServiceRole.entities.StaffMembership.update(membership.id, {
-          status: 'rejected',
-          reviewed_by: user.email,
-          reviewed_at: now,
-          rejection_reason: rejection_reason || 'Not specified',
-        });
-
-        try {
-          await base44.asServiceRole.entities.Notification.create({
-            user_email: membership.user_email,
-            school_id: membership.school_id,
-            title: 'Teacher Access Update',
-            body: `Your request to join ${membership.school_name} was not approved at this time. Reason: ${rejection_reason || 'Not specified'}`,
-            type: 'announcement_important',
-            priority: 'important',
-            related_id: membership.id,
-            read: false,
-          });
-        } catch (e) {
-          console.error('Failed to create notification:', e);
-        }
-
-        await base44.asServiceRole.entities.AuditLog.create({
-          record_id: membership.id,
-          school_id: membership.school_id,
-          actor_email: user.email,
-          actor_name: adminName,
-          actor_role: 'admin',
-          action: 'teacher_rejected',
-          old_status: 'pending',
-          new_status: 'rejected',
-          notes: `Teacher ${membership.teacher_name || membership.user_email} rejected by ${user.email}`,
-          timestamp: now,
-        });
-
-        return Response.json({
-          success: true,
-          action: 'rejected',
-          teacher_name: membership.teacher_name,
-          teacher_email: membership.user_email,
-        });
-      }
+      return Response.json({
+        success: true,
+        action: result.action,
+        teacher_name: result.teacher_name,
+        teacher_email: result.teacher_email,
+        idempotent: result.idempotent || false,
+      });
 
     } else if (membership_type === 'admin') {
       // Fetch the AdminSchoolMembership

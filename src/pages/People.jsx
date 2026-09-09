@@ -61,6 +61,20 @@ function PeopleImpl() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Live pending-staff count for the Staff approvals tab label.
+  const [pendingStaff, setPendingStaff] = useState(0);
+  useEffect(() => {
+    if (!profile?.school_id) return;
+    const loadCount = () => base44.entities.StaffMembership.filter({ school_id: profile.school_id, status: 'pending' })
+      .then((items) => setPendingStaff(items.length))
+      .catch(() => {});
+    loadCount();
+    try {
+      const unsub = base44.entities.StaffMembership.subscribe(loadCount);
+      return unsub;
+    } catch { return undefined; }
+  }, [profile?.school_id]);
+
   const generateCodes = async () => {
     setGenerating(true);
     try {
@@ -167,153 +181,25 @@ function PeopleImpl() {
     <div className="space-y-8 max-w-4xl mx-auto">
       <PageHeader title="People" description={`Invite and manage people for ${school?.name || 'your school'}`} />
 
-      {/* Teachers waiting for approval — approve or reject with one click */}
-      <PendingTeacherRequests />
+      <Tabs defaultValue="invite" className="w-full">
+        <TabsList>
+          <TabsTrigger value="invite">Invite &amp; codes</TabsTrigger>
+          <TabsTrigger value="staff">
+            Staff approvals
+            {pendingStaff > 0 && (
+              <Badge className="ml-1.5 bg-warning/15 text-warning border-warning/30 text-[10px] px-1.5 py-0">{pendingStaff}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-      {/* PRIMARY — Invite by email */}
-      <Card className="border-border bg-card">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> Invite by Email</CardTitle>
-          <CardDescription>The recommended way to add people — instant, no approval needed.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr_auto] gap-3 items-end">
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="teacher">Teacher</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Email addresses</Label>
-              <Input value={emails} onChange={e => setEmails(e.target.value)} placeholder="teacher1@gmail.com, teacher2@gmail.com" />
-            </div>
-            <Button onClick={sendInvite} disabled={sending || !emails.trim()} className="h-10">
-              {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-              {sending ? 'Sending…' : 'Send Invitation'}
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground">Separate multiple emails with commas. Students join with a class code from their teacher — you don't invite students here.</p>
+        <TabsContent value="invite" className="space-y-8 pt-4">
+...
+        </TabsContent>
 
-          {invitations.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">
-              <Mail className="h-10 w-10 mx-auto mb-2 opacity-40" />
-              <p className="text-sm">No invitations yet. Invite a teacher or administrator above.</p>
-            </div>
-          ) : (
-            <div className="space-y-4 pt-2">
-              {pending.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pending ({pending.length})</p>
-                  <div className="divide-y divide-border rounded-lg border border-border">
-                    {pending.map(inv => <InvitationRow key={inv.id} inv={inv} busy={busy} onRevoke={revoke} onResend={sendInvite} onCopy={copy} copied={copied} />)}
-                  </div>
-                </div>
-              )}
-              {accepted.length > 0 && (
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Accepted ({accepted.length})</p>
-                  <div className="divide-y divide-border rounded-lg border border-border">
-                    {accepted.map(inv => <InvitationRow key={inv.id} inv={inv} onCopy={copy} copied={copied} />)}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* SECONDARY — Join codes (fallback) */}
-      <section className="space-y-4">
-        <Card className="border-border bg-info/5">
-          <CardContent className="p-4 flex items-start gap-3">
-            <div className="h-8 w-8 rounded-lg bg-info/15 flex items-center justify-center flex-shrink-0">
-              <Send className="h-4 w-4 text-info" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Email invitations are the recommended way to add people</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Use these codes as a fallback when a teacher or admin can't be emailed. Students join a class with a class code, not a school code.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {codes.length === 0 ? (
-          <Card className="border-border bg-card">
-            <CardContent className="py-10 text-center">
-              <Shield className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground mb-4">No join codes yet. Generate the teacher and admin codes as a fallback.</p>
-              <Button onClick={generateCodes} disabled={generating}>
-                {generating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Shield className="h-4 w-4 mr-2" />}
-                {generating ? 'Generating…' : 'Generate Join Codes'}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {codes.map(codeRecord => {
-              const config = codeConfig[codeRecord.role_type] || codeConfig.teacher;
-              const isActive = codeRecord.status === 'active';
-              return (
-                <Card key={codeRecord.id} className={`border-border bg-card ${!isActive ? 'opacity-60' : ''}`}>
-                  <CardContent className="p-5">
-                    <div className="flex items-start gap-4">
-                      <div className={`h-11 w-11 rounded-xl ${config.bgIcon} flex items-center justify-center flex-shrink-0`}>
-                        <config.icon className={`h-5 w-5 ${config.color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-medium text-foreground text-sm">{config.title}</h3>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isActive ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>{isActive ? 'Active' : 'Disabled'}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{config.description}</p>
-                        <div className="flex items-center gap-2 mt-3">
-                          <code className="flex-1 px-3 py-2 rounded-lg bg-muted/50 text-sm font-mono font-semibold text-foreground tracking-wider">{codeRecord.code}</code>
-                          <Button variant="outline" size="icon" onClick={() => copy(codeRecord.code, `code-${codeRecord.id}`)} className="h-9 w-9 flex-shrink-0">
-                            {copied[`code-${codeRecord.id}`] ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
-                          </Button>
-                        </div>
-                        <div className="flex items-center gap-3 mt-3">
-                          <span className="text-xs text-muted-foreground">Used {codeRecord.use_count || 0}{codeRecord.max_uses ? ` / ${codeRecord.max_uses}` : ''} times</span>
-                          {codeRecord.expires_at && <span className="text-xs text-muted-foreground">Expires {new Date(codeRecord.expires_at).toLocaleDateString()}</span>}
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <Button variant="outline" size="sm" onClick={() => regenerate(codeRecord)} disabled={busy[`reg-${codeRecord.id}`]} className="h-8">
-                            {busy[`reg-${codeRecord.id}`] ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1" />}Regenerate
-                          </Button>
-                          <Button variant="outline" size="sm" onClick={() => toggle(codeRecord)} disabled={busy[`tog-${codeRecord.id}`]} className="h-8">
-                            {busy[`tog-${codeRecord.id}`] ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Power className="h-3.5 w-3.5 mr-1" />}{isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            <Card className="border-border bg-card">
-              <CardHeader>
-                <CardTitle className="text-sm">Quick Share Links</CardTitle>
-                <CardDescription>Registration links with codes embedded</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {codes.filter(c => c.status === 'active').map(codeRecord => {
-                  const shareUrl = `${window.location.origin}/JoinSchool?code=${codeRecord.code}`;
-                  return (
-                    <div key={codeRecord.id} className="flex items-center gap-2">
-                      <Input value={shareUrl} readOnly className="flex-1 bg-muted/30 font-mono text-xs" />
-                      <Button variant="outline" size="icon" onClick={() => copy(shareUrl, `share-${codeRecord.id}`)} className="h-9 w-9 flex-shrink-0"><Copy className="h-4 w-4" /></Button>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </section>
+        <TabsContent value="staff" className="pt-4">
+          <StaffApprovalsCard />
+        </TabsContent>
+      </Tabs>
 
       {/* Super admins only — seed/remove a complete demo organisation */}
       {profile?.admin_level === 'super_admin' && <DemoDataCard />}

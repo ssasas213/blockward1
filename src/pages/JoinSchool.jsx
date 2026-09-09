@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSchool } from '@/lib/SchoolContext';
 import { toLogin, logoutToLogin } from '@/lib/authRedirectGuard';
-import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight } from 'lucide-react';
+import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight, Loader2, Send } from 'lucide-react';
+import { toast } from 'sonner';
 import CodeJoinCard from '@/components/join/CodeJoinCard';
 import SchoolSearchCard from '@/components/join/SchoolSearchCard';
 import InviteOrganisationCard from '@/components/join/InviteOrganisationCard';
@@ -22,6 +23,7 @@ import InviteOrganisationCard from '@/components/join/InviteOrganisationCard';
 export default function JoinSchool() {
   const { user, profile, testMode, loading: ctxLoading } = useSchool();
   const [pendingMembership, setPendingMembership] = useState(null);
+  const [resending, setResending] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -49,6 +51,21 @@ export default function JoinSchool() {
     return () => { cancelled = true; };
   }, [ctxLoading, user, profile, testMode]);
 
+  // Re-nudge the school's administrators (48-hour cooldown enforced server-side).
+  const handleResend = async () => {
+    setResending(true);
+    try {
+      const res = await base44.functions.invoke('resendStaffJoinRequest', {});
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Could not resend your request');
+      toast.success(`Request re-sent to ${res.data.school_name ? res.data.school_name : 'your organisation'}'s administrators`);
+      setPendingMembership((prev) => ({ ...(prev || {}), last_reminder_at: res.data.resent_at }));
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e.message);
+    } finally {
+      setResending(false);
+    }
+  };
+
   if (ctxLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -57,8 +74,13 @@ export default function JoinSchool() {
     );
   }
 
-  // A teacher awaiting approval — clear holding state instead of the join form.
+  // A teacher awaiting approval — the holding screen names the school they
+  // applied to, when they applied, and offers a resend after 48 hours.
   if (pendingMembership) {
+    const schoolName = pendingMembership.school_name || 'your organisation';
+    const requestedAt = pendingMembership.requested_at;
+    const lastContact = pendingMembership.last_reminder_at || pendingMembership.requested_at;
+    const canResend = lastContact && (Date.now() - new Date(lastContact).getTime() > 48 * 60 * 60 * 1000);
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
         <div className="w-full max-w-md">
@@ -68,10 +90,29 @@ export default function JoinSchool() {
                 <Clock className="h-8 w-8 text-warning" />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-2">Awaiting approval</h2>
-              <p className="text-sm text-muted-foreground mb-6">
-                Your request to join {profile?.school_id ? 'this school' : 'your school'} has been sent to the administrator.
-                You can sign in, but you won't be able to sign off achievements, view student data, take attendance or issue points until an admin approves you.
+              <p className="text-sm text-muted-foreground mb-2">
+                You applied to join <span className="text-foreground font-medium">{schoolName}</span>
+                {requestedAt && (
+                  <>
+                    {' '}on {new Date(requestedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </>
+                )}
+                . The administrators have been notified and will review your request.
               </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Until they approve you, you can't sign off achievements, view student data, take attendance or issue points.
+                This screen updates automatically once you're approved.
+              </p>
+              {canResend ? (
+                <Button onClick={handleResend} disabled={resending} className="w-full mb-2">
+                  {resending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                  {resending ? 'Sending…' : 'Resend request to administrators'}
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground mb-6">
+                  If your request is taking a while, you can resend it 48 hours after applying.
+                </p>
+              )}
               <Button
                 onClick={logoutToLogin}
                 variant="outline"
