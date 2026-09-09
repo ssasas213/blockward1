@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
 import { hasSignupContext } from '@/lib/signupSession';
+import { logoutToLogin } from '@/lib/authRedirectGuard';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -118,7 +119,7 @@ export default function Login() {
   };
 
   const handleSignOut = () => {
-    base44.auth.logout(window.location.origin + '/Login');
+    logoutToLogin();
   };
 
   if (checking) {

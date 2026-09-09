@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react';
+import { toLogin } from '@/lib/authRedirectGuard';
 
 export default function SchoolsLogin() {
   useEffect(() => {
-    window.location.href = '/Login';
+    toLogin();
   }, []);
   return null;
 }

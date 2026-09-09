@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { toLogin } from '@/lib/authRedirectGuard';
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from 'lucide-react';
 import SiteHeader from '@/components/home/SiteHeader';
@@ -40,7 +41,7 @@ export default function Home() {
   };
 
   const handleSignIn = () => {
-    window.location.href = '/Login';
+    toLogin();
   };
 
   const handleClaimProfile = () => {

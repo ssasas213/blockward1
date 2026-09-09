@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { toLogin } from '@/lib/authRedirectGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +35,7 @@ export default function SchoolSetup() {
         setUser(currentUser);
         if (currentUser) setForm(f => ({ ...f, contact_email: currentUser.email }));
       } catch {
-        window.location.href = '/Login';
+        toLogin();
       } finally {
         setLoading(false);
       }

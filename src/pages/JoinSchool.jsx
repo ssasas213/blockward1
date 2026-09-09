@@ -5,6 +5,7 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSchool } from '@/lib/SchoolContext';
+import { toLogin, logoutToLogin } from '@/lib/authRedirectGuard';
 import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight } from 'lucide-react';
 import CodeJoinCard from '@/components/join/CodeJoinCard';
 import SchoolSearchCard from '@/components/join/SchoolSearchCard';
@@ -25,7 +26,7 @@ export default function JoinSchool() {
 
   useEffect(() => {
     if (ctxLoading) return;
-    if (!user) { window.location.href = '/Login'; return; }
+    if (!user) { toLogin(); return; }
     // Test Super User bypass: auto-provisioned server-side — never show the join form.
     if (testMode?.isTestSuperUser) {
       window.location.href = createPageUrl('AdminDashboard');
@@ -72,7 +73,7 @@ export default function JoinSchool() {
                 You can sign in, but you won't be able to sign off achievements, view student data, take attendance or issue points until an admin approves you.
               </p>
               <Button
-                onClick={() => base44.auth.logout(window.location.origin + '/Login')}
+                onClick={logoutToLogin}
                 variant="outline"
                 className="w-full"
               >

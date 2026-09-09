@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { appParams } from '@/lib/app-params';
 
 const SchoolContext = createContext(null);
 
@@ -16,6 +17,18 @@ export const SchoolProvider = ({ children }) => {
   // ProtectedRoute and every page consume this context — none of them should
   // call base44.auth.me() or refetch the profile themselves.
   const loadSchoolData = useCallback(async () => {
+    // Signed-out visitors on public routes (/Login, /Signup, /@handle, the
+    // marketing pages) must make NO authenticated calls — a 401 here is the
+    // old reload loop's fuel. No token → empty state, immediately.
+    if (!appParams.token) {
+      setUser(null);
+      setProfile(null);
+      setActiveSchool(null);
+      setTestMode(null);
+      setManagedSchools([]);
+      setLoading(false);
+      return;
+    }
     try {
       const currentUser = await base44.auth.me();
       if (!currentUser) {

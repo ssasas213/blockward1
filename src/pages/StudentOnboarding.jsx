@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
+import { toLogin, logoutToLogin } from '@/lib/authRedirectGuard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import ProfilePictureUploader from '@/components/profile/ProfilePictureUploader';
@@ -41,12 +42,12 @@ export default function StudentOnboarding() {
   const init = async () => {
     try {
       const me = await base44.auth.me();
-      if (!me) { window.location.href = '/Login'; return; }
+      if (!me) { toLogin(); return; }
       setUser(me);
 
       const profiles = await base44.entities.UserProfile.filter({ user_email: me.email });
       const p = profiles[0] || null;
-      if (!p) { window.location.href = createPageUrl('Onboarding'); return; }
+      if (!p) { window.location.href = createPageUrl('Signup'); return; }
       if (p.user_type !== 'student') { redirectByRole(p.user_type); return; }
       // A student without a school is a complete account — the school step
       // below is simply skipped.
@@ -56,7 +57,7 @@ export default function StudentOnboarding() {
       const schools = await base44.entities.School.filter({ id: p.school_id });
       if (schools.length > 0) setSchool(schools[0]);
     } catch {
-      window.location.href = '/Login';
+      toLogin();
     } finally {
       setLoading(false);
     }
@@ -165,7 +166,7 @@ export default function StudentOnboarding() {
                 </div>
 
                 <button
-                  onClick={() => base44.auth.logout(window.location.origin + '/Login')}
+                  onClick={logoutToLogin}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Not your school? Sign out and join with the correct code.

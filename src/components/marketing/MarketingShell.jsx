@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import SiteHeader from '@/components/home/SiteHeader';
 import SiteFooter from '@/components/home/SiteFooter';
+import { toLogin } from '@/lib/authRedirectGuard';
 
 const DEFAULT_NAV = [
   { label: 'For students', href: '/' },
@@ -21,7 +22,7 @@ export default function MarketingShell({ title, subtitle, navLinks = DEFAULT_NAV
     <div className="min-h-screen font-sans antialiased">
       <SiteHeader
         navLinks={navLinks}
-        onSignIn={() => { window.location.href = '/Login'; }}
+        onSignIn={toLogin}
         onGetStarted={() => { window.location.href = '/Signup'; }}
       />
       <section className="bg-sidebar pt-28 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8">

@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { toLogin, logoutToLogin, resetAuthLoadLog } from '@/lib/authRedirectGuard';
 
 const AuthContext = createContext();
 
@@ -94,18 +95,21 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      resetAuthLoadLog(); // a real session resets the reload-loop counter
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       
-      // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
-        setAuthError({
-          type: 'auth_required',
-          message: 'Authentication required'
-        });
+      // A 401/403 here is the EXPECTED signed-out condition on a public
+      // page, not an error. Never log out of an unauthenticated state and
+      // never set authError — that would redirect a public page load to
+      // /Login and reload-loop it. Only a token that WAS valid gets
+      // cleared, quietly, with no redirect; protected pages send signed-out
+      // visitors to /Login via ProtectedRoute instead.
+      if ((error.status === 401 || error.status === 403) && appParams.token) {
+        try { base44.auth.logout(); } catch { /* ignore */ }
       }
     }
   };
@@ -115,8 +119,9 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(false);
     
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
+      // NEVER pass the current URL as the post-logout destination — that
+      // reload-loops /Login whenever logout can be triggered by page load.
+      logoutToLogin();
     } else {
       // Just remove the token without redirect
       base44.auth.logout();
@@ -124,12 +129,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const navigateToLogin = () => {
-    window.location.href = '/Login';
+    toLogin();
   };
 
   // Keep for any legacy callers — still routes to our custom login
   const redirectToLogin = (next) => {
-    window.location.href = '/Login';
+    toLogin();
   };
 
   return (
