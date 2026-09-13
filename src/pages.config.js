@@ -47,9 +47,12 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import { lazy } from 'react';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminPermissions from './pages/AdminPermissions';
-import Analytics from './pages/Analytics';
+// Heavy pages (recharts, signature pad) load on demand — they stay out of
+// the main bundle the student/teacher loads on first paint.
+const Analytics = lazy(() => import('./pages/Analytics'));
 import Announcements from './pages/Announcements';
 import App from './pages/App';
 import Attendance from './pages/Attendance';
@@ -60,15 +63,15 @@ import BlockchainDocs from './pages/BlockchainDocs';
 import ClassDetail from './pages/ClassDetail';
 import Classes from './pages/Classes';
 import Home from './pages/Home';
-import IssueBlockWard from './pages/IssueBlockWard';
+const IssueBlockWard = lazy(() => import('./pages/IssueBlockWard'));
 import IssuePoints from './pages/IssuePoints';
 import ManageUsers from './pages/ManageUsers';
 import Messages from './pages/Messages';
-import MyPoints from './pages/MyPoints';
+const MyPoints = lazy(() => import('./pages/MyPoints'));
 import ParentComms from './pages/ParentComms';
 import PointCategories from './pages/PointCategories';
 import Profile from './pages/Profile';
-import Reports from './pages/Reports';
+const Reports = lazy(() => import('./pages/Reports'));
 import Resources from './pages/Resources';
 import SchoolCodes from './pages/SchoolCodes';
 import SchoolEvents from './pages/SchoolEvents';

@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
 import { Copy, Check, Download, Loader2, Share2, QrCode, Printer, Maximize2, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -56,6 +55,7 @@ export default function ProfileShareDialog({ open, onOpenChange, profile }) {
     if (!cardRef.current) return;
     setDownloading('local');
     try {
+      const { default: html2canvas } = await import('html2canvas');
       const canvas = await html2canvas(cardRef.current, {
         width: 1080, height: 1080, scale: 1, backgroundColor: null, logging: false,
       });

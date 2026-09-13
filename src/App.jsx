@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
@@ -42,9 +43,9 @@ import Privacy from './pages/marketing/Privacy';
 import Terms from './pages/marketing/Terms';
 import OrgDashboard from './pages/organisations/Dashboard';
 import Invitations from './pages/Invitations';
-import StudentGrades from './pages/StudentGrades';
+const StudentGrades = lazy(() => import('./pages/StudentGrades'));
 import Gradebook from './pages/Gradebook';
-import GradeManagement from './pages/GradeManagement';
+const GradeManagement = lazy(() => import('./pages/GradeManagement'));
 import AcademicSettings from './pages/AcademicSettings';
 import Assignments from './pages/Assignments';
 import Assemblies from './pages/Assemblies';
@@ -103,6 +104,11 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
+    <Suspense fallback={
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      </div>
+    }>
     <Routes>
       <Route path="/" element={
         <LayoutWrapper currentPageName={mainPageKey}>
@@ -209,6 +215,7 @@ const AuthenticatedApp = () => {
       <Route path="/:handleSegment" element={<HandleRoute />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
+    </Suspense>
   );
 };
 

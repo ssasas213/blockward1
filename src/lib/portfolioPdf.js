@@ -1,6 +1,5 @@
 // Client-side PDF export of the full verified portfolio, with a QR code
 // linking to the live public profile.
-import { jsPDF } from 'jspdf';
 import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 
 const M = 14; // page margin (mm)
@@ -36,6 +35,8 @@ async function qrDataUrl(url) {
  */
 export async function exportPortfolioPdf(data, profileUrl) {
   const { student, orgs = [], achievements = [] } = data;
+  // jsPDF is a large dependency — only load it when an export actually runs.
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
   // ── Header band ─────────────────────────────────────────────────────────

@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { jsPDF } from 'jspdf';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,8 @@ export default function PortfolioActions({ records, profile, user }) {
   const [exporting, setExporting] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const buildPDF = (type) => {
+  const buildPDF = async (type) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const studentName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
     const left = 14;
@@ -117,11 +117,11 @@ export default function PortfolioActions({ records, profile, user }) {
     setShareOpen(true);
   };
 
-  const handleExport = (type) => {
+  const handleExport = async (type) => {
     if (records.length === 0) { toast.error('No achievements to export yet'); return; }
     setExporting(true);
     try {
-      buildPDF(type);
+      await buildPDF(type);
       toast.success('Portfolio exported as PDF');
     } catch (e) {
       toast.error('Export failed: ' + e.message);
@@ -130,7 +130,8 @@ export default function PortfolioActions({ records, profile, user }) {
     }
   };
 
-  const downloadCertificate = (rec) => {
+  const downloadCertificate = async (rec) => {
+    const { jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const studentName = profile ? `${profile.first_name} ${profile.last_name}` : rec.student_name;
     doc.setFillColor(91, 33, 182);

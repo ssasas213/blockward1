@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Download, Loader2, AlertCircle, FileText, TrendingUp, AlertTriangle, Lightbulb, Trophy, Users } from 'lucide-react';
-import jsPDF from 'jspdf';
 
 export default function SchoolReportTab({ userType, schoolId }) {
   const [loading, setLoading] = useState(false);
@@ -28,9 +27,10 @@ export default function SchoolReportTab({ userType, schoolId }) {
     }
   };
 
-  const downloadPdf = () => {
+  const downloadPdf = async () => {
     if (!report) return;
     const { stats, narrative } = report;
+    const { default: jsPDF } = await import('jspdf');
     const doc = new jsPDF();
     const pageW = doc.internal.pageSize.getWidth();
     const margin = 14;
