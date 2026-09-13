@@ -10,7 +10,7 @@ export default function StudentHero() {
       <HeroBackground />
       <div className="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-32 pb-20">
         <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-[1.05] tracking-tight">
-          Your receipts.
+          Your achievements.
           <br />
           All of them. <span className="text-brand-gradient">Verified.</span>
         </h1>
@@ -41,7 +41,7 @@ export default function StudentHero() {
         </div>
 
         <p className="mt-10 text-sm text-white/40">
-          Free for students · Set up in minutes · No crypto knowledge needed
+          Free for students · Set up in minutes
         </p>
       </div>
     </section>
