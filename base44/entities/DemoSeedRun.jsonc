@@ -4,11 +4,28 @@
   "properties": {
     "run_label": {
       "type": "string",
-      "description": "Identifier for this seeding run (e.g. demo-1718000000000)."
+      "description": "Identifier for this seeding run (e.g. demo-1718000000000, investor-1718000000000)."
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "organisation",
+        "investor_world"
+      ],
+      "default": "organisation",
+      "description": "Which seeder produced this run: 'organisation' \u2014 the test organisation (seedDemoOrganisation); 'investor_world' \u2014 the investor-deck demo world (seedInvestorDemo)."
     },
     "school_id": {
       "type": "string",
-      "description": "The demo School this run created \u2014 every seeded record is scoped to this school, which is what makes the run cleanly removable."
+      "description": "The primary demo School this run created \u2014 records scoped to it are removed with the run."
+    },
+    "school_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "EVERY organisation this run created \u2014 removal purges each. The investor world spans a school AND a club."
     },
     "school_name": {
       "type": "string"
@@ -24,7 +41,7 @@
         "removed"
       ],
       "default": "active",
-      "description": "active: the demo organisation exists. removed: every record it created has been deleted."
+      "description": "active: the demo world exists. removed: every record it created has been deleted."
     },
     "teacher_emails": {
       "type": "array",
@@ -32,7 +49,15 @@
         "type": "string"
       },
       "default": [],
-      "description": "Seeded teacher emails \u2014 their profiles carry no school_id while pending approval, so removal deletes them by email."
+      "description": "Seeded staff emails (all on the @demo.blockward.test domain)."
+    },
+    "student_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "EVERY seeded account email (all @demo.blockward.test). This is the demo_data manifest: removal deletes every profile by these emails, plus the school-less records (independently verified credentials, self-reported achievements) that cannot be purged by school_id."
     },
     "student_count": {
       "type": "number",

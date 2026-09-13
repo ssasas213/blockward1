@@ -16,7 +16,7 @@ import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import {
   getOrCreateCurrentTerm, countBudgetUsed, validateEndorsementText,
   isEligibleToEndorse, buildAffiliation, MAX_ENDORSEMENTS_PER_ACHIEVEMENT,
-  INVITE_EXPIRY_DAYS,
+  INVITE_EXPIRY_DAYS, endorseAchievement,
 } from '../../shared/endorsements.ts';
 import { sendResendEmail } from '../../shared/resendEmail.ts';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
@@ -51,89 +51,16 @@ export default async function (req: Request): Promise<Response> {
 
     // ================= endorse an existing member's achievement =================
     if (action === 'endorse') {
-      const registryId = body.registry_id;
-      if (!registryId) return bad('Missing achievement to endorse.');
-
-      const regs = await svc.entities.BlockWardVerificationRegistry.filter({ id: registryId });
-      const reg = regs[0];
-      if (!reg || reg.approval_status !== 'approved') return bad('Achievement not found.', 404);
-      if (!reg.student_id) return bad('This achievement has no verified owner to endorse.');
-
-      const recipientRows = await svc.entities.UserProfile.filter({ id: reg.student_id });
-      const recipient = recipientRows[0];
-      if (!recipient) return bad('Recipient profile not found.', 404);
-
-      const eligibility = await isEligibleToEndorse(svc, actor, recipient);
-      if (!eligibility.ok) return bad(eligibility.reason, 403);
-
-      const term = await getOrCreateCurrentTerm(svc, actorProfile.school_id);
-      if (!term) return bad('No active endorsement term.');
-
-      // Reciprocal trading block — the recipient endorsed the actor this term.
-      const reciprocal = await svc.entities.Endorsement.filter({
-        term_id: term.id, endorser_id: recipient.id, recipient_id: actor.actor_id,
+      const result = await endorseAchievement(svc, {
+        actor, actorProfile, actorName, actorHandle, affiliation,
+        registryId: body.registry_id, text: body.text,
       });
-      if (reciprocal.some((e: any) => e.status === 'active')) {
-        return bad(`${recipient.first_name} endorsed you this term — endorsements can't be traded back.`, 403);
-      }
-
-      // One endorsement per endorser per achievement.
-      const mine = await svc.entities.Endorsement.filter({ endorser_id: actor.actor_id, registry_id: registryId });
-      if (mine.some((e: any) => e.status === 'active')) return bad("You've already endorsed this achievement.", 403);
-
-      // Scarcity — the per-term budget.
-      const used = await countBudgetUsed(svc, term.id, actor.actor_id);
-      if (used >= term.budget) {
-        return bad(`No endorsements left this term — you've used all ${term.budget}. The budget resets ${new Date(term.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`, 403);
-      }
-
-      // Vanity-wall cap.
-      const onAchievement = await svc.entities.Endorsement.filter({ registry_id: registryId, status: 'active' });
-      if (onAchievement.length >= MAX_ENDORSEMENTS_PER_ACHIEVEMENT) {
-        return bad('This achievement has reached its endorsement limit.', 403);
-      }
-
-      await svc.entities.Endorsement.create({
-        school_id: actorProfile.school_id,
-        term_id: term.id,
-        term_start: term.start_date,
-        term_end: term.end_date,
-        endorser_id: actor.actor_id,
-        endorser_email: actor.actor_email,
-        endorser_name: actorName,
-        endorser_handle: actorHandle,
-        endorser_affiliation: affiliation,
-        recipient_id: recipient.id,
-        recipient_email: recipient.user_email,
-        recipient_name: `${recipient.first_name || ''} ${recipient.last_name || ''}`.trim(),
-        recipient_handle: recipient.handle || null,
-        registry_id: registryId,
-        achievement_title: reg.achievement_title,
-        achievement_verification_id: reg.verification_id || null,
-        text: body.text.trim(),
-        status: 'active',
-      });
-
-      // Per-type notification to the recipient (respects their preferences).
-      await notifyEvent(svc, {
-        to_email: recipient.user_email,
-        school_id: actorProfile.school_id,
-        event_type: 'endorsement',
-        title: `${actorName} endorsed "${reg.achievement_title}"`,
-        body: body.text.trim().slice(0, 140),
-        related_id: registryId,
-        email_subject: `${actorName} endorsed your achievement`,
-        email_html: requestEmailHtml('You received a peer endorsement', [
-          `<strong>${actorName}</strong> (${affiliation}) endorsed your achievement <strong>${reg.achievement_title}</strong>:`,
-          `<blockquote style="border-left:3px solid #7c3aed;padding-left:12px;color:#64748b;">${body.text.trim()}</blockquote>`,
-        ], `${appUrl()}/@${recipient.handle || ''}`, 'View my profile'),
-      });
-
+      if (!result.ok) return bad(result.error, result.status || 400);
       return Response.json({
         ok: true,
-        remaining: Math.max(0, term.budget - used - 1),
-        budget: term.budget,
-        term_end: term.end_date,
+        remaining: result.remaining,
+        budget: result.budget,
+        term_end: result.term_end,
       });
     }
 

@@ -3,6 +3,9 @@
 // everywhere. Endorsements are deliberately scarce: a small per-term budget,
 // no roll-over, no anonymity, always attached to a specific achievement.
 
+import { notifyEvent } from './eventNotifications.ts';
+import { requestEmailHtml, appUrl } from './achievementRequests.ts';
+
 export const DEFAULT_TERM_DAYS = 90;
 export const DEFAULT_BUDGET = 3;
 export const MAX_ENDORSEMENTS_PER_ACHIEVEMENT = 20;
@@ -99,4 +102,103 @@ export async function isEligibleToEndorse(svc: any, actor: any, recipient: any):
 export function buildAffiliation(role: string, schoolName: string | null): string {
   const label = role === 'admin' ? 'Admin' : role === 'teacher' ? 'Teacher' : 'Student';
   return `${label} at ${schoolName || 'their organisation'}`;
+}
+
+/**
+ * endorseAchievement — the single implementation of the 'endorse' rules,
+ * used by endorsementAction (user-authenticated) and the demo seeder
+ * (service-role with synthetic actors). Every check the endpoint performs is
+ * performed here — nothing is trusted from the caller.
+ * opts: { actor, actorProfile, actorName, actorHandle, affiliation,
+ *          registryId, text }
+ * Returns { ok, error?, status?, remaining, budget, term_end }.
+ */
+export async function endorseAchievement(svc: any, opts: any) {
+  const { actor, actorProfile, actorName, actorHandle, affiliation, registryId, text } = opts;
+  if (!registryId) return { ok: false, status: 400, error: 'Missing achievement to endorse.' };
+
+  const regs = await svc.entities.BlockWardVerificationRegistry.filter({ id: registryId });
+  const reg = regs[0];
+  if (!reg || reg.approval_status !== 'approved') return { ok: false, status: 404, error: 'Achievement not found.' };
+  if (!reg.student_id) return { ok: false, status: 400, error: 'This achievement has no verified owner to endorse.' };
+
+  const recipientRows = await svc.entities.UserProfile.filter({ id: reg.student_id });
+  const recipient = recipientRows[0];
+  if (!recipient) return { ok: false, status: 404, error: 'Recipient profile not found.' };
+
+  const eligibility = await isEligibleToEndorse(svc, actor, recipient);
+  if (!eligibility.ok) return { ok: false, status: 403, error: eligibility.reason };
+
+  const term = await getOrCreateCurrentTerm(svc, actorProfile.school_id);
+  if (!term) return { ok: false, status: 400, error: 'No active endorsement term.' };
+
+  // Reciprocal trading block — the recipient endorsed the actor this term.
+  const reciprocal = await svc.entities.Endorsement.filter({
+    term_id: term.id, endorser_id: recipient.id, recipient_id: actor.actor_id,
+  });
+  if (reciprocal.some((e: any) => e.status === 'active')) {
+    return { ok: false, status: 403, error: `${recipient.first_name} endorsed you this term — endorsements can't be traded back.` };
+  }
+
+  // One endorsement per endorser per achievement.
+  const mine = await svc.entities.Endorsement.filter({ endorser_id: actor.actor_id, registry_id: registryId });
+  if (mine.some((e: any) => e.status === 'active')) return { ok: false, status: 403, error: "You've already endorsed this achievement." };
+
+  // Scarcity — the per-term budget.
+  const used = await countBudgetUsed(svc, term.id, actor.actor_id);
+  if (used >= term.budget) {
+    return {
+      ok: false, status: 403,
+      error: `No endorsements left this term — you've used all ${term.budget}. The budget resets ${new Date(term.end_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.`,
+    };
+  }
+
+  // Vanity-wall cap.
+  const onAchievement = await svc.entities.Endorsement.filter({ registry_id: registryId, status: 'active' });
+  if (onAchievement.length >= MAX_ENDORSEMENTS_PER_ACHIEVEMENT) {
+    return { ok: false, status: 403, error: 'This achievement has reached its endorsement limit.' };
+  }
+
+  await svc.entities.Endorsement.create({
+    school_id: actorProfile.school_id,
+    term_id: term.id,
+    term_start: term.start_date,
+    term_end: term.end_date,
+    endorser_id: actor.actor_id,
+    endorser_email: actor.actor_email,
+    endorser_name: actorName,
+    endorser_handle: actorHandle,
+    endorser_affiliation: affiliation,
+    recipient_id: recipient.id,
+    recipient_email: recipient.user_email,
+    recipient_name: `${recipient.first_name || ''} ${recipient.last_name || ''}`.trim(),
+    recipient_handle: recipient.handle || null,
+    registry_id: registryId,
+    achievement_title: reg.achievement_title,
+    achievement_verification_id: reg.verification_id || null,
+    text: text.trim(),
+    status: 'active',
+  });
+
+  // Per-type notification to the recipient (respects their preferences).
+  await notifyEvent(svc, {
+    to_email: recipient.user_email,
+    school_id: actorProfile.school_id,
+    event_type: 'endorsement',
+    title: `${actorName} endorsed "${reg.achievement_title}"`,
+    body: text.trim().slice(0, 140),
+    related_id: registryId,
+    email_subject: `${actorName} endorsed your achievement`,
+    email_html: requestEmailHtml('You received a peer endorsement', [
+      `<strong>${actorName}</strong> (${affiliation}) endorsed your achievement <strong>${reg.achievement_title}</strong>:`,
+      `<blockquote style="border-left:3px solid #7c3aed;padding-left:12px;color:#64748b;">${text.trim()}</blockquote>`,
+    ], `${appUrl()}/@${recipient.handle || ''}`, 'View my profile'),
+  });
+
+  return {
+    ok: true,
+    remaining: Math.max(0, term.budget - used - 1),
+    budget: term.budget,
+    term_end: term.end_date,
+  };
 }
