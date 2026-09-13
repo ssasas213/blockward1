@@ -13,7 +13,7 @@ import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Users, BookOpen, Award, Calendar,
-  Plus, ChevronRight, PenLine, ClipboardCheck
+  Plus, ChevronRight, PenLine, ClipboardCheck, Building2
 } from 'lucide-react';
 import SignoffQueueWidget from '@/components/dashboard/SignoffQueueWidget';
 import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidget';
@@ -62,6 +62,28 @@ function TeacherDashboardContent() {
   };
 
   if (loading) return <DashboardSkeleton />;
+
+  // A teacher without a school membership gets a clear joining path —
+  // never an all-zero dashboard that looks broken.
+  if (!userProfile?.school_id) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Set up your teaching workspace"
+          description="Join a school to start teaching with BlockWard"
+        />
+        <EmptyState
+          icon={Building2}
+          title="You have not joined a school yet"
+          description="Your dashboard fills in as soon as you're part of a school. Join with the staff code from your school administrator, or ask them to invite you by email."
+        >
+          <Button asChild>
+            <Link to={createPageUrl('JoinSchool')}>Join a school</Link>
+          </Button>
+        </EmptyState>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

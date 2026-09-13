@@ -1,14 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, Shield, Rss, BookOpen, Inbox } from 'lucide-react';
+import { LayoutDashboard, Shield, Rss, GraduationCap, ClipboardList, Inbox } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
-  { name: 'Home', icon: LayoutDashboard, page: 'StudentDashboard' },
-  { name: 'BlockWards', icon: Shield, page: 'StudentBlockWards' },
+  { name: 'Today', icon: LayoutDashboard, page: 'StudentDashboard' },
+  { name: 'To do', icon: ClipboardList, page: 'Assignments' },
+  { name: 'Achievements', icon: Shield, page: 'StudentBlockWards' },
   { name: 'Explore', icon: Rss, page: 'Feed' },
-  { name: 'School', icon: BookOpen, page: 'MySchool' },
+  { name: 'School', icon: GraduationCap, page: 'MySchool' },
   { name: 'Inbox', icon: Inbox, page: 'Messages' },
 ];
 
@@ -21,7 +22,7 @@ export default function StudentBottomTabs({ currentPageName, hasSchool }) {
   const tabs = hasSchool ? TABS : TABS.filter((t) => t.page !== 'MySchool');
   return (
     <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 glass border-t border-border">
-      <div className={cn('grid', tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4')}>
+      <div className={cn('grid', tabs.length === 6 ? 'grid-cols-6' : tabs.length === 5 ? 'grid-cols-5' : 'grid-cols-4')}>
         {tabs.map(t => {
           const active = currentPageName === t.page;
           return (

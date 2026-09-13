@@ -62,35 +62,50 @@ export default function Layout({ children, currentPageName }) {
     ? (testMode.activeRole || testMode.activePersona || 'admin')
     : (profile?.user_type || 'student');
 
+  // Everyday classroom navigation — daily tasks first, configuration last.
+  // All items map to existing pages; only grouping and labels changed.
   const navigationGroups = {
     admin: [
-      { items: [
-        { name: 'Home', icon: LayoutDashboard, page: 'AdminDashboard' },
+      { label: 'Every day', items: [
+        { name: 'Overview', icon: LayoutDashboard, page: 'AdminDashboard' },
         { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'approvals' },
+        { name: 'People & invitations', icon: Users, page: 'People', badge: 'pendingTeachers' },
         { name: 'Records', icon: FileText, page: 'Records' },
-        { name: 'People', icon: Users, page: 'People', badge: 'pendingTeachers' },
-        { name: 'School', icon: BookOpen, page: 'ManageSchool' },
-        { name: 'Insights', icon: BarChart3, page: 'Insights' },
-        { name: 'Inbox', icon: Inbox, page: 'Messages' },
+      ]},
+      { label: 'Manage school', items: [
+        { name: 'Classes', icon: BookOpen, page: 'Classes' },
+        { name: 'Attendance', icon: ClipboardList, page: 'AdminAttendance' },
+        { name: 'Reports', icon: BarChart3, page: 'Insights' },
+        { name: 'School', icon: GraduationCap, page: 'ManageSchool' },
         { name: 'Settings', icon: Settings, page: 'SchoolSettings' },
+        { name: 'Inbox', icon: Inbox, page: 'Messages' },
       ]},
     ],
     teacher: [
-      { items: [
-        { name: 'Home', icon: LayoutDashboard, page: 'TeacherDashboard' },
-        { name: 'Sign-offs', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
+      { label: 'Teaching', items: [
+        { name: 'Today', icon: LayoutDashboard, page: 'TeacherDashboard' },
+        { name: 'Classes', icon: BookOpen, page: 'MyTeaching' },
+        { name: 'To review', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
+        { name: 'Calendar', icon: CalendarDays, page: 'Timetable' },
+        { name: 'Resources', icon: FileText, page: 'Resources' },
+        { name: 'Inbox', icon: Inbox, page: 'Messages' },
+      ]},
+      { label: 'More', items: [
         { name: 'Achievements', icon: Trophy, page: 'TeacherRecords' },
-        { name: 'Teaching', icon: BookOpen, page: 'MyTeaching' },
         { name: 'Explore', icon: Rss, page: 'Feed' },
-        { name: 'Inbox', icon: FileText, page: 'Messages' },
       ]},
     ],
     student: [
-      { items: [
-        { name: 'Home', icon: LayoutDashboard, page: 'StudentDashboard' },
-        { name: 'My BlockWards', icon: Shield, page: 'StudentBlockWards' },
+      { label: 'My school', items: [
+        { name: 'Today', icon: LayoutDashboard, page: 'StudentDashboard' },
+        { name: 'My classes', icon: BookOpen, page: 'Classes' },
+        { name: 'To do', icon: ClipboardList, page: 'Assignments' },
+        { name: 'Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
+        { name: 'My achievements', icon: Shield, page: 'StudentBlockWards' },
+      ]},
+      { label: 'More', items: [
         { name: 'Explore', icon: Rss, page: 'Feed' },
-        { name: 'School', icon: BookOpen, page: 'MySchool' },
+        { name: 'School', icon: GraduationCap, page: 'MySchool' },
         { name: 'Inbox', icon: Inbox, page: 'Messages' },
       ]},
     ],
@@ -100,7 +115,10 @@ export default function Layout({ children, currentPageName }) {
   // The School nav is meaningless without an active membership — hide it
   // entirely until the student has one. Joining an organisation is optional.
   if (userType === 'student' && !profile?.school_id) {
-    groups = groups.map((g) => ({ ...g, items: g.items.filter((i) => i.page !== 'MySchool') }));
+    // Joining an organisation is optional — hide school-scoped destinations
+    // until the student has a membership.
+    const schoolScoped = ['MySchool', 'Classes', 'Assignments', 'SchoolCalendar'];
+    groups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !schoolScoped.includes(i.page)) }));
   }
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
