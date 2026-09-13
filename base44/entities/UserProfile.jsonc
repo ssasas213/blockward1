@@ -421,9 +421,12 @@
       "enum": [
         "student",
         "teacher",
-        "admin"
+        "admin",
+        "demo_student",
+        "demo_teacher",
+        "demo_admin"
       ],
-      "description": "For the test super user only \u2014 which persona's experience is currently active."
+      "description": "For the test super user only \u2014 which persona's experience is currently active. Classic personas (student/teacher/admin) are the dedicated @blockward.test accounts. demo_student/demo_teacher/demo_admin are the SEEDED investor-demo cast (hero student, her teacher, the school admin), resolved from the demo-run manifest \u2014 they exist only while the demo world is seeded and are never provisioned by Test Mode itself."
     },
     "test_persona_ids": {
       "type": "object",
@@ -437,6 +440,18 @@
         },
         "admin": {
           "type": "string"
+        },
+        "demo_student": {
+          "type": "string",
+          "description": "Seeded investor-demo hero student (from the demo-run manifest)"
+        },
+        "demo_teacher": {
+          "type": "string",
+          "description": "Seeded investor-demo class teacher (from the demo-run manifest)"
+        },
+        "demo_admin": {
+          "type": "string",
+          "description": "Seeded investor-demo school admin (from the demo-run manifest)"
         }
       }
     },
