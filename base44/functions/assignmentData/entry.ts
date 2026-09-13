@@ -50,12 +50,60 @@ async function studentView(svc, actor) {
     };
   });
 
-  const dueSoon = enriched.filter(a => a.due_status === "due_soon" || a.due_status === "due_today").sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""));
-  const overdue = enriched.filter(a => a.due_status === "overdue" && a.grade_status !== "graded").sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""));
-  const upcoming = enriched.filter(a => a.due_status === "upcoming").sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"));
-  const completed = enriched.filter(a => a.grade_status === "graded").sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  // ── New classwork system: published posts visible to this student ──
+  const postLists = await Promise.all(myClassIds.map((cid) =>
+    svc.entities.Assignment.filter({ class_id: cid }).catch(() => [])));
+  const visible = postLists.flat().filter((p) =>
+    p.status === "published" && (p.type || "assignment") !== "material" &&
+    (p.visible_to || []).some((e) => String(e).toLowerCase() === String(actor.actor_email).toLowerCase()));
 
-  return { view: "student", assignments: enriched, due_soon: dueSoon, overdue, upcoming, completed, class_count: myClassIds.length };
+  let classworkItems = [];
+  if (visible.length) {
+    const subs = await svc.entities.Submission.filter({ student_email: actor.actor_email }).catch(() => []);
+    const subByPost = new Map((subs || []).map((s) => [s.assignment_id, s]));
+    const subjectByClass = new Map(classes.map((c) => [c.id, c.subject]));
+    const stripHtml = (html) => String(html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    const now = Date.now();
+    const today = new Date().toDateString();
+
+    classworkItems = visible.map((p) => {
+      const sub = subByPost.get(p.id);
+      const status = sub?.status || "assigned";
+      const dueMs = p.due_at ? new Date(p.due_at).getTime() : null;
+      const grade = status === "returned" && sub?.grade != null ? sub.grade : null;
+      return {
+        id: p.id,
+        title: p.title,
+        description: stripHtml(p.instructions).slice(0, 160),
+        subject: subjectByClass.get(p.class_id) || null,
+        class_name: p.class_name || null,
+        assessment_type: p.type,
+        due_date: p.due_at ? p.due_at.slice(0, 10) : null,
+        grade_status: grade != null ? "graded" : ["submitted", "resubmitted"].includes(status) ? "submitted" : "not_submitted",
+        percentage: grade != null && p.points_possible ? Math.round((grade / p.points_possible) * 100) : null,
+        raw_score: grade,
+        due_status: dueMs == null ? "upcoming"
+          : dueMs < now ? "overdue"
+          : new Date(p.due_at).toDateString() === today ? "due_today" : "due_soon",
+        kind: "classwork",
+        class_id: p.class_id,
+        post_id: p.id,
+      };
+    });
+  }
+
+  const byDue = (a, b) => String(a.due_date || "9999").localeCompare(String(b.due_date || "9999"));
+  const all = [...enriched, ...classworkItems];
+  const cwTodo = classworkItems.filter((a) => a.grade_status === "not_submitted");
+  const cwDone = classworkItems.filter((a) => a.grade_status !== "not_submitted");
+
+  const dueSoon = all.filter(a => a.due_status === "due_soon" || a.due_status === "due_today").sort(byDue);
+  const overdue = all.filter(a => a.due_status === "overdue" && a.grade_status !== "graded").sort(byDue);
+  const upcoming = all.filter(a => a.due_status === "upcoming").sort(byDue);
+  const completed = all.filter(a => a.grade_status === "graded" || (a.kind === "classwork" && a.grade_status === "submitted"))
+    .sort((a, b) => String(b.due_date || b.date || "").localeCompare(String(a.due_date || a.date || "")));
+
+  return { view: "student", assignments: all, due_soon: dueSoon, overdue, upcoming, completed, class_count: myClassIds.length };
 }
 
 async function teacherView(svc, actor) {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, Clock, BookOpen, User, Paperclip, AlertCircle } from 'lucide-react';
@@ -18,10 +19,10 @@ export default function AssignmentCard({ assignment }) {
     if (assignment.grade_status === 'graded') {
       return <Badge className="bg-success/15 text-success">Graded {assignment.percentage != null ? `${assignment.percentage}%` : ''}</Badge>;
     }
-    if (assignment.grade_status === 'submitted') return <Badge variant="secondary">Submitted</Badge>;
+    if (assignment.grade_status === 'submitted') return <Badge className="bg-success/15 text-success">Turned in</Badge>;
     return <Badge variant="outline">Not submitted</Badge>;
   };
-  return (
+  const card = (
     <Card className="surface-card card-hover">
       <CardContent className="pt-5">
         <div className="flex items-start justify-between gap-3 mb-3">
@@ -45,4 +46,9 @@ export default function AssignmentCard({ assignment }) {
       </CardContent>
     </Card>
   );
+
+  if (assignment.kind === 'classwork') {
+    return <Link to={`/ClassDetail?id=${assignment.class_id}`} className="block">{card}</Link>;
+  }
+  return card;
 }
