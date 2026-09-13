@@ -7,8 +7,8 @@ import Reveal from '@/components/home/Reveal';
 const benefits = [
   {
     icon: ShieldCheck,
-    title: 'Nobody can call your CV fake',
-    desc: 'Every award is signed off by the people who awarded it and locked so it can\'t be edited. Screenshot it, share it — it holds up.',
+    title: 'See who verified each achievement',
+    desc: 'Every award on your profile is signed off by the teacher, coach or organisation who confirmed it — so anyone reading it can see the source for themselves.',
   },
   {
     icon: Link2,
