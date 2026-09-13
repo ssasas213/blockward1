@@ -29,6 +29,22 @@ import { notifyEvent } from './eventNotifications.ts';
 
 export const REQUEST_CATEGORIES = ['academic', 'sports', 'arts', 'leadership', 'community', 'behaviour', 'special'];
 
+// Fields a verifier's signature attests to. Any change to one of these after
+// a sign-off means the signature no longer covers the claim being submitted —
+// it must be cleared and the verifier must review the new content again.
+const SIGNATURE_PROTECTED_FIELDS = [
+  'title', 'description', 'category', 'credential_type_id', 'credential_type_title',
+  'date_achieved', 'image_url', 'evidence', 'nominated_verifier_email',
+  'external_verifier_email', 'verification_tier', 'is_team', 'my_team_role',
+  'team_participants',
+];
+
+// Stable fingerprint of everything the signature covers. Stored on the
+// sign-off at signing time and compared against the resubmitted form.
+export function requestContentHash(data) {
+  return SIGNATURE_PROTECTED_FIELDS.map((f) => JSON.stringify(data?.[f] ?? null)).join('|');
+}
+
 export function ipCountry(req) {
   return req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || req.headers.get('x-country-code') || null;
 }
@@ -354,9 +370,39 @@ export async function submitRequest(svc, actor, body, ctx) {
   if (action === 'save_draft') {
     status = request?.status === 'changes_requested' ? 'changes_requested' : 'draft';
   } else if (action === 'resubmit') {
-    status = 'under_review';
-    extra = { resubmitted_at: now };
-    events.push(logEvent('resubmitted', email, baseData.student_name, 'student', null));
+    // ── Strict re-sign logic ──
+    // The verifier's signature attests to specific content. If any protected
+    // field changed since the sign-off, the signature no longer covers the
+    // claim — it is cleared and the request returns to the verifier's queue
+    // ('submitted') for a fresh review. If the content is unchanged, the
+    // signature still stands: the request resumes at the stage it was at
+    // ('awaiting_second_approval' when the verifier had already signed).
+    const signedHash = request?.verifier_signoff?.content_hash || null;
+    const newHash = requestContentHash(baseData);
+    // Legacy sign-offs created before content_hash existed are compared
+    // against the stored request as a best-effort fallback.
+    const contentChanged = signedHash
+      ? signedHash !== newHash
+      : SIGNATURE_PROTECTED_FIELDS.some((f) => JSON.stringify(baseData[f] ?? null) !== JSON.stringify(request?.[f] ?? null));
+
+    if (request?.verifier_signoff && contentChanged) {
+      status = 'submitted';
+      extra = {
+        resubmitted_at: now,
+        verifier_signoff: null,
+        admin_signoff: null,
+        approved_at: null,
+      };
+      events.push(logEvent('resubmitted', email, baseData.student_name, 'student', 'Protected content changed since the verifier signed — signature cleared, fresh verifier review required'));
+    } else if (request?.verifier_signoff) {
+      status = 'awaiting_second_approval';
+      extra = { resubmitted_at: now };
+      events.push(logEvent('resubmitted', email, baseData.student_name, 'student', 'Content unchanged since the verifier signed — signature preserved'));
+    } else {
+      status = 'under_review';
+      extra = { resubmitted_at: now };
+      events.push(logEvent('resubmitted', email, baseData.student_name, 'student', null));
+    }
   } else if (form.data.verification_mode === 'independent') {
     // Straight to the verifier's inbox — no staff queue without an org.
     status = 'awaiting_external_verification';
@@ -501,7 +547,12 @@ export async function retryMint(svc, actor, body) {
 
 // Tier 1 verifier sign-off → approved → mint.
 async function signAndAdvance(svc, request, kind, body, email, actorName, country, now) {
-  const signoff = buildSignoff(body, { actor_id: request.nominated_verifier_id }, email, actorName, 'verifier', country, now);
+  const signoff = {
+    ...buildSignoff(body, { actor_id: request.nominated_verifier_id }, email, actorName, 'verifier', country, now),
+    // Snapshot of the exact content this signature attests to — powers the
+    // strict re-sign check when a changes-requested request is resubmitted.
+    content_hash: requestContentHash(request),
+  };
   await svc.entities.AchievementRequest.update(request.id, {
     verifier_signoff: signoff,
     status: request.verification_tier === 1 ? 'approved' : 'awaiting_second_approval',
