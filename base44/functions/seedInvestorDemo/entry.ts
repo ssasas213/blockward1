@@ -230,8 +230,11 @@ async function profileByEmail(svc, email) {
 // signs → (Tier 2: admin approves) → credentialDelivery publishes ──
 async function ensureOrgCredential(svc, spec, heroProfile, actors, schoolByOrg) {
   const schoolId = schoolByOrg[spec.org].id;
-  const verifierActor = spec.verifier === 'club_admin' ? actors.marcus : actors.daniel;
-  const verifierName = spec.verifier === 'club_admin' ? 'Marcus Bell' : 'Daniel Okafor';
+  // The nominated verifier is staff of the ISSUING organisation: the club's
+  // admin for club credentials, the class teacher for school credentials.
+  const isClub = spec.org === 'club';
+  const verifierActor = isClub ? actors.marcus : actors.daniel;
+  const verifierName = isClub ? 'Marcus Bell' : 'Daniel Okafor';
 
   let req = await findRequest(svc, HERO.email, spec.title);
   if (!req) {
@@ -381,7 +384,8 @@ async function mintOnChain(svc, heroProfile, registry) {
   if (!studentAddr) {
     const bytes = new Uint8Array(32);
     crypto.getRandomValues(bytes);
-    studentAddr = privateKeyToAccount(bytes).address;
+    const hex = '0x' + Array.from(bytes).map((b) => b.toString(16).padStart(2, '0')).join('');
+    studentAddr = privateKeyToAccount(hex).address;
     await svc.entities.UserProfile.update(heroProfile.id, { wallet_address: studentAddr });
   }
 
@@ -440,6 +444,26 @@ async function mintOnChain(svc, heroProfile, registry) {
     });
   }
   return { ok: true, tx: receipt.transactionHash, token_id: tokenId, block: receipt.blockNumber ? String(receipt.blockNumber) : null, student_wallet: studentAddr };
+}
+
+// ── Rate-limit resilience ──
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Retries a unit of seeding work when the platform's write-rate limit trips.
+// Every unit re-derives its own state (idempotent), so retrying is safe.
+async function retryRateLimit(fn, label, tries = 5) {
+  for (let t = 0; ; t++) {
+    try {
+      return await fn();
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (t < tries && /rate limit/i.test(msg)) {
+        console.log(`[seed] ${label} hit a rate limit — backing off ${(5 + t * 10)}s`);
+        await sleep((5 + t * 10) * 1000);
+        continue;
+      }
+      throw e;
+    }
+  }
 }
 
 // ── Gradebook helpers ──
@@ -527,12 +551,36 @@ export default async function (req) {
       return Response.json({ ok: true, deleted });
     }
 
-    if (action !== 'seed') return Response.json({ error: 'Unknown action. Use seed | remove | status.' }, { status: 400 });
+    // ══════════════════════════ mint_chain ══════════════════════════
+    // Standalone re-run of the flagship credential's genuine on-chain mint —
+    // used when the Sepolia transaction couldn't complete during seeding.
+    if (action === 'mint_chain') {
+      const heroProfile = await profileByEmail(svc, HERO.email);
+      if (!heroProfile) return Response.json({ error: 'Hero profile not found — seed the demo world first' }, { status: 404 });
+      const regs = await svc.entities.BlockWardVerificationRegistry.filter({ student_id: heroProfile.id });
+      const registry = regs.find((r) => r.achievement_title === 'Northgate Mathematics Prize — Year 12');
+      if (!registry) return Response.json({ error: 'Flagship credential not found — seed the demo world first' }, { status: 404 });
+      let chain;
+      try {
+        chain = await mintOnChain(svc, heroProfile, registry);
+      } catch (e) {
+        chain = { ok: false, reason: e?.message || String(e) };
+      }
+      return Response.json({ ok: chain.ok, blockchain: chain, verify_url: registry.public_verification_url });
+    }
+
+    if (action !== 'seed') return Response.json({ error: 'Unknown action. Use seed | remove | status | mint_chain.' }, { status: 400 });
 
     // ══════════════════════════ seed ══════════════════════════
-    const existingRuns = (await svc.entities.DemoSeedRun.filter({ status: 'active' })).filter((r) => r.kind === 'investor_world');
-    if (existingRuns.length > 0) {
-      return Response.json({ error: 'The investor demo world is already seeded. Remove it first with { "action": "remove" }.' }, { status: 409 });
+    // A previous PARTIAL seed resumes instead of blocking — every step below
+    // re-derives its own state. Only a complete world blocks a re-seed.
+    let run = (await svc.entities.DemoSeedRun.filter({ status: 'active' })).find((r) => r.kind === 'investor_world') || null;
+    if (run) {
+      const heroCheck = await profileByEmail(svc, HERO.email);
+      const heroRegs = heroCheck ? await svc.entities.BlockWardVerificationRegistry.filter({ student_id: heroCheck.id }) : [];
+      if (heroRegs.filter((r) => r.approval_status === 'approved').length >= 8) {
+        return Response.json({ error: 'The investor demo world is already seeded. Remove it first with { "action": "remove" }.' }, { status: 409 });
+      }
     }
 
     // ── 1. Two organisations through the REAL setupSchool path ──
@@ -588,17 +636,19 @@ export default async function (req) {
     }
 
     // Registry FIRST — even a partial seed is always removable.
-    const run = await svc.entities.DemoSeedRun.create({
-      run_label: 'investor-' + Date.now(),
-      kind: 'investor_world',
-      school_id: school.id,
-      school_ids: [school.id, club.id],
-      school_name: SCHOOL_NAME,
-      created_by_email: callerEmail,
-      status: 'active',
-      teacher_emails: [TEACHER.email, SCHOOL_ADMIN.email, CLUB_ADMIN.email],
-      student_emails: [HERO.email],
-    });
+    if (!run) {
+      run = await svc.entities.DemoSeedRun.create({
+        run_label: 'investor-' + Date.now(),
+        kind: 'investor_world',
+        school_id: school.id,
+        school_ids: [school.id, club.id],
+        school_name: SCHOOL_NAME,
+        created_by_email: callerEmail,
+        status: 'active',
+        teacher_emails: [TEACHER.email, SCHOOL_ADMIN.email, CLUB_ADMIN.email],
+        student_emails: [HERO.email],
+      });
+    }
 
     // ── 2. Staff: one teacher (real join-code → real approval engine) ──
     await provisionProfile(svc, { email: TEACHER.email, full_name: `${TEACHER.first} ${TEACHER.last}` }, {
@@ -672,14 +722,16 @@ export default async function (req) {
       first, last,
       dob: `2009-${String((i % 9) + 1).padStart(2, '0')}-${String((i % 27) + 1).padStart(2, '0')}`,
     }));
-    for (let c = 0; c < specs.length; c += 6) {
-      const batch = await Promise.all(specs.slice(c, c + 6).map((spec) =>
+    // Provisioned one at a time with pacing — parallel signups trip the
+    // platform's write-rate limit (the join-code lookup is school-wide).
+    for (const spec of specs) {
+      const r = await retryRateLimit(() =>
         provisionProfile(svc, { email: spec.email, full_name: `${spec.first} ${spec.last}` }, {
           first_name: spec.first, last_name: spec.last,
           join_code: schoolCodes.student, date_of_birth: spec.dob,
-        }).then((r) => ({ email: spec.email, profile: r.profile, name: `${spec.first} ${spec.last}` }))
-      ));
-      classmates.push(...batch);
+        }), `provision ${spec.email}`);
+      classmates.push({ email: spec.email, profile: r.profile, name: `${spec.first} ${spec.last}` });
+      await sleep(150);
     }
     const allStudents = [{ email: HERO.email, profile: heroProfile, name: 'Maya Ellison' }, ...classmates];
 
@@ -732,27 +784,35 @@ export default async function (req) {
     }
     for (let d = 0; d < lessonDates.length; d++) {
       const date = lessonDates[d];
-      const existing = await svc.entities.AttendanceSession.filter({ class_id: cls.id, date });
-      if (existing.length > 0) continue;
-      const counts = { present: 0, absent: 0, late: 0 };
-      allStudents.forEach((s, i) => { counts[attStatus(i, d)]++; });
-      const session = await svc.entities.AttendanceSession.create({
-        school_id: school.id, class_id: cls.id, class_name: cls.name,
-        teacher_email: TEACHER.email, date,
-        session_start_time: '09:00', session_end_time: '10:00',
-        created_by_email: TEACHER.email,
-        created_at: new Date(date + 'T09:00:00Z').toISOString(),
-        marks_count: allStudents.length,
-        present_count: counts.present, absent_count: counts.absent, late_count: counts.late,
-      });
-      await svc.entities.AttendanceRecord.bulkCreate(allStudents.map((s, i) => ({
-        school_id: school.id, class_id: cls.id, class_name: cls.name,
-        student_email: s.email, student_name: s.name, date,
-        status: attStatus(i, d),
-        marked_by_email: TEACHER.email, marked_by_name: `${TEACHER.first} ${TEACHER.last}`,
-        marked_at: new Date(date + 'T09:05:00Z').toISOString(),
-        attendance_session_id: session.id,
-      })));
+      await retryRateLimit(async () => {
+        const existing = await svc.entities.AttendanceSession.filter({ class_id: cls.id, date });
+        let session = existing[0];
+        if (!session) {
+          const counts = { present: 0, absent: 0, late: 0 };
+          allStudents.forEach((s, i) => { counts[attStatus(i, d)]++; });
+          session = await svc.entities.AttendanceSession.create({
+            school_id: school.id, class_id: cls.id, class_name: cls.name,
+            teacher_email: TEACHER.email, date,
+            session_start_time: '09:00', session_end_time: '10:00',
+            created_by_email: TEACHER.email,
+            created_at: new Date(date + 'T09:00:00Z').toISOString(),
+            marks_count: allStudents.length,
+            present_count: counts.present, absent_count: counts.absent, late_count: counts.late,
+          });
+        }
+        const records = await svc.entities.AttendanceRecord.filter({ attendance_session_id: session.id });
+        if (records.length === 0) {
+          await svc.entities.AttendanceRecord.bulkCreate(allStudents.map((s, i) => ({
+            school_id: school.id, class_id: cls.id, class_name: cls.name,
+            student_email: s.email, student_name: s.name, date,
+            status: attStatus(i, d),
+            marked_by_email: TEACHER.email, marked_by_name: `${TEACHER.first} ${TEACHER.last}`,
+            marked_at: new Date(date + 'T09:05:00Z').toISOString(),
+            attendance_session_id: session.id,
+          })));
+        }
+      }, `attendance ${date}`);
+      await sleep(120);
     }
 
     // ── 7. Gradebook with entered marks ──
@@ -762,6 +822,7 @@ export default async function (req) {
     ];
     for (let a = 0; a < assessments.length; a++) {
       const spec = assessments[a];
+      await retryRateLimit(async () => {
       let assessment = (await svc.entities.Assessment.filter({ class_id: cls.id, title: spec.title }))[0] || null;
       if (!assessment) {
         assessment = await svc.entities.Assessment.create({
@@ -773,6 +834,9 @@ export default async function (req) {
           date: day(spec.days), max_score: spec.max, weighting: spec.weight,
           status: 'published', published_at: ago(spec.days - 1), published_by: TEACHER.email,
         });
+      }
+      const existingGrades = await svc.entities.StudentGrade.filter({ assessment_id: assessment.id });
+      if (existingGrades.length === 0) {
         const grades = allStudents.map((s, i) => {
           const score = Math.max(12, Math.round(spec.max * (0.52 + ((i * 7 + a * 13) % 47) / 100)));
           const pct = Math.round((score / spec.max) * 100);
@@ -788,6 +852,8 @@ export default async function (req) {
         });
         await svc.entities.StudentGrade.bulkCreate(grades);
       }
+      }, `gradebook ${spec.title}`);
+      await sleep(150);
     }
 
     // ── 8. A seating plan: desks placed, every student assigned (teacher POV —
@@ -847,10 +913,11 @@ export default async function (req) {
 
     const registries = {};
     for (const spec of ACHIEVEMENTS) {
-      const result = spec.independent
-        ? await ensureIndependentCredential(svc, spec, heroProfile, actors)
-        : await ensureOrgCredential(svc, spec, heroProfile, actors, schoolByOrg);
+      const result = await retryRateLimit(() => (spec.independent
+        ? ensureIndependentCredential(svc, spec, heroProfile, actors)
+        : ensureOrgCredential(svc, spec, heroProfile, actors, schoolByOrg)), `credential ${spec.key}`);
       registries[spec.key] = result.registry;
+      await sleep(300);
     }
 
     // Self-reported, unverified (the day-one portfolio section)
@@ -871,19 +938,22 @@ export default async function (req) {
       const registry = registries[e.key];
       if (!registry) fail(`endorsement target ${e.key} has no registry record`);
       const classmate = classmates[e.from];
-      const existing = await svc.entities.Endorsement.filter({ endorser_id: classmate.profile.id, registry_id: registry.id });
-      if (existing.some((x) => x.status === 'active')) continue;
-      const actor = {
-        authorized: true, actor_id: classmate.profile.id, actor_email: classmate.email, actor_role: 'student',
-        school_id: school.id, first_name: classmate.name.split(' ')[0], last_name: classmate.name.split(' ')[1],
-      };
-      const r = await endorseAchievement(svc, {
-        actor, actorProfile: classmate.profile,
-        actorName: classmate.name, actorHandle: classmate.profile.handle || null,
-        affiliation: buildAffiliation('student', SCHOOL_NAME),
-        registryId: registry.id, text: e.text,
-      });
+      const r = await retryRateLimit(async () => {
+        const existing = await svc.entities.Endorsement.filter({ endorser_id: classmate.profile.id, registry_id: registry.id });
+        if (existing.some((x) => x.status === 'active')) return { ok: true, skipped: true };
+        const actor = {
+          authorized: true, actor_id: classmate.profile.id, actor_email: classmate.email, actor_role: 'student',
+          school_id: school.id, first_name: classmate.name.split(' ')[0], last_name: classmate.name.split(' ')[1],
+        };
+        return endorseAchievement(svc, {
+          actor, actorProfile: classmate.profile,
+          actorName: classmate.name, actorHandle: classmate.profile.handle || null,
+          affiliation: buildAffiliation('student', SCHOOL_NAME),
+          registryId: registry.id, text: e.text,
+        });
+      }, `endorsement from ${classmate.name}`);
       if (!r.ok) fail(`endorsement from ${classmate.name} failed: ${r.error}`);
+      await sleep(200);
     }
 
     // ── 11. Pin 3 highlights (both badge tiers side by side at the top) ──
