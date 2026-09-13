@@ -66,7 +66,7 @@ export default async function(req) {
       }
       if (Object.keys(upd).length) p = await svc.entities.UserProfile.update(p.id, upd);
       personaIds[role] = p.id;
-      personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, first_name: name.first_name, last_name: name.last_name, role };
+      personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, first_name: name.first_name, last_name: name.last_name, role, profile: p };
     }
 
     // 2b. Investor-demo personas — resolved from the demo-run manifest so they
@@ -89,6 +89,7 @@ export default async function(req) {
           name: `${p.first_name} ${p.last_name}`,
           first_name: p.first_name, last_name: p.last_name,
           role: p.user_type, school_id: p.school_id, demo: true,
+          profile: p,
         };
       }
     }

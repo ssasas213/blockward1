@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useSchool } from '@/lib/SchoolContext';
 import { Button } from "@/components/ui/button";
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
@@ -19,7 +20,8 @@ import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipReq
 import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
 
 function AdminDashboardContent() {
-  const [userProfile, setUserProfile] = useState(null);
+  // Identity comes from SchoolContext — the effective persona in Test Mode.
+  const { profile: userProfile } = useSchool();
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -38,35 +40,21 @@ function AdminDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      const user = await base44.auth.me();
-      let schoolId = null;
-      if (user) {
-        const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-        if (profiles.length > 0) {
-          const p = profiles[0];
-          setUserProfile(p);
-          schoolId = p.school_id || null;
-        }
-      }
-      if (schoolId) {
-        const schools = await base44.entities.School.filter({ id: schoolId });
-        if (schools.length > 0) setSchool(schools[0]);
-      }
-      const [students, teachers, classes, blockWards, pendingArchive] = await Promise.all([
-        schoolId ? base44.entities.UserProfile.filter({ user_type: 'student', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'student' }),
-        schoolId ? base44.entities.UserProfile.filter({ user_type: 'teacher', school_id: schoolId }) : base44.entities.UserProfile.filter({ user_type: 'teacher' }),
-        schoolId ? base44.entities.Class.filter({ school_id: schoolId }) : base44.entities.Class.list(),
-        schoolId ? base44.entities.BlockWard.filter({ school_id: schoolId }, '-created_date') : base44.entities.BlockWard.list('-created_date', 20),
-        schoolId ? base44.entities.StudentRecord.filter({ school_id: schoolId, status: 'pending_student_drive' }) : base44.entities.StudentRecord.filter({ status: 'pending_student_drive' })
-      ]);
-      const driveConnectedCount = students.filter(s => s.connected_google_email).length;
+      // Persona-aware data — the backend resolves the effective actor
+      // (test persona in Test Mode) and reads through the service role, so
+      // the stats follow the persona's school instead of the controller's.
+      const res = await base44.functions.invoke('getDashboardData', {});
+      const d = res.data || {};
+      if (!d.ok) throw new Error(d.error || 'Failed to load dashboard');
+      setSchool(d.school || null);
+      const s = d.stats || {};
       setStats({
-        totalStudents: students.length,
-        totalTeachers: teachers.length,
-        totalClasses: classes.length,
-        totalBlockWards: blockWards.length,
-        driveConnected: driveConnectedCount,
-        recordsPendingArchive: pendingArchive.length,
+        totalStudents: s.total_students || 0,
+        totalTeachers: s.total_teachers || 0,
+        totalClasses: s.total_classes || 0,
+        totalBlockWards: s.total_blockwards || 0,
+        driveConnected: s.drive_connected || 0,
+        recordsPendingArchive: s.records_pending_archive || 0,
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);

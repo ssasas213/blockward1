@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useSchool } from '@/lib/SchoolContext';
 import ScheduleTab from '@/components/ai/ScheduleTab.jsx';
 import AnnouncementTab from '@/components/ai/AnnouncementTab';
 import SchoolReportTab from '@/components/ai/SchoolReportTab';
@@ -9,20 +10,8 @@ import { Calendar, Megaphone, Sparkles, BarChart3, MessageSquare } from 'lucide-
 
 export default function BlockWardAI() {
   const [activeTab, setActiveTab] = useState('chat');
-  const [user, setUser] = useState(null);
-  const [profile, setProfile] = useState(null);
-
-  useEffect(() => {
-    base44.auth.me()
-      .then(async u => {
-        setUser(u ?? null);
-        if (u) {
-          const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
-          setProfile(profiles[0] || null);
-        }
-      })
-      .catch(() => {});
-  }, []);
+  // Identity comes from SchoolContext — the effective persona in Test Mode.
+  const { user, profile } = useSchool();
 
   const userType = profile?.user_type || 'teacher';
 

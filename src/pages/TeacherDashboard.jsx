@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { useSchool } from '@/lib/SchoolContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +21,10 @@ import TeacherAssignmentsWidget from '@/components/dashboard/TeacherAssignmentsW
 import TeacherAssembliesWidget from '@/components/dashboard/TeacherAssembliesWidget';
 
 function TeacherDashboardContent() {
-  const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
+  // Identity comes from SchoolContext — the effective persona in Test Mode,
+  // so the greeting and role-gated buttons follow the persona, not the
+  // signed-in controller.
+  const { profile: userProfile } = useSchool();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     myClasses: [],
@@ -36,34 +39,20 @@ function TeacherDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-      if (!currentUser) return;
-
-      const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
-      if (profiles.length > 0) setUserProfile(profiles[0]);
-
-      const classes = await base44.entities.Class.filter({ teacher_email: currentUser.email });
-
+      // Persona-aware data — the backend resolves the effective actor
+      // (test persona in Test Mode) and reads through the service role, so
+      // the stats follow the persona's world instead of the controller's.
       const today = new Date().getDay();
       const dayIndex = today === 0 ? 6 : today - 1;
-      const schedule = await base44.entities.TimetableEntry.filter({
-        teacher_email: currentUser.email,
-        day_of_week: dayIndex
-      });
-
-      const points = await base44.entities.PointEntry.filter({ teacher_email: currentUser.email }, '-created_date', 5);
-
-      let totalStudents = 0;
-      classes.forEach(c => {
-        totalStudents += (c.student_emails?.length || 0);
-      });
+      const res = await base44.functions.invoke('getDashboardData', { day_index: dayIndex });
+      const d = res.data || {};
+      if (!d.ok) throw new Error(d.error || 'Failed to load dashboard');
 
       setStats({
-        myClasses: classes,
-        todaySchedule: schedule.sort((a, b) => a.start_time.localeCompare(b.start_time)),
-        recentPoints: points,
-        totalStudents
+        myClasses: d.classes || [],
+        todaySchedule: d.schedule || [],
+        recentPoints: d.points || [],
+        totalStudents: d.total_students || 0
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);

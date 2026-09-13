@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { useSchool } from '@/lib/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Shield, AlertCircle, Lock, Loader2, ArrowLeft, LogIn } from 'lucide-react';
@@ -8,6 +9,7 @@ import { Shield, AlertCircle, Lock, Loader2, ArrowLeft, LogIn } from 'lucide-rea
 export default function AdminApprovalPage() {
   const { recordId } = useParams();
   const navigate = useNavigate();
+  const { user: ctxUser, profile: ctxProfile } = useSchool();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null); // 'not_admin' | 'wrong_school' | 'not_found' | 'auth_required'
 
@@ -18,13 +20,10 @@ export default function AdminApprovalPage() {
   const checkAccess = async () => {
     if (!recordId) { setError('not_found'); setLoading(false); return; }
     try {
-      // 1. Authenticate
-      const user = await base44.auth.me();
+      // 1 + 2. Effective identity from SchoolContext (persona in Test Mode)
+      const user = ctxUser;
+      const profile = ctxProfile;
       if (!user) { setError('auth_required'); setLoading(false); return; }
-
-      // 2. Get user profile
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      const profile = profiles[0];
 
       // 3. Must be admin
       if (!profile || profile.user_type !== 'admin') {

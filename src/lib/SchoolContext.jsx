@@ -7,6 +7,10 @@ const SchoolContext = createContext(null);
 export const SchoolProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  // The signed-in controller's REAL identity — Test Mode never hides it from
+  // genuinely privileged UI (school switching, real admin operations).
+  const [realUser, setRealUser] = useState(null);
+  const [realProfile, setRealProfile] = useState(null);
   const [activeSchool, setActiveSchool] = useState(null);
   const [managedSchools, setManagedSchools] = useState([]);
   const [testMode, setTestMode] = useState(null);
@@ -63,6 +67,15 @@ export const SchoolProvider = ({ children }) => {
         setLoading(false);
         return;
       }
+
+      // ── EFFECTIVE IDENTITY ──────────────────────────────────────────────
+      // SchoolContext is the single owner of { user, profile } and they hold
+      // the EFFECTIVE identity: the active persona when Test Mode is engaged
+      // (the same logic as the server's resolveEffectiveActor), the real user
+      // otherwise. The controller's real identity stays available separately
+      // as realUser/realProfile for privileged UI only.
+      setRealUser(currentUser);
+      setRealProfile(p);
       setProfile(p);
 
       if (testModeRes) {
@@ -86,6 +99,11 @@ export const SchoolProvider = ({ children }) => {
           effectiveName: activeInfo.name,
           profileId: testModeRes.profile_id,
         });
+
+        // Persona active → user/profile become the persona's identity, so
+        // every page shows the persona's world, never the controller's.
+        if (activeInfo.profile) setProfile(activeInfo.profile);
+        if (activeInfo.email) setUser({ ...currentUser, email: activeInfo.email, full_name: activeInfo.name });
       } else {
         setTestMode({ isTestSuperUser: false });
       }
@@ -171,32 +189,28 @@ export const SchoolProvider = ({ children }) => {
   const isAdmin = profile?.user_type === 'admin';
 
   // ── Effective persona ──
-  // In Test Mode, the effective role/profile/email is the active test persona's;
-  // for normal users it is their real profile. This is the single value role-dependent
-  // UI should consult so the interface matches what a real user of that role sees.
+  // user/profile above ALREADY hold the effective identity (the active test
+  // persona in Test Mode, the real user otherwise), so the derived values
+  // below simply mirror them — the single value role-dependent UI consults.
   const isTestMode = !!testMode?.isTestSuperUser;
   const effectiveRole = isTestMode ? (testMode.activeRole || testMode.activePersona) : profile?.user_type;
-  const effectiveEmail = isTestMode && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email;
-  const effectiveId = isTestMode && testMode.effectiveId ? testMode.effectiveId : profile?.id;
-  const effectiveName = isTestMode && testMode.effectiveName ? testMode.effectiveName
-    : (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null);
-  const activePersonaInfo = isTestMode ? (testMode.personas?.[testMode.activePersona] || {}) : null;
-  const effectiveProfile = isTestMode ? {
-    id: testMode.effectiveId,
-    user_email: testMode.effectiveEmail,
-    user_type: testMode.activePersona,
-    first_name: activePersonaInfo?.first_name || '',
-    last_name: activePersonaInfo?.last_name || '',
-    school_id: activePersonaInfo?.school_id || testMode.testSchool?.id,
-    status: 'active',
-  } : profile;
-  const effectiveUser = isTestMode ? { email: effectiveEmail, id: user?.id } : user;
+  const effectiveEmail = user?.email;
+  const effectiveId = profile?.id;
+  const effectiveName = profile
+    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+    : (user?.full_name || null);
+  const effectiveProfile = profile;
+  const effectiveUser = user;
 
   const hasNoSchool = !!profile && !activeSchool && !loading;
 
   const value = {
     user,
     profile,
+    // Real signed-in identity — for privileged UI only (school switching,
+    // genuine admin operations). Role-dependent UI uses user/profile.
+    realUser,
+    realProfile,
     activeSchool,
     managedSchools,
     loading,

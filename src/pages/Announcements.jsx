@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useSchool } from '@/lib/SchoolContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +93,7 @@ function AnnouncementCard({ announcement, onRead }) {
 const DEFAULT_AUDIENCE = { scopeType: 'SCHOOL' };
 
 export default function Announcements() {
+  const { user: ctxUser, profile: ctxProfile } = useSchool();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
@@ -107,10 +109,10 @@ export default function Announcements() {
 
   const loadData = async () => {
     try {
-      const u = await base44.auth.me();
+      // Identity from SchoolContext — the effective persona in Test Mode.
+      const u = ctxUser;
       setUser(u);
-      const profiles = await base44.entities.UserProfile.filter({ user_email: u.email });
-      const p = profiles[0] || null;
+      const p = ctxProfile || null;
       setProfile(p);
 
       let data = [];

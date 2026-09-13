@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { useSchool } from '@/lib/SchoolContext';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,7 @@ const categories = [
 const getCategoryInfo = (cat) => categories.find(c => c.value === cat) || categories[5];
 
 export default function BlockWards() {
+  const { user: ctxUser, profile: ctxProfile } = useSchool();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [blockWards, setBlockWards] = useState([]);
@@ -34,11 +36,10 @@ export default function BlockWards() {
 
   const loadData = async () => {
     try {
-      const user = await base44.auth.me();
-      const profiles = await base44.entities.UserProfile.filter({ user_email: user.email });
-      if (profiles.length === 0) return;
-
-      const userProfile = profiles[0];
+      // Identity from SchoolContext — the effective persona in Test Mode.
+      const user = ctxUser;
+      const userProfile = ctxProfile;
+      if (!userProfile) return;
       setProfile(userProfile);
       const schoolId = userProfile.school_id;
 
@@ -63,7 +64,7 @@ export default function BlockWards() {
 
   const handleRevokeBlockWard = async (blockWard) => {
     try {
-      const user = await base44.auth.me();
+      const user = ctxUser;
       await base44.entities.BlockWard.update(blockWard.id, {
         status: 'revoked',
         revoked_by: user.email,
