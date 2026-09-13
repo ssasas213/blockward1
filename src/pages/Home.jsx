@@ -6,15 +6,14 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from 'lucide-react';
 import SiteHeader from '@/components/home/SiteHeader';
 import StudentHero from '@/components/home/StudentHero';
-import HowItWorks from '@/components/home/HowItWorks';
 import BenefitsSection from '@/components/home/BenefitsSection';
 import SiteFooter from '@/components/home/SiteFooter';
 
 const NAV_LINKS = [
-  { label: 'For students', href: '#benefits' },
-  { label: 'For schools & organisations', href: createPageUrl('ForOrganisations') },
+  { label: 'Benefits', href: '#benefits' },
+  { label: 'For organisations', href: createPageUrl('ForOrganisations') },
   { label: 'Example profile', href: createPageUrl('DemoProfile') },
-  { label: 'Verify an achievement', href: '/Verify' },
+  { label: 'Verify a credential', href: '/verify' },
 ];
 
 export default function Home() {
@@ -73,16 +72,9 @@ export default function Home() {
         onSignIn={handleSignIn}
         onGetStarted={handleClaimProfile}
         onDashboard={handleGoToDashboard}
-        ctaLabel="Create free profile"
+        ctaLabel="Claim your profile"
       />
-      <StudentHero
-        user={user}
-        profile={profile}
-        onSignUp={handleClaimProfile}
-        onExplore={() => window.location.href = createPageUrl('DemoProfile')}
-        onDashboard={handleGoToDashboard}
-      />
-      <HowItWorks />
+      <StudentHero />
       <BenefitsSection />
 
       {/* Final CTA */}
@@ -94,16 +86,11 @@ export default function Home() {
             gather dust in a drawer.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground mt-5 max-w-xl mx-auto">
-            Create your profile, get your school or club connected, and bring everything
-            you&rsquo;ve earned together in one place you can share.
+            Claim your profile, get your school or club connected, and turn everything you've earned into proof that lasts forever.
           </p>
           <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button
-              size="lg"
-              className="text-base px-8 h-12"
-              onClick={user && profile ? handleGoToDashboard : handleClaimProfile}
-            >
-              {user && profile ? 'Go to dashboard' : 'Create your free profile'}
+            <Button size="lg" className="text-base px-8 h-12" onClick={handleClaimProfile}>
+              Claim your profile
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>

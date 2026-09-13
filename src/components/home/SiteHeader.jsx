@@ -50,20 +50,20 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
 
         <div className="flex items-center gap-3">
           {user && profile ? (
-            <Button onClick={onDashboard} className="h-11 px-4">
+            <Button onClick={onDashboard} size="sm">
               Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
             </Button>
           ) : (
             <>
-              {/* Staff entry point — routes to the existing school workspace
-                  login. No permissions are granted by the chosen entry. */}
+              {/* Professional access is a first-class link, not hidden behind
+                  "Not a student?" */}
               <Link to="/schools/login" className={cn(ghostText, "hidden sm:block")}>
-                School sign in
+                Teachers &amp; school admins
               </Link>
               <button onClick={onSignIn} className={ghostText}>
                 Sign In
               </button>
-              <Button onClick={onGetStarted || onSignIn} className="h-11 px-4">
+              <Button onClick={onGetStarted || onSignIn} size="sm">
                 {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             </>
@@ -102,10 +102,10 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
               onClick={() => setMenuOpen(false)}
               className="block px-3 py-2.5 rounded-lg text-sm text-foreground font-medium hover:bg-hover transition-colors"
             >
-              School sign in
+              Teachers &amp; school admins
             </Link>
             {user && profile ? (
-              <Button onClick={() => { setMenuOpen(false); onDashboard(); }} className="h-11 w-full mt-1">
+              <Button onClick={() => { setMenuOpen(false); onDashboard(); }} size="sm" className="w-full mt-1">
                 Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
             ) : (
@@ -116,7 +116,7 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
                 >
                   Sign In
                 </button>
-                <Button onClick={() => { setMenuOpen(false); (onGetStarted || onSignIn)(); }} className="h-11 w-full">
+                <Button onClick={() => { setMenuOpen(false); (onGetStarted || onSignIn)(); }} size="sm" className="w-full">
                   {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               </div>

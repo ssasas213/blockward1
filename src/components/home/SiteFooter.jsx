@@ -8,7 +8,7 @@ const COLUMNS = [
   { title: 'For students', links: [
     { label: 'Example profile', href: '/DemoProfile' },
     { label: 'Benefits', href: '/#benefits' },
-    { label: 'Create your free profile', href: '/Signup' },
+    { label: 'Claim your profile', href: '/Signup' },
   ]},
   { title: 'For organisations', links: [
     { label: 'Overview', href: ORG_URL },
@@ -21,7 +21,7 @@ const COLUMNS = [
     { label: 'Contact', href: '/contact' },
   ]},
   { title: 'Resources', links: [
-    { label: 'Verify an achievement', href: '/Verify' },
+    { label: 'Verify a credential', href: '/verify' },
     { label: 'Documentation', href: '/documentation' },
     { label: 'Security', href: '/security' },
   ]},

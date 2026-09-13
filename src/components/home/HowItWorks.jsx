@@ -1,71 +1,48 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { PlusCircle, BadgeCheck, Share2, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { createPageUrl } from '@/utils';
+import { FileText, Search, PenLine, ShieldCheck, HardDrive, Link2 } from 'lucide-react';
 
-const STEPS = [
-  {
-    icon: PlusCircle,
-    title: 'Add an achievement',
-    desc: 'Bring together accomplishments from school, clubs and beyond.',
-  },
-  {
-    icon: BadgeCheck,
-    title: 'Get it verified',
-    desc: 'Ask the relevant teacher, coach or organisation to confirm it.',
-  },
-  {
-    icon: Share2,
-    title: 'Share your profile',
-    desc: 'Give people one place to explore your achievements and their verification details.',
-  },
+const steps = [
+  { icon: FileText, title: 'Achievement Created', desc: 'A teacher, coach, instructor, or manager creates a record with supporting evidence.' },
+  { icon: Search, title: 'Verification', desc: 'Evidence is reviewed and validated by the responsible verifier.' },
+  { icon: PenLine, title: 'Digital Signatures', desc: 'Authorised individuals sign the record with their digital signature.' },
+  { icon: ShieldCheck, title: 'Approval', desc: 'The organisation authorises the achievement, completing the trust chain.' },
+  { icon: HardDrive, title: 'Permanent Archive', desc: 'Stored securely in Google Drive and permanently recorded — it cannot be edited or deleted.' },
+  { icon: Link2, title: 'Public Verification', desc: 'Universities, employers, and organisations can verify authenticity instantly.' },
 ];
 
-/**
- * HowItWorks — compact three-step explainer below the hero, plus a modest
- * callout for schools and organisations. Fully static: readable even if
- * every animation and effect fails.
- */
 export default function HowItWorks() {
   return (
-    <section className="py-16 sm:py-20 px-4 sm:px-6 lg:px-10 border-t border-border">
-      <div className="max-w-[1200px] mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight text-center leading-tight">
-          From achievement to a profile you can share.
-        </h2>
-
-        <div className="mt-10 sm:mt-12 grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-6 max-w-4xl mx-auto">
-          {STEPS.map((s, i) => (
-            <div key={s.title} className="text-center sm:px-2">
-              <div className="h-11 w-11 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
-                <s.icon className="h-5 w-5 text-primary" aria-hidden="true" />
-              </div>
-              <p className="mt-4 text-xs font-semibold text-primary">
-                Step {i + 1}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-foreground">{s.title}</h3>
-              <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
-            </div>
-          ))}
+    <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8 border-t border-border">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-center mb-12">
+          <p className="text-sm text-primary font-medium mb-2">How it works</p>
+          <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
+            From achievement to permanent record
+          </h2>
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
+            A six-stage verification lifecycle that turns any accomplishment into a trusted, verifiable credential.
+          </p>
         </div>
 
-        {/* School / organisation callout */}
-        <div className="mt-12 sm:mt-16 max-w-3xl mx-auto rounded-2xl border border-primary/20 bg-primary/5 p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
-          <div>
-            <h3 className="text-lg sm:text-xl font-semibold text-foreground">
-              Supporting students at your school or club?
-            </h3>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Manage learning, recognise progress and verify achievements.
-            </p>
-          </div>
-          <Button variant="outline" size="lg" className="h-12 px-6 shrink-0 w-full sm:w-auto" asChild>
-            <Link to={createPageUrl('ForOrganisations')}>
-              Explore BlockWard for organisations
-              <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
+        <div className="relative">
+          <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+
+          {steps.map((step, i) => (
+            <div key={i} className="relative flex items-start gap-5 mb-6 last:mb-0">
+              <div className="relative z-10 flex-shrink-0">
+                <div className="h-10 w-10 rounded-full bg-card border border-border flex items-center justify-center">
+                  <step.icon className="h-5 w-5 text-primary" />
+                </div>
+              </div>
+              <div className="flex-1 p-5 rounded-xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-xs font-mono text-muted-foreground">0{i + 1}</span>
+                  <h3 className="text-base font-medium text-foreground">{step.title}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{step.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
