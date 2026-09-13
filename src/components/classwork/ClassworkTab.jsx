@@ -8,7 +8,9 @@ import EmptyState from '@/components/ui/empty-state';
 import { Plus, ClipboardList, Pencil, Archive, Trash2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { useSchool } from '@/lib/SchoolContext';
 import PostFormDialog from './PostFormDialog';
+import PostDetailDialog from './PostDetailDialog';
 
 function StatusBadge({ post }) {
   if (post.status === 'draft') return <Badge variant="secondary" className="text-[10px]">Draft</Badge>;
@@ -17,14 +19,27 @@ function StatusBadge({ post }) {
   return null;
 }
 
-function PostRow({ post, canManage, onEdit, onArchive, onDelete, confirmingDelete }) {
+function StudentStatusBadge({ submission }) {
+  if (!submission) return <Badge variant="outline" className="text-[10px]">To do</Badge>;
+  if (['submitted', 'resubmitted'].includes(submission.status)) {
+    return <Badge className="bg-primary/15 text-primary text-[10px]">Turned in{submission.is_late ? ' (late)' : ''}</Badge>;
+  }
+  if (submission.status === 'returned') return <Badge className="bg-success/15 text-success text-[10px]">Graded</Badge>;
+  return <Badge variant="outline" className="text-[10px]">To do</Badge>;
+}
+
+function PostRow({ post, canManage, mySubmission, onView, onEdit, onArchive, onDelete, confirmingDelete }) {
   const typeLabel = post.type?.charAt(0).toUpperCase() + post.type?.slice(1);
   return (
-    <Card className="surface-card">
+    <Card className="surface-card card-hover">
       <CardContent className="p-4 flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-medium text-foreground">{post.title}</p>
+            <button onClick={() => onView(post)} className="font-medium text-foreground hover:text-primary text-left">
+              {post.title}
+            </button>
+            <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
+            {!canManage && mySubmission && <StudentStatusBadge submission={mySubmission} />}
             <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
             <StatusBadge post={post} />
             {post.points_possible != null && (
@@ -67,8 +82,11 @@ function PostRow({ post, canManage, onEdit, onArchive, onDelete, confirmingDelet
 }
 
 export default function ClassworkTab({ classId, canManage }) {
+  const { profile } = useSchool();
   const [posts, setPosts] = useState([]);
   const [topics, setTopics] = useState([]);
+  const [mySubmissions, setMySubmissions] = useState({});
+  const [viewing, setViewing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -85,6 +103,18 @@ export default function ClassworkTab({ classId, canManage }) {
       ]);
       setPosts(p || []);
       setTopics((t || []).sort((a, b) => (a.position || 0) - (b.position || 0)));
+
+      // Students see their own submission state on each post card.
+      if (!canManage && profile?.user_email) {
+        const subs = await base44.entities.Submission.filter({ class_id: classId }).catch(() => []);
+        const mine = {};
+        for (const s of subs || []) {
+          if (s.student_email?.toLowerCase() === profile.user_email.toLowerCase()) {
+            mine[s.assignment_id] = s;
+          }
+        }
+        setMySubmissions(mine);
+      }
     } catch (e) {
       console.error('Failed to load classwork', e);
     } finally {
@@ -196,6 +226,8 @@ export default function ClassworkTab({ classId, canManage }) {
                   key={p.id}
                   post={p}
                   canManage={canManage}
+                  mySubmission={mySubmissions[p.id]}
+                  onView={(post) => setViewing(post)}
                   confirmingDelete={confirmingDelete}
                   onEdit={(post) => { setEditing(post); setDialogOpen(true); }}
                   onArchive={(post) => act({ action: 'archive_post', post_id: post.id }, 'Post archived')}
@@ -219,6 +251,8 @@ export default function ClassworkTab({ classId, canManage }) {
                   key={p.id}
                   post={p}
                   canManage={canManage}
+                  mySubmission={mySubmissions[p.id]}
+                  onView={(post) => setViewing(post)}
                   confirmingDelete={confirmingDelete}
                   onEdit={(post) => { setEditing(post); setDialogOpen(true); }}
                   onArchive={(post) => act({ action: 'archive_post', post_id: post.id }, 'Post archived')}
@@ -243,6 +277,13 @@ export default function ClassworkTab({ classId, canManage }) {
         topics={topics}
         post={editing}
         onSaved={load}
+      />
+
+      <PostDetailDialog
+        post={viewing}
+        canManage={canManage}
+        onClose={() => setViewing(null)}
+        onChanged={load}
       />
     </div>
   );
