@@ -40,7 +40,6 @@ function PostRow({ post, canManage, mySubmission, onView, onEdit, onArchive, onD
             </button>
             <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
             {!canManage && mySubmission && <StudentStatusBadge submission={mySubmission} />}
-            <Badge variant="secondary" className="text-[10px]">{typeLabel}</Badge>
             <StatusBadge post={post} />
             {post.points_possible != null && (
               <Badge variant="outline" className="text-[10px]">{post.points_possible} pts</Badge>

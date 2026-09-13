@@ -29,18 +29,28 @@ const toLocalInput = (iso) => {
   return d.toLocaleString('sv-SE').slice(0, 16);
 };
 
+const DEFAULT_FORM = {
+  title: '', type: 'assignment', instructions: '', points_possible: '',
+  due_at: '', topic_id: '', allow_late: false, publishMode: 'now', scheduled_at: '',
+};
+
 export default function PostFormDialog({ open, onClose, classId, topics, post, onSaved }) {
   const isEdit = !!post;
-  const [form, setForm] = useState({
-    title: '', type: 'assignment', instructions: '', points_possible: '',
-    due_at: '', topic_id: '', allow_late: false, publishMode: 'now', scheduled_at: '',
-  });
+  const [form, setForm] = useState({ ...DEFAULT_FORM });
   const [saving, setSaving] = useState(false);
+  const [autosavedAt, setAutosavedAt] = useState(null);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+
+  // Unsaved work-in-progress for a NEW post lives in this key, per class.
+  const draftKey = `bw_classwork_draft_${classId}`;
 
   useEffect(() => {
     if (!open) return;
+    setAutosavedAt(null);
+    setRestoredDraft(false);
     if (post) {
       setForm({
+        ...DEFAULT_FORM,
         title: post.title || '',
         type: post.type || 'assignment',
         instructions: post.instructions || '',
@@ -52,13 +62,40 @@ export default function PostFormDialog({ open, onClose, classId, topics, post, o
         publishMode: post.status === 'draft' ? 'draft' : 'now',
         scheduled_at: toLocalInput(post.scheduled_at),
       });
-    } else {
-      setForm({
-        title: '', type: 'assignment', instructions: '', points_possible: '',
-        due_at: '', topic_id: '', allow_late: false, publishMode: 'now', scheduled_at: '',
-      });
+      return;
     }
-  }, [open, post]);
+    // New post — restore the class's unsaved local draft, if one exists.
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftKey) || 'null');
+      if (saved?.form && (saved.form.title || saved.form.instructions)) {
+        setForm({ ...DEFAULT_FORM, ...saved.form });
+        setRestoredDraft(true);
+        return;
+      }
+    } catch { /* corrupted draft — start fresh */ }
+    setForm({ ...DEFAULT_FORM });
+  }, [open, post, classId]);
+
+  // Debounced local autosave (new posts only) — an accidental close never
+  // loses the teacher's work-in-progress.
+  useEffect(() => {
+    if (!open || post) return;
+    if (!form.title.trim() && !form.instructions.trim()) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(draftKey, JSON.stringify({ form, savedAt: Date.now() }));
+        setAutosavedAt(Date.now());
+      } catch { /* storage unavailable — autosave off */ }
+    }, 800);
+    return () => clearTimeout(t);
+  }, [open, post, classId, form]);
+
+  const discardDraft = () => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+    setForm({ ...DEFAULT_FORM });
+    setRestoredDraft(false);
+    setAutosavedAt(null);
+  };
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -92,6 +129,7 @@ export default function PostFormDialog({ open, onClose, classId, topics, post, o
           form.publishMode === 'now' ? 'Posted to the class' :
           form.publishMode === 'schedule' ? 'Post scheduled' : 'Draft saved'
         );
+        try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
         onSaved?.();
         onClose();
       } else {
@@ -115,6 +153,15 @@ export default function PostFormDialog({ open, onClose, classId, topics, post, o
               : 'Students see this in their To do list and get notified when you assign it.'}
           </DialogDescription>
         </DialogHeader>
+
+        {restoredDraft && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+            <span>We restored your unsaved draft.</span>
+            <button type="button" onClick={discardDraft} className="font-semibold underline underline-offset-2 hover:opacity-80">
+              Discard
+            </button>
+          </div>
+        )}
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -224,6 +271,9 @@ export default function PostFormDialog({ open, onClose, classId, topics, post, o
         </div>
 
         <DialogFooter>
+          {autosavedAt && !saving && !isEdit && (
+            <span className="text-xs text-tertiary mr-auto">Autosaved on this device</span>
+          )}
           <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button onClick={save} disabled={saving}>
             {saving ? 'Saving…' : form.publishMode === 'now' ? 'Assign' : 'Save'}
