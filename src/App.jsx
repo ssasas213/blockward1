@@ -32,10 +32,14 @@ import SchoolSetup from './pages/SchoolSetup';
 import JoinSchool from './pages/JoinSchool';
 import StudentOnboarding from './pages/StudentOnboarding';
 import OrgsLayout from '@/components/layouts/OrgsLayout';
-import SchoolsLogin from './pages/schools/Login';
 import SchoolsSignup from './pages/schools/Signup';
-import OrgsLogin from './pages/organisations/Login';
 import OrgsSignup from './pages/organisations/Signup';
+import About from './pages/marketing/About';
+import MarketingContact from './pages/marketing/Contact';
+import Documentation from './pages/marketing/Documentation';
+import Security from './pages/marketing/Security';
+import Privacy from './pages/marketing/Privacy';
+import Terms from './pages/marketing/Terms';
 import OrgDashboard from './pages/organisations/Dashboard';
 import Invitations from './pages/Invitations';
 import StudentGrades from './pages/StudentGrades';
@@ -174,11 +178,22 @@ const AuthenticatedApp = () => {
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
 
-      {/* Platform-specific login/signup routes */}
-      <Route path="/schools/login" element={<SchoolsLogin />} />
+      {/* Platform-specific login/signup routes — /schools/login and
+          /organisations/login are the canonical STAFF entry (same shared
+          auth system as /Login, with explicit school-workspace context). */}
+      <Route path="/schools/login" element={<Login staffEntry />} />
       <Route path="/schools/signup" element={<SchoolsSignup />} />
-      <Route path="/organisations/login" element={<OrgsLogin />} />
+      <Route path="/organisations/login" element={<Login staffEntry />} />
       <Route path="/organisations/signup" element={<OrgsSignup />} />
+      <Route path="/orgs/login" element={<Navigate to="/schools/login" replace />} />
+
+      {/* Public marketing pages */}
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<MarketingContact />} />
+      <Route path="/documentation" element={<Documentation />} />
+      <Route path="/security" element={<Security />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* Organisations platform — scoped routes with org layout */}
       <Route path="/organisations" element={<ProtectedRoute><OrgsLayout /></ProtectedRoute>}>

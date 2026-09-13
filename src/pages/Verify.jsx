@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,8 +70,13 @@ function Field({ icon: Icon, label, value, mono }) {
 
 export default function Verify() {
   const routeParams = useParams();
+  const navigate = useNavigate();
   const queryParams = new URLSearchParams(window.location.search);
   const verificationId = routeParams.verification_id || queryParams.get('id');
+
+  // Verification-entry form (shown when no ID is in the URL yet)
+  const [lookupInput, setLookupInput] = useState('');
+  const [lookupError, setLookupError] = useState('');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -83,9 +88,25 @@ export default function Verify() {
   const [removingCover, setRemovingCover] = useState(false);
 
   useEffect(() => {
-    if (!verificationId) { setNotFound(true); setLoading(false); return; }
+    if (!verificationId) { setLoading(false); return; } // entry form, not an error
     loadRecord();
   }, [verificationId]);
+
+  // Entry form: accepts a bare verification ID (BW-2026-ABCD1234) or a
+  // pasted verification URL, then routes to the credential page.
+  const handleLookup = (e) => {
+    e.preventDefault();
+    const raw = lookupInput.trim();
+    if (!raw) { setLookupError('Enter a verification ID or link.'); return; }
+    const fromUrl = raw.match(/(?:\/verify\/|id=)([A-Za-z0-9-]+)/i);
+    const id = (fromUrl ? fromUrl[1] : raw).toUpperCase();
+    if (!/^[A-Za-z0-9-]{6,}$/.test(id)) {
+      setLookupError("That doesn't look like a verification ID or link.");
+      return;
+    }
+    setLookupError('');
+    navigate(`/verify/${id}`);
+  };
 
   const loadRecord = async () => {
     try {
@@ -166,6 +187,59 @@ export default function Verify() {
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    </div>
+  );
+
+  // No ID yet — the verification-entry screen (the footer's "Verify a
+  // credential" lands here).
+  if (!verificationId) return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 accent-glow relative overflow-hidden">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-3">
+            <Shield className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Verify a credential</h1>
+          <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+            Enter the verification ID (e.g. <span className="font-mono">BW-2026-ABCD1234</span>) or paste the
+            verification link you were sent. No account needed.
+          </p>
+        </div>
+
+        <Card className="surface-card">
+          <CardContent className="p-6">
+            <form onSubmit={handleLookup} className="space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="verify-id" className="text-xs font-semibold text-tertiary uppercase tracking-wide">
+                  Verification ID or link
+                </label>
+                <input
+                  id="verify-id"
+                  type="text"
+                  value={lookupInput}
+                  onChange={(e) => { setLookupInput(e.target.value); setLookupError(''); }}
+                  placeholder="BW-2026-ABCD1234"
+                  autoComplete="off"
+                  autoFocus
+                  className="w-full h-9 px-3 rounded-lg bg-secondary/60 border border-border text-sm text-foreground placeholder:text-tertiary focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15 transition-colors"
+                />
+              </div>
+              {lookupError && (
+                <p role="alert" className="text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" /> {lookupError}
+                </p>
+              )}
+              <Button type="submit" className="w-full">
+                Verify credential <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground mt-6">
+          Want to learn about BlockWard? <Link to="/" className="text-primary hover:underline">Go to homepage</Link>
+        </p>
+      </div>
     </div>
   );
 

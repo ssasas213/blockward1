@@ -9,7 +9,6 @@ import { Label } from '@/components/ui/label';
 import GuardianConsentCard from '@/components/auth/GuardianConsentCard';
 import { hasSignupContext } from '@/lib/signupSession';
 import { logoutToLogin } from '@/lib/authRedirectGuard';
-import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
 // Remembers the last sign-in method used on this device so the form defaults
 // to it next time.
@@ -26,9 +25,8 @@ function GoogleIcon({ className }) {
   );
 }
 
-export default function Login() {
+export default function Login({ staffEntry = false }) {
   const [loading, setLoading] = useState(false);
-  const [notAStudentOpen, setNotAStudentOpen] = useState(false);
   const [checking, setChecking] = useState(true);
   const [accountStatus, setAccountStatus] = useState(null);
   const [error, setError] = useState('');
@@ -185,7 +183,7 @@ export default function Login() {
         Continue
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        New here? We'll set up your account with an email code.
+        New here? We'll set up your account — you'll choose a password.
       </p>
     </form>
   );
@@ -277,9 +275,13 @@ export default function Login() {
             </>
           ) : (
             <>
-              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">Sign in to BlockWard</h1>
+              <h1 className="text-xl font-semibold text-foreground mb-1 text-center">
+                {staffEntry ? 'Sign in to your school workspace' : 'Sign in to BlockWard'}
+              </h1>
               <p className="text-sm text-muted-foreground mb-6 text-center">
-                Use your Google account or email to continue.
+                {staffEntry
+                  ? 'For returning teachers and school administrators. Sign in with the account linked to your organisation — a staff code is only needed when joining.'
+                  : 'Use your Google account or email to continue.'}
               </p>
 
               {errorBox}
@@ -305,22 +307,33 @@ export default function Login() {
         <p className="text-center text-sm text-muted-foreground mt-6">
           New here? <Link to="/Signup" className="text-primary font-medium hover:underline">Create an account</Link>
         </p>
-        <p className="text-center text-sm text-muted-foreground mt-2">
-          Not a student?{' '}
-          <button
-            type="button"
-            onClick={() => setNotAStudentOpen(true)}
-            className="text-primary font-medium hover:underline"
-          >
-            Set up your school or join as a teacher
-          </button>
-        </p>
+        {staffEntry ? (
+          <>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Setting up a new organisation?{' '}
+              <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">
+                Create your organisation workspace
+              </Link>
+            </p>
+            <p className="text-center text-sm text-muted-foreground mt-2">
+              Student?{' '}
+              <Link to="/Login" className="text-primary font-medium hover:underline">
+                Sign in here
+              </Link>
+            </p>
+          </>
+        ) : (
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Teacher or school administrator?{' '}
+            <Link to="/schools/login" className="text-primary font-medium hover:underline">
+              Sign in to your school workspace
+            </Link>
+          </p>
+        )}
         <p className="text-center text-xs text-muted-foreground mt-4">
           © 2026 BlockWard · Blockchain-Secured Achievements
         </p>
       </div>
-
-      <NotAStudentDialog open={notAStudentOpen} onOpenChange={setNotAStudentOpen} context="login" />
     </div>
   );
 }

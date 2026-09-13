@@ -8,7 +8,7 @@ const DEMO = {
   name: 'Maya Okonkwo',
   initials: 'MO',
   meta: 'Year 12 · Riverside Secondary · London, UK',
-  link: 'blockward.app/portfolio/maya-o',
+  link: 'blockward.me/@maya-o',
   stats: [
     { label: 'Verified achievements', value: '24' },
     { label: 'Achievement points', value: '1,830' },
