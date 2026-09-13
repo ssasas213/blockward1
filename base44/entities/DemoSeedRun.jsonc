@@ -59,6 +59,24 @@
       "default": [],
       "description": "EVERY seeded account email (all @demo.blockward.test). This is the demo_data manifest: removal deletes every profile by these emails, plus the school-less records (independently verified credentials, self-reported achievements) that cannot be purged by school_id."
     },
+    "demo_personas": {
+      "type": "object",
+      "description": "Investor-demo cast members exposed as Test Mode personas: demo_student (the hero student), demo_teacher (her class teacher), demo_admin (the school's admin). Emails from the seeded cast, written by seedInvestorDemo \u2014 Test Mode resolves its demo personas from THIS manifest, never from hardcoded emails, so they stay correct across reseeds. Present only on investor_world runs; entries disappear with the run on removal.",
+      "properties": {
+        "demo_student": {
+          "type": "string",
+          "description": "Hero student email (UserProfile on the demo domain)"
+        },
+        "demo_teacher": {
+          "type": "string",
+          "description": "Seeded class-teacher email"
+        },
+        "demo_admin": {
+          "type": "string",
+          "description": "Seeded school-admin email"
+        }
+      }
+    },
     "student_count": {
       "type": "number",
       "default": 0

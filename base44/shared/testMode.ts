@@ -8,8 +8,31 @@ export function getTestSuperUserEmail(): string {
   return (secrets.get('TEST_SUPER_USER_EMAIL') || '').trim().toLowerCase();
 }
 
+// Investor-demo personas — the seeded hero student, her class teacher and the
+// school's admin, linkable for screenshot sessions. Their emails are NOT
+// hardcoded here: they are resolved from the active demo-run manifest
+// (DemoSeedRun.demo_personas) so they follow a reseed.
+export const DEMO_PERSONA_KEYS = ['demo_student', 'demo_teacher', 'demo_admin'];
+
 export function isValidPersona(p: string): boolean {
-  return p === 'student' || p === 'teacher' || p === 'admin';
+  return p === 'student' || p === 'teacher' || p === 'admin' || DEMO_PERSONA_KEYS.includes(p);
+}
+
+/**
+ * resolveDemoPersonas — reads the active investor-world demo-run manifest and
+ * returns its demo persona emails ({ demo_student, demo_teacher, demo_admin }),
+ * or null when no demo world exists (or it predates the manifest field).
+ * Server-side only; used by getTestModeStatus to link the seeded cast as
+ * selectable personas. The seeded profiles are real accounts — they are only
+ * ever READ here, never created or mutated.
+ */
+export async function resolveDemoPersonas(svc): Promise<Record<string, string> | null> {
+  try {
+    const runs = await svc.entities.DemoSeedRun.filter({ kind: 'investor_world', status: 'active' }, '-created_date', 5);
+    const dp = runs?.[0]?.demo_personas;
+    if (dp && (dp.demo_student || dp.demo_teacher || dp.demo_admin)) return dp;
+  } catch { /* manifest unavailable — demo personas are simply not offered */ }
+  return null;
 }
 
 export const TEST_SCHOOL_NAME = 'BlockWard Test School';

@@ -69,9 +69,15 @@ export const SchoolProvider = ({ children }) => {
         const personas = testModeRes.personas || {};
         const activePersona = testModeRes.active_persona || 'admin';
         const activeInfo = personas[activePersona] || {};
+        // Demo personas carry their real role on the persona entry
+        // (demo_student → 'student' etc.); classic persona keys ARE their
+        // role. An unresolvable key (e.g. demo world removed) falls back to admin.
+        const activeRole = activeInfo.role
+          || (['student', 'teacher', 'admin'].includes(activePersona) ? activePersona : 'admin');
         setTestMode({
           isTestSuperUser: true,
           activePersona,
+          activeRole,
           testSchool: testModeRes.test_school,
           testClass: testModeRes.test_class,
           personas,
@@ -169,7 +175,7 @@ export const SchoolProvider = ({ children }) => {
   // for normal users it is their real profile. This is the single value role-dependent
   // UI should consult so the interface matches what a real user of that role sees.
   const isTestMode = !!testMode?.isTestSuperUser;
-  const effectiveRole = isTestMode ? testMode.activePersona : profile?.user_type;
+  const effectiveRole = isTestMode ? (testMode.activeRole || testMode.activePersona) : profile?.user_type;
   const effectiveEmail = isTestMode && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email;
   const effectiveId = isTestMode && testMode.effectiveId ? testMode.effectiveId : profile?.id;
   const effectiveName = isTestMode && testMode.effectiveName ? testMode.effectiveName
@@ -181,7 +187,7 @@ export const SchoolProvider = ({ children }) => {
     user_type: testMode.activePersona,
     first_name: activePersonaInfo?.first_name || '',
     last_name: activePersonaInfo?.last_name || '',
-    school_id: testMode.testSchool?.id,
+    school_id: activePersonaInfo?.school_id || testMode.testSchool?.id,
     status: 'active',
   } : profile;
   const effectiveUser = isTestMode ? { email: effectiveEmail, id: user?.id } : user;

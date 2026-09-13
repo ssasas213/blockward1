@@ -58,7 +58,9 @@ export default function Layout({ children, currentPageName }) {
   // Test Super User: the active persona drives the nav/dashboard, not the
   // permanent user_type (which stays 'admin' so platform RLS still works).
   const isTestSuperUser = !!testMode?.isTestSuperUser;
-  const userType = isTestSuperUser ? (testMode.activePersona || 'admin') : (profile?.user_type || 'student');
+  const userType = isTestSuperUser
+    ? (testMode.activeRole || testMode.activePersona || 'admin')
+    : (profile?.user_type || 'student');
 
   const navigationGroups = {
     admin: [

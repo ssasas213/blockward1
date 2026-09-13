@@ -647,6 +647,7 @@ export default async function (req) {
         status: 'active',
         teacher_emails: [TEACHER.email, SCHOOL_ADMIN.email, CLUB_ADMIN.email],
         student_emails: [HERO.email],
+        demo_personas: { demo_student: HERO.email, demo_teacher: TEACHER.email, demo_admin: SCHOOL_ADMIN.email },
       });
     }
 

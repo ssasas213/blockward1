@@ -35,7 +35,7 @@ function RoleCheck({ roles, children }) {
 
   const isTestSuperUser = !!testMode?.isTestSuperUser;
   const effectiveRole = profile
-    ? (isTestSuperUser ? (testMode.activePersona || 'admin') : profile.user_type)
+    ? (isTestSuperUser ? (testMode.activeRole || testMode.activePersona || 'admin') : profile.user_type)
     : null;
 
   useEffect(() => {

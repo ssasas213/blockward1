@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import {
   verifyTestSuperUser, TEST_SCHOOL_NAME, TEST_SCHOOL_CODE, TEST_CLASS_NAME,
-  PERSONA_EMAILS, PERSONA_NAMES, isValidPersona,
+  PERSONA_EMAILS, PERSONA_NAMES, isValidPersona, DEMO_PERSONA_KEYS, resolveDemoPersonas,
 } from '../../shared/testMode.ts';
 import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 import { provisionProfile } from '../../shared/profileProvisioning.ts';
@@ -67,6 +67,30 @@ export default async function(req) {
       if (Object.keys(upd).length) p = await svc.entities.UserProfile.update(p.id, upd);
       personaIds[role] = p.id;
       personas[role] = { id: p.id, email: p.user_email, name: `${name.first_name} ${name.last_name}`, first_name: name.first_name, last_name: name.last_name, role };
+    }
+
+    // 2b. Investor-demo personas — resolved from the demo-run manifest so they
+    // follow a reseed. These are REAL seeded accounts (real names, roles and
+    // school memberships from the demo world): we only LINK them here, never
+    // create or mutate them. They appear only while the demo world exists;
+    // removal purges their profiles and the ids below go stale harmlessly
+    // (resolveEffectiveActor falls back to the controller).
+    const demoEmails = await resolveDemoPersonas(svc);
+    if (demoEmails) {
+      for (const key of DEMO_PERSONA_KEYS) {
+        const email = demoEmails[key];
+        if (!email) continue;
+        const found = await svc.entities.UserProfile.filter({ user_email: email });
+        const p = found[0];
+        if (!p) continue;
+        personaIds[key] = p.id;
+        personas[key] = {
+          id: p.id, email: p.user_email,
+          name: `${p.first_name} ${p.last_name}`,
+          first_name: p.first_name, last_name: p.last_name,
+          role: p.user_type, school_id: p.school_id, demo: true,
+        };
+      }
     }
 
     // 3. Ensure test class (teacher assigned, student enrolled)

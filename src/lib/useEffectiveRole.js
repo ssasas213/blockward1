@@ -15,7 +15,7 @@ export function useEffectiveRole() {
   const isTestMode = !!testMode?.isTestSuperUser;
   return {
     isTestMode,
-    effectiveRole: isTestMode ? testMode.activePersona : profile?.user_type,
+    effectiveRole: isTestMode ? (testMode.activeRole || testMode.activePersona) : profile?.user_type,
     effectiveEmail: isTestMode && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email,
     effectiveId: isTestMode && testMode.effectiveId ? testMode.effectiveId : profile?.id,
     effectiveName: isTestMode && testMode.effectiveName
