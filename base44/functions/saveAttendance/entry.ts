@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { class_id, date, marks, reason } = body;
+    const { class_id, date, marks, reason, timetable_entry_id } = body;
     if (!class_id || !date || !Array.isArray(marks)) {
       return new Response(JSON.stringify({ error: 'class_id, date and marks[] are required' }), { status: 400, headers: cors });
     }
@@ -58,7 +58,10 @@ Deno.serve(async (req) => {
     for (const m of marks) { if (m && m.student_email && VALID.has(m.status)) marksMap[m.student_email] = m.status; }
 
     // Ensure a canonical AttendanceSession exists for (class, date) and stamp records with it.
-    const session = await ensureAttendanceSession(svc, actor, cls, date, marksMap);
+    // The timetable link (when launched from a scheduled lesson) is persisted on the session.
+    const session = await ensureAttendanceSession(svc, actor, cls, date, marksMap, {
+      timetable_entry_id: timetable_entry_id || null,
+    });
 
     const editedEntries = [];
     let saved = 0;

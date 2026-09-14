@@ -27,7 +27,7 @@ const Key = ({ children }) => (
  * All writes go through saveAttendance, so the audit log behaviour
  * (who made each change and when) is unchanged.
  */
-export default function AttendanceRegister({ classId, date }) {
+export default function AttendanceRegister({ classId, date, timetableEntryId }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [roster, setRoster] = useState([]);
@@ -96,7 +96,7 @@ export default function AttendanceRegister({ classId, date }) {
     inFlightRef.current = true;
     setAutosave({ state: 'saving', at: null });
     try {
-      const res = await base44.functions.invoke('saveAttendance', { class_id: classId, date, marks: payload });
+      const res = await base44.functions.invoke('saveAttendance', { class_id: classId, date, marks: payload, timetable_entry_id: timetableEntryId || undefined });
       if (res.data?.error) throw new Error(res.data.error);
       setServerMarks(prev => {
         const next = { ...prev };
@@ -218,7 +218,7 @@ export default function AttendanceRegister({ classId, date }) {
         student_name: s.student_name,
         status: marksRef.current[s.student_email] || 'present',
       }));
-      const res = await base44.functions.invoke('saveAttendance', { class_id: classId, date, marks: payload });
+      const res = await base44.functions.invoke('saveAttendance', { class_id: classId, date, marks: payload, timetable_entry_id: timetableEntryId || undefined });
       if (res.data?.error) throw new Error(res.data.error);
       dirtyRef.current = new Set();
       toast.success(alreadyTaken ? 'Attendance updated' : 'Attendance saved');

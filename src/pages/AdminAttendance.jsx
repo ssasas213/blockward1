@@ -28,6 +28,8 @@ function AdminAttendanceContent() {
   const { activeSchool, loading } = useSchool();
   const [records, setRecords] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [ttEntries, setTtEntries] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [threshold, setThreshold] = useState(85);
 
@@ -35,12 +37,17 @@ function AdminAttendanceContent() {
     if (!activeSchool?.id) { setLoadingData(false); return; }
     (async () => {
       try {
-        const [recs, cls] = await Promise.all([
+        const today = new Date().toISOString().slice(0, 10);
+        const [recs, cls, todaySessions, timetable] = await Promise.all([
           base44.entities.AttendanceRecord.filter({ school_id: activeSchool.id }, '-date', 1000),
           base44.entities.Class.filter({ school_id: activeSchool.id }),
+          base44.entities.AttendanceSession.filter({ school_id: activeSchool.id, date: today }),
+          base44.entities.TimetableEntry.filter({ school_id: activeSchool.id }),
         ]);
         setRecords(recs);
         setClasses(cls);
+        setSessions(todaySessions);
+        setTtEntries(timetable);
       } catch (e) {
         console.error('AdminAttendance load error', e);
       } finally {
@@ -79,6 +86,19 @@ function AdminAttendanceContent() {
       .sort((a, b) => a.rate - b.rate);
   }, [records, threshold]);
 
+  // Register completion today: which scheduled lessons have a register.
+  // Where timetable data exists, expected lessons are today's timetable entries;
+  // without a timetable, fall back to all active classes.
+  const registerCompletion = useMemo(() => {
+    const dayIndex = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+    const expectedIds = [...new Set(ttEntries.filter(t => t.day_of_week === dayIndex).map(t => t.class_id))];
+    const fallback = expectedIds.length === 0;
+    const expected = fallback ? classes.filter(c => c.status !== 'archived').map(c => c.id) : expectedIds;
+    const taken = new Set(sessions.map(s => s.class_id));
+    const missing = expected.filter(id => !taken.has(id));
+    return { completed: sessions.length, expected: expected.length, missing, fallback };
+  }, [sessions, ttEntries, classes]);
+
   if (loading || loadingData) {
     return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   }
@@ -87,8 +107,45 @@ function AdminAttendanceContent() {
     <div className="space-y-6">
       <PageHeader
         title="Attendance Insights"
-        description={activeSchool ? `School-wide attendance for ${activeSchool.name}` : 'School-wide attendance'}
+        description={activeSchool
+          ? `BlockWard class register data for ${activeSchool.name} — not a statutory MIS record`
+          : 'BlockWard class register data — not a statutory MIS record'}
       />
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Register completion — today</CardTitle></CardHeader>
+        <CardContent>
+          {registerCompletion.expected === 0 ? (
+            <p className="text-sm text-muted-foreground">No lessons scheduled today.</p>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-3 flex-wrap">
+                <Badge variant={registerCompletion.missing.length === 0 ? 'success' : 'destructive'}>
+                  {registerCompletion.completed}/{registerCompletion.expected} registers completed
+                </Badge>
+                {registerCompletion.fallback && (
+                  <span className="text-xs text-muted-foreground">No timetable data for today — showing all active classes.</span>
+                )}
+              </div>
+              {registerCompletion.missing.length > 0 ? (
+                <div className="space-y-1">
+                  {registerCompletion.missing.map(id => {
+                    const c = classes.find(c => c.id === id);
+                    return (
+                      <div key={id} className="flex items-center justify-between gap-3 p-2 rounded-lg bg-destructive/5">
+                        <p className="text-sm text-foreground truncate">{c?.name || 'Unknown class'}</p>
+                        <span className="text-xs text-muted-foreground truncate">{c?.teacher_email || ''}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-success">All expected registers are complete.</p>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {records.length === 0 ? (
         <EmptyState

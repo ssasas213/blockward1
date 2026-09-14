@@ -493,13 +493,15 @@ const TOOLS = [
     },
   },
   {
-    name: "getSchoolAttendanceStats", description: "Get today's school-wide attendance summary: present/absent/late counts today, school average rate, and per-class rates (lowest first).", allowedRoles: ["admin"],
+    name: "getSchoolAttendanceStats", description: "Get today's school-wide attendance summary: present/absent/late counts today, school average rate, per-class rates (lowest first), and which class registers are still missing today.", allowedRoles: ["admin"],
     parameters: { type: "object", properties: {} },
     async run(_args, { svc, actor }) {
       const today = new Date().toISOString().slice(0, 10);
-      const [records, classes] = await Promise.all([
+      const [records, classes, todaySessions, ttEntries] = await Promise.all([
         svc.entities.AttendanceRecord.filter({ school_id: actor.school_id }, '-date', 2000).catch(() => []),
         svc.entities.Class.filter({ school_id: actor.school_id }).catch(() => []),
+        svc.entities.AttendanceSession.filter({ school_id: actor.school_id, date: today }).catch(() => []),
+        svc.entities.TimetableEntry.filter({ school_id: actor.school_id }).catch(() => []),
       ]);
       const todayRecs = records.filter(r => r.date === today);
       const counts = { present: 0, absent: 0, late: 0, excused: 0 };
@@ -508,7 +510,21 @@ const TOOLS = [
       const byClass = {};
       for (const r of records) { const k = r.class_id; if (!byClass[k]) byClass[k] = { attended: 0, total: 0 }; byClass[k].total++; if (r.status === 'present' || r.status === 'late') byClass[k].attended++; }
       const classRates = Object.entries(byClass).map(([id, v]) => ({ class: classes.find(c => c.id === id)?.name || 'Unknown', rate: v.total ? Math.round((v.attended / v.total) * 100) : null })).sort((a, b) => (a.rate ?? 999) - (b.rate ?? 999));
-      return { today: { date: today, present: counts.present, absent: counts.absent, late: counts.late, excused: counts.excused, total: todayRecs.length }, school_average: schoolAvg, class_rates: classRates };
+      // Register completion: expected = today's timetable lessons (or all active classes without a timetable)
+      const dayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+      const expectedIds = [...new Set(ttEntries.filter(t => t.day_of_week === dayIdx).map(t => t.class_id))];
+      const expected = expectedIds.length ? expectedIds : classes.filter(c => c.status !== 'archived').map(c => c.id);
+      const taken = new Set(todaySessions.map(s => s.class_id));
+      const missingRegisters = expected.filter(id => !taken.has(id)).map(id => classes.find(c => c.id === id)?.name || 'Unknown class');
+      return {
+        today: { date: today, present: counts.present, absent: counts.absent, late: counts.late, excused: counts.excused, total: todayRecs.length },
+        school_average: schoolAvg,
+        class_rates: classRates,
+        registers_expected: expected.length,
+        registers_completed: todaySessions.length,
+        missing_registers_today: missingRegisters,
+        note: "BlockWard class register data — not the school's statutory MIS attendance record.",
+      };
     },
   },
 

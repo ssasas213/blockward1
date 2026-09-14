@@ -36,7 +36,10 @@ function StudentAttendanceContent() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="My Attendance" description="Your attendance record across all classes — read only." />
+      <PageHeader
+        title="My BlockWard Attendance"
+        description="Your class register record in BlockWard — read only. Your school's official statutory register stays in its own system."
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card><CardContent className="p-5 text-center"><p className="text-3xl font-bold text-foreground">{data.rate !== null ? `${data.rate}%` : '—'}</p><p className="text-xs text-muted-foreground mt-1">Overall Attendance</p></CardContent></Card>

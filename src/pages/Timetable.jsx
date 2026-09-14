@@ -22,8 +22,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { 
-  Plus, Calendar, Clock, MapPin, Loader2, ChevronLeft, ChevronRight, Trash2
+  Plus, Calendar, Clock, MapPin, Loader2, ChevronLeft, ChevronRight, Trash2, ClipboardCheck
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import GoogleCalendarPanel from '@/components/timetable/GoogleCalendarPanel';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -304,6 +306,15 @@ export default function Timetable() {
                     </div>
                     <p className="font-semibold">{entry.class_name || entry.subject}</p>
                     <p className="text-sm opacity-80">{entry.subject}</p>
+                    {isTeacher && selectedDay === (new Date().getDay() === 0 ? 0 : new Date().getDay() - 1) && (
+                      <Link
+                        to={createPageUrl(`Attendance?class=${entry.class_id}&tt=${entry.id}`)}
+                        className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:underline"
+                      >
+                        <ClipboardCheck className="h-3 w-3" />
+                        Take Register
+                      </Link>
+                    )}
                   </div>
                 ))}
               </div>
@@ -353,6 +364,15 @@ export default function Timetable() {
                               <MapPin className="h-3 w-3" />
                               <span>{entry.room}</span>
                             </div>
+                          )}
+                          {isTeacher && isToday && (
+                            <Link
+                              to={createPageUrl(`Attendance?class=${entry.class_id}&tt=${entry.id}`)}
+                              className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:underline"
+                            >
+                              <ClipboardCheck className="h-3 w-3" />
+                              Take Register
+                            </Link>
                           )}
                         </motion.div>
                       ))

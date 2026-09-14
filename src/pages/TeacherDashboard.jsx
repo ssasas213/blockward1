@@ -19,6 +19,7 @@ import SignoffQueueWidget from '@/components/dashboard/SignoffQueueWidget';
 import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidget';
 import TeacherAssignmentsWidget from '@/components/dashboard/TeacherAssignmentsWidget';
 import TeacherAssembliesWidget from '@/components/dashboard/TeacherAssembliesWidget';
+import TeacherRegisterStatusWidget from '@/components/dashboard/TeacherRegisterStatusWidget';
 
 function TeacherDashboardContent() {
   // Identity comes from SchoolContext — the effective persona in Test Mode,
@@ -123,6 +124,9 @@ function TeacherDashboardContent() {
         <StatCard label="Today's Lessons" value={stats.todaySchedule.length} icon={Calendar} />
         <StatCard label="Points Issued" value={stats.recentPoints.length} icon={Award} />
       </div>
+
+      {/* Today's register status — one-click launch straight from the dashboard */}
+      <TeacherRegisterStatusWidget />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Schedule */}

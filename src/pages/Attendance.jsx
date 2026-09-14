@@ -19,6 +19,7 @@ function AttendanceContent() {
   const navigate = useNavigate();
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [timetableEntryId, setTimetableEntryId] = useState(null);
   const [date, setDate] = useState(todayStr());
   const [loadingClasses, setLoadingClasses] = useState(true);
 
@@ -36,7 +37,13 @@ function AttendanceContent() {
       const all = await base44.entities.Class.filter({ school_id: activeSchool.id });
       const mine = all.filter(c => c.teacher_email === effectiveEmail);
       setClasses(mine);
-      if (mine.length > 0) setSelectedClass(mine[0].id);
+      // Launch links (timetable / dashboard) can preselect a class and lesson
+      const urlParams = new URLSearchParams(window.location.search);
+      const presetClass = urlParams.get('class');
+      const presetTT = urlParams.get('tt');
+      if (presetTT) setTimetableEntryId(presetTT);
+      if (presetClass && mine.some(c => c.id === presetClass)) setSelectedClass(presetClass);
+      else if (mine.length > 0) setSelectedClass(mine[0].id);
     } catch (e) {
       console.error('Attendance loadClasses error', e);
     } finally {
@@ -94,7 +101,7 @@ function AttendanceContent() {
           <EmptyState icon={ClipboardCheck} title="No classes yet" description="Create a class first to take attendance." />
         )
       ) : (
-        <AttendanceRegister classId={selectedClass} date={date} />
+        <AttendanceRegister classId={selectedClass} date={date} timetableEntryId={timetableEntryId} />
       )}
     </div>
   );
