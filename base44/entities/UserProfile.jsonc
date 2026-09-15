@@ -458,6 +458,38 @@
     "test_persona_of": {
       "type": "string",
       "description": "For test persona profiles only \u2014 the controller email that owns this persona."
+    },
+    "badge_tier": {
+      "type": "string",
+      "enum": [
+        "none",
+        "member",
+        "identity"
+      ],
+      "default": "none",
+      "description": "EARNED profile verification badge \u2014 a trust signal about the PERSON, distinct from credential verification. 'none': no badge (default; an absent badge is the signal, never render a grey 'unverified' marker). 'member' (blue): the student holds an active membership in a BlockWard-verified organisation \u2014 granted and revoked automatically. 'identity' (gold): an admin of a verified organisation explicitly confirmed this profile belongs to a real enrolled student. Badges are NEVER purchased and NEVER self-declared. Service-role only: written exclusively by setProfileBadge / shared/profileBadges."
+    },
+    "badge_org_id": {
+      "type": "string",
+      "description": "School.id of the organisation that earned this badge (the verified org for member tier, the confirming org for identity tier). Service-role only."
+    },
+    "badge_granted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current badge tier was granted. Service-role only."
+    },
+    "badge_granted_by": {
+      "type": "string",
+      "description": "For identity tier \u2014 the email of the admin who explicitly confirmed this student. Null for the automatic member tier. Service-role only."
+    },
+    "badge_revoked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When a higher badge tier was last revoked (kept for the audit trail). Service-role only."
+    },
+    "badge_revoked_reason": {
+      "type": "string",
+      "description": "Recorded reason a badge was revoked (admin's reason, or the automatic cause). Service-role only."
     }
   },
   "required": [
@@ -500,7 +532,13 @@
       "data.guardian_consent": "__service_role_only__",
       "data.guardian_consent_token": "__service_role_only__",
       "data.card_hashes": "__service_role_only__",
-      "data.last_view_milestone": "__service_role_only__"
+      "data.last_view_milestone": "__service_role_only__",
+      "data.badge_tier": "__service_role_only__",
+      "data.badge_org_id": "__service_role_only__",
+      "data.badge_granted_at": "__service_role_only__",
+      "data.badge_granted_by": "__service_role_only__",
+      "data.badge_revoked_at": "__service_role_only__",
+      "data.badge_revoked_reason": "__service_role_only__"
     },
     "delete": {
       "$or": [
