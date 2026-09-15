@@ -187,7 +187,7 @@
         "properties": {
           "platform": {
             "type": "string",
-            "description": "One of the whitelisted platforms: instagram, tiktok, linkedin, github, youtube, twitter (X), discord, behance, dribbble, strava, chess, website"
+            "description": "One of the whitelisted platforms: instagram, tiktok, linkedin, github, youtube, twitter (X), discord, behance, dribbble, strava, chess, spotify, twitch, substack, medium, bluesky, threads, whatsapp, duolingo, codeforces, kaggle, goodreads, letterboxd, website"
           },
           "url": {
             "type": "string",
