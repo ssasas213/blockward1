@@ -111,16 +111,16 @@
     },
     "credential_type_id": {
       "type": "string",
-      "description": "AwardTypes.id of the picked credential template \u2014 null for a custom 'Other' type"
+      "description": "AwardTypes.id of the picked credential template \u2014 null for a custom 'Other' type. ATTESTED field: part of what the signers review."
     },
     "credential_type_title": {
       "type": "string",
-      "description": "Display title of the credential type (template title or student-typed label)"
+      "description": "Display title of the credential type (template title or student-typed label). ATTESTED field."
     },
     "is_custom_credential": {
       "type": "boolean",
       "default": false,
-      "description": "True when the student chose 'Other' and typed their own credential type"
+      "description": "True when the student chose 'Other' and typed their own credential type. ATTESTED field."
     },
     "category": {
       "type": "string",
@@ -134,24 +134,24 @@
         "special"
       ],
       "default": "academic",
-      "description": "Achievement category"
+      "description": "Achievement category. ATTESTED field."
     },
     "title": {
       "type": "string",
-      "description": "Achievement title"
+      "description": "Achievement title. ATTESTED field \u2014 editing it after a sign-off invalidates that signature."
     },
     "description": {
       "type": "string",
-      "description": "What the student did, in their words"
+      "description": "What the student did, in their words. ATTESTED field."
     },
     "image_url": {
       "type": "string",
-      "description": "Student-uploaded PUBLIC cover image (auto-cropped to 4:3, compressed client-side). Decorative only \u2014 this is what appears on the public profile tiles. Moderated before it becomes public; organisation admins can remove it. Evidence lives separately in the evidence field."
+      "description": "PRESENTATION field \u2014 the student-uploaded public cover image. Never part of any attestation: the student may change it at any time without disturbing an in-flight review. Decorative only; moderated before it becomes public."
     },
     "date_achieved": {
       "type": "string",
       "format": "date",
-      "description": "When the achievement occurred (yyyy-MM-dd)"
+      "description": "When the achievement occurred (yyyy-MM-dd). ATTESTED field."
     },
     "evidence": {
       "type": "array",
@@ -178,16 +178,16 @@
         ]
       },
       "default": [],
-      "description": "Evidence attachments \u2014 up to 5 uploaded files (JPG/PNG/WebP/PDF, max 10MB, images compressed client-side) and external links. Shown to verifiers; NOT public unless the student opts in."
+      "description": "Evidence attachments \u2014 up to 5 uploaded files and external links. ATTESTED field: shown to verifiers; changing it after a sign-off invalidates that signature."
     },
     "is_team": {
       "type": "boolean",
       "default": false,
-      "description": "True when this is a group achievement \u2014 one verification and sign-off covers every listed participant, and each gets their own credential with their role once they consent. Organisation flow only; independent verification is per-student."
+      "description": "True when this is a group achievement. ATTESTED field."
     },
     "my_team_role": {
       "type": "string",
-      "description": "The requesting student's own role in the team (e.g. captain, lead developer, first board)"
+      "description": "The requesting student's own role in the team. ATTESTED field."
     },
     "team_participants": {
       "type": "array",
@@ -195,24 +195,19 @@
         "type": "object",
         "properties": {
           "email": {
-            "type": "string",
-            "description": "Teammate email \u2014 an existing BlockWard member or someone not yet on BlockWard"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "Display name entered by the creator (or resolved from their profile)"
+            "type": "string"
           },
           "profile_id": {
-            "type": "string",
-            "description": "UserProfile.id when the email matches an existing member"
+            "type": "string"
           },
           "handle": {
-            "type": "string",
-            "description": "Public handle when the email matches an existing member"
+            "type": "string"
           },
           "role": {
-            "type": "string",
-            "description": "This teammate's role in the achievement (e.g. striker, designer, second violin)"
+            "type": "string"
           }
         },
         "required": [
@@ -221,7 +216,7 @@
         ]
       },
       "default": [],
-      "description": "Teammates listed by the creator for a team achievement. Each is emailed a private claim link when the credential is approved, and only appears on the public team record after accepting."
+      "description": "Teammates listed by the creator. ATTESTED field \u2014 the signer attests to this team list."
     },
     "nominated_verifier_id": {
       "type": "string",
@@ -229,7 +224,7 @@
     },
     "nominated_verifier_email": {
       "type": "string",
-      "description": "Staff member the student nominated to verify this"
+      "description": "Staff member the student nominated to verify this. ATTESTED field \u2014 changing the nominee changes who reviews."
     },
     "nominated_verifier_name": {
       "type": "string",
@@ -243,7 +238,7 @@
         3
       ],
       "default": 1,
-      "description": "1: verifier only. 2: verifier + org admin (different people). 3: verifier + admin + external verifier via expiring link. Set by the credential type, overridable by the organisation. Null for independent-verification requests."
+      "description": "1: verifier only. 2: verifier + org admin. 3: verifier + admin + external verifier via expiring link. Null for independent requests. ATTESTED field."
     },
     "status": {
       "type": "string",
@@ -263,15 +258,15 @@
         "withdrawn"
       ],
       "default": "draft",
-      "description": "Lifecycle status. The canonical TERMINAL state is 'archived' (verified and published). 'minted' is a deprecated legacy terminal kept only for pre-migration rows \u2014 never set it in new code. 'withdrawn' \u2014 the student cancelled it before verification; it leaves the Pending count, is hidden by default, and can be duplicated into a new draft. A request that is approved or beyond can never be withdrawn \u2014 a verified credential cannot be silently unmade."
+      "description": "Lifecycle status. The canonical TERMINAL state is 'archived' (verified and published). 'withdrawn' \u2014 the student cancelled before verification. A request that is approved or beyond can never be withdrawn \u2014 a verified credential cannot be silently unmade. Service-role only: transitions happen exclusively through achievementRequestAction / credentialEditAction."
     },
     "external_verifier_email": {
       "type": "string",
-      "description": "Contact email for the Tier 3 external verifier, or the independent verifier's email (reminders + anti-abuse history keyed on this)."
+      "description": "Contact email for the Tier 3 external verifier, or the independent verifier's email. ATTESTED field while a verification is in flight."
     },
     "external_token": {
       "type": "string",
-      "description": "One-time expiring token for the external verification link. Cleared after use."
+      "description": "One-time expiring token for the external verification link. Cleared after use \u2014 and cleared immediately when the student edits attested details, so an outstanding verifier link can never approve content that has changed underneath it. Service-role only."
     },
     "external_token_expires_at": {
       "type": "string",
@@ -279,7 +274,7 @@
     },
     "verifier_signoff": {
       "type": "object",
-      "description": "Nominated verifier's sign-off",
+      "description": "Nominated verifier's sign-off \u2014 the exact content snapshot they attested to is stored alongside it (content_hash). Service-role only.",
       "properties": {
         "signer_id": {
           "type": "string"
@@ -314,8 +309,11 @@
           "description": "Typed signature (full name)"
         },
         "ip_country": {
+          "type": "string"
+        },
+        "content_hash": {
           "type": "string",
-          "description": "Country derived from the signer's IP at sign-off time"
+          "description": "Fingerprint of the attested content at signing time"
         },
         "signed_at": {
           "type": "string",
@@ -325,7 +323,7 @@
     },
     "admin_signoff": {
       "type": "object",
-      "description": "Organisation admin's second approval (Tier 2 & 3)",
+      "description": "Organisation admin's second approval (Tier 2 & 3). Service-role only.",
       "properties": {
         "signer_id": {
           "type": "string"
@@ -369,7 +367,7 @@
     },
     "external_signoff": {
       "type": "object",
-      "description": "External verifier's confirmation (Tier 3, and ALL independent verifications) \u2014 recorded without a BlockWard account. Name, role, organisation, email, method, attestation, signature, IP-derived country and timestamp are all recorded here.",
+      "description": "External verifier's confirmation \u2014 recorded without a BlockWard account. Service-role only.",
       "properties": {
         "name": {
           "type": "string"
@@ -413,7 +411,7 @@
     },
     "changes_requested_reason": {
       "type": "string",
-      "description": "Reviewer's comment when sending the request back to the student"
+      "description": "Reviewer's comment when sending the request back to the student \u2014 or the system note when the student's own edit of attested details reset the review. Service-role only."
     },
     "rejection_reason": {
       "type": "string",
@@ -455,7 +453,7 @@
     },
     "student_record_id": {
       "type": "string",
-      "description": "StudentRecord created on final approval \u2014 the credential's source of truth. Also set by the one-time migration for converted legacy submissions."
+      "description": "StudentRecord created on final approval \u2014 the credential's source of truth. Service-role only."
     },
     "blockward_id": {
       "type": "string",
@@ -465,6 +463,65 @@
       "type": "string",
       "description": "Public verification ID (BW-\u2026) once minted"
     },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Credential version this request produced. Bumped when an approved correction creates a newer version of the delivered credential. Service-role only."
+    },
+    "previous_version_id": {
+      "type": "string",
+      "description": "Mirrors the StudentRecord version chain backwards for corrections. Service-role only."
+    },
+    "superseded_by_id": {
+      "type": "string",
+      "description": "Mirrors the StudentRecord version chain forwards. Service-role only."
+    },
+    "edit_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "old_value": {
+            "description": "Value before the edit (stringified for storage)"
+          },
+          "new_value": {
+            "description": "Value after the edit (stringified for storage)"
+          },
+          "edited_by": {
+            "type": "string"
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "edited_at"
+        ]
+      },
+      "default": [],
+      "description": "Every edit made through the credential edit flow, with actor, old/new values and reason. Service-role only."
+    },
+    "correction_reason": {
+      "type": "string",
+      "description": "Mirrored from the delivered StudentRecord when a correction is requested on the published credential. Service-role only."
+    },
+    "correction_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the correction was requested. Service-role only."
+    },
+    "correction_approved_by": {
+      "type": "string",
+      "description": "Verifier who approved (or declined) the correction. Service-role only."
+    },
     "event_log": {
       "type": "array",
       "items": {
@@ -472,7 +529,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | external_declined | reported_false | changes_requested | rejected | reminded | expired | minted | migrated | flagged | withdrawn"
+            "description": "created | updated | submitted | resubmitted | verifier_signed | admin_approved | external_confirmed | external_declined | reported_false | changes_requested | rejected | reminded | expired | minted | migrated | flagged | withdrawn | student_edited | correction_requested | correction_approved | correction_declined"
           },
           "actor_email": {
             "type": "string"
@@ -532,7 +589,40 @@
       ]
     },
     "update": {
-      "data.school_id": "__service_role_only__"
+      "data.school_id": "__service_role_only__",
+      "data.status": "__service_role_only__",
+      "data.title": "__service_role_only__",
+      "data.description": "__service_role_only__",
+      "data.date_achieved": "__service_role_only__",
+      "data.category": "__service_role_only__",
+      "data.evidence": "__service_role_only__",
+      "data.credential_type_id": "__service_role_only__",
+      "data.credential_type_title": "__service_role_only__",
+      "data.is_custom_credential": "__service_role_only__",
+      "data.nominated_verifier_id": "__service_role_only__",
+      "data.nominated_verifier_email": "__service_role_only__",
+      "data.nominated_verifier_name": "__service_role_only__",
+      "data.verification_tier": "__service_role_only__",
+      "data.external_verifier_email": "__service_role_only__",
+      "data.is_team": "__service_role_only__",
+      "data.my_team_role": "__service_role_only__",
+      "data.team_participants": "__service_role_only__",
+      "data.verifier_signoff": "__service_role_only__",
+      "data.admin_signoff": "__service_role_only__",
+      "data.external_signoff": "__service_role_only__",
+      "data.external_token": "__service_role_only__",
+      "data.external_token_expires_at": "__service_role_only__",
+      "data.approved_at": "__service_role_only__",
+      "data.blockward_id": "__service_role_only__",
+      "data.verification_id": "__service_role_only__",
+      "data.student_record_id": "__service_role_only__",
+      "data.version": "__service_role_only__",
+      "data.previous_version_id": "__service_role_only__",
+      "data.superseded_by_id": "__service_role_only__",
+      "data.edit_history": "__service_role_only__",
+      "data.correction_reason": "__service_role_only__",
+      "data.correction_requested_at": "__service_role_only__",
+      "data.correction_approved_by": "__service_role_only__"
     },
     "delete": {
       "data.school_id": "__service_role_only__"
