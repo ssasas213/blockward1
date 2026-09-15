@@ -20,7 +20,8 @@ import HighlightsRow from '@/components/publicProfile/HighlightsRow';
 import CredentialEditDialog from '@/components/achievements/edit/CredentialEditDialog';
 import { exportPortfolioPdf } from '@/lib/portfolioPdf';
 import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
-import { themeVars, bannerStyle } from '@/lib/profileThemes';
+import { publicProfileVars, bannerStyle, DEFAULT_SECTION_ORDER } from '@/lib/profileThemes';
+import OrganisationsChips from '@/components/publicProfile/OrganisationsChips';
 import { createPageUrl } from '@/utils';
 
 const DEFAULT_OG = 'https://media.base44.com/images/public/6936b840baa53bb465f68d09/3c961351d_generated_image.png';
@@ -205,9 +206,19 @@ export default function PublicProfile({ handle }) {
   const count = data.count;
 
   // Student-chosen visual customisation (presets only).
-  const vars = themeVars(student.theme_id, student.accent_colour, student.display_font);
+  const vars = publicProfileVars(student);
   const bannerCss = bannerStyle(student.banner_url);
   const layout = student.profile_layout || 'grid';
+  // Forced scheme pins light/dark regardless of the viewer's setting.
+  const schemeClass = student.forced_scheme === 'light' ? 'pf-scheme-light' : student.forced_scheme === 'dark' ? 'pf-scheme-dark' : '';
+  const pattern = student.surface_pattern && student.surface_pattern !== 'none' ? student.surface_pattern : null;
+  // Sections render in the student's chosen order; a hidden section never
+  // renders at all — not shown empty.
+  const sectionVisible = (id) => (student.section_visibility || {})[id] !== false;
+  const sectionOrder = (Array.isArray(student.section_order) && student.section_order.length === DEFAULT_SECTION_ORDER.length
+    ? student.section_order
+    : DEFAULT_SECTION_ORDER
+  ).filter(sectionVisible);
 
   // Category counts for the filter chips.
   const counts = { all: achievements.length };
@@ -267,8 +278,151 @@ export default function PublicProfile({ handle }) {
   const canEndorse = !!viewerEmail && !is_owner;
   const endorseTile = (a) => { setSelected(a); setEndorseOpen(true); };
 
+  // Sections render in the student's chosen order — hidden or contentless
+  // sections are skipped entirely rather than shown empty.
+  const renderSection = (sec) => {
+    if (sec === 'highlights') {
+      return (
+        <HighlightsRow
+          key={sec}
+          style={student.highlight_style || 'carousel'}
+          items={pinnedItems}
+          onOpen={openAchievement}
+        />
+      );
+    }
+    if (sec === 'achievements') {
+      return (
+        <div key={sec} className="mt-10">
+          {achievements.length > 0 ? (
+            <>
+              <ProfileControls
+                counts={counts}
+                chip={chip}
+                setChip={setChip}
+                sort={sort}
+                setSort={setSort}
+                view={view}
+                setView={setView}
+              />
+
+              {view === 'timeline' ? (
+                <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
+              ) : layout === 'list' ? (
+                <div className="pf-list space-y-2">
+                  {sort === 'category' ? (
+                    grouped.map(({ domain, items }) => (
+                      <section key={domain}>
+                        <div className="flex items-center gap-2 mb-2 mt-4">
+                          <h2 className="text-base font-semibold text-foreground">{DOMAIN_LABELS[domain] || domain}</h2>
+                          <BadgeCheck className="h-4 w-4 text-success" />
+                          <span className="text-xs text-tertiary">{items.length}</span>
+                        </div>
+                        <div className="pf-list space-y-2">
+                          {items.map((a) => (
+                            <AchievementListRow key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                          ))}
+                        </div>
+                      </section>
+                    ))
+                  ) : (
+                    sorted.map((a) => (
+                      <AchievementListRow key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
+                    ))
+                  )}
+                </div>
+              ) : sort === 'category' ? (
+                <div className="space-y-10">
+                  {grouped.map(({ domain, items }) => (
+                    <section key={domain}>
+                      <div className="flex items-center gap-2 mb-4">
+                        <h2 className="text-base font-semibold text-foreground">{DOMAIN_LABELS[domain] || domain}</h2>
+                        <BadgeCheck className="h-4 w-4 text-success" />
+                        <span className="text-xs text-tertiary">{items.length}</span>
+                      </div>
+                      <div className="pf-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
+                        {items.map((a) => (
+                          <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} className="pf-tile" />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="pf-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
+                  {sorted.map((a) => (
+                    <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} className="pf-tile" />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : self_reported.length === 0 ? (
+            <div className="mb-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                {is_owner
+                  ? 'Your profile is live — publish your first achievement and it will appear here.'
+                  : `${student.name.split(' ')[0]}'s verified achievements will appear here.`}
+              </p>
+              {is_owner && (
+                <Button className="mt-4" onClick={() => window.location.href = createPageUrl('StudentBlockWards')}>
+                  <Trophy className="h-4 w-4 mr-2" /> Add your first achievement
+                </Button>
+              )}
+            </div>
+          ) : null}
+
+          <SelfReportedSection items={self_reported} />
+          {achievements.length > 0 && <TrustStrip className="mt-10" />}
+        </div>
+      );
+    }
+    if (sec === 'endorsements') {
+      if (!data.endorsements_unattached?.length) return null;
+      return (
+        <div key={sec} className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-foreground">What peers say</h2>
+            <span className="text-xs text-tertiary">signed · scarce · never anonymous</span>
+          </div>
+          <EndorsementList endorsements={data.endorsements_unattached} showAchievementTitle />
+        </div>
+      );
+    }
+    if (sec === 'timeline') {
+      if (!sorted.length) return null;
+      return (
+        <section key={sec} className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Timeline</h2>
+            <span className="text-xs text-tertiary">every verified achievement, in order</span>
+          </div>
+          <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
+        </section>
+      );
+    }
+    if (sec === 'organisations') {
+      if (!orgs.length) return null;
+      return (
+        <section key={sec} className="mt-10">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Organisations</h2>
+            <span className="text-xs text-tertiary">verified member of each</span>
+          </div>
+          <OrganisationsChips orgs={orgs} />
+        </section>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="min-h-screen bg-background font-sans antialiased" style={vars}>
+    <div
+      className={`pf-page relative min-h-screen bg-background font-sans antialiased ${schemeClass}`}
+      data-cardstyle={student.card_style || 'elevated'}
+      data-density={student.card_density || 'comfortable'}
+      style={vars}
+    >
+      {pattern && <div className={`pf-pattern pf-pattern-${pattern}`} aria-hidden="true" />}
       {/* Slim header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-background border-b border-border">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
@@ -300,118 +454,16 @@ export default function PublicProfile({ handle }) {
         </div>
       </header>
 
-      <main className="pb-24">
-        {/* Hero — solid-scrim identity block (WCAG AA on every theme), clean
-            banner edge, compact stats strip, owner-verified structure */}
+      <main className="pb-24 relative z-10">
         <ProfileHero
           student={student}
-          orgs={orgs}
           count={count}
           endorsementCount={data.endorsement_count || 0}
           bannerCss={bannerCss}
         />
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <HighlightsRow items={pinnedItems} onOpen={openAchievement} />
-
-        {achievements.length > 0 ? (
-          <>
-            <ProfileControls
-              counts={counts}
-              chip={chip}
-              setChip={setChip}
-              sort={sort}
-              setSort={setSort}
-              view={view}
-              setView={setView}
-            />
-
-            {view === 'timeline' ? (
-              <ProfileTimeline achievements={sorted} onOpen={openAchievement} />
-            ) : layout === 'list' ? (
-              <div className="space-y-2">
-                {sort === 'category' ? (
-                  grouped.map(({ domain, items }) => (
-                    <section key={domain}>
-                      <div className="flex items-center gap-2 mb-2 mt-4">
-                        <h2 className="text-base font-semibold text-foreground">{DOMAIN_LABELS[domain] || domain}</h2>
-                        <BadgeCheck className="h-4 w-4 text-success" />
-                        <span className="text-xs text-tertiary">{items.length}</span>
-                      </div>
-                      <div className="space-y-2">
-                        {items.map((a) => (
-                          <AchievementListRow key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
-                        ))}
-                      </div>
-                    </section>
-                  ))
-                ) : (
-                  sorted.map((a) => (
-                    <AchievementListRow key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} />
-                  ))
-                )}
-              </div>
-            ) : sort === 'category' ? (
-              <div className="space-y-10">
-                {grouped.map(({ domain, items }) => (
-                  <section key={domain}>
-                    <div className="flex items-center gap-2 mb-4">
-                      <h2 className="text-base font-semibold text-foreground">{DOMAIN_LABELS[domain] || domain}</h2>
-                      <BadgeCheck className="h-4 w-4 text-success" />
-                      <span className="text-xs text-tertiary">{items.length}</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
-                      {items.map((a) => (
-                        <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 pf-rise" style={{ '--pf-delay': '120ms' }}>
-                {sorted.map((a) => (
-                  <AchievementTile key={a.registry_id} achievement={a} onClick={() => openAchievement(a)} canEndorse={canEndorse} onEndorse={endorseTile} />
-                ))}
-              </div>
-            )}
-          </>
-        ) : self_reported.length === 0 ? (
-          <div className="mt-14 mb-4 text-center pf-rise" style={{ '--pf-delay': '60ms' }}>
-            <p className="text-sm text-muted-foreground">
-              {is_owner
-                ? 'Your profile is live — publish your first achievement and it will appear here.'
-                : `${student.name.split(' ')[0]}'s verified achievements will appear here.`}
-            </p>
-            {is_owner && (
-              <Button className="mt-4" onClick={() => window.location.href = createPageUrl('StudentBlockWards')}>
-                <Trophy className="h-4 w-4 mr-2" /> Add your first achievement
-              </Button>
-            )}
-          </div>
-        ) : null}
-
-        {/* Self-reported — visually distinct, clearly unverified */}
-        <SelfReportedSection items={self_reported} />
-
-        {/* Verifiability — the differentiator a cold visitor cannot otherwise see */}
-        {achievements.length > 0 && <TrustStrip className="mt-10" />}
-
-        {/* Endorsements waiting for a published achievement (invite-claimed) */}
-        {data.endorsements_unattached?.length > 0 && (
-          <div className="mt-10">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-semibold text-foreground">What peers say</h2>
-              <span className="text-xs text-tertiary">signed · scarce · never anonymous</span>
-            </div>
-            <EndorsementList endorsements={data.endorsements_unattached} showAchievementTitle />
-          </div>
-        )}
-
-        {/* Visitor conversion — dismissible claim bar, signed-out visitors only.
-            Signed-in viewers get Follow and the endorse actions instead; the
-            owner never sees it. Dismissal is stored against bw_anon_id for
-            30 days across every profile. */}
+        {sectionOrder.map((sec) => renderSection(sec))}
         {authChecked && !viewerEmail && !is_owner && (
           <ClaimBanner anonId={anonId} hasAchievements={achievements.length > 0} />
         )}

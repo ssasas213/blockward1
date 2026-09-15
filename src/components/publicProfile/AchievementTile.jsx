@@ -9,13 +9,14 @@ export { CATEGORY_STYLE, fmtDate };
  * over the shared AchievementCard so My BlockWards and the public profile
  * can never drift.
  */
-export default function AchievementTile({ achievement, onClick, canEndorse, onEndorse }) {
+export default function AchievementTile({ achievement, onClick, canEndorse, onEndorse, className }) {
   return (
     <AchievementCard
       item={cardFromRegistry(achievement)}
       onClick={onClick}
       canEndorse={canEndorse}
       onEndorse={onEndorse}
+      className={className}
     />
   );
 }

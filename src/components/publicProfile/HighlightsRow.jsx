@@ -6,11 +6,11 @@ import { fmtDate } from '@/components/publicProfile/AchievementTile';
 
 /**
  * HighlightsRow — up to 6 achievements the student pinned to the top of
- * their profile. Rendered as a full-width, image-forward hero row: large
- * cover images with a gradient scrim, horizontally scrollable on mobile.
- * This is the visual centrepiece of the page.
+ * their profile, in one of three bounded styles: carousel (scrollable hero
+ * cards), grid (even card grid) or spotlight (one large feature card with
+ * the rest beneath it).
  */
-export default function HighlightsRow({ items, onOpen }) {
+export default function HighlightsRow({ items, onOpen, style = 'carousel' }) {
   if (!items?.length) return null;
 
   return (
@@ -20,22 +20,46 @@ export default function HighlightsRow({ items, onOpen }) {
         <h2 className="text-lg font-semibold text-foreground">Highlights</h2>
         <span className="text-xs text-tertiary">pinned by the student</span>
       </div>
-      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
-        {items.map((a) => (
-          <HighlightCard key={a.registry_id} achievement={a} onOpen={onOpen} />
-        ))}
-      </div>
+      {style === 'grid' ? (
+        <div className="pf-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          {items.map((a) => (
+            <HighlightCard key={a.registry_id} achievement={a} onOpen={onOpen} variant="grid" />
+          ))}
+        </div>
+      ) : style === 'spotlight' ? (
+        <>
+          <HighlightCard achievement={items[0]} onOpen={onOpen} variant="hero" />
+          {items.length > 1 && (
+            <div className="pf-grid mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              {items.slice(1).map((a) => (
+                <HighlightCard key={a.registry_id} achievement={a} onOpen={onOpen} variant="mini" />
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+          {items.map((a) => (
+            <HighlightCard key={a.registry_id} achievement={a} onOpen={onOpen} variant="carousel" />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-function HighlightCard({ achievement, onOpen }) {
+function HighlightCard({ achievement, onOpen, variant = 'carousel' }) {
   const date = fmtDate(achievement.date_delivered || achievement.date_approved || achievement.date_achieved);
+  const sizeClass = variant === 'hero'
+    ? 'w-full aspect-[21/9] max-w-none flex-shrink'
+    : variant === 'mini'
+      ? 'aspect-video w-full sm:min-w-0 flex-shrink'
+      : 'aspect-video w-[86%] max-w-[560px] sm:w-auto sm:flex-1 sm:min-w-[300px] flex-shrink-0';
 
   return (
     <button
       onClick={() => onOpen(achievement)}
-      className="card-hover group relative aspect-video w-[86%] max-w-[560px] sm:w-auto sm:flex-1 sm:min-w-[300px] flex-shrink-0 overflow-hidden rounded-xl border border-border text-left snap-start"
+      className={`pf-tile card-hover group relative overflow-hidden rounded-xl border border-border text-left snap-start ${sizeClass}`}
     >
       <div className="absolute inset-0 transition-transform duration-200 group-hover:scale-[1.02]">
         {achievement.image_url ? (
@@ -61,8 +85,8 @@ function HighlightCard({ achievement, onOpen }) {
         <BadgeCheck className="h-4 w-4 text-white" />
       </span>
 
-      <div className="absolute inset-x-0 bottom-0 p-4">
-        <p className="text-base sm:text-lg font-semibold leading-snug text-white line-clamp-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+      <div className={`absolute inset-x-0 bottom-0 ${variant === 'mini' ? 'p-3' : 'p-4'}`}>
+        <p className={`font-semibold leading-snug text-white line-clamp-1 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)] ${variant === 'mini' ? 'text-sm' : 'text-base sm:text-lg'}`}>
           {achievement.title}
         </p>
         <div className="mt-1 flex items-center gap-1.5 min-w-0">

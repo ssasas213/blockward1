@@ -193,6 +193,126 @@ export const SOCIAL_PLATFORMS = [
   { id: 'website', label: 'Website' },
 ];
 
+// ── Extended public-profile customisation (bounded presets, never raw CSS) ─
+export const AVATAR_FRAMES = [
+  { id: 'none', label: 'None', desc: 'Clean circle' },
+  { id: 'accent-ring', label: 'Accent ring', desc: 'Ring in your accent colour' },
+  { id: 'gradient-ring', label: 'Gradient ring', desc: 'Two-stop accent gradient' },
+  { id: 'squircle', label: 'Squircle', desc: 'Soft rounded square' },
+  { id: 'square', label: 'Square', desc: 'Editorial corners' },
+];
+
+export const CARD_STYLES = [
+  { id: 'elevated', label: 'Elevated', desc: 'Soft shadow under cards' },
+  { id: 'flat', label: 'Flat', desc: 'Shadow-free and calm' },
+  { id: 'outlined', label: 'Outlined', desc: 'Transparent with strong borders' },
+];
+
+export const CORNER_STYLES = [
+  { id: 'sharp', label: 'Sharp', desc: 'Technical, precise', radius: '4px', btn: '4px' },
+  { id: 'rounded', label: 'Rounded', desc: 'The BlockWard default', radius: '14px', btn: '10px' },
+  { id: 'pill', label: 'Pill', desc: 'Very soft, friendly', radius: '24px', btn: '999px' },
+];
+
+export const SURFACE_PATTERNS = [
+  { id: 'none', label: 'None', desc: 'Clean surface' },
+  { id: 'grain', label: 'Grain', desc: 'Fine paper grain' },
+  { id: 'dots', label: 'Dots', desc: 'Even dot lattice' },
+  { id: 'grid', label: 'Grid', desc: 'Graph-paper lines' },
+  { id: 'topo', label: 'Topo', desc: 'Contour rings' },
+  { id: 'mesh', label: 'Mesh', desc: 'Soft accent washes' },
+];
+
+export const HERO_STYLES = [
+  { id: 'banner', label: 'Banner', desc: 'Classic cover, overlapping card' },
+  { id: 'split', label: 'Split', desc: 'Identity beside the cover' },
+  { id: 'minimal', label: 'Minimal', desc: 'No cover — quiet and editorial' },
+  { id: 'fullbleed', label: 'Full-bleed', desc: 'Tall edge-to-edge cover' },
+];
+
+export const CARD_DENSITY = [
+  { id: 'comfortable', label: 'Comfortable', desc: 'Roomy spacing' },
+  { id: 'compact', label: 'Compact', desc: 'Tighter gaps, more per screen' },
+];
+
+export const HIGHLIGHT_STYLES = [
+  { id: 'carousel', label: 'Carousel', desc: 'Scrollable hero cards' },
+  { id: 'grid', label: 'Grid', desc: 'Even card grid' },
+  { id: 'spotlight', label: 'Spotlight', desc: 'One large feature card' },
+];
+
+export const FORCED_SCHEMES = [
+  { id: 'auto', label: 'Auto', desc: "Follows the viewer's setting" },
+  { id: 'light', label: 'Always light' },
+  { id: 'dark', label: 'Always dark' },
+];
+
+export const OPEN_TO_OPTIONS = [
+  { id: 'internships', label: 'Internships' },
+  { id: 'team_trials', label: 'Team trials' },
+  { id: 'collaborations', label: 'Collaborations' },
+  { id: 'tutoring', label: 'Tutoring' },
+  { id: 'work_experience', label: 'Work experience' },
+];
+
+export const LANGUAGE_OPTIONS = [
+  'Arabic', 'Bengali', 'Chinese (Mandarin)', 'Dutch', 'English', 'French', 'German',
+  'Hindi', 'Italian', 'Japanese', 'Korean', 'Malay', 'Persian', 'Polish', 'Portuguese',
+  'Punjabi', 'Russian', 'Spanish', 'Swahili', 'Tagalog', 'Tamil', 'Turkish', 'Urdu', 'Vietnamese',
+];
+
+// Icon presets for custom links — 'auto' renders the destination's favicon.
+export const CUSTOM_LINK_ICONS = [
+  { id: 'auto', label: 'Auto (favicon)' },
+  { id: 'globe', label: 'Website' },
+  { id: 'file', label: 'Document' },
+  { id: 'code', label: 'Code' },
+  { id: 'video', label: 'Video' },
+  { id: 'music', label: 'Music' },
+  { id: 'book', label: 'Writing' },
+  { id: 'cart', label: 'Store' },
+  { id: 'pen', label: 'Art' },
+  { id: 'briefcase', label: 'Work' },
+];
+
+// Page sections the student can reorder or hide individually.
+export const PROFILE_SECTIONS = [
+  { id: 'highlights', label: 'Highlights', desc: 'Your pinned achievements' },
+  { id: 'achievements', label: 'Achievements', desc: 'The verified record' },
+  { id: 'endorsements', label: 'Endorsements', desc: 'What peers say' },
+  { id: 'timeline', label: 'Timeline', desc: 'Everything in order' },
+  { id: 'organisations', label: 'Organisations', desc: 'Your schools and clubs' },
+];
+export const DEFAULT_SECTION_ORDER = PROFILE_SECTIONS.map((s) => s.id);
+
+// The default state of every customisation field — the single source of
+// truth for the editor's "Reset to default" and for read-side fallbacks.
+export const DEFAULT_PROFILE_CUSTOM = {
+  banner_url: null,
+  theme_id: 'slate',
+  accent_colour: null,
+  accent_gradient: null,
+  profile_layout: 'grid',
+  display_font: 'sans',
+  social_links: [],
+  featured_link: null,
+  avatar_frame: 'none',
+  card_style: 'elevated',
+  corner_style: 'rounded',
+  surface_pattern: 'none',
+  hero_style: 'banner',
+  card_density: 'comfortable',
+  highlight_style: 'carousel',
+  forced_scheme: 'auto',
+  tagline: null,
+  pronouns: null,
+  languages: [],
+  open_to: [],
+  custom_links: [],
+  section_order: DEFAULT_SECTION_ORDER,
+  section_visibility: { highlights: true, achievements: true, endorsements: true, timeline: true, organisations: true },
+};
+
 export const LAYOUTS = [
   { id: 'grid', label: 'Grid', desc: 'Card grid — best for many achievements' },
   { id: 'list', label: 'List', desc: 'Compact rows — best for a long record' },
@@ -286,4 +406,64 @@ export function normalizeSocialUrl(raw) {
   } catch {
     return null;
   }
+}
+
+// Perceptual (sRGB-weighted) luminance of a hex colour.
+function srgbLum(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+  if (!m) return 255;
+  const n = parseInt(m[1], 16);
+  return 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+}
+
+// WCAG-safe text colour for a two-stop accent gradient, judged against the
+// LIGHTER stop so the worst point on the gradient always passes AA. Light
+// palette stops (amber, emerald, orange) get dark ink; dark stops get white.
+export function gradientForeground(stops) {
+  return Math.max(...stops.map(srgbLum)) < 110 ? '#FFFFFF' : '#17121F';
+}
+
+export function findCorner(id) {
+  return CORNER_STYLES.find((c) => c.id === id) || CORNER_STYLES[1];
+}
+
+// Full token bundle for the public profile page — themeVars (theme + accent
+// + font) extended with the newer presets. Separate from themeVars so
+// existing callers stay untouched.
+export function publicProfileVars(custom = {}) {
+  const vars = themeVars(custom.theme_id, custom.accent_colour, custom.display_font);
+  const corner = findCorner(custom.corner_style);
+  vars['--pf-radius'] = corner.radius;
+  vars['--pf-btn-radius'] = corner.btn;
+  if (custom.accent_colour && custom.accent_gradient) {
+    const stops = [custom.accent_colour, custom.accent_gradient];
+    vars['--pf-accent-grad'] = `linear-gradient(135deg, ${stops.join(', ')})`;
+    vars['--pf-accent-grad-fg'] = gradientForeground(stops);
+  }
+  return vars;
+}
+
+// A coherent random combination — designed pairs, never noise. Visual
+// fields only; content and links are left exactly as they are.
+export function randomProfileCustom() {
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const a1 = pick(ACCENTS);
+  const a2 = pick(ACCENTS.filter((a) => a.hex !== a1.hex));
+  const withGradient = Math.random() < 0.5;
+  return {
+    theme_id: pick(THEMES).id,
+    accent_colour: a1.hex,
+    accent_gradient: withGradient ? a2.hex : null,
+    display_font: pick(FONTS).id,
+    banner_url: Math.random() < 0.6 ? `preset:${pick(PRESET_BANNERS).id}` : null,
+    profile_layout: pick(LAYOUTS).id,
+    avatar_frame: pick(AVATAR_FRAMES).id,
+    card_style: pick(CARD_STYLES).id,
+    corner_style: pick(CORNER_STYLES).id,
+    surface_pattern: Math.random() < 0.5 ? 'none' : pick(SURFACE_PATTERNS.filter((p) => p.id !== 'none')).id,
+    hero_style: pick(HERO_STYLES).id,
+    card_density: pick(CARD_DENSITY).id,
+    highlight_style: pick(HIGHLIGHT_STYLES).id,
+    forced_scheme: Math.random() < 0.7 ? 'auto' : pick(['light', 'dark']),
+  };
 }

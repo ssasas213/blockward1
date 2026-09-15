@@ -33,7 +33,7 @@ export default function SelfReportedSection({ items }) {
         {items.map((s) => (
           <div
             key={s.id}
-            className="rounded-xl border border-dashed border-warning/40 bg-warning/5 p-4 overflow-hidden"
+            className="pf-tile rounded-xl border border-dashed border-warning/40 bg-warning/5 p-4 overflow-hidden"
           >
             {s.image_url && (
               <div className="aspect-[4/3] rounded-lg overflow-hidden border border-warning/20 mb-3">

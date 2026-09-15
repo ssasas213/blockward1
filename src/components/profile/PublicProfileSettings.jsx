@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import ProfileCustomizer from '@/components/profile/ProfileCustomizer';
 import ProfilePreview from '@/components/publicProfile/ProfilePreview';
+import { DEFAULT_PROFILE_CUSTOM, DEFAULT_SECTION_ORDER } from '@/lib/profileThemes';
 
 const HANDLE_RE = /^[a-z0-9_]{3,20}$/;
 const MAX_BIO = 200;
@@ -22,15 +23,7 @@ const VISIBILITIES = [
 ];
 const ACH_VIS_LABELS = { public: 'Public', link_only: 'Link only', private: 'Hidden' };
 
-const DEFAULT_CUSTOM = {
-  banner_url: null,
-  theme_id: 'slate',
-  accent_colour: null,
-  profile_layout: 'grid',
-  display_font: 'sans',
-  social_links: [],
-  featured_link: null,
-};
+const DEFAULT_CUSTOM = DEFAULT_PROFILE_CUSTOM;
 
 export default function PublicProfileSettings({ profile, onSaved }) {
   const [loading, setLoading] = useState(true);
@@ -68,10 +61,28 @@ export default function PublicProfileSettings({ profile, onSaved }) {
         banner_url: p.banner_url || null,
         theme_id: p.theme_id || 'slate',
         accent_colour: p.accent_colour || null,
+        accent_gradient: p.accent_gradient || null,
         profile_layout: p.profile_layout || 'grid',
         display_font: p.display_font || 'sans',
         social_links: Array.isArray(p.social_links) ? p.social_links : [],
         featured_link: p.featured_link || null,
+        avatar_frame: p.avatar_frame || 'none',
+        card_style: p.card_style || 'elevated',
+        corner_style: p.corner_style || 'rounded',
+        surface_pattern: p.surface_pattern || 'none',
+        hero_style: p.hero_style || 'banner',
+        card_density: p.card_density || 'comfortable',
+        highlight_style: p.highlight_style || 'carousel',
+        forced_scheme: p.forced_scheme || 'auto',
+        tagline: p.tagline || null,
+        pronouns: p.pronouns || null,
+        languages: Array.isArray(p.languages) ? p.languages : [],
+        open_to: Array.isArray(p.open_to) ? p.open_to : [],
+        custom_links: Array.isArray(p.custom_links) ? p.custom_links : [],
+        section_order: Array.isArray(p.section_order) && p.section_order.length === DEFAULT_SECTION_ORDER.length
+          ? p.section_order
+          : DEFAULT_SECTION_ORDER,
+        section_visibility: p.section_visibility || DEFAULT_PROFILE_CUSTOM.section_visibility,
       };
       setCustom(nextCustom);
       setSavedCustom(nextCustom);
@@ -138,10 +149,28 @@ export default function PublicProfileSettings({ profile, onSaved }) {
           banner_url: p.banner_url === null ? null : p.banner_url ?? prev.banner_url,
           theme_id: p.theme_id ?? prev.theme_id,
           accent_colour: p.accent_colour === null ? null : p.accent_colour ?? prev.accent_colour,
+          accent_gradient: p.accent_gradient === null ? null : p.accent_gradient ?? prev.accent_gradient,
           profile_layout: p.profile_layout ?? prev.profile_layout,
           display_font: p.display_font ?? prev.display_font,
           social_links: Array.isArray(p.social_links) ? p.social_links : prev.social_links,
           featured_link: p.featured_link === null ? null : p.featured_link ?? prev.featured_link,
+          avatar_frame: p.avatar_frame ?? prev.avatar_frame,
+          card_style: p.card_style ?? prev.card_style,
+          corner_style: p.corner_style ?? prev.corner_style,
+          surface_pattern: p.surface_pattern ?? prev.surface_pattern,
+          hero_style: p.hero_style ?? prev.hero_style,
+          card_density: p.card_density ?? prev.card_density,
+          highlight_style: p.highlight_style ?? prev.highlight_style,
+          forced_scheme: p.forced_scheme ?? prev.forced_scheme,
+          tagline: p.tagline === null ? null : p.tagline ?? prev.tagline,
+          pronouns: p.pronouns === null ? null : p.pronouns ?? prev.pronouns,
+          languages: Array.isArray(p.languages) ? p.languages : prev.languages,
+          open_to: Array.isArray(p.open_to) ? p.open_to : prev.open_to,
+          custom_links: Array.isArray(p.custom_links) ? p.custom_links : prev.custom_links,
+          section_order: Array.isArray(p.section_order) && p.section_order.length === DEFAULT_SECTION_ORDER.length
+            ? p.section_order
+            : prev.section_order,
+          section_visibility: p.section_visibility ? p.section_visibility : prev.section_visibility,
         };
         setSavedCustom(merged);
         return merged;

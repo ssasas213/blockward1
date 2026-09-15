@@ -29,9 +29,16 @@ export default function OpportunityCard({ opportunity, onApply }) {
             <p className="text-xs text-tertiary truncate">{o.organisation_name}</p>
             <h3 className="font-semibold text-foreground leading-snug">{o.title}</h3>
           </div>
-          <Badge variant="secondary" className="flex-shrink-0">
-            {OPPORTUNITY_TYPE_LABELS[o.type] || o.type}
-          </Badge>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <Badge variant="secondary">
+              {OPPORTUNITY_TYPE_LABELS[o.type] || o.type}
+            </Badge>
+            {o.open_to_match && (
+              <Badge variant="success" title="This matches what you said you're open to on your profile">
+                You're open to this
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">

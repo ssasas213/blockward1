@@ -104,11 +104,23 @@ export default async function (req: Request): Promise<Response> {
       getVerifiedCredentials(svc, profile.user_email),
     ]);
 
+    // The student's public "open to" chips feed the matcher: opportunities
+    // whose kind matches what they're open to surface first and carry a badge.
+    const OPEN_TO_TYPES: Record<string, string[]> = {
+      internships: ['internship'],
+      team_trials: ['trial'],
+      collaborations: ['workshop', 'competition'],
+      work_experience: ['part_time_role', 'volunteering'],
+    };
+    const openTo = Array.isArray(profile.open_to) ? profile.open_to : [];
+    const wantedTypes = new Set(openTo.flatMap((k: string) => OPEN_TO_TYPES[k] || []));
+
     const opportunities = opps.map((o: any) => ({
       ...mapOpportunity(o),
       match: computeMatch(o, creds),
+      open_to_match: wantedTypes.has(o.type),
       applied_application_id: myApps.find((a: any) => a.opportunity_id === o.id)?.id || null,
-    }));
+    })).sort((a: any, b: any) => Number(b.open_to_match) - Number(a.open_to_match));
 
     return Response.json({
       ok: true,

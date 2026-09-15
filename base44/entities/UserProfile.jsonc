@@ -159,6 +159,10 @@
       "type": "string",
       "description": "Accent hex from the fixed 12-colour BlockWard palette (not a free picker). Applied on top of the theme."
     },
+    "accent_gradient": {
+      "type": "string",
+      "description": "PRESENTATION preset \u2014 optional second colour from the same fixed palette. When set, the accent renders as a two-stop gradient instead of flat. Validated server-side through updatePublicProfile; never arbitrary CSS."
+    },
     "profile_layout": {
       "type": "string",
       "enum": [
@@ -179,6 +183,91 @@
       ],
       "default": "sans",
       "description": "Curated heading-font pairing for the public profile."
+    },
+    "avatar_frame": {
+      "type": "string",
+      "enum": [
+        "none",
+        "accent-ring",
+        "gradient-ring",
+        "squircle",
+        "square"
+      ],
+      "default": "none",
+      "description": "PRESENTATION preset \u2014 the avatar's shape/ring on the public profile. Validated server-side through updatePublicProfile."
+    },
+    "card_style": {
+      "type": "string",
+      "enum": [
+        "elevated",
+        "flat",
+        "outlined"
+      ],
+      "default": "elevated",
+      "description": "PRESENTATION preset \u2014 how cards on the public profile are surfaced: elevated (shadow), flat (no shadow) or outlined (transparent, strong borders). Validated server-side."
+    },
+    "corner_style": {
+      "type": "string",
+      "enum": [
+        "sharp",
+        "rounded",
+        "pill"
+      ],
+      "default": "rounded",
+      "description": "PRESENTATION preset \u2014 corner radius for cards and buttons on the public profile. Validated server-side."
+    },
+    "surface_pattern": {
+      "type": "string",
+      "enum": [
+        "none",
+        "grain",
+        "dots",
+        "grid",
+        "topo",
+        "mesh"
+      ],
+      "default": "none",
+      "description": "PRESENTATION preset \u2014 a decorative pattern rendered at very low opacity behind the public profile's content. Static, never animated. Validated server-side."
+    },
+    "hero_style": {
+      "type": "string",
+      "enum": [
+        "banner",
+        "split",
+        "minimal",
+        "fullbleed"
+      ],
+      "default": "banner",
+      "description": "PRESENTATION preset \u2014 how the top of the public profile is composed: banner (classic cover with overlapping card), split (identity beside the cover), minimal (no cover) or fullbleed (tall edge-to-edge cover). Validated server-side."
+    },
+    "card_density": {
+      "type": "string",
+      "enum": [
+        "comfortable",
+        "compact"
+      ],
+      "default": "comfortable",
+      "description": "PRESENTATION preset \u2014 spacing of the achievement grids on the public profile. Validated server-side."
+    },
+    "highlight_style": {
+      "type": "string",
+      "enum": [
+        "carousel",
+        "grid",
+        "spotlight"
+      ],
+      "default": "carousel",
+      "description": "PRESENTATION preset \u2014 how pinned Highlights render: scrollable carousel, even grid, or one large spotlight card. Validated server-side."
+    },
+    "forced_scheme": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "light",
+        "dark"
+      ],
+      "default": "auto",
+      "description": "PRESENTATION preset \u2014 pins how the public profile appears regardless of the viewer's system setting: auto (follow the viewer), light or dark. Both forced schemes use the app's validated token sets so contrast always passes WCAG AA. Validated server-side."
     },
     "social_links": {
       "type": "array",
@@ -217,6 +306,117 @@
           "type": "string"
         }
       }
+    },
+    "custom_links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "description": "Row label (max 40 chars)"
+          },
+          "url": {
+            "type": "string",
+            "description": "https URL \u2014 validated and forced server-side"
+          },
+          "icon": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "globe",
+              "file",
+              "code",
+              "video",
+              "music",
+              "book",
+              "cart",
+              "pen",
+              "briefcase"
+            ],
+            "default": "auto",
+            "description": "Row icon: 'auto' renders the destination's favicon with a generic-link fallback; the rest are fixed icons from the whitelist."
+          }
+        },
+        "required": [
+          "label",
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Up to 4 additional labelled link buttons rendered as full-width rows below the featured link \u2014 what makes the page a genuine link-in-bio hub. Validated server-side through updatePublicProfile."
+    },
+    "tagline": {
+      "type": "string",
+      "description": "One line under the display name on the public profile (max 60 chars), separate from the bio \u2014 e.g. 'Year 12 \u00b7 400m \u00b7 Grade 8 violin'. Plain text, no HTML."
+    },
+    "pronouns": {
+      "type": "string",
+      "description": "Optional pronouns shown next to the handle on the public profile (max 20 chars). Plain text."
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Languages spoken (up to 8), shown as chips on the public profile. Free text, trimmed and capped server-side."
+    },
+    "open_to": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "internships",
+          "team_trials",
+          "collaborations",
+          "tutoring",
+          "work_experience"
+        ]
+      },
+      "default": [],
+      "description": "Status chips shown as a banner on the public profile (what this student is open to). Also feeds the Opportunities matcher: listings whose kind matches a chip surface first in the student's feed. Validated server-side."
+    },
+    "section_order": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "highlights",
+          "achievements",
+          "endorsements",
+          "timeline",
+          "organisations"
+        ]
+      },
+      "description": "Drag order of the public profile's sections \u2014 a full permutation of the five section ids, enforced server-side."
+    },
+    "section_visibility": {
+      "type": "object",
+      "description": "Per-section visibility on the public profile \u2014 a hidden section is never rendered (not shown empty). Missing key = visible. Normalised server-side to all five keys.",
+      "properties": {
+        "highlights": {
+          "type": "boolean",
+          "default": true
+        },
+        "achievements": {
+          "type": "boolean",
+          "default": true
+        },
+        "endorsements": {
+          "type": "boolean",
+          "default": true
+        },
+        "timeline": {
+          "type": "boolean",
+          "default": true
+        },
+        "organisations": {
+          "type": "boolean",
+          "default": true
+        }
+      },
+      "default": {}
     },
     "profile_views": {
       "type": "number",

@@ -474,3 +474,129 @@ img, video { max-width: 100%; height: auto; }
 @media (prefers-reduced-motion: reduce) {
   .pf-rise { animation: none; }
 }
+
+/* ===== Public profile — extended customisation (bounded presets) ===== */
+
+/* Forced scheme — the page subtree re-declares both app token sets so a
+   student can pin how their page appears regardless of the viewer's
+   html.light state. */
+.pf-scheme-light {
+  --background: 263 33% 97%;
+  --background-secondary: 266 30% 95%;
+  --foreground: 267 25% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 267 25% 12%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 267 25% 12%;
+  --secondary: 266 30% 95%;
+  --secondary-foreground: 267 25% 12%;
+  --muted: 263 30% 94%;
+  --muted-foreground: 276 9% 37%;
+  --text-muted: 271 9% 56%;
+  --hover: 266 24% 92%;
+  --primary: 258 70% 53%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 330 80% 50%;
+  --accent-foreground: 0 0% 100%;
+  --accent-blue: 239 74% 56%;
+  --destructive: 0 72% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 263 22% 90%;
+  --border-strong: 266 25% 86%;
+  --border-brand: 258 70% 53% / 0.25;
+  --input: 263 22% 88%;
+  --ring: 258 70% 53%;
+  --success: 142 65% 38%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 45%;
+  --warning-foreground: 0 0% 100%;
+  --error: 0 72% 47%;
+  --error-foreground: 0 0% 100%;
+  --info: 239 74% 56%;
+  --info-foreground: 0 0% 100%;
+  --glow-purple: 258 70% 53%;
+  --glow-pink: 330 80% 50%;
+  --sidebar-background: 263 36% 95%;
+  --sidebar-foreground: 276 9% 40%;
+  --sidebar-primary: 258 70% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 258 70% 53%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 263 22% 90%;
+  --sidebar-ring: 258 70% 53%;
+  --chart-1: 258 70% 53%;
+  --chart-2: 330 80% 50%;
+  --chart-3: 239 74% 56%;
+  --chart-4: 276 9% 37%;
+  --chart-5: 258 50% 70%;
+}
+.pf-scheme-dark {
+  --background: 252 38% 4%;
+  --background-secondary: 252 36% 6%;
+  --foreground: 260 30% 97%;
+  --card: 267 22% 9%;
+  --card-foreground: 260 30% 97%;
+  --popover: 267 28% 12%;
+  --popover-foreground: 260 30% 97%;
+  --secondary: 267 20% 13%;
+  --secondary-foreground: 260 30% 97%;
+  --muted: 267 18% 11%;
+  --muted-foreground: 265 12% 71%;
+  --text-muted: 265 7% 51%;
+  --hover: 263 22% 16%;
+  --primary: 258 90% 66%;
+  --primary-foreground: 0 0% 100%;
+  --accent: 330 81% 60%;
+  --accent-foreground: 0 0% 100%;
+  --accent-blue: 239 84% 67%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 100% / 0.08;
+  --border-strong: 0 0% 100% / 0.13;
+  --border-brand: 258 90% 66% / 0.20;
+  --input: 0 0% 100% / 0.10;
+  --ring: 258 90% 66%;
+  --success: 142 71% 45%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 0 0% 100%;
+  --error: 0 72% 51%;
+  --error-foreground: 0 0% 100%;
+  --info: 239 84% 67%;
+  --info-foreground: 0 0% 100%;
+  --glow-purple: 258 90% 66%;
+  --glow-pink: 330 81% 60%;
+  --sidebar-background: 252 42% 5%;
+  --sidebar-foreground: 265 10% 58%;
+  --sidebar-primary: 258 90% 66%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 258 90% 66%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-border: 0 0% 100% / 0.06;
+  --sidebar-ring: 258 90% 66%;
+  --chart-1: 258 90% 66%;
+  --chart-2: 330 81% 60%;
+  --chart-3: 239 84% 67%;
+  --chart-4: 265 12% 71%;
+  --chart-5: 258 50% 40%;
+}
+
+/* Surface patterns — ultra-low opacity, adaptive to the scheme via the
+   foreground token, always rendered behind content. */
+.pf-pattern { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.pf-pattern-grain { background-image: radial-gradient(hsl(var(--foreground) / 0.05) 0.5px, transparent 0.6px); background-size: 3px 3px; }
+.pf-pattern-dots { background-image: radial-gradient(hsl(var(--foreground) / 0.07) 1px, transparent 1.6px); background-size: 18px 18px; }
+.pf-pattern-grid { background-image: linear-gradient(hsl(var(--foreground) / 0.05) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground) / 0.05) 1px, transparent 1px); background-size: 32px 32px; }
+.pf-pattern-topo { background-image: repeating-radial-gradient(circle at 15% 20%, transparent 0, transparent 58px, hsl(var(--foreground) / 0.055) 58px, transparent 60px), repeating-radial-gradient(circle at 85% 78%, transparent 0, transparent 72px, hsl(var(--foreground) / 0.045) 72px, transparent 74px); }
+.pf-pattern-mesh { background-image: radial-gradient(60% 50% at 12% 8%, hsl(var(--primary) / 0.12), transparent 70%), radial-gradient(50% 45% at 90% 22%, hsl(var(--accent) / 0.10), transparent 70%), radial-gradient(55% 60% at 50% 98%, hsl(var(--primary) / 0.10), transparent 75%); }
+
+/* Card surfaces — driven by the student's card-style and corner presets.
+   Scoped to the public profile page only; the vault and admin views keep
+   their own look. */
+.pf-page .pf-tile { border-radius: var(--pf-radius, 14px); }
+.pf-page[data-cardstyle='flat'] .pf-tile { box-shadow: none; }
+.pf-page[data-cardstyle='outlined'] .pf-tile { box-shadow: none; background-color: transparent; }
+
+/* Density — tighter grids and list rows on the public profile. */
+.pf-page[data-density='compact'] .pf-grid { gap: 0.5rem; }
+.pf-page[data-density='compact'] .pf-list > * + * { margin-top: 0.375rem; }

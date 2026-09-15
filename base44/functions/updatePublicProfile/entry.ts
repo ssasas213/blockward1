@@ -30,6 +30,18 @@ const LAYOUTS = ['grid', 'list', 'showcase'];
 const FONTS = ['sans', 'serif', 'mono', 'display'];
 const ACCENT_HEXES = ['#7c3aed', '#4f46e5', '#2563eb', '#0d9488', '#059669', '#d97706', '#ea580c', '#dc2626', '#e11d48', '#db2777', '#334155', '#171717'];
 const PLATFORMS = ['instagram', 'tiktok', 'linkedin', 'github', 'youtube', 'twitter', 'discord', 'behance', 'dribbble', 'strava', 'chess', 'spotify', 'twitch', 'substack', 'medium', 'bluesky', 'threads', 'whatsapp', 'duolingo', 'codeforces', 'kaggle', 'goodreads', 'letterboxd', 'website'];
+const AVATAR_FRAMES = ['none', 'accent-ring', 'gradient-ring', 'squircle', 'square'];
+const CARD_STYLES = ['elevated', 'flat', 'outlined'];
+const CORNER_STYLES = ['sharp', 'rounded', 'pill'];
+const SURFACE_PATTERNS = ['none', 'grain', 'dots', 'grid', 'topo', 'mesh'];
+const HERO_STYLES = ['banner', 'split', 'minimal', 'fullbleed'];
+const CARD_DENSITY = ['comfortable', 'compact'];
+const HIGHLIGHT_STYLES = ['carousel', 'grid', 'spotlight'];
+const FORCED_SCHEMES = ['auto', 'light', 'dark'];
+const OPEN_TO = ['internships', 'team_trials', 'collaborations', 'tutoring', 'work_experience'];
+const CUSTOM_LINK_ICONS = ['auto', 'globe', 'file', 'code', 'video', 'music', 'book', 'cart', 'pen', 'briefcase'];
+const SECTION_IDS = ['highlights', 'achievements', 'endorsements', 'timeline', 'organisations'];
+const DEFAULT_SECTION_ORDER = ['highlights', 'achievements', 'endorsements', 'timeline', 'organisations'];
 const PRESET_BANNER_IDS = ['aurora', 'dusk', 'ember', 'glacier', 'prism', 'sandstone', 'tide', 'orchid', 'voltage', 'botanical', 'nebula', 'blueprint'];
 
 // Force https, reject every other protocol.
@@ -171,6 +183,86 @@ export default async function (req: Request): Promise<Response> {
         updates.banner_url = u;
       }
     }
+    // ── Extended visual presets ──────────────────────────────────────────────
+    const VISUAL_PRESETS: Array<[string, string[]]> = [
+      ['avatar_frame', AVATAR_FRAMES],
+      ['card_style', CARD_STYLES],
+      ['corner_style', CORNER_STYLES],
+      ['surface_pattern', SURFACE_PATTERNS],
+      ['hero_style', HERO_STYLES],
+      ['card_density', CARD_DENSITY],
+      ['highlight_style', HIGHLIGHT_STYLES],
+      ['forced_scheme', FORCED_SCHEMES],
+    ];
+    for (const [name, allowed] of VISUAL_PRESETS) {
+      if (typeof body[name] !== 'string') continue;
+      if (!allowed.includes(body[name])) {
+        return Response.json({ error: `Unknown ${name.replace(/_/g, ' ')} preset` }, { status: 400 });
+      }
+      updates[name] = body[name];
+    }
+
+    // Second accent colour — same fixed palette, turns the accent into a
+    // two-stop gradient when set.
+    if (body.accent_gradient === null || body.accent_gradient === '') {
+      updates.accent_gradient = null;
+    } else if (typeof body.accent_gradient === 'string') {
+      const hex = body.accent_gradient.toLowerCase();
+      if (!ACCENT_HEXES.includes(hex)) return Response.json({ error: 'The gradient colour must come from the BlockWard palette' }, { status: 400 });
+      updates.accent_gradient = hex;
+    }
+
+    // ── Content fields ───────────────────────────────────────────────────────
+    if (typeof body.tagline === 'string') {
+      const t = body.tagline.trim();
+      if (t.length > 60) return Response.json({ error: 'Tagline must be 60 characters or fewer' }, { status: 400 });
+      updates.tagline = t || null;
+    }
+    if (typeof body.pronouns === 'string') {
+      const p = body.pronouns.trim();
+      if (p.length > 20) return Response.json({ error: 'Pronouns must be 20 characters or fewer' }, { status: 400 });
+      updates.pronouns = p || null;
+    }
+    if (Array.isArray(body.languages)) {
+      updates.languages = body.languages
+        .map((l: any) => String(l || '').trim().slice(0, 30))
+        .filter(Boolean)
+        .slice(0, 8);
+    }
+    if (Array.isArray(body.open_to)) {
+      updates.open_to = body.open_to.filter((k: any) => OPEN_TO.includes(k)).slice(0, 5);
+    }
+    if (Array.isArray(body.custom_links)) {
+      const links: any[] = [];
+      for (const raw of body.custom_links) {
+        if (!raw || typeof raw !== 'object') continue;
+        const url = normalizeHttpsUrl(raw.url);
+        if (!url) continue;
+        links.push({
+          label: String(raw.label || '').trim().slice(0, 40) || 'Link',
+          url,
+          icon: CUSTOM_LINK_ICONS.includes(raw.icon) ? raw.icon : 'auto',
+        });
+        if (links.length >= 4) break;
+      }
+      updates.custom_links = links;
+    }
+
+    // ── Section control ──────────────────────────────────────────────────────
+    if (Array.isArray(body.section_order)) {
+      const ids = body.section_order.filter((x: any) => SECTION_IDS.includes(x));
+      if (ids.length === SECTION_IDS.length && new Set(ids).size === SECTION_IDS.length) {
+        updates.section_order = ids;
+      } else {
+        return Response.json({ error: 'Section order must include each section exactly once' }, { status: 400 });
+      }
+    }
+    if (body.section_visibility && typeof body.section_visibility === 'object' && !Array.isArray(body.section_visibility)) {
+      const vis: Record<string, boolean> = {};
+      for (const id of SECTION_IDS) vis[id] = body.section_visibility[id] !== false;
+      updates.section_visibility = vis;
+    }
+
     if (Array.isArray(body.social_links)) {
       const links = [];
       for (const raw of body.social_links) {
@@ -254,6 +346,22 @@ export default async function (req: Request): Promise<Response> {
         display_font: fresh.display_font || 'sans',
         social_links: fresh.social_links || [],
         featured_link: fresh.featured_link || null,
+        avatar_frame: fresh.avatar_frame || 'none',
+        card_style: fresh.card_style || 'elevated',
+        corner_style: fresh.corner_style || 'rounded',
+        surface_pattern: fresh.surface_pattern || 'none',
+        hero_style: fresh.hero_style || 'banner',
+        accent_gradient: fresh.accent_gradient || null,
+        card_density: fresh.card_density || 'comfortable',
+        highlight_style: fresh.highlight_style || 'carousel',
+        forced_scheme: fresh.forced_scheme || 'auto',
+        tagline: fresh.tagline || null,
+        pronouns: fresh.pronouns || null,
+        languages: fresh.languages || [],
+        open_to: fresh.open_to || [],
+        custom_links: fresh.custom_links || [],
+        section_order: fresh.section_order || DEFAULT_SECTION_ORDER,
+        section_visibility: fresh.section_visibility || {},
       },
       achievements: Object.values(achievementsById),
     });
