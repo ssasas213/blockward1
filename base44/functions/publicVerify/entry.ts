@@ -72,6 +72,23 @@ Deno.serve(async (req) => {
         adminSig = signatures.find(s => s.signer_role === 'admin') || null;
       } catch (e) { /* best-effort */ }
 
+      // Earned profile badge next to the recipient's name — member/identity
+      // tiers only, and only while its organisation stays verified.
+      let student_badge = null;
+      if (reg.student_id) {
+        try {
+          const prows = await base44.asServiceRole.entities.UserProfile.filter({ id: reg.student_id });
+          const p = prows[0];
+          if (p && p.badge_tier && p.badge_tier !== 'none' && p.badge_org_id) {
+            const srows = await base44.asServiceRole.entities.School.filter({ id: p.badge_org_id });
+            const borg = srows[0];
+            if (borg && borg.verification_status === 'verified') {
+              student_badge = { tier: p.badge_tier, org_name: borg.name, granted_at: p.badge_granted_at || null };
+            }
+          }
+        } catch (e) { /* best-effort */ }
+      }
+
       // Organisation admins of the issuing org may moderate the cover image
       // from this page — computed server-side, so no raw school IDs are exposed.
       let can_moderate = false;
@@ -89,6 +106,7 @@ Deno.serve(async (req) => {
         isVerified: true,
         source: 'registry',
         can_moderate,
+        student_badge,
         record: {
           verification_id: reg.verification_id,
           public_slug: reg.public_slug,

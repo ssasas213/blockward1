@@ -273,6 +273,20 @@ export default async function (req: Request): Promise<Response> {
       }
     }
 
+    // Earned profile badge (member/identity tiers) — rendered next to the
+    // name. Only ever exposed while its organisation stays verified; tier
+    // 'none' returns null and nothing renders at all.
+    let badge: any = null;
+    if (profile.badge_tier && profile.badge_tier !== 'none' && profile.badge_org_id) {
+      try {
+        const rows = await svc.entities.School.filter({ id: profile.badge_org_id });
+        const org = rows[0];
+        if (org && org.verification_status === 'verified') {
+          badge = { tier: profile.badge_tier, org_name: org.name, granted_at: profile.badge_granted_at || null };
+        }
+      } catch (e) { /* no badge rather than a broken page */ }
+    }
+
     return Response.json({
       ok: true,
       student: {
@@ -292,6 +306,7 @@ export default async function (req: Request): Promise<Response> {
         display_font: profile.display_font || 'sans',
         social_links: Array.isArray(profile.social_links) ? profile.social_links.slice(0, 6) : [],
         featured_link: profile.featured_link || null,
+        badge,
       },
       school: school ? {
         name: school.name,

@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
+import ProfileBadge from '@/components/publicProfile/ProfileBadge';
 import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
@@ -410,7 +411,27 @@ export default function Verify() {
             </div>
 
             <div className="mt-6 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-2 gap-x-8 divide-y sm:divide-y-0 sm:[&>*:nth-child(odd)]:border-r sm:[&>*]:sm:pr-8">
-              <div><Field icon={Building2} label="Recipient" value={record.student_name} /></div>
+              <div>
+                <div className="flex items-start gap-3 py-2.5">
+                  <div className="h-9 w-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-0.5 border border-border">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium text-tertiary uppercase tracking-wide">Recipient</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <p className="text-sm font-medium text-foreground break-words">{record.student_name}</p>
+                      {data.student_badge && (
+                        <ProfileBadge
+                          tier={data.student_badge.tier}
+                          orgName={data.student_badge.org_name}
+                          grantedAt={data.student_badge.granted_at}
+                          size="sm"
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div><Field icon={Trophy} label="Issuing Organisation" value={record.organisation_name} /></div>
               <div className="sm:pt-2"><Field icon={PenTool} label="Verifier" value={record.teacher_name} /></div>
               <div className="sm:pt-2"><Field icon={Shield} label="Authoriser" value={record.admin_name} /></div>

@@ -17,6 +17,7 @@ import { logRoleGrant } from '../../shared/profileProvisioning.ts';
 import { runInvitationFlow, resolveAppUrl, parseEmails } from '../../shared/invitations.ts';
 import { requestEmailHtml, notifyRequest } from '../../shared/achievementRequests.ts';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
+import { recomputeStudentBadge } from '../../shared/profileBadges.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -228,6 +229,14 @@ Deno.serve(async (req: Request): Promise<Response> => {
         approved_by_email: email,
         approved_by_name: actorName,
       });
+
+      // Keep the earned profile badge in step with the membership change —
+      // tier 2 ('member') grants and revokes are automatic.
+      try {
+        const rows = await svc.entities.UserProfile.filter({ user_email: membership.student_email });
+        const p = rows?.[0];
+        if (p) await recomputeStudentBadge(svc, p);
+      } catch (e) { /* best-effort */ }
 
       // Approving a join request also links the organisation as the home
       // school for accounts with none: a legacy 'pending' account (granted

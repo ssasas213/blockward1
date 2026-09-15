@@ -1,0 +1,47 @@
+{
+  "description": "Recomputes earned profile verification badges daily \u2014 grants the blue member badge when a student joins a BlockWard-verified organisation, and revokes badges when memberships end or an organisation loses verification.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "profile_badge_maintenance",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "sweep_badges": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "setProfileBadge",
+            "args": {
+              "action": "sweep"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Recompute profile badges",
+            "description": "Grant and revoke earned badges"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "30 3 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Dubai",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Profile Badge Maintenance"
+}

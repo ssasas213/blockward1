@@ -3,6 +3,7 @@ import { BadgeCheck } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import SocialLinks from '@/components/publicProfile/SocialLinks';
 import FeaturedLink from '@/components/publicProfile/FeaturedLink';
+import ProfileBadge from '@/components/publicProfile/ProfileBadge';
 
 /**
  * ProfileHero — banner + identity block for the public profile.
@@ -52,6 +53,13 @@ export default function ProfileHero({ student, orgs = [], count, endorsementCoun
                   <span className="inline-flex items-center gap-1 rounded-full border border-[#1E8E4E]/30 bg-[#1E8E4E]/10 px-2 py-0.5 text-[11px] font-semibold text-[#17803D]">
                     <BadgeCheck className="h-3.5 w-3.5" /> Verified
                   </span>
+                )}
+                {student.badge && (
+                  <ProfileBadge
+                    tier={student.badge.tier}
+                    orgName={student.badge.org_name}
+                    grantedAt={student.badge.granted_at}
+                  />
                 )}
               </div>
               {student.bio && (

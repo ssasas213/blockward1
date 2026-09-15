@@ -164,6 +164,22 @@ function countPill(p, count, fontSize, pad) {
   }, `${count} verified achievement${count === 1 ? '' : 's'}`);
 }
 
+// Earned verification badge pill — tier 'identity' (gold) or 'member' (blue).
+// Fixed tier colours that stay legible on every theme palette; null renders
+// nothing at all (an absent badge is the signal).
+function badgePill(p, badge, fontSize, pad) {
+  if (!badge) return null;
+  const identity = badge.tier === 'identity';
+  const rgb = identity ? '251,191,36' : '96,165,250';
+  const text = identity ? (p.light ? '#A16207' : '#FBBF24') : (p.light ? '#1D4ED8' : '#60A5FA');
+  const label = identity ? `Identity confirmed · ${badge.org_name}` : `Confirmed member · ${badge.org_name}`;
+  return E({
+    padding: `${Math.round(pad * 0.6)}px ${pad}px`, borderRadius: 999,
+    border: `2px solid rgba(${rgb},0.55)`, backgroundColor: `rgba(${rgb},0.12)`,
+    fontSize, fontWeight: 700, color: text, whiteSpace: 'nowrap',
+  }, label);
+}
+
 function bgStyle(p) {
   return { backgroundImage: `linear-gradient(160deg, ${p.bg[0]} 0%, ${p.bg[1]} 55%, ${p.bg[2]} 100%)` };
 }
@@ -183,6 +199,7 @@ function buildOgCard(d) {
       E({ flexDirection: 'column', gap: 6, minWidth: 0 },
         E({ fontSize: 56, fontWeight: 800, color: p.text, letterSpacing: '-1px' }, d.name),
         E({ fontSize: 27, fontWeight: 600, color: p.accentText }, `@${d.handle}`),
+        d.badge ? E({ marginTop: 4 }, badgePill(p, d.badge, 20, 20)) : null,
         d.bio ? E({ fontSize: 23, color: p.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 620 }, d.bio) : null,
         E({ marginTop: 14 }, countPill(p, d.count, 22, 26)),
       ),
@@ -216,6 +233,7 @@ function buildSquareCard(d) {
                   : initialsAvatar(d.name, 210, 74),
       E({ fontSize: 64, fontWeight: 800, color: p.text, marginTop: 44, letterSpacing: '-1px', textAlign: 'center' }, d.name),
       E({ fontSize: 33, fontWeight: 600, color: p.accentText, marginTop: 8 }, `@${d.handle}`),
+      d.badge ? E({ marginTop: 18 }, badgePill(p, d.badge, 24, 28)) : null,
       d.bio ? E({ fontSize: 29, color: p.muted, marginTop: 26, maxWidth: 760, textAlign: 'center', lineHeight: 1.45 }, d.bio) : null,
       E({ marginTop: 40 }, countPill(p, d.count, 30, 40)),
     ),
@@ -233,6 +251,7 @@ function buildStoryCard(d) {
                   : initialsAvatar(d.name, 300, 104),
       E({ fontSize: 84, fontWeight: 800, color: p.text, marginTop: 52, letterSpacing: '-2px', textAlign: 'center' }, d.name),
       E({ fontSize: 40, fontWeight: 600, color: p.accentText, marginTop: 12 }, `@${d.handle}`),
+      d.badge ? E({ marginTop: 18 }, badgePill(p, d.badge, 28, 34)) : null,
       d.bio ? E({ fontSize: 32, color: p.muted, marginTop: 30, maxWidth: 820, textAlign: 'center', lineHeight: 1.5 }, d.bio) : null,
       E({ marginTop: 48 }, countPill(p, d.count, 34, 44)),
     ),
@@ -265,6 +284,7 @@ function buildAchievementCard(d) {
         E({ flexDirection: 'column', gap: 2 },
           E({ fontSize: 28, fontWeight: 700, color: p.text }, d.name),
           E({ fontSize: 22, fontWeight: 600, color: p.accentText }, `@${d.handle}`),
+          d.badge ? E({ marginTop: 6 }, badgePill(p, d.badge, 18, 18)) : null,
         ),
       ),
       E({ flexDirection: 'row', alignItems: 'center', gap: 16 },
@@ -309,6 +329,7 @@ function buildAchievementStoryCard(d) {
       E({ flexDirection: 'column', gap: 2 },
         E({ fontSize: 30, fontWeight: 700, color: p.text }, d.name),
         E({ fontSize: 24, fontWeight: 600, color: p.accentText }, `@${d.handle}`),
+        d.badge ? E({ marginTop: 6 }, badgePill(p, d.badge, 20, 20)) : null,
       ),
     ),
     E({ flexDirection: 'column', justifyContent: 'center', flex: 1 },
@@ -361,6 +382,18 @@ async function profileCardData(svc, handle) {
     try { const s = await svc.entities.School.filter({ id: oid }); if (s[0]?.logo_url) logos[oid] = s[0].logo_url; } catch (_) {}
   }
 
+  // Earned verification badge (member/identity) — pill next to the name.
+  let badge = null;
+  if (profile.badge_tier && profile.badge_tier !== 'none' && profile.badge_org_id) {
+    try {
+      const rows = await svc.entities.School.filter({ id: profile.badge_org_id });
+      const org = rows[0];
+      if (org && org.verification_status === 'verified') {
+        badge = { tier: profile.badge_tier, org_name: org.name };
+      }
+    } catch (_) {}
+  }
+
   const avatarUri = await toDataUri(profile.avatar_url);
   const top3 = [];
   for (const r of chosen) {
@@ -380,10 +413,12 @@ async function profileCardData(svc, handle) {
     count: visible.length,
     avatarUri,
     top3,
+    badge,
     palette: paletteFor(profile),
     hash: hashOf([
       profile.first_name, profile.last_name, profile.handle, profile.avatar_url,
       profile.bio, profile.theme_id, profile.accent_colour,
+      profile.badge_tier, badge?.org_name,
       pinnedIds.length > 0 ? pinnedIds : chosen.map((r) => r.id), visible.length,
     ]),
   };
@@ -411,6 +446,18 @@ async function achievementCardData(svc, verificationId) {
     if (r.admin_name) signers.push(`${r.admin_name} · Organisation admin`);
   }
 
+  // Earned verification badge of the recipient (member/identity tiers).
+  let badge = null;
+  if (profile?.badge_tier && profile.badge_tier !== 'none' && profile.badge_org_id) {
+    try {
+      const rows = await svc.entities.School.filter({ id: profile.badge_org_id });
+      const org = rows[0];
+      if (org && org.verification_status === 'verified') {
+        badge = { tier: profile.badge_tier, org_name: org.name };
+      }
+    } catch (_) {}
+  }
+
   const avatarUri = await toDataUri(profile?.avatar_url || null);
   const name = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || r.student_name || 'Student'
@@ -421,6 +468,7 @@ async function achievementCardData(svc, verificationId) {
     name,
     handle,
     avatarUri,
+    badge,
     orgName: r.organisation_name || 'Organisation',
     orgLogoUri,
     title: r.achievement_title,
@@ -429,7 +477,7 @@ async function achievementCardData(svc, verificationId) {
     verificationId: r.verification_id,
     verifyUrl: (r.public_verification_url || `https://blockward.base44.app/verify/${r.verification_id}`).replace(/^https?:\/\//, ''),
     palette: paletteFor(profile),
-    hash: hashOf([r.achievement_title, r.organisation_name, orgLogoUri, r.date_achieved, r.signer_chain, r.verification_id, name, profile?.theme_id, profile?.accent_colour]),
+    hash: hashOf([r.achievement_title, r.organisation_name, orgLogoUri, r.date_achieved, r.signer_chain, r.verification_id, name, profile?.theme_id, profile?.accent_colour, profile?.badge_tier, badge?.org_name]),
   };
 }
 

@@ -17,6 +17,7 @@ import ProfileInsightsCard from '@/components/profile/ProfileInsightsCard';
 import SecuritySection from '@/components/profile/SecuritySection';
 import SignatureProfileSection from '@/components/profile/SignatureProfileSection';
 import SchoolMembershipSection from '@/components/profile/SchoolMembershipSection';
+import BadgeSection from '@/components/profile/BadgeSection';
 import AppearanceSettings from '@/components/profile/AppearanceSettings';
 import AccountSection from '@/components/profile/AccountSection';
 import ProfileErrorBoundary from '@/components/profile/ProfileErrorBoundary';
@@ -122,6 +123,11 @@ function ProfileContent() {
       {/* Public profile link — claim it or share it */}
       {profile?.user_type === 'student' && (
         <PublicProfileLinkCard profile={profile} onSaved={refresh} />
+      )}
+
+      {/* Earned verification badge — current tier and how to earn the next */}
+      {profile?.user_type === 'student' && (
+        <BadgeSection profile={profile} />
       )}
 
       {/* User Info */}

@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import RoleGuard from '@/components/auth/RoleGuard';
 import StaffApprovalsCard from '@/components/people/StaffApprovalsCard';
+import StudentIdentityCard from '@/components/people/StudentIdentityCard';
 import DemoDataCard from '@/components/people/DemoDataCard';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
@@ -191,6 +192,7 @@ function PeopleImpl() {
               <Badge className="ml-1.5 bg-warning/15 text-warning border-warning/30 text-[10px] px-1.5 py-0">{pendingStaff}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="students">Students</TabsTrigger>
         </TabsList>
 
         <TabsContent value="invite" className="space-y-8 pt-4">
@@ -342,6 +344,10 @@ function PeopleImpl() {
 
         <TabsContent value="staff" className="pt-4">
           <StaffApprovalsCard />
+        </TabsContent>
+
+        <TabsContent value="students" className="pt-4">
+          <StudentIdentityCard school={school} profile={profile} />
         </TabsContent>
       </Tabs>
 
