@@ -29,7 +29,7 @@ const THEMES = ['slate', 'midnight', 'paper', 'terracotta', 'forest', 'cobalt', 
 const LAYOUTS = ['grid', 'list', 'showcase'];
 const FONTS = ['sans', 'serif', 'mono', 'display'];
 const ACCENT_HEXES = ['#7c3aed', '#4f46e5', '#2563eb', '#0d9488', '#059669', '#d97706', '#ea580c', '#dc2626', '#e11d48', '#db2777', '#334155', '#171717'];
-const PLATFORMS = ['instagram', 'tiktok', 'linkedin', 'github', 'youtube', 'twitter', 'discord', 'behance', 'dribbble', 'strava', 'chess', 'website'];
+const PLATFORMS = ['instagram', 'tiktok', 'linkedin', 'github', 'youtube', 'twitter', 'discord', 'behance', 'dribbble', 'strava', 'chess', 'spotify', 'twitch', 'substack', 'medium', 'bluesky', 'threads', 'whatsapp', 'duolingo', 'codeforces', 'kaggle', 'goodreads', 'letterboxd', 'website'];
 const PRESET_BANNER_IDS = ['aurora', 'dusk', 'ember', 'glacier', 'prism', 'sandstone', 'tide', 'orchid', 'voltage', 'botanical', 'nebula', 'blueprint'];
 
 // Force https, reject every other protocol.

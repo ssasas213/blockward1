@@ -16,7 +16,7 @@ export default function SocialLinksEditor({ links, onChange }) {
     <div className="space-y-2">
       {list.length === 0 && (
         <p className="text-xs text-muted-foreground">
-          No links yet. Add up to 6 — Instagram, TikTok, LinkedIn, GitHub, YouTube, X, Discord, Behance, Dribbble, Strava, Chess.com or your own website.
+          No links yet. Add up to 6 — pick from Instagram, TikTok, LinkedIn, GitHub, YouTube, X, Discord, Behance, Dribbble, Strava, Chess.com, Spotify, Twitch, Substack, Medium, Bluesky, Threads, WhatsApp Channel, Duolingo, Codeforces, Kaggle, Goodreads, Letterboxd, or your own website.
         </p>
       )}
       {list.map((l, i) => (

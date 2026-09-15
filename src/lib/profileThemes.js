@@ -178,6 +178,18 @@ export const SOCIAL_PLATFORMS = [
   { id: 'dribbble', label: 'Dribbble' },
   { id: 'strava', label: 'Strava' },
   { id: 'chess', label: 'Chess.com' },
+  { id: 'spotify', label: 'Spotify' },
+  { id: 'twitch', label: 'Twitch' },
+  { id: 'substack', label: 'Substack' },
+  { id: 'medium', label: 'Medium' },
+  { id: 'bluesky', label: 'Bluesky' },
+  { id: 'threads', label: 'Threads' },
+  { id: 'whatsapp', label: 'WhatsApp Channel' },
+  { id: 'duolingo', label: 'Duolingo' },
+  { id: 'codeforces', label: 'Codeforces' },
+  { id: 'kaggle', label: 'Kaggle' },
+  { id: 'goodreads', label: 'Goodreads' },
+  { id: 'letterboxd', label: 'Letterboxd' },
   { id: 'website', label: 'Website' },
 ];
 
