@@ -18,6 +18,7 @@ import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import ProfileShareDialog from '@/components/profile/ProfileShareDialog';
 import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
 import CelebrationDialog from '@/components/achievements/CelebrationDialog';
+import CredentialEditDialog from '@/components/achievements/edit/CredentialEditDialog';
 import { cardFromVault } from '@/components/achievements/AchievementCard';
 import { LayoutGrid, List } from 'lucide-react';
 
@@ -62,6 +63,7 @@ function StudentBlockWardsContent() {
   const [celebrateQueue, setCelebrateQueue] = useState([]);
   const [celebrating, setCelebrating] = useState(null);
   const [verifySelf, setVerifySelf] = useState(null);
+  const [editTarget, setEditTarget] = useState(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -284,6 +286,7 @@ function StudentBlockWardsContent() {
             requests={requests || []}
             caps={caps}
             onEdit={(r) => { setEditing(r); setFormOpen(true); }}
+            onEditDetail={(r) => setEditTarget({ kind: 'request', data: r })}
             onWithdraw={handleWithdraw}
             onDuplicate={handleDuplicate}
             onRetry={handleRetryPublish}
@@ -295,6 +298,7 @@ function StudentBlockWardsContent() {
           <UnverifiedTab
             items={selfReported || []}
             onGetVerified={handleGetVerified}
+            onEdit={(card) => setEditTarget({ kind: 'self', data: card?.raw || card })}
             viewMode={viewMode}
             loading={selfReported === null}
           />
@@ -327,6 +331,7 @@ function StudentBlockWardsContent() {
         blockWard={selectedBlockWard}
         open={!!selectedBlockWard}
         onClose={() => setSelectedBlockWard(null)}
+        onEdit={selectedBlockWard?.verify_id ? () => setEditTarget({ kind: 'verified', data: { verification_id: selectedBlockWard.verify_id } }) : undefined}
       />
 
       <ProfileShareDialog
@@ -360,6 +365,13 @@ function StudentBlockWardsContent() {
         initial={editing}
         onSubmit={handleSubmit}
         saving={saving}
+      />
+
+      <CredentialEditDialog
+        target={editTarget}
+        open={!!editTarget}
+        onOpenChange={(o) => { if (!o) setEditTarget(null); }}
+        onDone={() => { load(); }}
       />
     </div>
   );

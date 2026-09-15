@@ -4,8 +4,9 @@ import EmptyState from '@/components/ui/empty-state';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, AlertTriangle, FileText, LinkIcon, ChevronRight, Users, ShieldCheck, X, Copy, Loader2 } from 'lucide-react';
+import { Trophy, AlertTriangle, FileText, LinkIcon, ChevronRight, Users, ShieldCheck, X, Copy, Loader2, PenLine } from 'lucide-react';
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, TIER_SHORT, CATEGORY_LABELS } from '@/lib/achievementRequests';
+import { DIRECT_EDITABLE_STATUSES } from '@/lib/credentialEdits';
 
 // The student may cancel any of these; anything past this point is verified
 // (or terminal) and cannot be silently unmade.
@@ -19,7 +20,7 @@ const WITHDRAWABLE = ['draft', 'submitted', 'under_review', 'changes_requested',
  * duplicated into a fresh draft so the student can correct and resubmit
  * without retyping everything.
  */
-export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDuplicate, onRetry, loading = false }) {
+export default function PendingTab({ requests, caps, onEdit, onEditDetail, onWithdraw, onDuplicate, onRetry, loading = false }) {
   const [showWithdrawn, setShowWithdrawn] = useState(false);
   const [confirmId, setConfirmId] = useState(null);
   const [busyId, setBusyId] = useState(null);
@@ -125,6 +126,15 @@ export default function PendingTab({ requests, caps, onEdit, onWithdraw, onDupli
                         onClick={() => onEdit(r)}
                       >
                         {r.status === 'draft' ? 'Edit & submit' : 'Edit & resubmit'}
+                      </Button>
+                    )}
+                    {DIRECT_EDITABLE_STATUSES.includes(r.status) && (
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={() => onEditDetail?.(r)}
+                        title="Cover image saves freely — verified details go back for re-review"
+                      >
+                        <PenLine className="h-3.5 w-3.5 mr-1" /> Edit details
                       </Button>
                     )}
                     {r.status === 'approved' && !r.verification_id && (

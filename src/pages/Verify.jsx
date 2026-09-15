@@ -15,8 +15,20 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { METHOD_OPTIONS } from '@/lib/achievementRequests';
+import { FIELD_LABELS } from '@/lib/credentialEdits';
 
 const METHOD_LABELS = Object.fromEntries(METHOD_OPTIONS.map((m) => [m.value, m.label]));
+
+// Correction-history values are stored stringified — render them readably.
+const showVal = (v) => {
+  if (v === null || v === undefined || v === 'null') return '(empty)';
+  try {
+    const p = JSON.parse(v);
+    return typeof p === 'string' ? p : String(p);
+  } catch {
+    return String(v);
+  }
+};
 
 const CATEGORY_ACCENT = {
   academic: 'text-accent-blue',
@@ -459,6 +471,24 @@ export default function Verify() {
           </CardContent>
         </Card>
 
+        {/* Correction transparency — visible, never hidden */}
+        {isVerified && record.corrected_at && (
+          <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 flex items-start gap-4">
+            <div className="h-11 w-11 rounded-full bg-primary/15 flex items-center justify-center flex-shrink-0">
+              <History className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">
+                Corrected on {format(new Date(record.corrected_at), 'MMMM d, yyyy')}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                The corrected details were re-signed by the original verifier — you're viewing version {record.version}.
+                The full correction history is shown below. Corrections are transparent, never hidden.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Verification checks */}
         {isVerified && (
           <Card className="surface-card">
@@ -551,6 +581,52 @@ export default function Verify() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Correction history — the transparent version chain */}
+        {isVerified && record.correction_history?.length > 0 && (
+          <Card className="surface-card">
+            <CardContent className="p-6">
+              <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-4 flex items-center gap-2">
+                <History className="h-4 w-4" /> Correction history
+              </h2>
+              <div className="space-y-4">
+                {record.correction_history.map((c, i) => (
+                  <div key={i} className="rounded-xl border border-border bg-secondary/30 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-foreground">
+                        Version {c.version} — approved by {c.approved_by || 'the original verifier'}
+                      </p>
+                      <span className="text-xs text-tertiary">
+                        {format(new Date(c.corrected_at), 'd MMM yyyy, HH:mm')}
+                      </span>
+                    </div>
+                    {c.reason && <p className="text-xs text-muted-foreground mt-1 italic">"{c.reason}"</p>}
+                    <div className="mt-2 space-y-1.5">
+                      {(c.changes || []).map((ch, j) => (
+                        <div key={j} className="flex items-start gap-2 text-xs break-words min-w-0">
+                          <span className="font-medium text-tertiary uppercase tracking-wide w-28 flex-shrink-0">
+                            {FIELD_LABELS[ch.field] || ch.field}
+                          </span>
+                          <span className="text-muted-foreground line-through flex-1 min-w-0">{showVal(ch.old_value)}</span>
+                          <ArrowRight className="h-3 w-3 text-primary flex-shrink-0 mt-0.5" />
+                          <span className="text-foreground font-medium flex-1 min-w-0">{showVal(ch.new_value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {record.previous_anchor && (record.previous_anchor.transaction_hash || record.previous_anchor.token_id) && (
+                  <p className="text-xs text-muted-foreground border-t border-border pt-3 leading-relaxed">
+                    Version {(record.version || 2) - 1}'s blockchain anchor is preserved unchanged
+                    {record.previous_anchor.token_id ? ` — token #${record.previous_anchor.token_id}` : ''}
+                    {record.previous_anchor.transaction_hash ? ` · tx ${record.previous_anchor.transaction_hash.slice(0, 18)}…` : ''}.
+                    Anchors are never mutated — each corrected version gets its own.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

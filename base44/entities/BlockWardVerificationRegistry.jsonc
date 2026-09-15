@@ -4,7 +4,7 @@
   "properties": {
     "verification_id": {
       "type": "string",
-      "description": "Permanent public verification ID (format: BW-2026-ABCD1234). Powers /verify/{verification_id}."
+      "description": "Permanent public verification ID (format: BW-2026-ABCD1234). Powers /verify/{verification_id}. Stable across corrections \u2014 a correction never changes the public URL, only the version shown."
     },
     "public_slug": {
       "type": "string",
@@ -16,7 +16,7 @@
     },
     "student_record_id": {
       "type": "string",
-      "description": "Foreign key to StudentRecord.id \u2014 the source-of-truth achievement"
+      "description": "Foreign key to StudentRecord.id \u2014 the CURRENT version's source-of-truth achievement. A correction updates this pointer to the new version (the old record is retained, superseded)."
     },
     "verification_mode": {
       "type": "string",
@@ -86,7 +86,8 @@
       "description": "Student email (PRIVATE \u2014 never exposed on public page). Also keys team credentials minted before the student joined BlockWard."
     },
     "achievement_title": {
-      "type": "string"
+      "type": "string",
+      "description": "ATTESTED content of the CURRENT version \u2014 updated only when a correction is approved by the original verifier. Service-role only."
     },
     "achievement_category": {
       "type": "string",
@@ -102,11 +103,12 @@
       "default": "academic"
     },
     "achievement_description": {
-      "type": "string"
+      "type": "string",
+      "description": "ATTESTED content of the current version \u2014 see achievement_title."
     },
     "achievement_image": {
       "type": "string",
-      "description": "NFT badge image or custom award image URL"
+      "description": "PRESENTATION field \u2014 the student's public cover image. Never part of any attestation; the student may change it freely at any time. Moderated before it becomes public; organisation admins can remove it."
     },
     "evidence_file_url": {
       "type": "string",
@@ -196,7 +198,7 @@
         ]
       },
       "default": [],
-      "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. Displayed on the credential detail page and the per-achievement share card."
+      "description": "Full chain of signers for student-requested credentials \u2014 each signer's role, verification method, attestation and timestamp. A correction approval appends the re-signing entry. Displayed on the credential detail page and the per-achievement share card."
     },
     "is_team_credential": {
       "type": "boolean",
@@ -241,13 +243,105 @@
       "description": "e.g. sepolia, amoy, polygon"
     },
     "contract_address": {
-      "type": "string"
+      "type": "string",
+      "description": "Anchor of the CURRENT version. When a correction is approved the previous version's anchor is snapshotted into previous_anchor (never mutated) and this field awaits the new version's anchor."
     },
     "token_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Anchor of the CURRENT version \u2014 see contract_address."
     },
     "transaction_hash": {
-      "type": "string"
+      "type": "string",
+      "description": "Anchor of the CURRENT version \u2014 see contract_address."
+    },
+    "previous_anchor": {
+      "type": "object",
+      "description": "Snapshot of the PREVIOUS version's blockchain anchor, captured when a correction is approved. Anchors are never mutated \u2014 a superseded version's on-chain record stays exactly as it was minted. Service-role only.",
+      "properties": {
+        "version": {
+          "type": "number",
+          "description": "The version this anchor belonged to"
+        },
+        "blockward_id": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "string"
+        },
+        "transaction_hash": {
+          "type": "string"
+        },
+        "contract_address": {
+          "type": "string"
+        },
+        "blockchain_network": {
+          "type": "string"
+        },
+        "anchored_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Credential version currently shown on the public verification page. Bumped only by an approved correction. Service-role only (correction flow)."
+    },
+    "corrected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current version's correction was approved \u2014 rendered publicly as 'Corrected on <date>'. Service-role only."
+    },
+    "correction_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number",
+            "description": "The version this correction produced"
+          },
+          "corrected_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "approved_by": {
+            "type": "string",
+            "description": "Display name of the verifier who re-signed the corrected version"
+          },
+          "reason": {
+            "type": "string",
+            "description": "The student's reason for the correction"
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "field": {
+                  "type": "string"
+                },
+                "old_value": {
+                  "description": "Stringified value before the correction"
+                },
+                "new_value": {
+                  "description": "Stringified value after the correction"
+                }
+              },
+              "required": [
+                "field"
+              ]
+            }
+          }
+        },
+        "required": [
+          "version",
+          "corrected_at"
+        ]
+      },
+      "default": [],
+      "description": "Transparent version history \u2014 every approved correction with who re-signed it and exactly what changed. Shown on the public verification page. Service-role only."
     },
     "certificate_url": {
       "type": "string",
@@ -290,7 +384,7 @@
         "private"
       ],
       "default": "public",
-      "description": "Student-set visibility on the public /@handle profile grid. Set through the updatePublicProfile function (registry writes are service-role only)."
+      "description": "PRESENTATION field \u2014 student-set visibility on the public /@handle profile grid. Never part of any attestation; the student may change it freely at any time. Set through updatePublicProfile / credentialEditAction (registry writes are service-role only)."
     }
   },
   "required": [

@@ -398,6 +398,13 @@ export async function submitRequest(svc, actor, body, ctx) {
       status = 'awaiting_second_approval';
       extra = { resubmitted_at: now };
       events.push(logEvent('resubmitted', email, baseData.student_name, 'student', 'Content unchanged since the verifier signed — signature preserved'));
+    } else if (form.data.verification_mode === 'independent') {
+      // Independent requests have no staff queue — a resubmit (including one
+      // forced by an attested edit through credentialEdits) goes straight back
+      // to the external verifier with a fresh one-time link (sent below).
+      status = 'awaiting_external_verification';
+      extra = { resubmitted_at: now, last_reviewer_action_at: now };
+      events.push(logEvent('resubmitted', email, baseData.student_name, 'student', 'Sent back to the independent verifier with a fresh link'));
     } else {
       status = 'under_review';
       extra = { resubmitted_at: now };

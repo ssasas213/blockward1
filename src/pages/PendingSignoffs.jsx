@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import SignoffDialog from '@/components/achievements/SignoffDialog';
+import CorrectionReviewCard from '@/components/achievements/CorrectionReviewCard';
 import { toast } from 'sonner';
 import {
-  ClipboardCheck, FileText, LinkIcon, PenLine, Undo2, XCircle, AlertTriangle, ShieldCheck,
+  ClipboardCheck, FileText, LinkIcon, PenLine, Undo2, XCircle, AlertTriangle, ShieldCheck, History,
 } from 'lucide-react';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
@@ -28,6 +29,9 @@ export default function PendingSignoffs() {
   const [busy, setBusy] = useState(false);
 
   const [signTarget, setSignTarget] = useState(null);      // request or 'bulk'
+  const [corrections, setCorrections] = useState([]);
+  const [corrTarget, setCorrTarget] = useState(null);      // correction re-sign
+  const [declineTarget, setDeclineTarget] = useState(null);
   const [approveTarget, setApproveTarget] = useState(null); // admin second approval
   const [changesTarget, setChangesTarget] = useState(null);
   const [rejectTarget, setRejectTarget] = useState(null);
@@ -41,6 +45,10 @@ export default function PendingSignoffs() {
       setFlagged(res.data.flagged_students || []);
       setRole(res.data.reviewer?.role || 'teacher');
       setSelected([]);
+      try {
+        const cRes = await base44.functions.invoke('credentialEditAction', { action: 'list_corrections' });
+        if (cRes.data?.ok) setCorrections(cRes.data.corrections || []);
+      } catch { /* corrections queue is best-effort */ }
     } catch (e) {
       toast.error(e?.response?.data?.error || e.message);
     } finally {
@@ -69,6 +77,32 @@ export default function PendingSignoffs() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const corrAct = async (payload, successMsg) => {
+    setBusy(true);
+    try {
+      const res = await base44.functions.invoke('credentialEditAction', payload);
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Action failed');
+      if (successMsg) toast.success(successMsg);
+      await load();
+      return res.data;
+    } catch (e) {
+      toast.error(e?.response?.data?.error || e.message);
+      throw e;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCorrectionApprove = async (signoff) => {
+    try {
+      await corrAct(
+        { action: 'review_correction', review: 'approve', record_id: corrTarget.record_id, ...signoff },
+        'Correction approved — a new version was published'
+      );
+      setCorrTarget(null);
+    } catch (_) { /* toast shown */ }
   };
 
   const onSignConfirm = async (signoff) => {
@@ -136,6 +170,23 @@ export default function PendingSignoffs() {
           <Button size="sm" onClick={() => setSignTarget('bulk')}>
             <PenLine className="h-4 w-4 mr-1.5" /> Sign {selectedRequests.length} selected
           </Button>
+        </div>
+      )}
+
+      {corrections.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider flex items-center gap-2">
+            <History className="h-4 w-4" /> Corrections awaiting your review ({corrections.length})
+          </h2>
+          {corrections.map((c) => (
+            <CorrectionReviewCard
+              key={c.record_id}
+              correction={c}
+              busy={busy}
+              onApprove={() => setCorrTarget(c)}
+              onDecline={() => { setDeclineTarget(c); setComment(''); }}
+            />
+          ))}
         </div>
       )}
 
@@ -224,6 +275,51 @@ export default function PendingSignoffs() {
           })}
         </div>
       )}
+
+      {/* Correction re-sign (original verifier / org admin) */}
+      <SignoffDialog
+        open={!!corrTarget}
+        onOpenChange={(o) => !o && setCorrTarget(null)}
+        title={`Re-sign the correction: "${corrTarget?.current_title}"`}
+        description="You are re-signing the corrected version of a credential you verified. On approval the corrected version is published and the original is kept in the visible version history — corrections are transparent, never hidden."
+        confirmLabel="Approve correction & publish"
+        busy={busy}
+        onConfirm={onCorrectionApprove}
+      />
+
+      {/* Decline correction */}
+      <Dialog open={!!declineTarget} onOpenChange={(o) => !o && setDeclineTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Decline this correction</DialogTitle>
+            <DialogDescription>
+              The reason is emailed to {declineTarget?.student_name}. The verified details stay exactly as they are.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Reason (required)</Label>
+            <Textarea rows={4} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Why the correction can't be approved" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeclineTarget(null)} disabled={busy}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={!comment.trim() || busy}
+              onClick={async () => {
+                try {
+                  await corrAct(
+                    { action: 'review_correction', review: 'decline', record_id: declineTarget.record_id, reason: comment },
+                    'Correction declined'
+                  );
+                  setDeclineTarget(null);
+                } catch (_) { /* toast shown */ }
+              }}
+            >
+              Decline correction
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Sign-off (verifier, incl. bulk) */}
       <SignoffDialog

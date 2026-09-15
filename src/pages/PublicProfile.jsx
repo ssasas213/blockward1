@@ -17,6 +17,7 @@ import ProfileControls from '@/components/publicProfile/ProfileControls';
 import ProfileTimeline from '@/components/publicProfile/ProfileTimeline';
 import SelfReportedSection from '@/components/publicProfile/SelfReportedSection';
 import HighlightsRow from '@/components/publicProfile/HighlightsRow';
+import CredentialEditDialog from '@/components/achievements/edit/CredentialEditDialog';
 import { exportPortfolioPdf } from '@/lib/portfolioPdf';
 import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 import { themeVars, bannerStyle } from '@/lib/profileThemes';
@@ -51,6 +52,7 @@ export default function PublicProfile({ handle }) {
   const [reload, setReload] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [chip, setChip] = useState('all');
+  const [editOpen, setEditOpen] = useState(false);
   const [sort, setSort] = useState('endorsements');
   const [view, setView] = useState('grid');
 
@@ -427,6 +429,7 @@ export default function PublicProfile({ handle }) {
         isPinned={!!selected && pinned.includes(selected.registry_id)}
         canPin={pinned.length < 6}
         onTogglePin={() => togglePin(selected.registry_id)}
+        onEdit={is_owner && selected?.verification_id ? () => setEditOpen(true) : undefined}
       />
       <EndorseDialog
         open={endorseOpen}
@@ -446,6 +449,13 @@ export default function PublicProfile({ handle }) {
           schoolName: school?.name,
           count,
         }}
+      />
+
+      <CredentialEditDialog
+        target={editOpen && selected?.verification_id ? { kind: 'verified', data: { verification_id: selected.verification_id } } : null}
+        open={editOpen}
+        onOpenChange={(o) => { if (!o) setEditOpen(false); }}
+        onDone={() => { setEditOpen(false); setReload(Date.now()); }}
       />
     </div>
   );

@@ -279,7 +279,7 @@ export async function mintRequestCredential(svc: any, request: any) {
 }
 
 // Vision moderation for student-uploaded public cover images.
-async function moderateCoverImage(svc: any, imageUrl: string): Promise<{ safe: boolean; reason?: string }> {
+export async function moderateCoverImage(svc: any, imageUrl: string): Promise<{ safe: boolean; reason?: string }> {
   try {
     const res = await svc.integrations.Core.InvokeLLM({
       prompt: 'You are an image moderation system for a school achievement platform used by minors. Classify this image for public display on student achievement profiles. It must NOT contain: nudity or sexual content, violence or gore, drugs, alcohol, tobacco or vaping, weapons, hate symbols, or inappropriate text. Return safe=false only for a clear violation, with a short reason.',

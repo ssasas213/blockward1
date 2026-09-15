@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight, UserCheck } from 'lucide-react';
+import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight, UserCheck, PenLine } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import GeneratedCover from '@/components/publicProfile/GeneratedCover';
 
@@ -135,7 +135,7 @@ export function cardFromSelf(s) {
   };
 }
 
-export default function AchievementCard({ item, onClick, onShare, onEndorse, canEndorse, onGetVerified, className = '' }) {
+export default function AchievementCard({ item, onClick, onShare, onEndorse, canEndorse, onGetVerified, onEdit, className = '' }) {
   const [pressed, setPressed] = useState(false);
   const pressTimer = useRef(null);
   const status = STATUS_BADGE[item.status] || STATUS_BADGE.verified;
@@ -260,13 +260,25 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
           </div>
         )}
         {/* Unverified — the way to close the gap is one tap away */}
-        {item.status === 'unverified' && onGetVerified && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onGetVerified(item); }}
-            className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-lg border border-border bg-secondary/90 px-2 py-1.5 text-[11px] font-semibold text-foreground  hover:bg-secondary"
-          >
-            Get this verified <ArrowRight className="h-3 w-3" />
-          </button>
+        {item.status === 'unverified' && (onGetVerified || onEdit) && (
+          <div className="mt-2 flex gap-1.5">
+            {onGetVerified && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onGetVerified(item); }}
+                className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-border bg-secondary/90 px-2 py-1.5 text-[11px] font-semibold text-foreground hover:bg-secondary"
+              >
+                Get this verified <ArrowRight className="h-3 w-3" />
+              </button>
+            )}
+            {onEdit && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+                className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-secondary/90 px-2.5 py-1.5 text-[11px] font-semibold text-foreground hover:bg-secondary"
+              >
+                <PenLine className="h-3 w-3" /> Edit
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

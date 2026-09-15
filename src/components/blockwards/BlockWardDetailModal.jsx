@@ -13,7 +13,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { format } from 'date-fns';
-import { Calendar, User, Award } from 'lucide-react';
+import { Calendar, User, Award, PenLine } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const rarityColors = {
   Common: 'from-slate-400 to-slate-600',
@@ -21,7 +22,7 @@ const rarityColors = {
   Legendary: 'from-amber-500 to-orange-600'
 };
 
-export default function BlockWardDetailModal({ blockWard, open, onClose }) {
+export default function BlockWardDetailModal({ blockWard, open, onClose, onEdit }) {
   if (!blockWard) return null;
 
   const gradientClass = rarityColors[blockWard.rarity] || rarityColors.Common;
@@ -116,6 +117,12 @@ export default function BlockWardDetailModal({ blockWard, open, onClose }) {
               </Accordion>
             )}
           </div>
+
+          {onEdit && (
+            <Button variant="outline" className="w-full" onClick={onEdit}>
+              <PenLine className="h-4 w-4 mr-2" /> Edit
+            </Button>
+          )}
 
           {/* Info */}
           <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">

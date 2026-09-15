@@ -95,7 +95,8 @@
       "description": "Who originally submitted the achievement. Determines the editor when changes are requested: student-submitted \u2192 student edits; teacher-issued \u2192 issuing teacher edits."
     },
     "title": {
-      "type": "string"
+      "type": "string",
+      "description": "ATTESTED field \u2014 part of what the signers attested to. On a verified record it is immutable by direct edit; only an approved correction (a new version) may change it."
     },
     "category": {
       "type": "string",
@@ -108,15 +109,17 @@
         "behaviour",
         "special"
       ],
-      "default": "academic"
+      "default": "academic",
+      "description": "ATTESTED field \u2014 see title."
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "description": "ATTESTED field \u2014 see title."
     },
     "date_achieved": {
       "type": "string",
       "format": "date",
-      "description": "When the achievement occurred"
+      "description": "ATTESTED field \u2014 see title."
     },
     "award_type_id": {
       "type": "string",
@@ -150,7 +153,7 @@
     },
     "file_url": {
       "type": "string",
-      "description": "Student-uploaded evidence image or file (required)"
+      "description": "Student-uploaded evidence image or file (required). ATTESTED field on a verified record \u2014 only an approved correction may change it."
     },
     "file_type": {
       "type": "string"
@@ -161,7 +164,11 @@
     },
     "custom_nft_image_url": {
       "type": "string",
-      "description": "Optional custom NFT image uploaded by teacher for custom awards"
+      "description": "PRESENTATION field \u2014 the student's public cover image. Never part of any attestation; the student may change it freely at any time, on any version."
+    },
+    "private_notes": {
+      "type": "string",
+      "description": "PRESENTATION field \u2014 the student's private notes about this achievement. Never shown publicly and never part of any attestation; editable freely at any time."
     },
     "status": {
       "type": "string",
@@ -176,10 +183,11 @@
         "delivered_to_vault",
         "minted",
         "archived",
+        "superseded",
         "rejected"
       ],
       "default": "draft",
-      "description": "Workflow status. 'delivering' is a transient lock status set atomically during vault delivery to prevent concurrent duplicate BlockWards."
+      "description": "Workflow status. 'delivering' is a transient lock status set atomically during vault delivery to prevent concurrent duplicate BlockWards. 'superseded' \u2014 this version was replaced by an approved correction (superseded_by_id points at the newer version); it is retained permanently for the audit trail and excluded from vault listings. Set only by the correction flow (service role)."
     },
     "delivery_claimed_by": {
       "type": "string",
@@ -317,6 +325,110 @@
     "deleted_reason": {
       "type": "string",
       "description": "Why this record was soft-deleted, e.g. 'Duplicate of <record id> \u2014 soft-deleted by dedupe (same student, title, date_achieved)'."
+    },
+    "version": {
+      "type": "number",
+      "default": 1,
+      "description": "Credential version. 1 = originally verified content. An approved correction creates the next version as a NEW record (never overwriting) and marks this one superseded. Service-role only (correction flow)."
+    },
+    "previous_version_id": {
+      "type": "string",
+      "description": "StudentRecord.id of the version this one replaced \u2014 the immutable chain backwards. Service-role only."
+    },
+    "superseded_by_id": {
+      "type": "string",
+      "description": "StudentRecord.id of the approved-corrected version that replaced this one. The old version is retained permanently, never deleted. Service-role only."
+    },
+    "edit_history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Field that changed"
+          },
+          "old_value": {
+            "description": "Value before the edit (stringified for storage)"
+          },
+          "new_value": {
+            "description": "Value after the edit (stringified for storage)"
+          },
+          "edited_by": {
+            "type": "string",
+            "description": "Email of the actor who made the edit"
+          },
+          "edited_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the edit was made (student's correction reason or 'presentation edit')"
+          }
+        },
+        "required": [
+          "field",
+          "edited_at"
+        ]
+      },
+      "default": [],
+      "description": "Every edit to this credential, with actor, old and new values and reason. Service-role only (credentialEditAction)."
+    },
+    "correction_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "approved",
+        "declined"
+      ],
+      "default": "none",
+      "description": "Correction-request state for an attested (verified) credential. 'pending' \u2014 the student proposed a correction to attested fields and the original verifier (or an org admin) must re-sign it. 'approved' \u2014 a newer version superseded this one. 'declined' \u2014 the reviewer declined; attested content unchanged. Service-role only."
+    },
+    "correction_proposed": {
+      "type": "object",
+      "description": "The proposed attested values while a correction is pending. Service-role only.",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "date_achieved": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        }
+      }
+    },
+    "correction_reason": {
+      "type": "string",
+      "description": "The student's explanation of what is wrong and why the correction is needed. Required to open a correction. Service-role only."
+    },
+    "correction_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the student opened the correction request. Service-role only."
+    },
+    "correction_requested_by": {
+      "type": "string",
+      "description": "Email of the student who requested the correction. Service-role only."
+    },
+    "correction_approved_by": {
+      "type": "string",
+      "description": "Email of the verifier who re-signed the corrected version (or declined it). Service-role only."
+    },
+    "correction_declined_reason": {
+      "type": "string",
+      "description": "Reviewer's reason for declining the correction. Service-role only."
+    },
+    "corrected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the approved correction took effect (version N+1 created). Shown publicly as 'Corrected on <date>'. Service-role only."
     }
   },
   "required": [

@@ -19,7 +19,7 @@ const fmt = (iso) => {
  * verification chain (teacher → admin → delivered), plus a link to the
  * permanent public verification page.
  */
-export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed, isOwner, isPinned, canPin, onTogglePin }) {
+export default function AchievementDetailModal({ achievement, open, onOpenChange, endorsements, canEndorse, onEndorse, hasEndorsed, isOwner, isPinned, canPin, onTogglePin, onEdit }) {
   const [shareOpen, setShareOpen] = useState(false);
   if (!achievement) return null;
   const verifyUrl = achievement.verification_id
@@ -94,6 +94,13 @@ export default function AchievementDetailModal({ achievement, open, onOpenChange
               </Button>
             )}
           </div>
+        )}
+
+        {/* Owner-only: presentation edits + correction requests */}
+        {isOwner && onEdit && (
+          <Button variant="outline" className="w-full" onClick={onEdit}>
+            <PenLine className="h-4 w-4 mr-2" /> Edit
+          </Button>
         )}
 
         {/* Owner-only: pin/unpin to Highlights (max 6) */}

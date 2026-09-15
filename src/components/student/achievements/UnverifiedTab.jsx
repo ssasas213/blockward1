@@ -10,7 +10,7 @@ import { FileText } from 'lucide-react';
  * "Get this verified" action so the gap between unverified and verified is
  * obvious and easy to close. List mode uses the compact shared row.
  */
-export default function UnverifiedTab({ items, onGetVerified, viewMode = 'grid', loading = false }) {
+export default function UnverifiedTab({ items, onGetVerified, onEdit, viewMode = 'grid', loading = false }) {
   if (loading) return <AchievementGridSkeleton />;
   if (!items || items.length === 0) {
     return (
@@ -37,7 +37,7 @@ export default function UnverifiedTab({ items, onGetVerified, viewMode = 'grid',
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {cards.map(c => (
-        <AchievementCard key={c.id} item={c} onGetVerified={onGetVerified} />
+        <AchievementCard key={c.id} item={c} onGetVerified={onGetVerified} onEdit={onEdit} />
       ))}
     </div>
   );

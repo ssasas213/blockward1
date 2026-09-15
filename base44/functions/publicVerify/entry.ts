@@ -135,6 +135,20 @@ Deno.serve(async (req) => {
           student_requested: reg.student_requested === true,
           verification_mode: reg.verification_mode || 'organisation',
           independent_verifier: reg.independent_verifier || null,
+          version: reg.version || 1,
+          corrected_at: reg.corrected_at || null,
+          correction_history: (reg.correction_history || []).map((c) => ({
+            version: c.version,
+            corrected_at: c.corrected_at,
+            approved_by: c.approved_by || null,
+            reason: c.reason || null,
+            changes: (c.changes || []).map((ch) => ({
+              field: ch.field,
+              old_value: ch.old_value ?? null,
+              new_value: ch.new_value ?? null,
+            })),
+          })),
+          previous_anchor: reg.previous_anchor || null,
           signer_chain: (reg.signer_chain || []).map((s) => ({
             role: s.role,
             name: s.name,
