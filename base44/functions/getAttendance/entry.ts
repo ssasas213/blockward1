@@ -34,9 +34,14 @@ Deno.serve(async (req) => {
     }
 
     // Teachers may only load registers for classes they teach; admins may view any class in their school.
+    // Mirrors saveAttendance's authorisation exactly (StaffMembership.class_ids,
+    // primary teacher, or co-teacher) so anyone who can SAVE a register can also
+    // LOAD it.
     if (actor.actor_role === 'teacher') {
       const staff = await svc.entities.StaffMembership.filter({ user_email: actor.actor_email, school_id: actor.school_id });
-      const teaches = staff.some(s => (s.class_ids || []).includes(class_id));
+      const teaches = staff.some(s => (s.class_ids || []).includes(class_id))
+        || cls.teacher_email === actor.actor_email
+        || (cls.co_teachers || []).includes(actor.actor_email);
       if (!teaches) {
         return new Response(JSON.stringify({ error: 'You do not teach this class' }), { status: 403, headers: cors });
       }

@@ -56,6 +56,7 @@ import JoinClass from './pages/JoinClass';
 import StudentAttendance from './pages/StudentAttendance';
 import PendingSignoffs from './pages/PendingSignoffs';
 import MyTeaching from './pages/MyTeaching';
+import StudentProgress from './pages/StudentProgress';
 import ManageSchool from './pages/ManageSchool';
 import Insights from './pages/Insights';
 import SchoolSettings from './pages/SchoolSettings';
@@ -159,6 +160,7 @@ const AuthenticatedApp = () => {
       <Route path="/AchievementRequests" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MyTeaching" element={<LayoutWrapper currentPageName="MyTeaching"><ProtectedRoute><MyTeaching /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentProgress" element={<LayoutWrapper currentPageName="StudentProgress"><ProtectedRoute><StudentProgress /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageSchool" element={<LayoutWrapper currentPageName="ManageSchool"><ProtectedRoute><ManageSchool /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Insights" element={<LayoutWrapper currentPageName="Insights"><ProtectedRoute><Insights /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />

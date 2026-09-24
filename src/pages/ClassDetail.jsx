@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Users, BookOpen, FileText, Award, ArrowLeft,
-  Copy, Check, UserPlus, Trash2, Shield, Sparkles, GraduationCap, ClipboardList, MessageSquare, BarChart3, DoorOpen,
+  Copy, Check, UserPlus, Trash2, Shield, Sparkles, GraduationCap, ClipboardList, MessageSquare, BarChart3, DoorOpen, TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
@@ -315,6 +315,18 @@ export default function ClassDetail() {
                           {isTeacher && (
                             <TableCell>
                               <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  asChild
+                                  className="text-primary hover:text-primary"
+                                  title="Grades, work, attendance, points and achievements"
+                                >
+                                  <Link to={createPageUrl(`StudentProgress?student=${encodeURIComponent(student.user_email)}`)}>
+                                    <TrendingUp className="h-4 w-4 mr-1" />
+                                    Progress
+                                  </Link>
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"

@@ -55,7 +55,10 @@ function AttendanceContent() {
 
   return (
     <div className="space-y-6 pb-20">
-      <PageHeader title="Take Attendance" description="Mark your class register" />
+      <PageHeader
+        title="Take Attendance"
+        description="Mark your class register — a BlockWard classroom record, not official MIS attendance"
+      />
 
       <Card>
         <CardContent className="p-4 space-y-4">

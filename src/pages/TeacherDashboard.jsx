@@ -20,6 +20,10 @@ import TeacherGradebookWidget from '@/components/dashboard/TeacherGradebookWidge
 import TeacherAssignmentsWidget from '@/components/dashboard/TeacherAssignmentsWidget';
 import TeacherAssembliesWidget from '@/components/dashboard/TeacherAssembliesWidget';
 import TeacherRegisterStatusWidget from '@/components/dashboard/TeacherRegisterStatusWidget';
+import WorkToMarkCard from '@/components/dashboard/WorkToMarkCard';
+import TeacherInboxCard from '@/components/dashboard/TeacherInboxCard';
+import UpcomingEventsCard from '@/components/dashboard/UpcomingEventsCard';
+import TeacherAnnouncementsCard from '@/components/dashboard/TeacherAnnouncementsCard';
 
 function TeacherDashboardContent() {
   // Identity comes from SchoolContext — the effective persona in Test Mode,
@@ -31,7 +35,12 @@ function TeacherDashboardContent() {
     myClasses: [],
     todaySchedule: [],
     recentPoints: [],
-    totalStudents: 0
+    totalStudents: 0,
+    toMark: [],
+    toMarkCount: 0,
+    unreadMessages: 0,
+    events: [],
+    announcements: []
   });
 
   useEffect(() => {
@@ -53,7 +62,12 @@ function TeacherDashboardContent() {
         myClasses: d.classes || [],
         todaySchedule: d.schedule || [],
         recentPoints: d.points || [],
-        totalStudents: d.total_students || 0
+        totalStudents: d.total_students || 0,
+        toMark: d.to_mark || [],
+        toMarkCount: d.to_mark_count || 0,
+        unreadMessages: d.unread_messages || 0,
+        events: d.events || [],
+        announcements: d.announcements || []
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -127,6 +141,14 @@ function TeacherDashboardContent() {
 
       {/* Today's register status — one-click launch straight from the dashboard */}
       <TeacherRegisterStatusWidget />
+
+      {/* Work to mark · Inbox · Events · Announcements */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <WorkToMarkCard items={stats.toMark} count={stats.toMarkCount} />
+        <TeacherInboxCard unread={stats.unreadMessages} />
+        <UpcomingEventsCard events={stats.events} />
+        <TeacherAnnouncementsCard items={stats.announcements} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's Schedule */}

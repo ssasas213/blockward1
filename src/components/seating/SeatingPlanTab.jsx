@@ -339,7 +339,7 @@ export default function SeatingPlanTab({ classId, canEdit }) {
         <p className="text-xs text-muted-foreground px-1">
           {mode === 'layout' && 'Layout mode — place and move furniture. The teacher\u2019s desk starts at the front of the room (bottom); drag it to move it, hover an element to delete it.'}
           {mode === 'assign' && 'Assign mode — drag a student from the panel onto an empty seat, drag between two occupied seats to swap, or drag a seated student off the plan to unassign them.'}
-          {mode === 'attendance' && 'Attendance mode — tap a seat to cycle Present → Late → Absent → Excused.'}
+          {mode === 'attendance' && 'Attendance mode — tap a seat to cycle Present → Late → Absent → Excused. BlockWard classroom record — not official MIS attendance.'}
         </p>
       )}
 

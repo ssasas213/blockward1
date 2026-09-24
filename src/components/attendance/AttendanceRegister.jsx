@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import EmptyState from '@/components/ui/empty-state';
-import { Check, X, Clock, ClipboardCheck, Loader2, Save, Users, CheckCircle2, Keyboard, CloudUpload } from 'lucide-react';
+import { Check, X, Clock, ClipboardCheck, Loader2, Save, Users, CheckCircle2, Keyboard, CloudUpload, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -243,6 +243,14 @@ export default function AttendanceRegister({ classId, date, timetableEntryId }) 
 
   return (
     <div className="space-y-4">
+      {/* Statutory-record disclaimer — always visible while taking a register */}
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+        <Info className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        <p className="text-xs text-muted-foreground">
+          BlockWard classroom record — not official MIS attendance. Your school's statutory register stays in its own system.
+        </p>
+      </div>
+
       {alreadyTaken && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-info/10 border border-info/20">
           <CheckCircle2 className="h-4 w-4 text-info flex-shrink-0" />
