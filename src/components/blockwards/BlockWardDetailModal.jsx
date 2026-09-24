@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import {
   Calendar, User, Award, ExternalLink, FileText, ShieldCheck, Link2,
-  UserCheck, Ban, History, PenLine, CheckCircle2,
+  UserCheck, Ban, History, PenLine, CheckCircle2, BadgeCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
