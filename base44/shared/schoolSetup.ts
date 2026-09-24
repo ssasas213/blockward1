@@ -12,6 +12,38 @@ import { provisionProfile, logRoleGrant } from './profileProvisioning.ts';
 
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+// Normalised organisation name for duplicate detection.
+export function normalizeOrgName(name) {
+  return (name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/**
+ * findDuplicateOrganisation — returns an existing active School when a new
+ * organisation would duplicate it, else null. A duplicate is the same
+ * normalised website (any country) or the same normalised name within the
+ * same country (a blank country on either side counts as a match). Used by
+ * the setupSchool and orgMembershipAction('invite') endpoints to stop
+ * duplicate organisation records — the demo seeding bypasses it on purpose
+ * and manages its own lifecycle.
+ */
+export async function findDuplicateOrganisation(svc, opts) {
+  const target = normalizeOrgName(opts?.name);
+  if (!target) return null;
+  let schools = [];
+  try { schools = await svc.entities.School.filter({ status: 'active' }); } catch (e) { return null; }
+  const web = (opts?.website || '').trim().toLowerCase().replace(/\/+$/, '');
+  const country = (opts?.country || '').trim().toLowerCase();
+  for (const s of schools) {
+    const sWeb = (s.website || '').trim().toLowerCase().replace(/\/+$/, '');
+    if (web && sWeb && sWeb === web) return s;
+    if (normalizeOrgName(s.name) === target) {
+      const sCountry = (s.country || '').trim().toLowerCase();
+      if (!country || !sCountry || sCountry === country) return s;
+    }
+  }
+  return null;
+}
+
 export function generateSchoolCode(prefix, roleSuffix) {
   const p = (prefix || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 4) || 'SCH';
   let random = '';

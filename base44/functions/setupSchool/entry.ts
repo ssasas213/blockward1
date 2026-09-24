@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { createSchoolForAdmin } from '../../shared/schoolSetup.ts';
+import { createSchoolForAdmin, findDuplicateOrganisation } from '../../shared/schoolSetup.ts';
 import { requireRealIdentity } from '../../shared/testMode.ts';
 
 // setupSchool — self-service school creation ("I'm setting up a new school").
@@ -45,6 +45,20 @@ export default async function(req: Request): Promise<Response> {
     );
     if (duplicate) {
       return Response.json({ error: `You already own a school named "${duplicate.name}"` }, { status: 409 });
+    }
+
+    // Global duplicate guard — the same organisation cannot be registered
+    // twice: a matching website (any country) or a matching name within the
+    // same country points the caller at the existing org to join instead.
+    const existingOrg = await findDuplicateOrganisation(svc, { name, country, website });
+    if (existingOrg) {
+      return Response.json({
+        error: `"${existingOrg.name}" is already on BlockWard` +
+          ((existingOrg.city || existingOrg.country) ? ` (${[existingOrg.city, existingOrg.country].filter(Boolean).join(', ')})` : '') +
+          '. Join it with an invitation or join code instead of creating a duplicate.',
+        code: 'duplicate_organisation',
+        existing: { id: existingOrg.id, name: existingOrg.name },
+      }, { status: 409 });
     }
 
     // Founding an organisation is how someone BECOMES an admin, so it cannot

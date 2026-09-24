@@ -18,6 +18,7 @@ import { runInvitationFlow, resolveAppUrl, parseEmails } from '../../shared/invi
 import { requestEmailHtml, notifyRequest } from '../../shared/achievementRequests.ts';
 import { notifyEvent } from '../../shared/eventNotifications.ts';
 import { recomputeStudentBadge } from '../../shared/profileBadges.ts';
+import { findDuplicateOrganisation } from '../../shared/schoolSetup.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -149,6 +150,18 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (name.length < 2) return bad('Enter the organisation name');
       if (!adminEmail) return bad('Enter a valid admin email');
 
+      // Duplicate guard — the organisation must not already exist on
+      // BlockWard; the student should request membership of the real one.
+      const dupe = await findDuplicateOrganisation(svc, { name });
+      if (dupe) {
+        return Response.json({
+          ok: false,
+          error: `"${dupe.name}" is already on BlockWard — request membership of it instead of inviting a duplicate.`,
+          code: 'duplicate_organisation',
+          existing: { id: dupe.id, name: dupe.name },
+        }, { status: 409, headers: CORS });
+      }
+
       const code = 'BW' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
       const school = await svc.entities.School.create({
         name,
@@ -229,6 +242,29 @@ Deno.serve(async (req: Request): Promise<Response> => {
         approved_by_email: email,
         approved_by_name: actorName,
       });
+
+      // Audit the membership change — actor, action, target, before/after
+      // and a UTC timestamp (same record as every other audited event).
+      try {
+        await svc.entities.AuditLog.create({
+          record_id: membership.id,
+          school_id: membership.school_id,
+          actor_email: email,
+          actor_name: actorName,
+          actor_role: 'admin',
+          action: action === 'approve' ? 'membership_approved' : 'membership_declined',
+          target_type: 'membership',
+          target_id: membership.id,
+          target_email: membership.student_email,
+          target_label: membership.student_name || membership.student_email,
+          before_summary: 'membership: pending',
+          after_summary: `membership: ${status}`,
+          old_status: 'pending',
+          new_status: status,
+          notes: `${actorName} ${action === 'approve' ? 'approved' : 'declined'} ${membership.student_name || membership.student_email}'s membership request for ${membership.school_name}`,
+          timestamp: now,
+        });
+      } catch (e) { /* best-effort audit */ }
 
       // Keep the earned profile badge in step with the membership change —
       // tier 2 ('member') grants and revokes are automatic.

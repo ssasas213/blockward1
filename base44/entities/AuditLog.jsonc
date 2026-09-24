@@ -4,13 +4,15 @@
   "properties": {
     "record_id": {
       "type": "string",
-      "description": "StudentRecord.id"
+      "description": "Primary target of the event \u2014 a StudentRecord.id, or the id of the user/membership/invitation/school the event concerns. Legacy record-workflow entries always carry a StudentRecord id."
     },
     "school_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Organisation scope of the event ('unassigned' for school-less events such as self-signup role grants)"
     },
     "actor_email": {
-      "type": "string"
+      "type": "string",
+      "description": "Who performed the action ('system' for platform-initiated events)"
     },
     "actor_name": {
       "type": "string"
@@ -20,9 +22,10 @@
       "enum": [
         "admin",
         "teacher",
-        "student"
+        "student",
+        "system"
       ],
-      "description": "Who signed"
+      "description": "Role the actor held when the action was performed"
     },
     "action": {
       "type": "string",
@@ -41,27 +44,67 @@
         "school_created",
         "join_request_submitted",
         "teacher_approved",
+        "teacher_rejected",
         "changes_requested",
-        "resubmitted_after_changes"
+        "resubmitted_after_changes",
+        "guardian_consent_requested",
+        "role_changed",
+        "membership_approved",
+        "membership_declined",
+        "membership_invited"
       ],
       "description": "What happened"
     },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "record",
+        "user",
+        "membership",
+        "invitation",
+        "school"
+      ],
+      "description": "The KIND of thing the event acted on \u2014 makes the audit trail queryable by concept, not just by record id."
+    },
+    "target_id": {
+      "type": "string",
+      "description": "Id of the targeted record/user/membership/invitation/school"
+    },
+    "target_email": {
+      "type": "string",
+      "description": "Email of the person the event acted ON (e.g. the member whose request was approved, the user whose role changed)"
+    },
+    "target_label": {
+      "type": "string",
+      "description": "Display label of the target (person name, membership label, organisation name)"
+    },
     "old_status": {
-      "type": "string"
+      "type": "string",
+      "description": "BEFORE summary \u2014 previous status (or role, for role grants)"
     },
     "new_status": {
-      "type": "string"
+      "type": "string",
+      "description": "AFTER summary \u2014 resulting status (or role)"
+    },
+    "before_summary": {
+      "type": "string",
+      "description": "Human-readable BEFORE snapshot for complex changes (e.g. 'membership: pending')"
+    },
+    "after_summary": {
+      "type": "string",
+      "description": "Human-readable AFTER snapshot for complex changes (e.g. 'membership: active')"
     },
     "notes": {
-      "type": "string"
+      "type": "string",
+      "description": "Full human-readable summary \u2014 mechanism, reason, delivery outcomes"
     },
     "timestamp": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp of the event"
     }
   },
   "required": [
-    "record_id",
     "school_id",
     "actor_email",
     "action",
