@@ -35,7 +35,12 @@
         3
       ],
       "default": 1,
-      "description": "Verification required for credentials of this type: 1 = nominated verifier only, 2 = verifier + organisation admin, 3 = verifier + admin + external verifier. Organisations override by editing the template."
+      "description": "Approval requirement for credentials of this type: 1 = nominated teacher/verifier approval only, 2 = verifier + organisation admin approval, 3 = verifier + admin + external verifier. Organisations override by editing the template."
+    },
+    "requires_evidence": {
+      "type": "boolean",
+      "default": true,
+      "description": "Evidence requirement for this credential type \u2014 enforced server-side at submit. True (the default): students must attach at least one evidence file or link before submitting. Explicitly false: the organisation has opted this type out, and submissions without evidence are accepted. Types created before the field existed (undefined) are treated as required."
     },
     "is_active": {
       "type": "boolean",

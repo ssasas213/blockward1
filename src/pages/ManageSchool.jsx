@@ -8,6 +8,7 @@ import Announcements from '@/pages/Announcements';
 import SchoolCalendar from '@/pages/SchoolCalendar';
 import Assemblies from '@/pages/Assemblies';
 import ManageOpportunities from '@/pages/ManageOpportunities';
+import AdminCredentials from '@/pages/AdminCredentials';
 
 /**
  * ManageSchool — the admin school hub. Each tab renders the existing page
@@ -29,6 +30,7 @@ function ManageSchoolImpl() {
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="invitations">Invitations</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
+          <TabsTrigger value="credentials">Credentials</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="opportunities">Opportunities</TabsTrigger>
@@ -37,6 +39,7 @@ function ManageSchoolImpl() {
         <TabsContent value="people" className="mt-6"><ManageUsers /></TabsContent>
         <TabsContent value="invitations" className="mt-6"><Invitations /></TabsContent>
         <TabsContent value="classes" className="mt-6"><Classes /></TabsContent>
+        <TabsContent value="credentials" className="mt-6"><AdminCredentials /></TabsContent>
         <TabsContent value="announcements" className="mt-6"><Announcements /></TabsContent>
         <TabsContent value="calendar" className="mt-6 space-y-6">
           <SchoolCalendar />

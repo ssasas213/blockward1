@@ -221,6 +221,32 @@
       ],
       "default": "approved"
     },
+    "revocation": {
+      "type": "object",
+      "description": "Set ONLY by adminCredentialAction when an organisation admin revokes (or supersedes) this credential. Together with the AuditLog entry this is the permanent audit trail; the public verification page renders the credential as revoked. Service-role only.",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "Admin's recorded reason for the revocation"
+        },
+        "revoked_by": {
+          "type": "string",
+          "description": "Email of the admin who revoked it"
+        },
+        "revoked_by_name": {
+          "type": "string",
+          "description": "Display name of the revoking admin"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "superseded_by_verification_id": {
+          "type": "string",
+          "description": "When this credential was replaced rather than simply invalidated \u2014 the verification_id of the credential that supersedes it."
+        }
+      }
+    },
     "vault_status": {
       "type": "string",
       "enum": [

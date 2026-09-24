@@ -15,7 +15,13 @@ export async function getCallerProfile(base44) {
   if (!profiles || profiles.length === 0) {
     return { user, profile: null, error: { error: 'Profile not found', status: 404 } };
   }
-  return { user, profile: profiles[0], error: null };
+  const profile = profiles[0];
+  // Suspended/inactive accounts lose staff access IMMEDIATELY — every function
+  // that gates through this helper refuses them server-side, not just in UI.
+  if (profile.status === 'suspended' || profile.status === 'inactive') {
+    return { user, profile: null, error: { error: 'Your account is inactive. Contact your administrator.', status: 403 } };
+  }
+  return { user, profile, error: null };
 }
 
 export function requireStaff(profile, roles = ['teacher', 'admin']) {

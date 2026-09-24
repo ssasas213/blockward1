@@ -25,7 +25,7 @@ import EmptyState from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Plus, BookOpen, Users, Search, ChevronRight,
-  Copy, Check, Loader2, QrCode
+  Copy, Check, Loader2, QrCode, Archive, ArchiveRestore
 } from 'lucide-react';
 import ClassInviteDialog from '@/components/classwork/ClassInviteDialog';
 import { motion } from 'framer-motion';
@@ -196,6 +196,20 @@ function ClassesContent() {
     setCopiedCode(code);
     toast.success('Class code copied');
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  // Admin archive/restore — history is never deleted, the class just leaves
+  // active circulation (dashboards, timetabled register alerts).
+  const toggleArchive = async (cls) => {
+    const archiving = cls.status !== 'archived';
+    if (archiving && !confirm(`Archive "${cls.name}"? Its history is preserved and stays fully accessible.`)) return;
+    try {
+      await base44.entities.Class.update(cls.id, { status: archiving ? 'archived' : 'active' });
+      toast.success(archiving ? 'Class archived — history preserved' : 'Class restored');
+      loadData();
+    } catch (error) {
+      toast.error(error.message || 'Failed to update the class');
+    }
   };
 
   const filteredClasses = classes.filter(c =>
@@ -411,9 +425,24 @@ function ClassesContent() {
                             </Tooltip>
                           </TooltipProvider>
                         )}
+                        {effectiveRole === 'admin' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => { e.preventDefault(); toggleArchive(cls); }}
+                            aria-label={cls.status === 'archived' ? 'Restore class' : 'Archive class'}
+                          >
+                            {cls.status === 'archived'
+                              ? <><ArchiveRestore className="h-4 w-4" /><span className="ml-1">Restore</span></>
+                              : <><Archive className="h-4 w-4" /><span className="ml-1">Archive</span></>}
+                          </Button>
+                        )}
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold text-foreground mb-1">{cls.name}</h3>
+                    <h3 className="text-xl font-bold text-foreground mb-1 flex items-center gap-2">
+                      {cls.name}
+                      {cls.status === 'archived' && <Badge variant="warning">Archived</Badge>}
+                    </h3>
                     <p className="text-muted-foreground text-sm mb-4">{cls.subject || 'No subject specified'}</p>
 
                     <div className="flex items-center justify-between mb-4">

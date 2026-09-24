@@ -161,6 +161,7 @@ export async function normalizeForm(svc, actor, form) {
   let credentialTypeId = null;
   let credentialTypeTitle = null;
   let isCustom = false;
+  let evidenceOptional = false;
   let category = form.category || null;
   let tier = Number(form.verification_tier) || null;
 
@@ -174,6 +175,7 @@ export async function normalizeForm(svc, actor, form) {
       credentialTypeTitle = t.title;
       category = t.category || category;
       tier = Number(t.verification_tier) || 1;
+      evidenceOptional = t.requires_evidence === false;
     }
   } else {
     const label = (form.custom_credential_label || '').trim();
@@ -248,6 +250,7 @@ export async function normalizeForm(svc, actor, form) {
       credential_type_id: credentialTypeId,
       credential_type_title: credentialTypeTitle,
       is_custom_credential: isCustom,
+      evidence_optional: evidenceOptional === true,
       category: category || 'special',
       title,
       description: (form.description || '').trim() || null,
@@ -320,7 +323,7 @@ export async function submitRequest(svc, actor, body, ctx) {
   if (action !== 'save_draft') {
     // Submit-level validation.
     if (!form.data.date_achieved) return bad('Date achieved is required to submit');
-    if (form.data.evidence.length === 0) return bad('Attach at least one piece of evidence to submit');
+    if (!form.data.evidence_optional && form.data.evidence.length === 0) return bad('Attach at least one piece of evidence to submit');
 
     // ── Anti-abuse caps ──
     const mine = await svc.entities.AchievementRequest.filter({ student_email: email }, '-created_date', 200);

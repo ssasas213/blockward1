@@ -10,6 +10,8 @@ import { Loader2, Plus, Trash2, Check, GraduationCap, Calendar } from 'lucide-re
 import { GRADE_PRESETS } from '@/lib/grades';
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
+import AwardTypesSection from '@/components/academic/AwardTypesSection';
+import YearGroupsSection from '@/components/academic/YearGroupsSection';
 
 import RoleGuard from '@/components/auth/RoleGuard';
 export default function AcademicSettings() { return <RoleGuard roles={['admin']}><AcademicSettingsImpl/></RoleGuard>; }
@@ -115,6 +117,12 @@ function AcademicSettingsImpl() {
           )}
         </CardContent>
       </Card>
+
+      {/* Credential types — approval tier & evidence requirements per achievement type */}
+      <AwardTypesSection schoolId={activeSchool?.id} />
+
+      {/* Year groups — archivable without losing history */}
+      <YearGroupsSection schoolId={activeSchool?.id} />
 
       {showScaleForm && <ScaleForm schoolId={activeSchool.id} onClose={() => setShowScaleForm(false)} onSaved={load} />}
       {showTermForm && <TermForm schoolId={activeSchool.id} onClose={() => setShowTermForm(false)} onSaved={load} />}

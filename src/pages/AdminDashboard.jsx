@@ -17,6 +17,7 @@ import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
 import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
 import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipRequestsWidget';
+import AdminAlertsWidget from '@/components/admin/AdminAlertsWidget';
 import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
 
 function AdminDashboardContent() {
@@ -116,6 +117,9 @@ function AdminDashboardContent() {
             <StatCard label="Drive Connected" value={stats.driveConnected} icon={HardDrive} />
             <StatCard label="Pending Archive" value={stats.recordsPendingArchive} icon={AlertCircle} />
           </div>
+
+          {/* Operational alerts: missing registers, failed invites, staff approvals, anchors */}
+          <AdminAlertsWidget />
 
           {/* Academic + Assignments + Assemblies */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

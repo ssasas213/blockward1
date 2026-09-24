@@ -13,6 +13,15 @@
     "year_number": {
       "type": "number",
       "description": "Numeric year (optional)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Archived year groups stay queryable (history preserved) but are hidden from active audience pickers and dashboards."
     }
   },
   "required": [

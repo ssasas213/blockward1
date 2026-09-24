@@ -123,6 +123,39 @@ export default async function(req: Request): Promise<Response> {
       ]);
       const driveConnected = students.filter(s => s.connected_google_email).length;
 
+      // ── Admin alerts (Phase 7): missing registers today, failed email
+      // invitations, pending staff approvals and failed/pending blockchain
+      // anchors. All computed server-side, scoped to the admin's own school.
+      const alerts = { missing_registers: [], failed_invitations: [], pending_staff_approvals: 0, failed_anchor_count: 0, pending_anchor_count: 0 };
+      if (schoolId) {
+        try {
+          const dayIndex = Number.isInteger(body.day_index) ? body.day_index : null;
+          const date = (typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) ? body.date : null;
+          const activeClassIds = new Set(classes.filter(c => (c.status || 'active') === 'active').map(c => c.id));
+          if (dayIndex !== null && date) {
+            const [tt, sessions] = await Promise.all([
+              svc.entities.TimetableEntry.filter({ school_id: schoolId, day_of_week: dayIndex }),
+              svc.entities.AttendanceSession.filter({ school_id: schoolId, date }),
+            ]);
+            const taken = new Set(sessions.map(s => s.class_id));
+            alerts.missing_registers = tt
+              .filter(t => activeClassIds.has(t.class_id) && !taken.has(t.class_id))
+              .map(t => ({ class_id: t.class_id, class_name: t.class_name || null, start_time: t.start_time, room: t.room || null }))
+              .slice(0, 8);
+          }
+          const [failedInvites, pendingStaff, failedAnchors, pendingAnchors] = await Promise.all([
+            svc.entities.SchoolInvitation.filter({ school_id: schoolId, email_status: 'failed' }),
+            svc.entities.StaffMembership.filter({ school_id: schoolId, status: 'pending' }),
+            svc.entities.BlockWardVerificationRegistry.filter({ school_id: schoolId, nft_status: 'failed' }),
+            svc.entities.BlockWardVerificationRegistry.filter({ school_id: schoolId, nft_status: 'pending' }),
+          ]);
+          alerts.failed_invitations = failedInvites.slice(0, 5).map(i => ({ email: i.invited_email, role: i.role }));
+          alerts.pending_staff_approvals = pendingStaff.length;
+          alerts.failed_anchor_count = failedAnchors.length;
+          alerts.pending_anchor_count = pendingAnchors.length;
+        } catch (e) { /* alerts are best-effort — never break the dashboard */ }
+      }
+
       return Response.json({
         ok: true,
         role,
@@ -136,6 +169,7 @@ export default async function(req: Request): Promise<Response> {
           drive_connected: driveConnected,
           records_pending_archive: pendingArchive.length,
         },
+        alerts,
       });
     }
 

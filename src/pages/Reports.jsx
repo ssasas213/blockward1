@@ -32,6 +32,7 @@ const CHART_COLORS = [
   'hsl(142 71% 45%)', 'hsl(38 92% 50%)', 'hsl(280 60% 55%)',
 ];
 
+import AdminReportsPanels from '@/components/reports/AdminReportsPanels';
 import RoleGuard from '@/components/auth/RoleGuard';
 export default function Reports() { return <RoleGuard roles={['admin']}><ReportsImpl/></RoleGuard>; }
 function ReportsImpl() {
@@ -157,6 +158,8 @@ function ReportsImpl() {
           </SelectContent>
         </Select>
       </PageHeader>
+
+      <AdminReportsPanels />
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
