@@ -4,9 +4,97 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import EmptyState from '@/components/ui/empty-state';
-import { Loader2, Paperclip, Undo2, Users, ClipboardCheck, Send } from 'lucide-react';
+import { Loader2, Undo2, Users, ClipboardCheck, Send, CalendarClock } from 'lucide-react';
+import PrivateAttachmentLink from './PrivateAttachmentLink';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+
+// ── Teacher controls: per-student extension + controlled resubmission ──
+function ExtensionControls({ submission, onReload }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [extUntil, setExtUntil] = useState('');
+  const [resubUntil, setResubUntil] = useState('');
+
+  const toLocalInput = (iso) => iso
+    ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+    : '';
+  const fromLocalInput = (v) => v ? new Date(v).toISOString() : null;
+
+  const apply = async (action, value) => {
+    setBusy(true);
+    try {
+      const res = await base44.functions.invoke('submissionAction', {
+        action,
+        submission_id: submission.id,
+        [action === 'grant_extension' ? 'extended_due_at' : 'resubmit_until']: value,
+      });
+      if (res.data?.ok) {
+        toast.success(action === 'grant_extension'
+          ? (value ? 'Due date extended' : 'Extension removed')
+          : (value ? 'Resubmission re-opened' : 'Resubmission closed'));
+        setOpen(false);
+        await onReload();
+      } else {
+        toast.error(res.data?.error || 'Could not apply this change');
+      }
+    } catch (e) {
+      toast.error('Could not apply this change');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="text-xs">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+        <CalendarClock className="h-3.5 w-3.5" />
+        {submission.extended_due_at
+          ? `Extended to ${format(new Date(submission.extended_due_at), 'd MMM, HH:mm')}`
+          : 'Extension & resubmission'}
+        {submission.resubmit_until && ` · resubmit until ${format(new Date(submission.resubmit_until), 'd MMM, HH:mm')}`}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2 rounded-lg bg-secondary/60 border border-border p-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-muted-foreground">Extend due to</span>
+            <input
+              type="datetime-local"
+              value={extUntil || toLocalInput(submission.extended_due_at)}
+              onChange={(e) => setExtUntil(e.target.value)}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+            />
+            <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={busy}
+              onClick={() => apply('grant_extension', fromLocalInput(extUntil || toLocalInput(submission.extended_due_at)))}>
+              Apply
+            </Button>
+            {submission.extended_due_at && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={busy}
+                onClick={() => apply('grant_extension', null)}>Remove</Button>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-muted-foreground">Allow resubmit until</span>
+            <input
+              type="datetime-local"
+              value={resubUntil || toLocalInput(submission.resubmit_until)}
+              onChange={(e) => setResubUntil(e.target.value)}
+              className="h-7 rounded-md border border-border bg-background px-2 text-xs"
+            />
+            <Button size="sm" variant="secondary" className="h-7 text-xs" disabled={busy}
+              onClick={() => apply('allow_resubmission', fromLocalInput(resubUntil || toLocalInput(submission.resubmit_until)))}>
+              Apply
+            </Button>
+            {submission.resubmit_until && (
+              <Button size="sm" variant="ghost" className="h-7 text-xs" disabled={busy}
+                onClick={() => apply('allow_resubmission', null)}>Close now</Button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function SubmissionRow({ submission, post, onReload }) {
   const [grade, setGrade] = useState(
@@ -62,8 +150,13 @@ function SubmissionRow({ submission, post, onReload }) {
         return <Badge className="bg-primary/15 text-primary text-[10px]">Resubmitted</Badge>;
       case 'returned':
         return <Badge className="bg-success/15 text-success text-[10px]">Returned</Badge>;
-      default:
-        return <Badge variant="outline" className="text-[10px]">Not turned in</Badge>;
+      default: {
+        const effectiveDue = submission.extended_due_at || post.due_at;
+        const missing = effectiveDue && Date.now() > new Date(effectiveDue).getTime();
+        return missing
+          ? <Badge className="bg-destructive/15 text-destructive text-[10px]">Missing</Badge>
+          : <Badge variant="outline" className="text-[10px]">Not turned in</Badge>;
+      }
     }
   };
 
@@ -106,19 +199,12 @@ function SubmissionRow({ submission, post, onReload }) {
       {(submission.attachments || []).length > 0 && (
         <div className="flex flex-wrap gap-2">
           {submission.attachments.map((a, i) => (
-            <a
-              key={i}
-              href={a.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-            >
-              <Paperclip className="h-3.5 w-3.5" />
-              {a.name || 'Attachment'}
-            </a>
+            <PrivateAttachmentLink key={i} attachment={a} submissionId={submission.id} />
           ))}
         </div>
       )}
+
+      <ExtensionControls submission={submission} onReload={onReload} />
 
       <button
         onClick={() => setShowComments(!showComments)}

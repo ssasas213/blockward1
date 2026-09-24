@@ -56,12 +56,30 @@ export default async function (req: Request): Promise<Response> {
         if (!attachments.length && !textResponse) return bad('Attach a file or write a response first');
 
         const now = Date.now();
-        const dueMs = post.due_at ? new Date(post.due_at).getTime() : null;
-        const isLate = dueMs !== null && now > dueMs;
-        if (isLate && !post.allow_late) return bad('The due date for this work has passed');
-
         const rows = await svc.entities.Submission.filter({ assignment_id: post.id }).catch(() => []);
         const existing = (rows || []).find((s: any) => String(s.student_email).toLowerCase() === email);
+
+        // Effective due date: a teacher-granted extension overrides the post's.
+        const effectiveDueMs = existing?.extended_due_at
+          ? new Date(existing.extended_due_at).getTime()
+          : (post.due_at ? new Date(post.due_at).getTime() : null);
+        const isLate = effectiveDueMs !== null && now > effectiveDueMs;
+
+        // Controlled resubmission: after work is returned the student may only
+        // turn in again before the effective due date, while a teacher-opened
+        // resubmission window is live, or if the post allows late work.
+        if (existing?.status === 'returned') {
+          const resubmitMs = existing.resubmit_until ? new Date(existing.resubmit_until).getTime() : null;
+          const windowOpen = resubmitMs !== null && now <= resubmitMs;
+          const beforeDue = effectiveDueMs !== null && now <= effectiveDueMs;
+          if (!post.allow_late && !beforeDue && !windowOpen) {
+            return bad('Resubmissions are closed for this work. Ask your teacher to re-open it.');
+          }
+        }
+        const turnResubmitMs = existing?.resubmit_until ? new Date(existing.resubmit_until).getTime() : null;
+        if (isLate && !post.allow_late && !(turnResubmitMs !== null && now <= turnResubmitMs)) {
+          return bad('The due date for this work has passed');
+        }
         const status = existing?.status === 'returned' ? 'resubmitted' : 'submitted';
         const nowIso = new Date().toISOString();
 
@@ -102,7 +120,10 @@ export default async function (req: Request): Promise<Response> {
         if (!['submitted', 'resubmitted'].includes(submission.status)) return bad('Nothing to unsubmit');
 
         const post = await loadPost(svc, submission.assignment_id);
-        if (post?.due_at && Date.now() > new Date(post.due_at).getTime()) {
+        const dueMs = submission.extended_due_at
+          ? new Date(submission.extended_due_at).getTime()
+          : (post?.due_at ? new Date(post.due_at).getTime() : null);
+        if (dueMs !== null && Date.now() > dueMs) {
           return bad('Unsubmitting is only available before the due date');
         }
         const updated = await svc.entities.Submission.update(submission.id, {
@@ -241,6 +262,48 @@ export default async function (req: Request): Promise<Response> {
         }
 
         return Response.json({ ok: true, returned: returned.length, submissions: returned });
+      }
+
+      case 'grant_extension': {
+        const submission = await loadSubmission(svc, body.submission_id);
+        if (!submission) return bad('Submission not found', 404);
+        if (!isTeacherOf(submission, email) && actor.actor_role !== 'admin') {
+          return bad('Only this class\u2019s teachers can grant extensions', 403);
+        }
+        const until = body.extended_due_at ? new Date(body.extended_due_at).toISOString() : null;
+        const updated = await svc.entities.Submission.update(submission.id, { extended_due_at: until });
+        if (until) {
+          await notifyEvent(svc, {
+            to_email: submission.student_email,
+            school_id: submission.school_id || null,
+            event_type: 'classwork_returned',
+            title: `Due date extended: \u201C${submission.assignment_title}\u201D`,
+            body: `${actorName} gave you until ${new Date(until).toLocaleString()}.`,
+            related_id: submission.assignment_id,
+          }).catch(() => {});
+        }
+        return Response.json({ ok: true, submission: updated });
+      }
+
+      case 'allow_resubmission': {
+        const submission = await loadSubmission(svc, body.submission_id);
+        if (!submission) return bad('Submission not found', 404);
+        if (!isTeacherOf(submission, email) && actor.actor_role !== 'admin') {
+          return bad('Only this class\u2019s teachers can re-open work', 403);
+        }
+        const until = body.resubmit_until ? new Date(body.resubmit_until).toISOString() : null;
+        const updated = await svc.entities.Submission.update(submission.id, { resubmit_until: until });
+        if (until) {
+          await notifyEvent(svc, {
+            to_email: submission.student_email,
+            school_id: submission.school_id || null,
+            event_type: 'classwork_returned',
+            title: `Work re-opened: \u201C${submission.assignment_title}\u201D`,
+            body: `${actorName} re-opened this work — you can turn it in again until ${new Date(until).toLocaleString()}.`,
+            related_id: submission.assignment_id,
+          }).catch(() => {});
+        }
+        return Response.json({ ok: true, submission: updated });
       }
 
       default:

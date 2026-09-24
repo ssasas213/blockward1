@@ -138,6 +138,18 @@ Deno.serve(async (req) => {
           reason: body.reason || "Grade correction",
           timestamp: new Date().toISOString(),
         }).catch(() => {});
+        // The organisation-wide audit trail — the same change, logged once.
+        await svc.entities.AuditLog.create({
+          school_id, actor_email, actor_name: teacherName, actor_role: role,
+          action: "status_changed", target_type: "user", target_id: prev.id, target_email: student_email,
+          target_label: prev.student_name || student_email,
+          record_id: prev.id,
+          old_status: `Grade ${prev.raw_score}/${prev.max_score}`, new_status: `Grade ${score}/${maxScore}`,
+          before_summary: `${assessment.title}: ${prev.raw_score}/${prev.max_score} (${prev.percentage}%)`,
+          after_summary: `${assessment.title}: ${score}/${maxScore} (${percentage}%)`,
+          notes: `Published grade changed on "${assessment.title}"${body.reason ? ` — ${body.reason}` : ""}`,
+          timestamp: new Date().toISOString(),
+        }).catch(() => {});
       }
 
       const classes = await svc.entities.Class.filter({ school_id }).catch(() => []);
@@ -180,9 +192,17 @@ Deno.serve(async (req) => {
       await svc.entities.Assessment.update(assessment_id, { status: "published", published_at: now, published_by: actor_email });
       // Publish all draft grades for this assessment
       const draftGrades = await svc.entities.StudentGrade.filter({ school_id, assessment_id, status: "draft" }).catch(() => []);
-      if (draftGrades.length) {
-        await svc.entities.StudentGrade.bulkUpdate(draftGrades.map(g => ({ id: g.id, status: "published", published_at: now, published_by: actor_email })));
+      for (const g of draftGrades) {
+        await svc.entities.StudentGrade.update(g.id, { status: "published", published_at: now, published_by: actor_email });
       }
+      await svc.entities.AuditLog.create({
+        school_id, actor_email, actor_name: teacherName, actor_role: role,
+        action: "status_changed", target_type: "record", target_id: assessment_id, record_id: assessment_id,
+        target_label: assessment.title,
+        old_status: "draft", new_status: "published",
+        notes: `Published assessment "${assessment.title}" with ${draftGrades.length} grade(s)`,
+        timestamp: now,
+      }).catch(() => {});
       // Notify each graded student that their grade has been published
       const classes = await svc.entities.Class.filter({ school_id }).catch(() => []);
       const cls = classes.find(c => c.id === assessment.class_id);
@@ -206,7 +226,10 @@ Deno.serve(async (req) => {
       if (role !== "admin") return safeJson({ ok: false, code: "FORBIDDEN", message: "Only admins can unpublish" }, 403);
       if (!assessment_id) return safeJson({ ok: false, code: "MISSING_FIELD", message: "assessment_id required" }, 400);
       await svc.entities.Assessment.update(assessment_id, { status: "draft", published_at: null, published_by: null });
-      await svc.entities.StudentGrade.updateMany({ school_id, assessment_id, status: "published" }, { $set: { status: "draft", published_at: null, published_by: null } }).catch(() => {});
+      const publishedGrades = await svc.entities.StudentGrade.filter({ school_id, assessment_id, status: "published" }).catch(() => []);
+      for (const g of publishedGrades) {
+        await svc.entities.StudentGrade.update(g.id, { status: "draft", published_at: null, published_by: null });
+      }
       return safeJson({ ok: true });
     }
 

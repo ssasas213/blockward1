@@ -45,12 +45,31 @@ Deno.serve(async (req) => {
 
     const svc = base44.asServiceRole;
 
-    // Look up the class by code — targeted queries on the stored case variants
-    // (never a full Class-table scan to find one code).
+    // Expiring/revocable ClassCode records first; the legacy single
+    // Class.join_code still works so existing links never break.
     let cls = null;
-    for (const variant of [...new Set([code, code.toLowerCase()])]) {
-      const matches = await svc.entities.Class.filter({ join_code: variant }).catch(() => []);
-      if (matches.length > 0) { cls = matches[0]; break; }
+    let codeRecord = null;
+    const codeRows = await svc.entities.ClassCode.filter({ code }).catch(() => []);
+    const codeMatch = (codeRows || []).find((c) => String(c.code).toUpperCase() === code);
+    if (codeMatch) {
+      if (codeMatch.status !== 'active') {
+        return Response.json({ ok: false, error: 'This invite code has been revoked.' }, { status: 403, headers: CORS });
+      }
+      if (codeMatch.expires_at && Date.now() > new Date(codeMatch.expires_at).getTime()) {
+        return Response.json({ ok: false, error: 'This invite code has expired. Ask your teacher for a new one.' }, { status: 403, headers: CORS });
+      }
+      if (codeMatch.max_uses != null && (codeMatch.use_count || 0) >= codeMatch.max_uses) {
+        return Response.json({ ok: false, error: 'This invite code has reached its use limit.' }, { status: 403, headers: CORS });
+      }
+      const clsRows = await svc.entities.Class.filter({ id: codeMatch.class_id }).catch(() => []);
+      cls = clsRows?.[0] || null;
+      codeRecord = codeMatch;
+    }
+    if (!cls) {
+      for (const variant of [...new Set([code, code.toLowerCase()])]) {
+        const matches = await svc.entities.Class.filter({ join_code: variant }).catch(() => []);
+        if (matches.length > 0) { cls = matches[0]; break; }
+      }
     }
     if (!cls) {
       return Response.json({ ok: false, error: 'Invalid class code. No class found with that code.' }, { status: 404, headers: CORS });
@@ -110,6 +129,10 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.error('joinClassByCode: ensureVault failed (non-fatal):', e);
       }
+    }
+
+    if (codeRecord) {
+      await svc.entities.ClassCode.update(codeRecord.id, { use_count: (codeRecord.use_count || 0) + 1 });
     }
 
     return Response.json({ ok: true, class: { id: cls.id, name: cls.name, subject: cls.subject || null } }, { headers: CORS });

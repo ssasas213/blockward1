@@ -25,8 +25,9 @@ import EmptyState from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Plus, BookOpen, Users, Search, ChevronRight,
-  Copy, Check, Loader2
+  Copy, Check, Loader2, QrCode
 } from 'lucide-react';
+import ClassInviteDialog from '@/components/classwork/ClassInviteDialog';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useEffectiveRole } from '@/lib/useEffectiveRole';
@@ -52,6 +53,7 @@ function ClassesContent() {
   const [joining, setJoining] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
   const [joinCode, setJoinCode] = useState('');
+  const [inviteCls, setInviteCls] = useState(null);
   const [newClass, setNewClass] = useState({
     name: '', subject: '', description: '', room: '', grade_level: ''
   });
@@ -373,23 +375,43 @@ function ClassesContent() {
                       <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${accent.icon} flex items-center justify-center shadow-sm`}>
                         <BookOpen className="h-7 w-7" />
                       </div>
-                      {cls.join_code && effectiveRole === 'teacher' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            copyJoinCode(cls.join_code);
-                          }}
-                        >
-                          {copiedCode === cls.join_code ? (
-                            <Check className="h-4 w-4 text-success" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                          <span className="ml-1 font-mono text-sm">{cls.join_code}</span>
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {cls.join_code && effectiveRole === 'teacher' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              copyJoinCode(cls.join_code);
+                            }}
+                          >
+                            {copiedCode === cls.join_code ? (
+                              <Check className="h-4 w-4 text-success" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                            <span className="ml-1 font-mono text-sm">{cls.join_code}</span>
+                          </Button>
+                        )}
+                        {(effectiveRole === 'teacher' || effectiveRole === 'admin') && (
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => { e.preventDefault(); setInviteCls(cls); }}
+                                  aria-label="Class invites"
+                                >
+                                  <QrCode className="h-4 w-4" />
+                                  <span className="ml-1">Invites</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">Expiring codes, links & QR invites</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </div>
                     <h3 className="text-xl font-bold text-foreground mb-1">{cls.name}</h3>
                     <p className="text-muted-foreground text-sm mb-4">{cls.subject || 'No subject specified'}</p>
@@ -423,6 +445,12 @@ function ClassesContent() {
           description={effectiveRole === 'teacher' ? 'Create your first class to get started' : effectiveRole === 'student' ? 'Join a class using a class code' : 'No classes have been created yet'}
         />
       )}
+
+      <ClassInviteDialog
+        open={!!inviteCls}
+        onOpenChange={(o) => { if (!o) setInviteCls(null); }}
+        cls={inviteCls}
+      />
     </div>
   );
 }

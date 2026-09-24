@@ -13,6 +13,7 @@ import { Loader2, Upload, Undo2, Paperclip, X, MessageSquare, Send } from 'lucid
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import TeacherGradingPanel from './TeacherGradingPanel';
+import PrivateAttachmentLink from './PrivateAttachmentLink';
 
 // ── Private comment thread (student ↔ teachers) ──
 function CommentThread({ submission, onReload }) {
@@ -90,10 +91,14 @@ function TurnInForm({ post, onSubmitted, onCancel }) {
     try {
       const attachments = [];
       for (const file of files) {
-        const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
+        // Private storage: the stored URI is not a URL. Access is only
+        // possible through getFileAccess, which permission-checks the caller
+        // and returns a short-lived signed URL.
+        const { file_uri } = await base44.integrations.Core.UploadPrivateFile({ file });
         attachments.push({
           name: file.name,
-          url: file_url,
+          url: file_uri,
+          private: true,
           type: file.type || 'file',
           size: file.size,
         });
@@ -201,7 +206,10 @@ function StudentWorkPanel({ post, submission, onReload, onClose }) {
 
   const turnedIn = ['submitted', 'resubmitted'].includes(submission?.status);
   const returned = submission?.status === 'returned';
-  const pastDue = post.due_at && Date.now() > new Date(post.due_at).getTime();
+  const effectiveDue = submission?.extended_due_at || post.due_at;
+  const pastDue = effectiveDue && Date.now() > new Date(effectiveDue).getTime();
+  const resubmitOpen = (submission?.resubmit_until && Date.now() <= new Date(submission.resubmit_until).getTime())
+    || (effectiveDue && Date.now() <= new Date(effectiveDue).getTime());
 
   return (
     <div className="space-y-5">
@@ -210,6 +218,12 @@ function StudentWorkPanel({ post, submission, onReload, onClose }) {
           <p className="text-xs font-semibold text-tertiary uppercase tracking-wider mb-2">Instructions</p>
           <p className="text-sm text-foreground whitespace-pre-wrap">{post.instructions}</p>
         </div>
+      )}
+
+      {submission?.extended_due_at && (
+        <p className="text-xs text-warning">
+          Your teacher extended your due date to {format(new Date(submission.extended_due_at), 'd MMM, HH:mm')}.
+        </p>
       )}
 
       {returned && submission && (
@@ -239,10 +253,7 @@ function StudentWorkPanel({ post, submission, onReload, onClose }) {
             <p className="text-sm text-muted-foreground whitespace-pre-wrap">{submission.text_response}</p>
           )}
           {(submission.attachments || []).map((a, i) => (
-            <a key={i} href={a.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-              <Paperclip className="h-3.5 w-3.5" />
-              {a.name || 'Attachment'}
-            </a>
+            <PrivateAttachmentLink key={i} attachment={a} submissionId={submission.id} />
           ))}
         </div>
       )}
@@ -255,7 +266,9 @@ function StudentWorkPanel({ post, submission, onReload, onClose }) {
         />
       ) : (
         <div className="flex items-center gap-2">
-          {(returned || (turnedIn && !pastDue && post.allow_late)) && (
+          {(returned
+            ? (post.allow_late || resubmitOpen)
+            : (turnedIn && (!pastDue || post.allow_late || resubmitOpen))) && (
             <Button variant="outline" onClick={() => setComposing(true)}>
               {returned ? 'Turn in again' : 'Edit & resubmit'}
             </Button>

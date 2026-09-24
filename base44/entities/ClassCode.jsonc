@@ -1,0 +1,71 @@
+{
+  "name": "ClassCode",
+  "type": "object",
+  "properties": {
+    "school_id": {
+      "type": "string",
+      "description": "School of the class this code belongs to (may be null for school-less classes)"
+    },
+    "class_id": {
+      "type": "string",
+      "description": "Class this invite code grants entry to. Joining never grants any role \u2014 it only adds the student to this class's roster."
+    },
+    "class_name": {
+      "type": "string",
+      "description": "Denormalised class name for display"
+    },
+    "code": {
+      "type": "string",
+      "description": "The 6-character join code students enter or scan (uppercase, unambiguous charset)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "disabled",
+        "expired"
+      ],
+      "default": "active",
+      "description": "Whether this code is currently usable. 'disabled' = revoked by the teacher; 'expired' = set by maintenance once expires_at passed (treated identically to revoked at join time)."
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this code stops working (null = never expires). Enforced at join time by joinClassByCode."
+    },
+    "max_uses": {
+      "type": "number",
+      "description": "Maximum number of students that can join with this code (null = unlimited)"
+    },
+    "use_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many students have joined with this code \u2014 incremented by joinClassByCode after a successful join"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of the teacher/admin who created this code"
+    },
+    "label": {
+      "type": "string",
+      "description": "Optional label (e.g. 'Period 2 handout')"
+    }
+  },
+  "required": [
+    "class_id",
+    "code",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.school_id": "__service_role_only__"
+    },
+    "read": false,
+    "update": {
+      "data.school_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.school_id": "__service_role_only__"
+    }
+  }
+}

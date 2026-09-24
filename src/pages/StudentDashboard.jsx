@@ -21,6 +21,7 @@ import GradesWidget from '@/components/grades/GradesWidget';
 import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
 import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
 import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
+import RecentAnnouncementsWidget from '@/components/dashboard/RecentAnnouncementsWidget';
 import CrossOrgAchievementsCard from '@/components/dashboard/CrossOrgAchievementsCard';
 import SelfAchievementsCard from '@/components/dashboard/SelfAchievementsCard';
 import StudentOnboardingChecklist from '@/components/dashboard/StudentOnboardingChecklist';
@@ -238,11 +239,14 @@ function StudentDashboardContent() {
             <GradesWidget />
           </div>
 
-          {/* Assignments + Assemblies */}
+          {/* Assignments + Announcements */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AssignmentsWidget />
-            <StudentAssembliesWidget />
+            <RecentAnnouncementsWidget />
           </div>
+
+          {/* Assemblies */}
+          <StudentAssembliesWidget />
 
           {/* My Classes */}
           <Card className="shadow-sm">

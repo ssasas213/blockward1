@@ -21,6 +21,24 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'Title and body are required' }, { status: 400 });
     }
 
+    // Scope permission gate: staff can post to a class they teach (or to
+    // targeted students), but school-wide and year-group announcements are
+    // admin-only.
+    const scope = body.scope_type || 'SCHOOL';
+    if ((scope === 'SCHOOL' || scope === 'YEAR_GROUP') && profile.user_type !== 'admin') {
+      return Response.json({ error: 'Only organisation admins can post school-wide or year-group announcements' }, { status: 403 });
+    }
+    if (scope === 'CLASS') {
+      if (!body.class_id) return Response.json({ error: 'Pick a class for a class announcement' }, { status: 400 });
+      const clsRows = await base44.asServiceRole.entities.Class.filter({ id: body.class_id }).catch(() => []);
+      const cls = clsRows?.[0];
+      if (!cls) return Response.json({ error: 'Class not found' }, { status: 404 });
+      const teachesIt = cls.teacher_email === user.email || (cls.co_teachers || []).includes(user.email);
+      if (profile.user_type !== 'admin' && !teachesIt) {
+        return Response.json({ error: 'You can only post announcements to classes you teach' }, { status: 403 });
+      }
+    }
+
     const created = await base44.asServiceRole.entities.Announcement.create({
       title: body.title,
       body: body.body,

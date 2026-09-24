@@ -49,6 +49,28 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'You cannot message yourself.' }, { status: 400, headers: CORS });
     }
 
+    // Role-scoped messaging — enforced server-side, never just in the UI:
+    //  - students may only message staff (teachers/admins) of their school
+    //  - teachers may message staff, or only students in classes they teach
+    //  - admins may message anyone in their school
+    // Parents have no BlockWard accounts, so parent contact never happens
+    // through direct messages — it goes through the ParentComms flow instead.
+    const senderEmail = String(actor.actor_email || '').toLowerCase();
+    const recType = recipient.user_type;
+    if (actor.actor_role === 'student' && recType !== 'teacher' && recType !== 'admin') {
+      return Response.json({ ok: false, error: 'Students can only message teachers and staff of their school.' }, { status: 403, headers: CORS });
+    }
+    if (actor.actor_role === 'teacher' && recType === 'student') {
+      const classes = await base44.asServiceRole.entities.Class.filter({ school_id: actor.school_id }).catch(() => []);
+      const teachesRecipient = (classes || []).some((c) =>
+        (c.student_emails || []).some((e) => String(e).toLowerCase() === String(recipient.user_email).toLowerCase()) &&
+        (String(c.teacher_email || '').toLowerCase() === senderEmail ||
+          (c.co_teachers || []).some((t) => String(t).toLowerCase() === senderEmail)));
+      if (!teachesRecipient) {
+        return Response.json({ ok: false, error: 'You can only message students in your classes.' }, { status: 403, headers: CORS });
+      }
+    }
+
     const senderName = `${actor.first_name} ${actor.last_name}`.trim();
     const recipientName = `${recipient.first_name} ${recipient.last_name}`.trim();
     const conversationId = `${actor.school_id}:${[actor.actor_id, recipient.id].sort().join('|')}`;

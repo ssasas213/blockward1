@@ -58,13 +58,18 @@
             "type": "string"
           },
           "url": {
-            "type": "string"
+            "type": "string",
+            "description": "For private uploads (the default), the PRIVATE storage file_uri \u2014 not a URL. Access is only possible through getFileAccess, which permission-checks the caller and returns a short-lived signed URL. Legacy public uploads store a https URL."
           },
           "type": {
             "type": "string"
           },
           "size": {
             "type": "number"
+          },
+          "private": {
+            "type": "boolean",
+            "description": "True when url is a private-storage file_uri requiring a signed URL from getFileAccess"
           }
         },
         "required": [
@@ -72,7 +77,7 @@
         ]
       },
       "default": [],
-      "description": "Files the student attached when turning in"
+      "description": "Files the student attached when turning in. Uploaded to PRIVATE storage \u2014 a copied URI is worthless without a permission-checked signed URL."
     },
     "text_response": {
       "type": "string",
@@ -85,7 +90,17 @@
     "is_late": {
       "type": "boolean",
       "default": false,
-      "description": "Computed server-side against the post's due_at at turn-in time"
+      "description": "Computed server-side against the student's EFFECTIVE due date (extended_due_at when a teacher granted one, otherwise the post's due_at) at turn-in time"
+    },
+    "extended_due_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Teacher-granted per-student extension \u2014 overrides the post's due date for this student only. Late status and the turn-in window are computed against this date. Written only by submissionAction (service role)."
+    },
+    "resubmit_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Controlled resubmission window granted by the teacher on returned work \u2014 the student may turn in again until this time even after the due date. Written only by submissionAction (service role)."
     },
     "grade": {
       "type": "number",
