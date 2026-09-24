@@ -5,14 +5,13 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Sparkles, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox, Globe
+  Shield, UserCircle, Bell, BarChart3, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox, Globe
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
 import PendingTeachersBadge from '@/components/sidebar/PendingTeachersBadge';
 import ApprovalsCountBadge from '@/components/sidebar/ApprovalsCountBadge';
 import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
-import { Button } from '@/components/ui/button';
 import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
@@ -173,13 +172,6 @@ export default function Layout({ children, currentPageName }) {
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
         <TestModeBanner />
-        {(userType === 'teacher' || userType === 'admin') && (
-          <Button variant="ghost" size="icon" asChild className="h-9 w-9 p-2" title="BlockWard AI">
-            <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
-              <Sparkles className="h-4 w-4" />
-            </Link>
-          </Button>
-        )}
         <NotificationBell userEmail={testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email} />
       </header>
 
@@ -228,13 +220,7 @@ export default function Layout({ children, currentPageName }) {
           />
         </div>
         <div className="flex items-center gap-1">
-          {(userType === 'teacher' || userType === 'admin') && (
-            <Button variant="ghost" size="icon" asChild title="BlockWard AI">
-              <Link to={createPageUrl('BlockWardAI')} aria-label="BlockWard AI">
-                <Sparkles className="h-4 w-4" />
-              </Link>
-            </Button>
-          )}
+          {/* BlockWard AI is hidden during beta — its route is disabled. */}
           <TestModeBanner />
           <ThemeToggleCompact />
           <div className="h-6 w-px bg-border mx-1" />

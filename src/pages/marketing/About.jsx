@@ -4,8 +4,8 @@ import MarketingShell from '@/components/marketing/MarketingShell';
 import { Button } from '@/components/ui/button';
 
 const PRINCIPLES = [
-  { icon: Lock, title: 'Records are permanent', desc: 'Once a credential is verified, nobody can quietly edit or delete it — not the student, not the organisation, not us.' },
-  { icon: Users, title: 'Students own their record', desc: 'Achievements belong to the person who earned them. They carry their verified portfolio with them for life — across schools, clubs and employers.' },
+  { icon: Lock, title: 'Records are tamper-evident', desc: 'Once a credential is verified, nobody can quietly edit it — not the student, not the organisation, not us. Corrections happen as visible revocations or new versions, on the record.' },
+  { icon: Users, title: 'Students own their record', desc: 'Achievements belong to the person who earned them. They carry their verified portfolio with them — across schools, clubs and employers.' },
   { icon: ShieldCheck, title: 'Trust must be earned in public', desc: 'Any credential can be checked by any third party in under a minute. We never ask anyone to just take our word for it.' },
   { icon: Award, title: 'Recognition should be meaningful', desc: 'Endorsements are deliberately scarce, sign-offs are deliberate and named, and rejections stay private. Nothing here is a vanity metric factory.' },
 ];
@@ -16,7 +16,7 @@ export default function About() {
   return (
     <MarketingShell
       title="We think proof should outlast the applause."
-      subtitle="BlockWard turns achievements into permanent, independently verifiable records — for students, and for the schools, clubs and academies that believe in them."
+      subtitle="BlockWard turns achievements into portable, independently verifiable records — for students, and for the schools, clubs and academies that believe in them."
     >
       {/* The problem */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
@@ -32,7 +32,7 @@ export default function About() {
             less every year. The people who did the work end up paying the price for the people who fake it.
           </p>
           <p className="text-base text-muted-foreground leading-relaxed">
-            BlockWard closes that gap. When an organisation verifies an achievement, it becomes a permanent record the
+            BlockWard closes that gap. When an organisation verifies an achievement, it becomes a verified record the
             student owns — and one that any third party can check independently, in minutes, without an account or a
             phone call.
           </p>
@@ -70,7 +70,7 @@ export default function About() {
             <li><strong className="text-foreground">Schools</strong> — keep achievement, behaviour and leadership recognition verifiable and portable, from Year 7 through graduation.</li>
             <li><strong className="text-foreground">Sports clubs &amp; martial arts academies</strong> — gradings, belts and medals with a real, checkable record behind them.</li>
             <li><strong className="text-foreground">Music, chess and competitive organisations</strong> — exam results, ratings and championship placings that follow the student.</li>
-            <li><strong className="text-foreground">Students</strong> — one permanent, public portfolio across every organisation they've ever been part of.</li>
+            <li><strong className="text-foreground">Students</strong> — one portable, verified portfolio across every organisation they've ever been part of.</li>
             <li><strong className="text-foreground">Universities &amp; employers</strong> — verify any shared credential in under a minute, no account required.</li>
           </ul>
 

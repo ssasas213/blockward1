@@ -5,7 +5,7 @@ const guarantees = [
   {
     icon: Lock,
     title: 'Cryptographically anchored',
-    desc: 'Every approved credential is written to a public ledger (Polygon) via an on-chain transaction. Its hash, network and timestamp are permanently verifiable — the record cannot be edited or deleted by anyone, including BlockWard.',
+    desc: 'Every approved credential is anchored on a public ledger (Sepolia testnet during beta) via an on-chain transaction. Its hash, network and timestamp are independently verifiable — the anchor cannot be quietly altered by anyone, including BlockWard.',
   },
   {
     icon: ShieldCheck,
@@ -20,7 +20,7 @@ const guarantees = [
   {
     icon: FileSearch,
     title: 'Institution-grade audit trail',
-    desc: 'Signatures, signer identities, verification methods, and timestamps form a complete chain of custody from nomination to approval — alongside the on-chain record and Drive-archived evidence.',
+    desc: 'Signatures, signer identities, verification methods, and timestamps form a complete chain of custody from nomination to approval — alongside the on-chain record and evidence stored with restricted access.',
   },
 ];
 
@@ -31,7 +31,7 @@ export default function BlockchainGuaranteesSection() {
         <div className="text-center mb-12">
           <p className="text-sm text-primary font-medium mb-2">Security &amp; integrity</p>
           <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
-            Guaranteed by cryptography, not by promises
+            Checkable by anyone, not promised by us
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Your organisation's credibility is the product. Here is exactly how we protect it.
@@ -55,7 +55,7 @@ export default function BlockchainGuaranteesSection() {
 
         <p className="mt-8 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
           <Link2 className="h-4 w-4 text-tertiary" />
-          Students never see any of this complexity — they only see: Verified. Permanently recorded. Cannot be edited or deleted.
+          Students never see any of this complexity — they only see: Verified. Ledger-anchored. Independently checkable.
         </p>
       </div>
     </section>

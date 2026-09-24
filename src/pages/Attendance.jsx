@@ -110,7 +110,15 @@ function AttendanceContent() {
   );
 }
 
+// The one canonical attendance route — a role-based view of one system:
+// students see their own attendance, admins the school overview, teachers the
+// class register. /AdminAttendance and /StudentAttendance redirect here.
 export default function Attendance() {
+  const { effectiveRole, loading } = useSchool();
+
+  if (loading) return <AppLoadingGate />;
+  if (effectiveRole === 'student') return <StudentAttendance />;
+  if (effectiveRole === 'admin') return <AdminAttendance />;
   return (
     <RoleGuard roles={['teacher']}>
       <AttendanceContent />

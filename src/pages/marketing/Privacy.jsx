@@ -14,7 +14,8 @@ const SECTIONS = [
     body: [
       'Account data: your name, email address, and the role your organisation gives you. If you are a student, your organisation may also record your year or grade level and parent/guardian contact details for school communication.',
       'Achievement data: the title, description, date, category and evidence you (or your organisation) submit for verification. Evidence files are stored with restricted access, and evidence is only shown on public pages when the student has chosen to publish it.',
-      'Credential records: once an achievement is verified, a permanent public record is created containing the credential details, the issuing organisation, and each signer\'s name, role, verification method and timestamp. These records cannot be edited or deleted — that permanence is the product.',
+      'Credential records: once an achievement is verified, a public record is created containing the credential details, the issuing organisation, and each signer\'s name, role, verification method and timestamp. Verified content cannot be quietly edited — corrections are visible new versions or revocations, which is what keeps the record trustworthy.',
+      'What goes on-chain: only a cryptographic fingerprint (a SHA-256 hash) of the credential content, plus the anchor\'s network and timestamp. No names, emails, photos, evidence or other personal data ever go on-chain. During beta, anchors are written to the Sepolia testnet.',
       'Usage data: we keep basic technical logs (for example, which public credential was checked, and when) to operate the service and report aggregate platform statistics. We do not run advertising trackers.',
     ],
   },
@@ -29,7 +30,7 @@ const SECTIONS = [
   {
     title: '4. Students and minors',
     body: [
-      'Most BlockWard members are students, many under 18. Organisations are responsible for obtaining the consent their local law requires (typically from a parent or guardian) before adding a student and recording their achievements. We never publish a minor\'s contact details anywhere public, and public profiles show only the display name the student and their organisation have chosen.',
+      'Most BlockWard members are students, many under 18. Organisations are responsible for obtaining the consent their local law requires (typically from a parent or guardian) before adding a student and recording their achievements — for school records, the school is the organisation responsible for that data and for its accuracy. Accounts for members under 13 stay locked until a parent or guardian consents through the link we email them, and profiles for members under 16 default to private visibility. We never publish a minor\'s contact details anywhere public, and public profiles show only the display name the student and their organisation have chosen.',
     ],
   },
   {
@@ -48,7 +49,7 @@ const SECTIONS = [
   {
     title: '7. Retention',
     body: [
-      'Account and profile data is kept while your account is active. Verified credential records are permanent by design — that is stated on every marketing page and here. You can make your profile private or deactivate your account, which hides your profile, but the cryptographic record of issued credentials remains verifiable. This is the deal, stated plainly.',
+      'Account and profile data is kept while your account is active, and deleted when you close your account. Verified credential records are retained so they stay verifiable — but you can make your profile or any credential private or link-only at any time, which hides them from public pages, and you can request deletion of your account and non-credential personal data. On-chain fingerprints are not personal data and cannot be removed by anyone — but they contain no personal information on their own.',
     ],
   },
   {
@@ -60,7 +61,7 @@ const SECTIONS = [
   {
     title: '9. Changes and contact',
     body: [
-      'If this policy changes materially, we will notify members in the app. Questions or requests: use the contact page and we will route it to the right person.',
+      'If this policy changes materially, we will notify members in the app. Privacy questions, access, correction or deletion requests: use the contact page with the topic "Privacy / data request" and we will route it to the right person.',
     ],
   },
 ];
@@ -71,7 +72,7 @@ export default function Privacy() {
   return (
     <MarketingShell
       title="Privacy Policy"
-      subtitle="Written in plain language. Last updated: September 2026."
+      subtitle="Written in plain language. Last updated: September 2026. Draft — pending legal review. Operated by [COMPANY LEGAL NAME]."
     >
       <section className="py-14 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto space-y-10">

@@ -11,12 +11,12 @@ const PILLARS = [
   {
     icon: Network,
     title: 'Anchored to a public ledger',
-    desc: 'Approved credentials are written to a public ledger (Polygon network). The transaction hash, network and timestamp are shown on every verification page, with a link to a public explorer so anyone can confirm the anchor independently — including after the issuing organisation stops using BlockWard.',
+    desc: 'Approved credentials are anchored on a public ledger (Sepolia testnet during beta). The transaction hash, network and timestamp are shown on every verification page, with a link to a public explorer so anyone can confirm the anchor independently — including after the issuing organisation stops using BlockWard.',
   },
   {
     icon: Lock,
     title: 'Records cannot be quietly changed',
-    desc: 'Once verified, a credential cannot be edited or deleted — by the student, the organisation, or BlockWard. If an achievement turns out to be wrong, the only recourse is visible, permanent revocation. There is no invisible back door.',
+    desc: 'Once verified, a credential cannot be quietly edited — by the student, the organisation, or BlockWard. If an achievement turns out to be wrong, the fix is visible: a correction that lands as a new, re-signed version, or a permanent revocation. There is no invisible back door.',
   },
   {
     icon: Database,
@@ -74,7 +74,8 @@ export default function Security() {
             <h2 className="text-xl font-semibold text-foreground tracking-tight mb-3">Found an issue?</h2>
             <p className="text-base text-muted-foreground leading-relaxed">
               If you believe you've found a security or integrity problem, tell us directly through the contact page —
-              mark it "Verification help" or "Press &amp; partnerships" and include details. We take every report seriously.
+              mark it "Security report" and include details. We take every report seriously. For data and privacy
+              requests, use the "Privacy / data request" topic.
             </p>
             <a href="/contact" className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-primary hover:underline">
               Contact us →

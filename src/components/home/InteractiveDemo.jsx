@@ -7,7 +7,7 @@ const stages = [
   { icon: FileText, title: 'Achievement Created', desc: 'A record is created with evidence attached.' },
   { icon: PenLine, title: 'Teacher Signs', desc: 'The verifier reviews and digitally signs the record.' },
   { icon: ShieldCheck, title: 'Admin Approves', desc: 'The organisation authorises the achievement.' },
-  { icon: HardDrive, title: 'Archived', desc: 'Permanently stored — it cannot be edited or deleted.' },
+  { icon: HardDrive, title: 'Anchored', desc: 'A fingerprint of the record is anchored on a public ledger — tamper-evident and independently checkable.' },
   { icon: Link2, title: 'Verified', desc: 'Anyone can verify authenticity via a public link.' },
 ];
 
@@ -28,7 +28,7 @@ export default function InteractiveDemo() {
             See the verification lifecycle
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-            Click through each stage to watch an achievement become a permanent, verifiable credential.
+            Click through each stage to watch an achievement become a verified, independently checkable credential.
           </p>
         </div>
 

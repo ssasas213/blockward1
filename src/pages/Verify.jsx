@@ -773,7 +773,7 @@ export default function Verify() {
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                 {chain.status === 'confirmed'
-                  ? <>This credential's content commitment is anchored on <strong className="text-foreground">the Sepolia testnet</strong> (not mainnet). The on-chain entry is permanent — it cannot be edited, deleted or faked by anyone, including the issuing organisation or BlockWard. The displayed details were independently recalculated and match the committed hash.</>
+                  ? <>This credential's content commitment is anchored on <strong className="text-foreground">the Sepolia testnet</strong> (not mainnet). The on-chain entry is permanent and outside anyone's control — it cannot be quietly edited by the issuing organisation or by BlockWard. The displayed details were independently recalculated and match the committed hash.</>
                   : chain.status === 'hash_mismatch'
                     ? 'The displayed details were recalculated and do NOT match the hash committed on-chain. Do not trust this credential in its current form.'
                     : chain.status === 'chain_unavailable'

@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
-import { FileText, ShieldCheck, PenTool, Award, Link2, Users, AtSign, Briefcase } from 'lucide-react';
+import { FileText, ShieldCheck, PenTool, Award, Link2, Users, AtSign } from 'lucide-react';
 import MarketingShell from '@/components/marketing/MarketingShell';
 
 const LIFECYCLE = [
   { icon: FileText, title: '1. Achievement created', desc: 'A student requests verification of something they did, or a staff member records an award — with evidence attached in either case.' },
   { icon: ShieldCheck, title: '2. Verification', desc: 'The nominated verifier reviews the evidence. An organisation admin gives second approval for higher-assurance credentials. Tier 3 adds an independent external verifier.' },
   { icon: PenTool, title: '3. Signed', desc: 'Each reviewer signs with a typed or drawn digital signature, records how they verified it, and the attestation is timestamped.' },
-  { icon: Award, title: '4. Permanently recorded', desc: 'The approved credential is written to a public ledger and delivered to the student\'s vault. It cannot be edited or deleted afterwards.' },
+  { icon: Award, title: '4. Anchored & delivered', desc: 'The approved credential is delivered to the student\'s vault and a cryptographic fingerprint of its content is anchored on a public ledger (Sepolia testnet during beta). It cannot be quietly edited — corrections are visible new versions or revocations.' },
   { icon: Link2, title: '5. Shared & checked', desc: 'The student shares their profile or a verification link. Any third party checks the full record at /verify in under a minute — no account needed.' },
 ];
 
@@ -96,11 +96,12 @@ export default function Documentation() {
               </p>
             </div>
             <div className="p-6 rounded-xl bg-card  border border-border">
-              <Briefcase className="h-5 w-5 text-primary mb-3" />
-              <h3 className="text-base font-medium text-foreground mb-2">Opportunities</h3>
+              <ShieldCheck className="h-5 w-5 text-primary mb-3" />
+              <h3 className="text-base font-medium text-foreground mb-2">Corrections, visibly</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Organisations post internships, competitions, trials and scholarships. Students apply with their verified
-                credentials attached — no CV claims — and their matches are shown before they apply.
+                If attested content turns out to be wrong, the student requests a correction and the original verifier
+                re-signs it. The result is a new version with a transparent change history — the old version is retained,
+                never overwritten.
               </p>
             </div>
           </div>

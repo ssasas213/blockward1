@@ -4,11 +4,13 @@ import { Button } from '@/components/ui/button';
 import Reveal from '@/components/home/Reveal';
 import { createPageUrl } from '@/utils';
 
-const DEMO = {
+// Sample data for the example profile. Every name and organisation is
+// FICTIONAL — deliberately not a real-sounding brand.
+export const DEMO = {
   name: 'Maya Okonkwo',
   initials: 'MO',
   meta: 'Year 12 · Riverside Secondary · London, UK',
-  link: 'blockward.me/@maya-o',
+  link: 'blockward.base44.app/@maya-o',
   stats: [
     { label: 'Verified achievements', value: '24' },
     { label: 'Achievement points', value: '1,830' },
@@ -27,7 +29,7 @@ const DEMO = {
     {
       icon: Medal,
       title: 'Blue Belt — BJJ',
-      org: 'Gracie Academy London',
+      org: 'Ironbridge Jiu-Jitsu Academy',
       date: 'January 2026',
       verifier: 'Signed by Head Coach · Approved by Academy Owner',
       category: 'Martial Arts',
@@ -36,7 +38,7 @@ const DEMO = {
     {
       icon: Star,
       title: 'Grade 8 Distinction — Violin',
-      org: 'Royal Music Academy',
+      org: 'Harmony Vale Music Academy',
       date: 'December 2025',
       verifier: 'Signed by Senior Examiner · Approved by Academy Director',
       category: 'Arts',
@@ -80,6 +82,12 @@ function AchievementRow({ a, i }) {
           </div>
           <p className="text-sm text-muted-foreground mt-1">{a.org} · {a.date}</p>
           <p className="text-xs text-tertiary mt-1">{a.verifier}</p>
+          <a
+            href={`/verify/demo?a=${i}`}
+            className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-primary hover:underline"
+          >
+            View verification →
+          </a>
         </div>
       </div>
     </Reveal>
@@ -95,6 +103,7 @@ export default function DemoProfile() {
           <a href={createPageUrl('Home')} className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
             <span className="font-semibold text-foreground">BlockWard</span>
+            <span className="ml-1.5 px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/15 text-[10px] font-semibold uppercase tracking-wide text-primary">Beta</span>
           </a>
           <div className="flex items-center gap-3">
             <button onClick={() => window.location.href = createPageUrl('Home')} className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
@@ -109,9 +118,9 @@ export default function DemoProfile() {
       </header>
 
       <main className="pt-14 max-w-3xl mx-auto px-4 sm:px-6 pb-24">
-        {/* Example banner */}
+        {/* Sample-data banner */}
         <div className="mt-6 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning text-center">
-          This is an example profile — so you can see exactly what universities and employers see.
+          Sample data — every name and organisation here is fictional. This shows what universities and employers see; nothing on this page is a real credential.
         </div>
 
         {/* Profile header */}

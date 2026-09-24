@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Suspense } from 'react'
 import './App.css'
 import { Toaster } from "@/components/ui/toaster"
 import { Toaster as SonnerToaster } from "@/components/ui/sonner"
@@ -44,9 +44,8 @@ import Privacy from './pages/marketing/Privacy';
 import Terms from './pages/marketing/Terms';
 import OrgDashboard from './pages/organisations/Dashboard';
 import Invitations from './pages/Invitations';
-const StudentGrades = lazy(() => import('./pages/StudentGrades'));
-import Gradebook from './pages/Gradebook';
-const GradeManagement = lazy(() => import('./pages/GradeManagement'));
+// Grades/Gradebook are routed through the role-aware /Grades dispatcher
+// (src/pages/Grades.jsx), which imports them directly.
 import AcademicSettings from './pages/AcademicSettings';
 import Assignments from './pages/Assignments';
 import Assemblies from './pages/Assemblies';
@@ -65,6 +64,10 @@ import ExternalVerify from './pages/ExternalVerify';
 import GuardianConsent from './pages/GuardianConsent';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
+import SampleVerification from './pages/SampleVerification';
+import Grades from './pages/Grades';
+import RouteSeo from '@/components/RouteSeo';
+import RoleDashboardRedirect from '@/components/auth/RoleDashboardRedirect';
 import TeamPage from './pages/TeamPage';
 import TeamJoin from './pages/TeamJoin';
 import HandleRoute from '@/components/HandleRoute';
@@ -139,6 +142,8 @@ const AuthenticatedApp = () => {
       <Route path="/StudentMyRecords" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/StudentPortfolioVault" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
+      {/* Sample verification page for the example profile — clearly labelled, never a real credential */}
+      <Route path="/verify/demo" element={<SampleVerification />} />
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/CustodianDashboard" element={<Navigate to="/Records" replace />} />
@@ -148,9 +153,11 @@ const AuthenticatedApp = () => {
       <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
       <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentGrades" element={<LayoutWrapper currentPageName="StudentGrades"><ProtectedRoute><StudentGrades /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Gradebook" element={<LayoutWrapper currentPageName="Gradebook"><ProtectedRoute><Gradebook /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/GradeManagement" element={<LayoutWrapper currentPageName="GradeManagement"><ProtectedRoute><GradeManagement /></ProtectedRoute></LayoutWrapper>} />
+      {/* Grades — one canonical, role-aware page; legacy grade routes redirect here */}
+      <Route path="/Grades" element={<LayoutWrapper currentPageName="Grades"><ProtectedRoute><Grades /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentGrades" element={<Navigate to="/Grades" replace />} />
+      <Route path="/Gradebook" element={<Navigate to="/Grades" replace />} />
+      <Route path="/GradeManagement" element={<Navigate to="/Grades" replace />} />
       <Route path="/AcademicSettings" element={<LayoutWrapper currentPageName="AcademicSettings"><ProtectedRoute><AcademicSettings /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Assignments" element={<LayoutWrapper currentPageName="Assignments"><ProtectedRoute><Assignments /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Assemblies" element={<LayoutWrapper currentPageName="Assemblies"><ProtectedRoute><Assemblies /></ProtectedRoute></LayoutWrapper>} />
@@ -166,7 +173,7 @@ const AuthenticatedApp = () => {
       <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MySchool" element={<LayoutWrapper currentPageName="MySchool"><ProtectedRoute><MySchool /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
-      <Route path="/GradeBook" element={<Navigate to="/Gradebook" replace />} />
+      <Route path="/GradeBook" element={<Navigate to="/Grades" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/guardian-consent/:token" element={<GuardianConsent />} />
       <Route path="/team/:slug" element={<TeamPage />} />
@@ -178,6 +185,10 @@ const AuthenticatedApp = () => {
       <Route path="/Feed" element={<LayoutWrapper currentPageName="Feed"><ProtectedRoute><Feed /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
+      {/* BlockWard AI is hidden during beta — any link to it lands on the
+          user's own dashboard instead of a 404. Restore the original page
+          element to re-enable. */}
+      <Route path="/BlockWardAI" element={<RoleDashboardRedirect />} />
 
       {/* Platform-specific login/signup routes — /schools/login and
           /organisations/login are the canonical STAFF entry (same shared
@@ -224,6 +235,7 @@ function App() {
           <SchoolProvider>
           <Router>
             <NavigationTracker />
+            <RouteSeo />
             <AuthenticatedApp />
           </Router>
           <Toaster />

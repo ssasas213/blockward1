@@ -12,6 +12,8 @@ const TOPICS = [
   { value: 'organisations', label: 'Schools & organisations' },
   { value: 'student_support', label: 'Student support' },
   { value: 'verification_support', label: 'Verification help' },
+  { value: 'security_report', label: 'Security report' },
+  { value: 'privacy_request', label: 'Privacy / data request' },
   { value: 'partnerships', label: 'Press & partnerships' },
 ];
 
