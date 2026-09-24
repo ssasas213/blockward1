@@ -9,7 +9,8 @@ import { Trophy } from 'lucide-react';
  * achievement cards (compact rows in list mode). Archived/minted requests
  * and verified self-reported items are excluded: they already exist as
  * verified achievements, and including them here made the same achievement
- * render twice with different subtitles and icons.
+ * render twice with different subtitles and icons. Revoked and superseded
+ * versions stay visible with their own labels — the history is the student's.
  */
 export default function AllTab({ verified, requests, selfReported, onSelectVerified, onGoTo, onShare, onGetVerified, viewMode = 'grid', loading = false }) {
   const items = useMemo(() => {

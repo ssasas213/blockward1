@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight, UserCheck, PenLine } from 'lucide-react';
+import { BadgeCheck, Trophy, Medal, Star, Sparkles, Heart, Users, Clock, Share2, ArrowRight, UserCheck, PenLine, Ban, History, Link2 } from 'lucide-react';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import GeneratedCover from '@/components/publicProfile/GeneratedCover';
 
@@ -42,6 +42,19 @@ export const STATUS_BADGE = {
     card: 'border-transparent bg-info text-info-foreground',
     row: 'border-info/30 bg-info/10 text-info',
   },
+  // Revoked — destructive red; never shareable.
+  revoked: {
+    label: 'Revoked', Icon: Ban,
+    card: 'border-border bg-background text-destructive',
+    row: 'border-destructive/30 bg-destructive/10 text-destructive',
+  },
+  // Superseded — info blue: an approved correction replaced this version,
+  // which is information, not a failure.
+  superseded: {
+    label: 'Superseded', Icon: History,
+    card: 'border-border bg-background text-info',
+    row: 'border-info/30 bg-info/10 text-info',
+  },
   pending: {
     label: 'Pending', Icon: Clock,
     card: 'border-transparent bg-warning text-warning-foreground',
@@ -73,7 +86,12 @@ const SELF_CATEGORY = {
 export function cardFromVault(v) {
   return {
     id: v.record_id || v.id,
-    status: v.verification_mode === 'independent' ? 'independent' : 'verified',
+    // Label precedence: revoked > superseded > independent > verified.
+    status: v.status === 'revoked' ? 'revoked'
+      : v.status === 'superseded' ? 'superseded'
+      : v.verification_mode === 'independent' ? 'independent' : 'verified',
+    // On-chain anchor present — drives the "On-chain" chip.
+    chain: v.chain_confirmed === true || !!v.token_id,
     title: v.title,
     cover: v.image_url || null,
     category: v.category || 'special',
@@ -141,7 +159,7 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
   const status = STATUS_BADGE[item.status] || STATUS_BADGE.verified;
   const cat = CATEGORY_STYLE[item.category] || CATEGORY_STYLE.special;
   const endorsers = (item.endorsers || []).slice(0, 4);
-  const canShowActions = item.status === 'verified' && (onShare || (canEndorse && onEndorse));
+  const canShowActions = ['verified', 'independent'].includes(item.status) && (onShare || (canEndorse && onEndorse));
 
   // Long-press on touch devices reveals the actions (hover equivalent).
   const onTouchStart = () => {
@@ -187,6 +205,13 @@ export default function AchievementCard({ item, onClick, onShare, onEndorse, can
         {status.Icon && <status.Icon className="h-3 w-3" />}
         {status.label}
       </span>
+
+      {/* On-chain chip — only when a blockchain anchor actually exists */}
+      {item.chain && (
+        <span className="absolute top-9 right-2.5 inline-flex items-center gap-1 rounded-full border border-white/25 bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold text-white">
+          <Link2 className="h-2.5 w-2.5" /> On-chain
+        </span>
+      )}
 
       {/* Category chip — top-left, in the category's colour */}
       <span className={`absolute top-2.5 left-2.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold ${cat.chip}`}>
@@ -308,7 +333,7 @@ export function AchievementRow({ item, onClick, onShare }) {
           {[item.org || cat.label, fmtDate(item.date)].filter(Boolean).join(' · ')}
         </p>
       </div>
-      {item.status === 'verified' && onShare && (
+      {['verified', 'independent'].includes(item.status) && onShare && (
         <span
           role="button" tabIndex={0}
           onClick={(e) => { e.stopPropagation(); onShare(item); }}
@@ -319,6 +344,7 @@ export function AchievementRow({ item, onClick, onShare }) {
           <Share2 className="h-4 w-4" />
         </span>
       )}
+      {item.chain && <Link2 className="h-3.5 w-3.5 text-info flex-shrink-0" aria-label="Anchored on-chain" />}
       <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold flex-shrink-0 ${status.row}`}>
         {status.Icon && <status.Icon className="h-3 w-3" />}
         {status.label}

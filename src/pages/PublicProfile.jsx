@@ -22,6 +22,7 @@ import { exportPortfolioPdf } from '@/lib/portfolioPdf';
 import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
 import { publicProfileVars, bannerStyle, DEFAULT_SECTION_ORDER } from '@/lib/profileThemes';
 import OrganisationsChips from '@/components/publicProfile/OrganisationsChips';
+import PublicGradesSection from '@/components/publicProfile/PublicGradesSection';
 import { createPageUrl } from '@/utils';
 
 const DEFAULT_OG = 'https://media.base44.com/images/public/6936b840baa53bb465f68d09/3c961351d_generated_image.png';
@@ -375,6 +376,12 @@ export default function PublicProfile({ handle }) {
           {achievements.length > 0 && <TrustStrip className="mt-10" />}
         </div>
       );
+    }
+    if (sec === 'grades') {
+      // Only ever renders when the student opted in AND published grades exist
+      // (publicProfileData returns null otherwise).
+      if (!data.grades?.length) return null;
+      return <PublicGradesSection key={sec} grades={data.grades} />;
     }
     if (sec === 'endorsements') {
       if (!data.endorsements_unattached?.length) return null;

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock, Palette,
+  Globe2, Link2, Loader2, Save, AtSign, Check, X, ExternalLink, Lock, Palette, GraduationCap,
 } from 'lucide-react';
 import ProfileCustomizer from '@/components/profile/ProfileCustomizer';
 import ProfilePreview from '@/components/publicProfile/ProfilePreview';
@@ -32,6 +32,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
   const [originalHandle, setOriginalHandle] = useState(null);
   const [bio, setBio] = useState('');
   const [visibility, setVisibility] = useState('public');
+  const [publicGrades, setPublicGrades] = useState(false);
   const [cooldownDays, setCooldownDays] = useState(0);
   const [achievements, setAchievements] = useState([]);
   const [custom, setCustom] = useState(DEFAULT_CUSTOM);
@@ -55,6 +56,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
       setHandleInput(p.handle || '');
       setBio(p.bio || '');
       setVisibility(p.profile_visibility || 'public');
+      setPublicGrades(p.public_grades === true);
       setCooldownDays(p.cooldown_days_remaining || 0);
       setAchievements(res.data?.achievements || []);
       const nextCustom = {
@@ -132,7 +134,7 @@ export default function PublicProfileSettings({ profile, onSaved }) {
     if (handleBlocked) { toast.error(availability.reason || 'Fix your handle first'); return; }
     setSaving(true);
     try {
-      const payload = { bio, profile_visibility: visibility, ...custom };
+      const payload = { bio, profile_visibility: visibility, public_grades: publicGrades, ...custom };
       if (handleDirty) payload.handle = handleInput.trim().toLowerCase();
 
       const res = await base44.functions.invoke('updatePublicProfile', payload);
@@ -287,6 +289,27 @@ export default function PublicProfileSettings({ profile, onSaved }) {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Public grades — explicit opt-in, private by default */}
+          <div className="space-y-2">
+            <Label>Show published grades publicly</Label>
+            <button
+              type="button"
+              onClick={() => setPublicGrades(!publicGrades)}
+              className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-colors ${publicGrades ? 'border-primary/50 bg-primary/10' : 'border-border bg-background hover:bg-hover'}`}
+            >
+              <GraduationCap className={`h-4 w-4 mt-0.5 ${publicGrades ? 'text-primary' : 'text-muted-foreground'}`} />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">{publicGrades ? 'On — my latest published grade per subject is public' : 'Off — grades stay private'}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Only the subject, final grade, percentage and term are ever shown — never teacher comments or marks detail. Save to apply.
+                </p>
+              </div>
+              <span className={`h-5 w-5 rounded-full border flex-shrink-0 flex items-center justify-center ${publicGrades ? 'border-primary bg-primary/15 text-primary' : 'border-border text-muted-foreground'}`}>
+                {publicGrades && <Check className="h-3 w-3" />}
+              </span>
+            </button>
           </div>
 
           {/* Per-achievement visibility */}

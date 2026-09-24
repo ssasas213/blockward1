@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Plus, Share2, AtSign } from 'lucide-react';
+import { Plus, Share2, AtSign, Search } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -59,6 +59,7 @@ function StudentBlockWardsContent() {
   const [viewMode, setViewMode] = useState(() => {
     try { return localStorage.getItem('bw_view_mode') || 'grid'; } catch { return 'grid'; }
   });
+  const [search, setSearch] = useState('');
   const [shareTarget, setShareTarget] = useState(null);
   const [celebrateQueue, setCelebrateQueue] = useState([]);
   const [celebrating, setCelebrating] = useState(null);
@@ -211,6 +212,15 @@ function StudentBlockWardsContent() {
   const allLoaded = verified !== null && requests !== null && selfReported !== null;
   const totalCount = allLoaded ? verified.length + openRequestCount + unverifiedCount : null;
 
+  // Search — one box filtering every tab at once (title, description and
+  // organisation). Export/share always use the FULL lists, never the search
+  // results, so a stray query can never narrow what the student exports.
+  const q = search.trim().toLowerCase();
+  const matches = (t) => !q || String(t || '').toLowerCase().includes(q);
+  const shownVerified = q ? (verified || []).filter(v => matches(v.title) || matches(v.description) || matches(v.organisation_name)) : verified;
+  const shownRequests = q ? (requests || []).filter(r => matches(r.title) || matches(r.credential_type_title) || matches(r.school_name)) : requests;
+  const shownSelf = q ? (selfReported || []).filter(s => matches(s.title) || matches(s.description)) : selfReported;
+
   return (
     <div className="space-y-6">
       {/* Header — renders immediately from the session identity */}
@@ -246,6 +256,29 @@ function StudentBlockWardsContent() {
         </div>
       </div>
 
+      {/* Search — filters every tab */}
+      {(allLoaded && totalCount > 0) && (
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search your achievements…"
+            className="w-full h-9 pl-9 pr-8 rounded-lg bg-secondary/60 border border-border text-sm text-foreground placeholder:text-tertiary focus:outline-none focus:border-primary/40 focus:bg-secondary focus:ring-2 focus:ring-primary/15 transition-colors"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary hover:text-foreground"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Tabs + view toggle — the grid is the default; the list is the compact mode */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -258,9 +291,9 @@ function StudentBlockWardsContent() {
 
         <TabsContent value="all" className="mt-6">
           <AllTab
-            verified={verified || []}
-            requests={requests || []}
-            selfReported={selfReported || []}
+            verified={shownVerified || []}
+            requests={shownRequests || []}
+            selfReported={shownSelf || []}
             onSelectVerified={setSelectedBlockWard}
             onGoTo={setActiveTab}
             onShare={setShareTarget}
@@ -272,7 +305,7 @@ function StudentBlockWardsContent() {
 
         <TabsContent value="verified" className="mt-6">
           <VerifiedTab
-            achievements={verified || []}
+            achievements={shownVerified || []}
             profile={profile}
             onSelect={setSelectedBlockWard}
             onShare={setShareTarget}
@@ -283,7 +316,7 @@ function StudentBlockWardsContent() {
 
         <TabsContent value="pending" className="mt-6">
           <PendingTab
-            requests={requests || []}
+            requests={shownRequests || []}
             caps={caps}
             onEdit={(r) => { setEditing(r); setFormOpen(true); }}
             onEditDetail={(r) => setEditTarget({ kind: 'request', data: r })}
@@ -296,7 +329,7 @@ function StudentBlockWardsContent() {
 
         <TabsContent value="unverified" className="mt-6">
           <UnverifiedTab
-            items={selfReported || []}
+            items={shownSelf || []}
             onGetVerified={handleGetVerified}
             onEdit={(card) => setEditTarget({ kind: 'self', data: card?.raw || card })}
             viewMode={viewMode}
