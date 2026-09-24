@@ -119,6 +119,10 @@ Deno.serve(async (req) => {
     const earned = records.filter(r => {
       // Soft-deleted duplicates never appear in the vault.
       if (r.deleted === true) return false;
+      // Superseded versions stay visible with their own clear label — an
+      // approved correction replaces them, but the history is never hidden
+      // from the student who owns it.
+      if (r.status === 'superseded' || r.superseded_by_id) return true;
       // Only 'delivered_to_vault' and legacy 'archived' count as delivered.
       // 'approved' alone is NOT delivered — the admin must explicitly send to vault.
       const isDeliveredStatus = r.status === 'delivered_to_vault' || r.status === 'archived';
@@ -136,9 +140,11 @@ Deno.serve(async (req) => {
     // ── STEP 4: Join linked BlockWard data ──
     // Query by both student_email and owner_student_email to catch all BlockWards
     // regardless of how the email was stored at creation time.
+    // No status filter — a REVOKED BlockWard must stay visible in the vault
+    // with its revoked label, not silently disappear.
     const [blockWardsByEmail, blockWardsByOwnerId] = await Promise.all([
-      base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email, status: 'active' }),
-      base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email), status: 'active' }),
+      base44.asServiceRole.entities.BlockWard.filter({ student_email: profile.user_email }),
+      base44.asServiceRole.entities.BlockWard.filter({ owner_student_email: normalizeEmail(profile.user_email) }),
     ]);
     // Deduplicate by BlockWard id — the email and owner_email lookups can
     // return the same BlockWard, and merging blindly duplicated cards.
@@ -171,10 +177,21 @@ Deno.serve(async (req) => {
       if (s) orgById[s.id] = { name: s.name, logo_url: s.logo_url || null };
     }
 
+    // Registry join — the permanent public record for each credential. This
+    // is what powers the vault's verification status (revoked), the on-chain
+    // anchor state and the signer chain shown in the detail view.
+    let registryRows = [];
+    try { registryRows = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ student_id: canonicalStudentId }); } catch (e) { /* best-effort */ }
+    const regByRecordId = {};
+    for (const reg of registryRows) {
+      if (reg.student_record_id && !regByRecordId[reg.student_record_id]) regByRecordId[reg.student_record_id] = reg;
+    }
+
     // ── STEP 5: Return unified result ──
     const achievements = earned.map(rec => {
       const bw = bwByRecordId[rec.id] || null;
       const org = orgById[rec.school_id] || null;
+      const reg = regByRecordId[rec.id] || null;
       return {
         id: bw?.id || rec.id,
         record_id: rec.id,
@@ -196,8 +213,13 @@ Deno.serve(async (req) => {
         token_id: bw?.token_id || rec.nft_token_id || null,
         transaction_hash: bw?.transaction_hash || rec.nft_transaction_hash || null,
         minted_at: rec.approved_at || bw?.minted_at || rec.updated_date,
-        status: 'active',
-        verify_id: rec.verify_id,
+        // Status precedence: revoked > superseded > active. The registry is
+        // the source of truth for revocation; superseded comes from the
+        // version chain on the record.
+        status: (reg?.approval_status === 'revoked' || bw?.status === 'revoked')
+          ? 'revoked'
+          : (rec.status === 'superseded' || rec.superseded_by_id) ? 'superseded' : 'active',
+        verify_id: reg?.verification_id || rec.verify_id,
         points: rec.points || 0,
         date_achieved: rec.date_achieved,
         is_custom_award: rec.is_custom_award || false,
@@ -219,6 +241,13 @@ Deno.serve(async (req) => {
         vault_delivered_at: rec.vault_delivered_at,
         delivered_to_student_vault: true,
         vault_status: 'delivered',
+        // Verification detail for the vault detail view (Phase 4).
+        nft_status: reg?.nft_status || ((bw?.token_id || rec.nft_token_id) ? 'minted' : 'pending'),
+        chain_confirmed: reg?.nft_status === 'minted' || !!(bw?.token_id || rec.nft_token_id),
+        signer_chain: reg?.signer_chain || [],
+        version: reg?.version || rec.version || 1,
+        corrected_at: reg?.corrected_at || rec.corrected_at || null,
+        superseded_by_id: rec.superseded_by_id || null,
       };
     });
 

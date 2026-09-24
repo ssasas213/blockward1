@@ -220,6 +220,29 @@ export default async function (req: Request): Promise<Response> {
       }))
       .sort((a, b) => new Date(b.date_achieved || 0).getTime() - new Date(a.date_achieved || 0).getTime());
 
+    // Grades — public ONLY when the student explicitly opted in. Just the
+    // published, public-safe summary per subject: no teacher comments, no
+    // teacher names, no scores beyond the final grade and percentage.
+    let grades: any[] = null;
+    if (profile.public_grades === true) {
+      try {
+        const rows = await svc.entities.StudentGrade.filter({ student_email: profile.user_email, status: 'published' });
+        const bySubject: Record<string, any> = {};
+        for (const g of rows) {
+          const key = (g.subject || 'General').trim();
+          const prev = bySubject[key];
+          const d = (x: any) => new Date(x?.assessment_date || x?.published_at || x?.created_date || 0);
+          if (!prev || d(g) > d(prev)) bySubject[key] = g;
+        }
+        grades = Object.entries(bySubject).map(([subject, g]) => ({
+          subject,
+          grade: g.grade_value || null,
+          percentage: typeof g.percentage === 'number' ? Math.round(g.percentage) : null,
+          term: g.term_name || null,
+        })).slice(0, 20);
+      } catch (e) { /* grades stay off on any failure */ }
+    }
+
     // Highlights — pinned registry ids (only visible ones), max 6.
     const visibleIds = new Set(visible.map((r) => r.id));
     const pinned = (profile.pinned_achievement_ids || []).filter((id: string) => visibleIds.has(id)).slice(0, 6);
@@ -336,6 +359,7 @@ export default async function (req: Request): Promise<Response> {
       achievements,
       pinned,
       self_reported,
+      grades,
       is_owner,
       endorsements_unattached: unattached,
       count: achievements.length,

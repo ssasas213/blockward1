@@ -125,6 +125,11 @@
       "default": "public",
       "description": "Global visibility of the public /@handle profile page. Under-16 accounts are provisioned with 'private' as the safe default; the student can change it."
     },
+    "public_grades": {
+      "type": "boolean",
+      "default": false,
+      "description": "EXPLICIT OPT-IN \u2014 when true, a public-safe summary of the student's PUBLISHED grades (subject, final grade, percentage, term; never teacher comments or teacher names) is shown on the public /@handle profile. Default false: grades are never public unless the student turned this on. Set only through updatePublicProfile."
+    },
     "leaderboard_opt_out": {
       "type": "boolean",
       "default": false,
@@ -384,16 +389,17 @@
         "enum": [
           "highlights",
           "achievements",
+          "grades",
           "endorsements",
           "timeline",
           "organisations"
         ]
       },
-      "description": "Drag order of the public profile's sections \u2014 a full permutation of the five section ids, enforced server-side."
+      "description": "Drag order of the public profile's sections \u2014 a full permutation of the six section ids, enforced server-side. Stored orders saved before the 'grades' section existed have five entries and fall back to the default order until the student re-saves."
     },
     "section_visibility": {
       "type": "object",
-      "description": "Per-section visibility on the public profile \u2014 a hidden section is never rendered (not shown empty). Missing key = visible. Normalised server-side to all five keys.",
+      "description": "Per-section visibility on the public profile \u2014 a hidden section is never rendered (not shown empty). Missing key = visible. Normalised server-side to all six keys.",
       "properties": {
         "highlights": {
           "type": "boolean",
@@ -402,6 +408,11 @@
         "achievements": {
           "type": "boolean",
           "default": true
+        },
+        "grades": {
+          "type": "boolean",
+          "default": true,
+          "description": "The grades section only ever renders when public_grades is also opted in AND published grades exist."
         },
         "endorsements": {
           "type": "boolean",

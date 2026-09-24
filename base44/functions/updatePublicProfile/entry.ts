@@ -40,8 +40,8 @@ const HIGHLIGHT_STYLES = ['carousel', 'grid', 'spotlight'];
 const FORCED_SCHEMES = ['auto', 'light', 'dark'];
 const OPEN_TO = ['internships', 'team_trials', 'collaborations', 'tutoring', 'work_experience'];
 const CUSTOM_LINK_ICONS = ['auto', 'globe', 'file', 'code', 'video', 'music', 'book', 'cart', 'pen', 'briefcase'];
-const SECTION_IDS = ['highlights', 'achievements', 'endorsements', 'timeline', 'organisations'];
-const DEFAULT_SECTION_ORDER = ['highlights', 'achievements', 'endorsements', 'timeline', 'organisations'];
+const SECTION_IDS = ['highlights', 'achievements', 'grades', 'endorsements', 'timeline', 'organisations'];
+const DEFAULT_SECTION_ORDER = ['highlights', 'achievements', 'grades', 'endorsements', 'timeline', 'organisations'];
 const PRESET_BANNER_IDS = ['aurora', 'dusk', 'ember', 'glacier', 'prism', 'sandstone', 'tide', 'orchid', 'voltage', 'botanical', 'nebula', 'blueprint'];
 
 // Force https, reject every other protocol.
@@ -248,6 +248,13 @@ export default async function (req: Request): Promise<Response> {
       updates.custom_links = links;
     }
 
+    // ── Public grades opt-in ────────────────────────────────────────────────
+    // Grades are private by default. Only an explicit true here ever exposes
+    // the published-grades summary on the public profile.
+    if (typeof body.public_grades === 'boolean') {
+      updates.public_grades = body.public_grades;
+    }
+
     // ── Section control ──────────────────────────────────────────────────────
     if (Array.isArray(body.section_order)) {
       const ids = body.section_order.filter((x: any) => SECTION_IDS.includes(x));
@@ -334,6 +341,7 @@ export default async function (req: Request): Promise<Response> {
         cooldown_days_remaining: cooldownDaysRemaining(fresh.handle, fresh.handle_changed_at),
         bio: fresh.bio || null,
         profile_visibility: fresh.profile_visibility || 'public',
+        public_grades: fresh.public_grades === true,
         og_image_url: fresh.og_image_url || null,
         pinned_achievement_ids: fresh.pinned_achievement_ids || [],
         name: `${fresh.first_name || ''} ${fresh.last_name || ''}`.trim(),

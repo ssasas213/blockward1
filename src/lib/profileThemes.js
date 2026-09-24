@@ -279,6 +279,7 @@ export const CUSTOM_LINK_ICONS = [
 export const PROFILE_SECTIONS = [
   { id: 'highlights', label: 'Highlights', desc: 'Your pinned achievements' },
   { id: 'achievements', label: 'Achievements', desc: 'The verified record' },
+  { id: 'grades', label: 'Grades', desc: 'Published grades — only when you opt in' },
   { id: 'endorsements', label: 'Endorsements', desc: 'What peers say' },
   { id: 'timeline', label: 'Timeline', desc: 'Everything in order' },
   { id: 'organisations', label: 'Organisations', desc: 'Your schools and clubs' },
@@ -310,7 +311,7 @@ export const DEFAULT_PROFILE_CUSTOM = {
   open_to: [],
   custom_links: [],
   section_order: DEFAULT_SECTION_ORDER,
-  section_visibility: { highlights: true, achievements: true, endorsements: true, timeline: true, organisations: true },
+  section_visibility: { highlights: true, achievements: true, grades: true, endorsements: true, timeline: true, organisations: true },
 };
 
 export const LAYOUTS = [
