@@ -8,7 +8,7 @@ const benefits = [
   {
     icon: ShieldCheck,
     title: 'Nobody can call your CV fake',
-    desc: 'Every award is signed off by the people who awarded it and locked so it can\'t be edited. Screenshot it, share it — it holds up.',
+    desc: 'Every award is signed off by the people who awarded it and anchored so it can\'t be quietly edited — corrections are always visible. Screenshot it, share it — it holds up.',
   },
   {
     icon: Link2,
@@ -17,8 +17,8 @@ const benefits = [
   },
   {
     icon: InfinityIcon,
-    title: 'Works after you graduate',
-    desc: 'School accounts get deleted. This doesn\'t. Your achievements stay yours forever, even years after you walk out the gate.',
+    title: 'Travels with you',
+    desc: 'School accounts come and go. Your profile doesn\'t depend on them — it\'s yours, and it travels with you from school to whatever comes next.',
   },
   {
     icon: LayoutGrid,

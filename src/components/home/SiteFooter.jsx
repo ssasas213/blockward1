@@ -47,7 +47,7 @@ function TrustStats() {
 
   const items = [
     { icon: Building2, value: stats.orgs, label: 'Organisations issuing verified credentials' },
-    { icon: Award, value: stats.credentials, label: 'Credentials permanently recorded' },
+    { icon: Award, value: stats.credentials, label: 'Credentials verified & recorded' },
     { icon: FileSearch, value: stats.verifications, label: 'Public credential checks performed' },
   ];
 
@@ -77,7 +77,7 @@ export default function SiteFooter() {
               <span className="font-semibold text-foreground">BlockWard</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Verified achievements that last forever — owned by you.
+              Verified achievements, owned by you — a portable profile that travels with you.
             </p>
           </div>
 

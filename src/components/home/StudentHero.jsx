@@ -16,8 +16,8 @@ export default function StudentHero() {
         </h1>
 
         <p className="text-lg sm:text-xl text-white/70 mb-10 max-w-2xl mx-auto leading-relaxed font-light">
-          Every award, belt, grade, win and role you've earned — in one link nobody can fake.
-          Yours forever, even after you leave school.
+          Every award, belt, grade, win and role you've earned — in one independently checkable link.
+          A portable profile you own, wherever you go next.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

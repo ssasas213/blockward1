@@ -1,12 +1,12 @@
 import React from 'react';
-import { FileText, Search, PenLine, ShieldCheck, HardDrive, Link2 } from 'lucide-react';
+import { FileText, Search, PenLine, ShieldCheck, Network, Link2 } from 'lucide-react';
 
 const steps = [
   { icon: FileText, title: 'Achievement Created', desc: 'A teacher, coach, instructor, or manager creates a record with supporting evidence.' },
   { icon: Search, title: 'Verification', desc: 'Evidence is reviewed and validated by the responsible verifier.' },
   { icon: PenLine, title: 'Digital Signatures', desc: 'Authorised individuals sign the record with their digital signature.' },
   { icon: ShieldCheck, title: 'Approval', desc: 'The organisation authorises the achievement, completing the trust chain.' },
-  { icon: HardDrive, title: 'Permanent Archive', desc: 'Stored securely in Google Drive and permanently recorded — it cannot be edited or deleted.' },
+  { icon: Network, title: 'Ledger-anchored record', desc: 'A cryptographic fingerprint of the record is anchored on a public ledger — tamper-evident and independently checkable.' },
   { icon: Link2, title: 'Public Verification', desc: 'Universities, employers, and organisations can verify authenticity instantly.' },
 ];
 
@@ -17,7 +17,7 @@ export default function HowItWorks() {
         <div className="text-center mb-12">
           <p className="text-sm text-primary font-medium mb-2">How it works</p>
           <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
-            From achievement to permanent record
+            From achievement to verified record
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             A six-stage verification lifecycle that turns any accomplishment into a trusted, verifiable credential.

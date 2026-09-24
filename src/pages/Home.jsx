@@ -55,14 +55,8 @@ export default function Home() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
-      </div>
-    );
-  }
-
+  // Public page — renders immediately; the auth check fills in the header
+  // buttons in the background. Never block the landing page on login state.
   return (
     <div className="min-h-screen font-sans antialiased">
       <SiteHeader
@@ -86,7 +80,7 @@ export default function Home() {
             gather dust in a drawer.
           </h2>
           <p className="text-base sm:text-lg text-muted-foreground mt-5 max-w-xl mx-auto">
-            Claim your profile, get your school or club connected, and turn everything you've earned into proof that lasts forever.
+            Claim your profile, get your school or club connected, and turn everything you've earned into proof that travels with you.
           </p>
           <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="lg" className="text-base px-8 h-12" onClick={handleClaimProfile}>

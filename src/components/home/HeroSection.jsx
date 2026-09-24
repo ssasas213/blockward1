@@ -10,13 +10,15 @@ export default function HeroSection({ onSignIn, onWatchDemo }) {
       <HeroBackground />
       <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center pt-24 pb-16">
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-white mb-5 leading-[1.1] tracking-tight">
-          Where achievements become permanent.
+          Where achievements become verified.
         </h1>
 
         <p className="text-base sm:text-lg text-white/70 mb-8 max-w-2xl mx-auto leading-relaxed">
-          BlockWard helps schools, organisations, and clubs verify achievements and keep them
-          permanently recorded. Once verified, your achievement is written to a public ledger —
-          which means it cannot be changed, deleted or faked by anyone, including us.
+          BlockWard helps schools, clubs and academies verify achievements and turn them into
+          portable, independently checkable records. Once verified, a cryptographic fingerprint of
+          the achievement is anchored on a public ledger — so the record is tamper-evident and
+          cannot be quietly edited. Corrections are always visible: revocations or new versions,
+          never silent changes.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">

@@ -31,6 +31,7 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
             "font-semibold text-base tracking-tight transition-colors",
             scrolled || menuOpen ? "text-foreground" : "text-white"
           )}>BlockWard</span>
+          <span className="ml-1.5 px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/15 text-[10px] font-semibold uppercase tracking-wide text-primary">Beta</span>
         </a>
 
         <nav className="hidden md:flex items-center gap-6">

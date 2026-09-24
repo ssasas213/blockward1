@@ -1,13 +1,13 @@
 import React from 'react';
-import { ShieldCheck, PenLine, HardDrive, Link2, Lock, History } from 'lucide-react';
+import { ShieldCheck, PenLine, UserRound, Link2, Lock, History } from 'lucide-react';
 
 const trustItems = [
-  { icon: ShieldCheck, title: 'Tamper-Proof Records', desc: 'Every credential is cryptographically secured and can never be altered or erased.' },
-  { icon: PenLine, title: 'Digital Signatures', desc: 'Verifiers and approvers sign with legally-binding digital signatures.' },
-  { icon: HardDrive, title: 'Drive Archiving', desc: 'Records are permanently archived to each participant\'s own Google Drive.' },
-  { icon: Lock, title: 'Permanent Public Record', desc: 'Once verified, a credential is permanently recorded and cannot be changed, deleted or faked by anyone.' },
-  { icon: Link2, title: 'Public Verification', desc: 'Universities and employers verify authenticity instantly via a unique link.' },
-  { icon: History, title: 'Permanent History', desc: 'A portable, verified portfolio that travels with participants for life.' },
+  { icon: ShieldCheck, title: 'Tamper-evident records', desc: 'Every credential carries a cryptographic fingerprint anchored on a public ledger — any change to the record is immediately detectable.' },
+  { icon: PenLine, title: 'Digital signatures', desc: 'Typed or drawn signatures with full signer attribution and an audit trail.' },
+  { icon: UserRound, title: 'Student-owned records', desc: 'Each member owns a portable record of what they earned — the organisation verifies it, but never holds it hostage.' },
+  { icon: Lock, title: 'Independently checkable', desc: 'Once verified, anyone can check a credential against its public verification page and on-chain anchor — no account, no phone call.' },
+  { icon: Link2, title: 'Public verification', desc: 'Universities and employers verify authenticity instantly via a unique link.' },
+  { icon: History, title: 'Portable history', desc: 'A portable, verified portfolio that travels with participants across schools, clubs and employers.' },
 ];
 
 export default function TrustSection() {
@@ -20,7 +20,7 @@ export default function TrustSection() {
             Built on trust, secured by design
           </h2>
           <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-            Six pillars that make every achievement verifiable, permanent, and impossible to forge.
+            Six pillars that make every achievement verifiable, portable, and independently checkable.
           </p>
         </div>
 
