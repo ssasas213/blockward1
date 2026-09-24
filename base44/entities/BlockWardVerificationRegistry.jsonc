@@ -233,14 +233,16 @@
       "type": "string",
       "enum": [
         "pending",
+        "anchoring",
         "minted",
         "failed"
       ],
-      "default": "pending"
+      "default": "pending",
+      "description": "On-chain anchor state. 'anchoring' is a TRANSIENT lock set atomically by the anchoring pipeline (shared/chainAnchor.ts) so concurrent triggers can never mint twice; 'minted' = anchor confirmed on-chain; 'failed' = last attempt failed (retryable via anchorRetry). Service-role only."
     },
     "blockchain_network": {
       "type": "string",
-      "description": "e.g. sepolia, amoy, polygon"
+      "description": "e.g. sepolia, amoy, polygon. Anchors in this deployment are minted on the Sepolia TESTNET and must be labelled as testnet wherever displayed."
     },
     "contract_address": {
       "type": "string",
@@ -253,6 +255,63 @@
     "transaction_hash": {
       "type": "string",
       "description": "Anchor of the CURRENT version \u2014 see contract_address."
+    },
+    "credential_hash": {
+      "type": "string",
+      "description": "SHA-256 of the BW-HASH-V1 content commitment (see shared/credentialHash.ts) captured at anchor time. Public verification recomputes the hash from the CURRENT registry content and compares it with the hash committed on-chain \u2014 any drift in protected fields is a hash mismatch, never 'verified'. Service-role only (chainAnchor)."
+    },
+    "hash_version": {
+      "type": "number",
+      "default": 1,
+      "description": "Version of the credential hashing format used for credential_hash. Service-role only."
+    },
+    "chain_check": {
+      "type": "object",
+      "description": "Cached result of the public on-chain six-point confirmation (network, contract, receipt, hash, issuer, validity) \u2014 TTL 10 min for confirmed/mismatch, 2 min otherwise \u2014 so anonymous verification traffic does not hammer the RPC. Service-role only (chainAnchor).",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "confirmed",
+            "confirmed_legacy",
+            "hash_mismatch",
+            "anchor_invalid",
+            "chain_unavailable",
+            "pending"
+          ]
+        },
+        "checked_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "token_id": {
+          "type": "string"
+        },
+        "transaction_hash": {
+          "type": "string"
+        },
+        "contract_address": {
+          "type": "string"
+        },
+        "committed_hash": {
+          "type": "string"
+        },
+        "recomputed_hash": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      }
+    },
+    "anchor_claimed_by": {
+      "type": "string",
+      "description": "Transient anchoring lock claim (uuid per attempt) \u2014 the conditional pending\u2192anchoring update is what makes repeated clicks, retries and concurrent approvals unable to mint twice. Service-role only."
+    },
+    "anchor_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the anchoring lock was claimed. Stale claims (>10 min) are taken over automatically. Service-role only."
     },
     "previous_anchor": {
       "type": "object",

@@ -9,7 +9,7 @@ import {
   Shield, CheckCircle2, Trophy, ExternalLink, Sparkles,
   Calendar, Download, Link2, Hash, Network, FileCheck, Building2,
   Copy, AlertCircle, GraduationCap, Award, ArrowRight, PenTool,
-  UserCheck, History, Users, Loader2, Share2, Trash2, BadgeCheck
+  UserCheck, History, Users, Loader2, Share2, Trash2, BadgeCheck, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -271,7 +271,24 @@ export default function Verify() {
     </div>
   );
 
-  const { record, teacherSignature, adminSignature, isVerified, isRevoked, message } = data;
+  // PRIVATE — its own clear message, nothing else shown.
+  if (data.status === 'private') return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="max-w-md w-full text-center surface-card">
+        <CardContent className="py-16">
+          <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center mx-auto mb-4 border border-border">
+            <Shield className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h1 className="text-xl font-bold text-foreground mb-2">Private credential</h1>
+          <p className="text-muted-foreground mb-4 text-sm">{message || 'This credential exists, but its owner has made it private. Only they can share it.'}</p>
+          <p className="text-xs text-tertiary font-mono break-all">ID: {verificationId}</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
+  const { record, teacherSignature, adminSignature, isVerified, isRevoked, message, chain } = data;
+  const orgVerified = data.org_verified;
   // Two honest tiers: organisation-verified (a member org stands behind it)
   // vs independently verified (a named person does). They must never look alike.
   const independent = isVerified && record.verification_mode === 'independent';
@@ -317,7 +334,20 @@ export default function Verify() {
       <div className="max-w-3xl mx-auto px-4 py-8 md:py-12 space-y-6 animate-fade-in relative verify-ambient">
 
         {/* Status banner */}
-        {isRevoked ? (
+        {data.status === 'hash_mismatch' ? (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-5 flex items-center gap-4">
+            <div className="h-11 w-11 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <p className="font-bold text-lg text-destructive">Content does not match its blockchain commitment</p>
+              <p className="text-sm text-muted-foreground">
+                The details shown below were recalculated and do NOT match the hash committed on-chain when this
+                credential was anchored. Do not trust this credential in its current form.
+              </p>
+            </div>
+          </div>
+        ) : isRevoked ? (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-5 flex items-center gap-4">
             <div className="h-11 w-11 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
               <AlertCircle className="h-6 w-6 text-destructive" />
@@ -325,6 +355,14 @@ export default function Verify() {
             <div>
               <p className="font-bold text-lg text-destructive">Achievement Revoked</p>
               <p className="text-sm text-muted-foreground">{message || 'This achievement is no longer valid.'}</p>
+            </div>
+          </div>
+        ) : data.status === 'superseded' ? (
+          <div className="rounded-2xl border border-warning/30 bg-warning/10 p-5 flex items-center gap-4">
+            <History className="h-6 w-6 text-warning flex-shrink-0" />
+            <div>
+              <p className="font-semibold text-warning">A newer version exists</p>
+              <p className="text-sm text-muted-foreground">{message || 'This credential has been corrected — a newer version exists on this same link.'}</p>
             </div>
           </div>
         ) : independent ? (
@@ -347,7 +385,9 @@ export default function Verify() {
             <div>
               <p className="font-bold text-2xl tracking-tight text-foreground">Verified BlockWard</p>
               <p className="text-sm text-muted-foreground">
-                Verified by {record.organisation_name || 'the issuing organisation'}, a BlockWard member organisation
+                {orgVerified === false
+                  ? <>Signed by staff of {record.organisation_name || 'the issuing organisation'} — this organisation is still being verified by BlockWard</>
+                  : <>Verified by {record.organisation_name || 'the issuing organisation'}, a BlockWard member organisation</>}
               </p>
             </div>
           </div>
@@ -380,9 +420,14 @@ export default function Verify() {
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-secondary border border-border text-xs font-medium text-muted-foreground capitalize">
                     {record.achievement_category}
                   </span>
-                  {record.nft_status === 'minted' && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
-                      <Network className="h-3 w-3" /> Secured
+                  {chain?.status === 'confirmed' && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-success/10 border border-success/30 text-xs font-medium text-success">
+                      <Network className="h-3 w-3" /> Blockchain verified · Sepolia testnet
+                    </span>
+                  )}
+                  {record.nft_status === 'minted' && chain && !['confirmed', 'confirmed_legacy'].includes(chain.status) && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-secondary border border-border text-xs font-medium text-muted-foreground">
+                      <Network className="h-3 w-3" /> Anchored — confirmation {chain.status === 'chain_unavailable' ? 'unavailable' : 'pending'}
                     </span>
                   )}
                   {isVerified && (
@@ -500,7 +545,44 @@ export default function Verify() {
                 <CheckItem>{independent ? 'Named verifier attested' : 'Issuer verified'}</CheckItem>
                 <CheckItem>Credential valid</CheckItem>
                 <CheckItem>BlockWard secured</CheckItem>
-                {hasBlockchain && <CheckItem>Blockchain anchored</CheckItem>}
+                {chain?.status === 'confirmed' && <CheckItem>Blockchain commitment matches — anchored on Sepolia testnet</CheckItem>}
+                {chain?.status === 'confirmed_legacy' && <CheckItem>Blockchain anchor present (legacy format — no content commitment)</CheckItem>}
+                {chain?.status === 'pending' && (
+                  <li className="flex items-center gap-2.5 text-sm">
+                    <span className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-3.5 w-3.5 text-warning" />
+                    </span>
+                    <span className="text-muted-foreground">
+                      Blockchain anchoring pending{orgVerified === false ? ' — the issuing organisation is awaiting BlockWard verification' : ''}
+                    </span>
+                  </li>
+                )}
+                {chain?.status === 'failed' && (
+                  <li className="flex items-center gap-2.5 text-sm">
+                    <span className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-3.5 w-3.5 text-warning" />
+                    </span>
+                    <span className="text-muted-foreground">Blockchain anchoring failed — it can be retried by the issuing organisation</span>
+                  </li>
+                )}
+                {chain?.status === 'chain_unavailable' && (
+                  <li className="flex items-center gap-2.5 text-sm">
+                    <span className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-3.5 w-3.5 text-warning" />
+                    </span>
+                    <span className="text-muted-foreground">
+                      Blockchain network temporarily unreachable — the on-chain commitment could not be re-checked just now
+                    </span>
+                  </li>
+                )}
+                {orgVerified === false && (
+                  <li className="flex items-center gap-2.5 text-sm">
+                    <span className="h-5 w-5 rounded-full bg-warning/15 flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-3.5 w-3.5 text-warning" />
+                    </span>
+                    <span className="text-muted-foreground">Issuing organisation verification by BlockWard — pending</span>
+                  </li>
+                )}
               </ul>
               <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground leading-relaxed">
                 {independent
@@ -666,28 +748,52 @@ export default function Verify() {
           </Card>
         )}
 
-        {/* Blockchain record — full technical detail for employers and universities */}
-        {isVerified && hasBlockchain && (
+        {/* Blockchain record — chain-confirmed commitment detail for employers and universities */}
+        {isVerified && chain && chain.status !== 'pending' && (
           <Card className="surface-card">
             <CardContent className="p-6">
-              <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-2 flex items-center gap-2">
-                <Network className="h-4 w-4" /> Blockchain record
-              </h2>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider flex items-center gap-2">
+                  <Network className="h-4 w-4" /> Blockchain record
+                </h2>
+                <span className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium border",
+                  chain.status === 'confirmed'
+                    ? "bg-success/10 border-success/30 text-success"
+                    : chain.status === 'hash_mismatch'
+                      ? "bg-destructive/10 border-destructive/30 text-destructive"
+                      : "bg-warning/10 border-warning/30 text-warning"
+                )}>
+                  {chain.status === 'confirmed' ? 'Blockchain Verified'
+                    : chain.status === 'hash_mismatch' ? 'Hash mismatch'
+                    : chain.status === 'chain_unavailable' ? 'Chain unreachable'
+                    : chain.status === 'confirmed_legacy' ? 'Anchored (legacy)'
+                    : 'Not confirmed'}
+                </span>
+              </div>
               <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                This credential is anchored to a public ledger. The entry below is permanent — it cannot be
-                edited, deleted or faked by anyone, including the issuing organisation or BlockWard.
+                {chain.status === 'confirmed'
+                  ? <>This credential's content commitment is anchored on <strong className="text-foreground">the Sepolia testnet</strong> (not mainnet). The on-chain entry is permanent — it cannot be edited, deleted or faked by anyone, including the issuing organisation or BlockWard. The displayed details were independently recalculated and match the committed hash.</>
+                  : chain.status === 'hash_mismatch'
+                    ? 'The displayed details were recalculated and do NOT match the hash committed on-chain. Do not trust this credential in its current form.'
+                    : chain.status === 'chain_unavailable'
+                      ? 'The blockchain network could not be reached just now, so the on-chain commitment could not be confirmed. No verified claim is shown until it can be.'
+                      : chain.status === 'confirmed_legacy'
+                        ? 'This credential was anchored on-chain before the content-commitment format was introduced. The anchor itself is confirmed, but it carries no content hash to compare against.'
+                        : 'The on-chain anchor could not be fully confirmed. No verified claim is shown until every check passes.'}
               </p>
-              <Field icon={Network} label="Network" value={record.blockchain_network} />
-              {record.transaction_hash && <Field icon={Hash} label="Transaction Hash" value={record.transaction_hash} mono />}
-              <Field icon={Hash} label="Token ID" value={record.token_id ? `#${record.token_id}` : null} mono />
-              <Field icon={Hash} label="Contract Address" value={record.contract_address} mono />
-              {record.date_delivered && (
-                <Field icon={Calendar} label="Recorded At" value={format(new Date(record.date_delivered), 'PPP p')} />
+              <Field icon={Network} label="Network" value="Sepolia testnet" />
+              {chain.transaction_hash && <Field icon={Hash} label="Transaction Hash" value={chain.transaction_hash} mono />}
+              <Field icon={Hash} label="Token ID" value={chain.token_id ? `#${chain.token_id}` : null} mono />
+              <Field icon={Hash} label="Contract Address" value={chain.contract_address || record.contract_address} mono />
+              {chain.committed_hash && <Field icon={Hash} label="Content commitment (SHA-256)" value={`${chain.committed_hash.slice(0, 24)}…`} mono />}
+              {chain.checked_at && (
+                <Field icon={Calendar} label="Last checked" value={format(new Date(chain.checked_at), 'PPP p')} />
               )}
-              {explorerUrl && (
+              {chain.transaction_hash && (
                 <Button asChild variant="outline" size="sm" className="mt-2">
-                  <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
-                    <ExternalLink className="h-3.5 w-3.5" /> View on {explorer.name}
+                  <a href={`https://sepolia.etherscan.io/tx/${chain.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+                    <ExternalLink className="h-3.5 w-3.5" /> View on Etherscan (Sepolia testnet)
                   </a>
                 </Button>
               )}

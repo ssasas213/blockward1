@@ -1,14 +1,25 @@
 /**
- * publicVerify — Public achievement verification endpoint.
- * Anyone can verify an achievement by its verification_id without logging in.
+ * publicVerify — Public achievement verification endpoint (no login needed).
  *
- * Queries BlockWardVerificationRegistry (the permanent public registry).
- * Falls back to StudentRecord.verify_id for legacy records.
+ * PHASE 3: every response now carries an explicit `status`:
+ *   valid | invalid | private | pending | revoked | superseded | hash_mismatch
+ * and a `chain` object — the live on-chain confirmation of the credential's
+ * content commitment (see shared/chainAnchor.ts):
+ *   confirmed | confirmed_legacy | pending | failed | hash_mismatch |
+ *   anchor_invalid | chain_unavailable
  *
- * Privacy: never returns student_email, private notes, internal user IDs,
- * or admin emails. Only public-safe fields are returned.
+ * A green "Blockchain Verified" state is ONLY ever derived from
+ * chain.status === 'confirmed' (all six checks passed: network/chain id,
+ * contract + credential/version reference, transaction receipt, matching
+ * recalculated hash, issuer, current validity). Pending, failed or
+ * unreachable checks NEVER verify — they render a clear status instead.
+ * Anchors are on the Sepolia TESTNET; every chain payload is labelled testnet.
+ *
+ * Privacy: never returns student_email, private notes, internal user IDs, or
+ * admin emails. Only public-safe fields are returned.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { verifyChainAnchor, getChainConfig } from '../../shared/chainAnchor.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,6 +32,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
   const base44 = createClientFromRequest(req);
+  const svc = base44.asServiceRole;
 
   let body;
   try { body = await req.json(); } catch (e) {
@@ -31,27 +43,36 @@ Deno.serve(async (req) => {
   if (!verification_id) return Response.json({ ok: false, error: 'Missing verification_id' }, { status: 400, headers: CORS });
 
   try {
-    // 1. Try the new BlockWardVerificationRegistry
+    // ── 1. The permanent public registry ──
     let registryRecords = [];
     try {
-      registryRecords = await base44.asServiceRole.entities.BlockWardVerificationRegistry.filter({ verification_id });
+      registryRecords = await svc.entities.BlockWardVerificationRegistry.filter({ verification_id });
     } catch (e) { /* entity might not exist yet — fall through to legacy */ }
 
     if (registryRecords.length > 0) {
       const reg = registryRecords[0];
 
+      // PRIVATE — its own clear message, distinct from not-found.
       if (!reg.is_public) {
-        return Response.json({ ok: false, error: 'This achievement is not publicly available' }, { status: 403, headers: CORS });
+        return Response.json({
+          ok: true,
+          status: 'private',
+          isVerified: false,
+          message: 'This credential exists, but its owner has made it private. Only they can share it.',
+          record: { verification_id: reg.verification_id },
+        }, { headers: CORS });
       }
 
       // Count this public verification check (best-effort — never blocks the check).
       try {
-        await base44.asServiceRole.entities.VerificationEvent.create({ verification_id: reg.verification_id, source: 'registry' });
+        await svc.entities.VerificationEvent.create({ verification_id: reg.verification_id, source: 'registry' });
       } catch (e) { /* metrics only */ }
 
+      // REVOKED — no longer valid.
       if (reg.approval_status === 'revoked') {
         return Response.json({
           ok: true,
+          status: 'revoked',
           isVerified: false,
           isRevoked: true,
           record: {
@@ -64,10 +85,32 @@ Deno.serve(async (req) => {
         }, { headers: CORS });
       }
 
+      // SUPERSEDED (safety — the registry normally points at the current
+      // version; a superseded source record means a newer version exists).
+      let srcRecord = null;
+      try {
+        const recRows = await svc.entities.StudentRecord.filter({ id: reg.student_record_id });
+        srcRecord = recRows?.[0] || null;
+      } catch (e) { /* best-effort */ }
+      if (srcRecord && (srcRecord.status === 'superseded' || srcRecord.superseded_by_id)) {
+        return Response.json({
+          ok: true,
+          status: 'superseded',
+          isVerified: false,
+          record: {
+            verification_id: reg.verification_id,
+            achievement_title: reg.achievement_title,
+            student_name: reg.student_name,
+            organisation_name: reg.organisation_name,
+          },
+          message: 'This credential has been corrected — a newer version exists on this same link.'
+        }, { headers: CORS });
+      }
+
       // Fetch signatures for display
       let teacherSig = null, adminSig = null;
       try {
-        const signatures = await base44.asServiceRole.entities.DigitalSignature.filter({ record_id: reg.student_record_id });
+        const signatures = await svc.entities.DigitalSignature.filter({ record_id: reg.student_record_id });
         teacherSig = signatures.find(s => s.signer_role === 'teacher') || null;
         adminSig = signatures.find(s => s.signer_role === 'admin') || null;
       } catch (e) { /* best-effort */ }
@@ -77,10 +120,10 @@ Deno.serve(async (req) => {
       let student_badge = null;
       if (reg.student_id) {
         try {
-          const prows = await base44.asServiceRole.entities.UserProfile.filter({ id: reg.student_id });
+          const prows = await svc.entities.UserProfile.filter({ id: reg.student_id });
           const p = prows[0];
           if (p && p.badge_tier && p.badge_tier !== 'none' && p.badge_org_id) {
-            const srows = await base44.asServiceRole.entities.School.filter({ id: p.badge_org_id });
+            const srows = await svc.entities.School.filter({ id: p.badge_org_id });
             const borg = srows[0];
             if (borg && borg.verification_status === 'verified') {
               student_badge = { tier: p.badge_tier, org_name: borg.name, granted_at: p.badge_granted_at || null };
@@ -95,16 +138,42 @@ Deno.serve(async (req) => {
       try {
         const viewer = await base44.auth.me();
         if (viewer) {
-          const vrows = await base44.asServiceRole.entities.UserProfile.filter({ user_email: viewer.email });
+          const vrows = await svc.entities.UserProfile.filter({ user_email: viewer.email });
           const v = vrows?.[0];
           if (v?.user_type === 'admin' && v.school_id === reg.school_id) can_moderate = true;
         }
       } catch (e) { /* public page — the viewer may not be signed in */ }
 
+      // Issuing organisation verification state (legacy orgs with no
+      // verification_status field are treated as verified, per existing rule).
+      let org_verified = null;
+      if (reg.school_id || reg.organisation_id) {
+        try {
+          const srows = await svc.entities.School.filter({ id: reg.school_id || reg.organisation_id });
+          const orgSchool = srows?.[0] || null;
+          org_verified = orgSchool ? orgSchool.verification_status !== 'unverified' : null;
+        } catch (e) { /* best-effort */ }
+      }
+
+      // ── Live on-chain confirmation of the content commitment ──
+      let chain = null;
+      try {
+        chain = await verifyChainAnchor(svc, { ...reg });
+      } catch (e) {
+        chain = { status: 'chain_unavailable', reason: 'verification_error', testnet: true, network: 'sepolia' };
+      }
+
+      // HASH MISMATCH — the displayed content does not match the on-chain
+      // commitment. NEVER shown as verified.
+      const status = chain?.status === 'hash_mismatch' ? 'hash_mismatch' : 'valid';
+
       return Response.json({
         ok: true,
-        isVerified: true,
+        status,
+        isVerified: status === 'valid',
         source: 'registry',
+        chain,
+        org_verified,
         can_moderate,
         student_badge,
         record: {
@@ -179,22 +248,42 @@ Deno.serve(async (req) => {
       }, { headers: CORS });
     }
 
-    // 2. Fallback: legacy StudentRecord by verify_id (backward compat)
-    const records = await base44.asServiceRole.entities.StudentRecord.filter({ verify_id: verification_id });
+    // ── 2. Fallback: legacy StudentRecord by verify_id (backward compat) ──
+    const records = await svc.entities.StudentRecord.filter({ verify_id: verification_id });
     if (!records.length) {
-      return Response.json({ ok: false, error: 'Achievement not found' }, { status: 404, headers: CORS });
+      return Response.json({ ok: false, status: 'invalid', error: 'Achievement not found' }, { status: 404, headers: CORS });
     }
 
-    const record = records[0];
+    // Corrections create new versions under the same verify_id — prefer the
+    // current (delivered) one; only superseded versions remaining = superseded.
     const verifiedStatuses = ['delivered_to_vault', 'archived'];
-    if (record.verify_id) {
-      try {
-        await base44.asServiceRole.entities.VerificationEvent.create({ verification_id: record.verify_id, source: 'legacy' });
-      } catch (e) { /* metrics only */ }
+    const current = records.find(r => r.status !== 'superseded' && verifiedStatuses.includes(r.status));
+    const record = current || records[0];
+    const onlySuperseded = !current && records.every(r => r.status === 'superseded');
+
+    try {
+      await svc.entities.VerificationEvent.create({ verification_id: record.verify_id, source: 'legacy' });
+    } catch (e) { /* metrics only */ }
+
+    if (onlySuperseded) {
+      return Response.json({
+        ok: true,
+        status: 'superseded',
+        isVerified: false,
+        record: {
+          verification_id: record.verify_id,
+          achievement_title: record.title,
+          student_name: record.student_name,
+        },
+        message: 'This credential has been corrected — a newer version exists on this same link.'
+      }, { headers: CORS });
     }
+
+    // PENDING — still in the approval process.
     if (!verifiedStatuses.includes(record.status)) {
       return Response.json({
         ok: true,
+        status: 'pending',
         isVerified: false,
         record: {
           achievement_title: record.title,
@@ -204,18 +293,72 @@ Deno.serve(async (req) => {
       }, { headers: CORS });
     }
 
+    // REVOKED (legacy) — a revoked BlockWard invalidates the credential.
+    let revoked = false;
+    try {
+      const bws = await svc.entities.BlockWard.filter({ student_record_id: record.id });
+      revoked = (bws || []).some(bw => bw.status === 'revoked');
+    } catch (e) { /* best-effort */ }
+    if (revoked) {
+      return Response.json({
+        ok: true,
+        status: 'revoked',
+        isVerified: false,
+        isRevoked: true,
+        record: {
+          verification_id: record.verify_id,
+          achievement_title: record.title,
+          student_name: record.student_name,
+        },
+        message: 'This achievement has been revoked and is no longer valid.'
+      }, { headers: CORS });
+    }
+
     const [signatures, schools] = await Promise.all([
-      base44.asServiceRole.entities.DigitalSignature.filter({ record_id: record.id }),
-      base44.asServiceRole.entities.School.filter({ id: record.school_id }),
+      svc.entities.DigitalSignature.filter({ record_id: record.id }),
+      svc.entities.School.filter({ id: record.school_id }),
     ]);
     const school = schools[0] || null;
     const teacherSig = signatures.find(s => s.signer_role === 'teacher') || null;
     const adminSig = signatures.find(s => s.signer_role === 'admin') || null;
 
+    // Legacy orgs with no verification_status field are treated as verified.
+    const org_verified = school ? school.verification_status !== 'unverified' : null;
+
+    // Legacy anchors (minted before the V1 content-commitment format) —
+    // receipt/contract/issuer/token are still confirmed live, but no content
+    // commitment exists, so this can never show as fully "confirmed".
+    let chain = { status: 'pending', network: 'sepolia', testnet: true };
+    if (record.nft_token_id && record.nft_transaction_hash) {
+      try {
+        chain = await verifyChainAnchor(svc, {
+          verification_id: record.verify_id,
+          version: record.version || 1,
+          achievement_title: record.title,
+          achievement_category: record.category,
+          achievement_description: record.description || null,
+          date_achieved: record.date_achieved || null,
+          token_id: record.nft_token_id,
+          transaction_hash: record.nft_transaction_hash,
+          contract_address: getChainConfig().contract,
+          blockchain_network: Deno.env.get('NETWORK') || 'sepolia',
+          credential_hash: null,
+          chain_check: null,
+        }, { noCache: true });
+      } catch (e) {
+        chain = { status: 'chain_unavailable', reason: 'verification_error', testnet: true, network: 'sepolia' };
+      }
+    }
+
+    const status = chain?.status === 'hash_mismatch' ? 'hash_mismatch' : 'valid';
+
     return Response.json({
       ok: true,
-      isVerified: true,
+      status,
+      isVerified: status === 'valid',
       source: 'legacy',
+      chain,
+      org_verified,
       record: {
         verification_id: record.verify_id,
         achievement_title: record.title,

@@ -25,6 +25,8 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import { findProfileByEmail } from '../../shared/profileLookup.ts';
+import { waitUntil } from 'base44:runtime';
+import { anchorCredential } from '../../shared/chainAnchor.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -356,6 +358,14 @@ Deno.serve(async (req) => {
       await releaseLock();
       return Response.json({ ok: false, error: 'Failed to commit delivery: ' + e.message, stage: 'commit' }, { status: 500, headers: CORS });
     }
+
+    // ── NON-CRITICAL 0: on-chain anchoring of the content commitment.
+    // Runs after the response via waitUntil — a chain outage or anchoring
+    // failure NEVER delays or rolls back the delivery. Idempotent by design
+    // (already-anchored credentials are returned as-is, never re-minted).
+    try {
+      waitUntil(anchorCredential(base44.asServiceRole, registryRecord.id));
+    } catch (e) { /* best-effort */ }
 
     // ════════════════════════════════════════════════════════════════════════
     // NON-CRITICAL — these never roll back a successful critical commit.

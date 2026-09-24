@@ -5,6 +5,8 @@
 // signer chain). Idempotent: safe to retry if a step fails partway.
 import { appUrl, buildSignerChain } from './achievementRequests.ts';
 import { ensureTeamCredential, generateTeamSlug } from './teamCredentials.ts';
+import { waitUntil } from 'base44:runtime';
+import { anchorCredential } from './chainAnchor.ts';
 
 export async function mintRequestCredential(svc: any, request: any) {
   const now = new Date().toISOString();
@@ -166,10 +168,12 @@ export async function mintRequestCredential(svc: any, request: any) {
   const teamSlug = request.is_team ? generateTeamSlug(request.title) : null;
   let verificationId: string = request.verification_id || null;
   let publicVerificationUrl: string | null = null;
+  let registryId: string | null = null;
   const existingRegs = await svc.entities.BlockWardVerificationRegistry.filter({ student_record_id: record.id });
   if (existingRegs?.length) {
     verificationId = existingRegs[0].verification_id;
     publicVerificationUrl = existingRegs[0].public_verification_url;
+    registryId = existingRegs[0].id;
     await svc.entities.BlockWardVerificationRegistry.update(existingRegs[0].id, {
       blockward_id: blockWard.id,
       student_requested: true,
@@ -196,7 +200,7 @@ export async function mintRequestCredential(svc: any, request: any) {
     const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     publicVerificationUrl = `${appUrl()}/verify/${verificationId}`;
 
-    await svc.entities.BlockWardVerificationRegistry.create({
+    const created = await svc.entities.BlockWardVerificationRegistry.create({
       verification_id: verificationId,
       public_slug: `${slugify(request.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`,
       blockward_id: blockWard.id,
@@ -239,6 +243,7 @@ export async function mintRequestCredential(svc: any, request: any) {
         is_team_credential: true,
       } : {}),
     });
+    registryId = created.id;
   }
 
   // ── 4. Commit the source record ──
@@ -260,7 +265,14 @@ export async function mintRequestCredential(svc: any, request: any) {
     student_record_id: record.id,
   });
 
-  // ── 6. Team credential: shared group record + participant claim emails ──
+  // ── 6. On-chain anchoring of the content commitment (best-effort,
+  // post-response via waitUntil). Idempotent; a chain failure never
+  // blocks or disturbs the delivered credential. ──
+  if (registryId) {
+    try { waitUntil(anchorCredential(svc, registryId)); } catch (e) { /* best-effort */ }
+  }
+
+  // ── 7. Team credential: shared group record + participant claim emails ──
   let team: any = null;
   if (request.is_team) {
     const tc = await ensureTeamCredential(svc, request, { teamSlug, verificationId, requesterProfile: studentProfile });

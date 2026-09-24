@@ -28,6 +28,8 @@
 import { logEvent, appendEvent, notifyRequest, requestEmailHtml, appUrl } from './achievementRequests.ts';
 import { validateSignoff } from './achievementRequestFlow.ts';
 import { notifyEvent } from './eventNotifications.ts';
+import { waitUntil } from 'base44:runtime';
+import { anchorCredential } from './chainAnchor.ts';
 
 // ── The field split ──
 export const ATTESTED_REQUEST_FIELDS = [
@@ -710,6 +712,10 @@ export async function reviewCorrection(svc, actor, body) {
         transaction_hash: null,
         contract_address: null,
         nft_status: 'pending',
+        // The corrected version has new content — its commitment is minted
+        // fresh by the anchoring pipeline; the old hash/cache must not leak.
+        credential_hash: null,
+        chain_check: null,
       } : {}),
       signer_chain: [...(reg.signer_chain || []), {
         role: 'Correction re-signed by',
@@ -723,6 +729,13 @@ export async function reviewCorrection(svc, actor, body) {
       share_card_hash: null,
       share_story_card_hash: null,
     });
+  }
+
+  // ── Re-anchor the corrected version (best-effort, post-response). The new
+  // version's content commitment is minted fresh; the previous version's
+  // anchor stays on-chain exactly as it was, snapshotted in previous_anchor. ──
+  if (reg) {
+    try { waitUntil(anchorCredential(svc, reg.id)); } catch (e) { /* best-effort */ }
   }
 
   // ── Mirror the approval on the originating request ──
