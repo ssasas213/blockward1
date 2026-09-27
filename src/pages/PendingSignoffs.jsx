@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { STATUS_LABELS, TIER_SHORT, CATEGORY_LABELS } from '@/lib/achievementRequests';
+import { STATUS_LABELS, TIER_SHORT, TIER_LABELS, CATEGORY_LABELS, signOffOutcome, signOffSuccessMessage } from '@/lib/achievementRequests';
 
 export default function PendingSignoffs() {
   const [queue, setQueue] = useState([]);
@@ -113,7 +113,7 @@ export default function PendingSignoffs() {
           `Signed off ${selected.length} request${selected.length === 1 ? '' : 's'}`
         );
       } else {
-        await act({ action: 'sign', request_id: signTarget.id, ...signoff }, 'Signed off — publishing');
+        await act({ action: 'sign', request_id: signTarget.id, ...signoff }, signOffSuccessMessage(signTarget.verification_tier));
       }
       setSignTarget(null);
     } catch (_) { /* toast shown */ }
@@ -216,7 +216,12 @@ export default function PendingSignoffs() {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-base font-semibold text-foreground">{r.title}</h3>
-                        <Badge variant="outline">{TIER_SHORT[r.verification_tier]}</Badge>
+                        <Badge
+                          variant="outline"
+                          title={TIER_LABELS[r.verification_tier] ? `${TIER_LABELS[r.verification_tier]} — how many approvals this needs` : undefined}
+                        >
+                          {TIER_SHORT[r.verification_tier]}
+                        </Badge>
                         {r.student_flagged && (
                           <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> high rejection rate</Badge>
                         )}
@@ -326,8 +331,10 @@ export default function PendingSignoffs() {
         open={!!signTarget}
         onOpenChange={(o) => !o && setSignTarget(null)}
         title={signTarget === 'bulk' ? `Sign off ${selectedRequests.length} requests` : `Sign off "${signTarget?.title}"`}
-        description="Choose how you verified this, confirm the attestation, and sign. On sign-off the credential is published to the student's profile."
-        confirmLabel="Sign off & publish"
+        description={signTarget === 'bulk'
+          ? "Choose how you verified these, confirm the attestation, and sign. Tier 1 requests publish straight to each student's profile."
+          : `Choose how you verified this, confirm the attestation, and sign. ${signOffOutcome(signTarget?.verification_tier)}`}
+        confirmLabel={signTarget !== 'bulk' && signTarget?.verification_tier !== 1 ? 'Sign off' : 'Sign off & publish'}
         busy={busy}
         onConfirm={onSignConfirm}
       />

@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
+import { useSchool } from '@/lib/SchoolContext';
 import { Bell, X, Check, CheckCheck, AlertCircle, Megaphone, Clock, MessageSquare, Heart, UserPlus, BadgeCheck, PenLine, Users, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+
+// Role-aware destinations — a notification click takes the user to the page
+// where they can act on it, not just away from the bell.
+const CREDENTIAL_EVENTS = ['request_signed_off', 'request_changes', 'team_accepted', 'view_milestone', 'org_approved', 'endorsement', 'follow', 'opportunity_match'];
+const CLASSWORK_EVENTS = ['classwork_posted', 'classwork_due_soon', 'classwork_returned'];
+const ANNOUNCEMENT_EVENTS = ['announcement_urgent', 'announcement_important', 'announcement_scheduled_reminder'];
 
 const TYPE_ICONS = {
   announcement_urgent: AlertCircle,
@@ -21,6 +30,36 @@ export default function NotificationBell({ userEmail }) {
   const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+  const navigate = useNavigate();
+  const { profile, testMode } = useSchool();
+
+  // Same effective-role logic as the Layout — Test Mode personas route to
+  // their persona's world.
+  const role = testMode?.isTestSuperUser
+    ? (testMode.activeRole || testMode.activePersona || 'admin')
+    : (profile?.user_type || 'student');
+
+  const destinationFor = (n) => {
+    if (!n?.type) return null;
+    if (n.type === 'message') return createPageUrl('Messages');
+    if (CLASSWORK_EVENTS.includes(n.type)) {
+      return role === 'student' ? createPageUrl('Assignments') : createPageUrl('MyTeaching');
+    }
+    if (ANNOUNCEMENT_EVENTS.includes(n.type)) {
+      return role === 'student' ? createPageUrl('MySchool') : createPageUrl('Timetable');
+    }
+    if (CREDENTIAL_EVENTS.includes(n.type)) {
+      return role === 'student' ? createPageUrl('StudentBlockWards') : createPageUrl('PendingSignoffs');
+    }
+    return null;
+  };
+
+  const openNotification = (n) => {
+    const dest = destinationFor(n);
+    setOpen(false);
+    if (dest) navigate(dest);
+    markRead(n);
+  };
 
   useEffect(() => {
     if (!userEmail) return;
@@ -75,6 +114,7 @@ export default function NotificationBell({ userEmail }) {
       <button
         onClick={() => setOpen(o => !o)}
         className="relative p-2 rounded-lg hover:bg-muted transition-colors"
+        aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
         <Bell className="h-5 w-5 text-muted-foreground" />
         {unreadCount > 0 && (
@@ -85,7 +125,7 @@ export default function NotificationBell({ userEmail }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-96 max-h-[480px] bg-popover rounded-2xl shadow-2xl border border-border z-50 flex flex-col overflow-hidden">
+        <div className="absolute right-0 top-10 w-[22rem] max-w-[calc(100vw-1.5rem)] max-h-[480px] bg-popover rounded-2xl shadow-2xl border border-border z-50 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 className="font-semibold text-popover-foreground">Notifications</h3>
@@ -111,10 +151,13 @@ export default function NotificationBell({ userEmail }) {
             ) : (
               notifications.map(n => {
                 const Icon = TYPE_ICONS[n.type] || Bell;
+                const dest = destinationFor(n);
                 return (
                   <div
                     key={n.id}
-                    onClick={() => markRead(n)}
+                    onClick={() => openNotification(n)}
+                    role={dest ? 'link' : undefined}
+                    aria-label={dest ? `${n.title} — open` : undefined}
                     className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors border-b border-border last:border-0 ${!n.read ? 'bg-primary/5' : ''}`}
                   >
                     <div className={`mt-0.5 h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${

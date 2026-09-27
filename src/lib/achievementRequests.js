@@ -56,6 +56,26 @@ export const TIER_LABELS = {
 
 export const TIER_SHORT = { 1: 'Tier 1', 2: 'Tier 2', 3: 'Tier 3' };
 
+// What happens AFTER the nominated verifier signs — tier-accurate so a
+// teacher always knows whether their signature completes the credential or
+// hands it to the next approver. Never simplify the approval chain in the UI.
+export function signOffOutcome(tier) {
+  if (tier === 2) {
+    return "After your signature, this request moves to your organisation's approver for the second approval — it is not published yet.";
+  }
+  if (tier === 3) {
+    return "After your signature, your organisation's approver reviews it, then an external verifier is emailed a one-time confirmation link.";
+  }
+  return "On sign-off the credential is published straight to the student's profile.";
+}
+
+// Success toast for a completed sign-off — matches the real next step.
+export function signOffSuccessMessage(tier) {
+  if (tier === 2) return "Signed off — waiting for your organisation's approver";
+  if (tier === 3) return "Signed off — waiting for your organisation's approver, then the external verifier";
+  return "Signed off — published to the student's profile";
+}
+
 export const METHOD_OPTIONS = [
   { value: 'witnessed_in_person', label: 'Witnessed in person' },
   { value: 'reviewed_evidence', label: 'Reviewed submitted evidence' },

@@ -24,6 +24,7 @@ import WorkToMarkCard from '@/components/dashboard/WorkToMarkCard';
 import TeacherInboxCard from '@/components/dashboard/TeacherInboxCard';
 import UpcomingEventsCard from '@/components/dashboard/UpcomingEventsCard';
 import TeacherAnnouncementsCard from '@/components/dashboard/TeacherAnnouncementsCard';
+import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
 
 function TeacherDashboardContent() {
   // Identity comes from SchoolContext — the effective persona in Test Mode,
@@ -42,6 +43,7 @@ function TeacherDashboardContent() {
     events: [],
     announcements: []
   });
+  const [notifications, setNotifications] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -54,9 +56,14 @@ function TeacherDashboardContent() {
       // the stats follow the persona's world instead of the controller's.
       const today = new Date().getDay();
       const dayIndex = today === 0 ? 6 : today - 1;
-      const res = await base44.functions.invoke('getDashboardData', { day_index: dayIndex });
+      // Parallel: persona-aware dashboard stats + persona-aware notifications.
+      const [res, notifRes] = await Promise.all([
+        base44.functions.invoke('getDashboardData', { day_index: dayIndex }),
+        base44.functions.invoke('getNotifications', {}).catch(() => null),
+      ]);
       const d = res.data || {};
       if (!d.ok) throw new Error(d.error || 'Failed to load dashboard');
+      setNotifications(notifRes?.data?.ok ? (notifRes.data.notifications || []).slice(0, 5) : []);
 
       setStats({
         myClasses: d.classes || [],
@@ -136,7 +143,7 @@ function TeacherDashboardContent() {
         <StatCard label="My Classes" value={stats.myClasses.length} icon={BookOpen} />
         <StatCard label="Total Students" value={stats.totalStudents} icon={Users} />
         <StatCard label="Today's Lessons" value={stats.todaySchedule.length} icon={Calendar} />
-        <StatCard label="Points Issued" value={stats.recentPoints.length} icon={Award} />
+        <StatCard label="Recent points issued" value={stats.recentPoints.length} icon={Award} />
       </div>
 
       {/* Today's register status — one-click launch straight from the dashboard */}
@@ -148,6 +155,7 @@ function TeacherDashboardContent() {
         <TeacherInboxCard unread={stats.unreadMessages} />
         <UpcomingEventsCard events={stats.events} />
         <TeacherAnnouncementsCard items={stats.announcements} />
+        <RecentActivityCard notifications={notifications} loading={notifications === null} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

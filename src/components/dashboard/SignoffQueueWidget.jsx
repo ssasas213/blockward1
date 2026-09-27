@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import SignoffDialog from '@/components/achievements/SignoffDialog';
 import { PenLine, ChevronRight, CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { signOffOutcome, signOffSuccessMessage } from '@/lib/achievementRequests';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -38,7 +39,7 @@ export default function SignoffQueueWidget() {
         action: 'sign', request_id: signTarget.id, ...signoff,
       });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Sign-off failed');
-      toast.success('Signed off — publishing');
+      toast.success(signOffSuccessMessage(signTarget.verification_tier));
       setSignTarget(null);
       await load();
     } catch (e) {
@@ -48,7 +49,17 @@ export default function SignoffQueueWidget() {
     }
   };
 
-  if (queue === null) return null;
+  if (queue === null) {
+    // Shaped like the loaded card — the queue never pops in and shifts layout.
+    return (
+      <Card className="shadow-sm" aria-hidden="true">
+        <CardContent className="p-4 space-y-3">
+          <div className="h-4 w-44 rounded bg-muted/60 animate-pulse" />
+          <div className="h-14 rounded-lg bg-muted/60 animate-pulse" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Oldest first — the longest-waiting requests surface at the top.
   const oldest = [...queue]
@@ -121,8 +132,8 @@ export default function SignoffQueueWidget() {
         open={!!signTarget}
         onOpenChange={(o) => !o && setSignTarget(null)}
         title={`Sign off "${signTarget?.title}"`}
-        description="Choose how you verified this, confirm the attestation, and sign. On sign-off the credential is published to the student's profile."
-        confirmLabel="Sign off & publish"
+        description={`Choose how you verified this, confirm the attestation, and sign. ${signOffOutcome(signTarget?.verification_tier)}`}
+        confirmLabel={signTarget?.verification_tier === 1 ? 'Sign off & publish' : 'Sign off'}
         busy={busy}
         onConfirm={onSignConfirm}
       />
