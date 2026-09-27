@@ -33,8 +33,14 @@ const STUDENT_STATUS_CONFIG = {
   expired:                      { label: 'Expired',                  icon: Clock,       class: 'bg-muted text-muted-foreground' },
 };
 
+// Humanise any status not in the maps — a raw snake_case value is never
+// shown to users, and an unknown status is never mislabelled as "Draft".
+const humanStatus = (s) =>
+  String(s || "").replace(/_/g, " ").trim().replace(/\b\w/g, (c) => c.toUpperCase()) || "Unknown";
+
 export default function RecordStatusBadge({ status, student }) {
-  const cfg = (student ? STUDENT_STATUS_CONFIG[status] : null) || STATUS_CONFIG[status] || STATUS_CONFIG.draft;
+  const cfg = (student ? STUDENT_STATUS_CONFIG[status] : null) || STATUS_CONFIG[status] ||
+    { label: humanStatus(status), icon: Clock, class: 'bg-muted text-muted-foreground' };
   const Icon = cfg.icon;
   return (
     <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-medium", cfg.class)}>

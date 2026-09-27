@@ -17,14 +17,14 @@ import {
 import { cn } from '@/lib/utils';
 
 const CATEGORY_COLORS = {
-  academic: 'bg-blue-50 text-blue-700',
-  sports: 'bg-green-50 text-green-700',
-  arts: 'bg-purple-50 text-purple-700',
-  leadership: 'bg-amber-50 text-amber-700',
-  community: 'bg-rose-50 text-rose-700',
-  innovation: 'bg-cyan-50 text-cyan-700',
-  special: 'bg-orange-50 text-orange-700',
-  behaviour: 'bg-slate-50 text-slate-600',
+  academic: 'bg-primary/10 text-primary',
+  sports: 'bg-success/10 text-success',
+  arts: 'bg-accent/10 text-accent',
+  leadership: 'bg-warning/10 text-warning',
+  community: 'bg-brand-pink/10 text-brand-pink',
+  innovation: 'bg-info/10 text-info',
+  special: 'bg-accent-blue/10 text-accent-blue',
+  behaviour: 'bg-secondary text-muted-foreground',
 };
 
 const TABS = [
@@ -189,7 +189,7 @@ export default function AllRecordsTab() {
           ) : (
             <div className="divide-y divide-border">
               {filtered.map(record => {
-                const catColor = CATEGORY_COLORS[record.category] || 'bg-slate-50 text-slate-600';
+                const catColor = CATEGORY_COLORS[record.category] || 'bg-secondary text-muted-foreground';
                 const needsAction = record.status === 'awaiting_admin_signature' && !record.migrated_request_id;
                 const readyToDeliver = !record.migrated_request_id && (record.status === 'approved' || record.status === 'minted');
                 const isTracking = record.status === 'changes_requested';

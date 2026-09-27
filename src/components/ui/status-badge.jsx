@@ -28,7 +28,21 @@ const STATUS_CONFIG = {
   pending_approval: { label: "Pending Approval", tone: "warning", dot: "bg-warning" },
   suspended: { label: "Suspended", tone: "destructive", dot: "bg-destructive" },
   inactive: { label: "Inactive", tone: "muted", dot: "bg-muted-foreground" },
+
+  // Achievement-request lifecycle — the workflow vocabulary students and
+  // verifiers actually see, never the raw backend values.
+  under_review: { label: "Under review", tone: "primary", dot: "bg-primary" },
+  verifier_signed: { label: "Verifier signed", tone: "primary", dot: "bg-primary" },
+  awaiting_second_approval: { label: "Awaiting admin approval", tone: "primary", dot: "bg-primary" },
+  awaiting_external_verification: { label: "Awaiting external verifier", tone: "primary", dot: "bg-primary" },
+  withdrawn: { label: "Withdrawn", tone: "muted", dot: "bg-muted-foreground" },
+  superseded: { label: "Superseded", tone: "muted", dot: "bg-muted-foreground" },
 };
+
+// Humanise any status not in the maps — a raw snake_case value is never
+// shown to users.
+const humanStatus = (s) =>
+  String(s || "").replace(/_/g, " ").trim().replace(/\b\w/g, (c) => c.toUpperCase()) || "Unknown";
 
 // Plain-English student-facing statuses — internal values never shown to students.
 const STUDENT_STATUS_CONFIG = {
@@ -59,7 +73,7 @@ export default function StatusBadge({ status, className, label, student }) {
   const config =
     (student ? STUDENT_STATUS_CONFIG[status] : STATUS_CONFIG[status]) ||
     STATUS_CONFIG[status] ||
-    { label: label || status, tone: "muted", dot: "bg-muted-foreground" };
+    { label: label || humanStatus(status), tone: "muted", dot: "bg-muted-foreground" };
   return (
     <span
       className={cn(

@@ -55,29 +55,29 @@ export default function VaultDetailsModal({ vault, open, onClose }) {
           {/* Info */}
           <div className="space-y-3">
             <div>
-              <p className="text-sm text-slate-500 mb-1">Created</p>
-              <p className="font-medium text-slate-900">
+              <p className="text-sm text-muted-foreground mb-1">Created</p>
+              <p className="font-medium text-foreground">
                 {format(new Date(vault.createdAt), 'MMMM d, yyyy')}
               </p>
             </div>
             <div>
-              <p className="text-sm text-slate-500 mb-1">Managed By</p>
-              <p className="font-medium text-slate-900">BlockWard Platform</p>
+              <p className="text-sm text-muted-foreground mb-1">Managed By</p>
+              <p className="font-medium text-foreground">BlockWard Platform</p>
             </div>
           </div>
 
           {/* Vault ID */}
           <div className="pt-4 border-t space-y-3">
             <div>
-              <p className="text-sm font-semibold text-slate-900 mb-1">
+              <p className="text-sm font-semibold text-foreground mb-1">
                 Vault ID (Advanced)
               </p>
-              <p className="text-xs text-slate-500 mb-3">
+              <p className="text-xs text-muted-foreground mb-3">
                 This is your unique vault identifier for verification purposes only.
               </p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="font-mono text-xs text-slate-700 break-all">
+                <div className="flex-1 p-3 bg-secondary rounded-lg border border-border">
+                  <p className="font-mono text-xs text-muted-foreground break-all">
                     {vault.publicAddress}
                   </p>
                 </div>

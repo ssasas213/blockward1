@@ -92,8 +92,8 @@ export default function IssuedTab() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Total Issued</p>
-                  <p className="text-3xl font-bold text-slate-900 mt-1">{stats.total}</p>
+                  <p className="text-sm text-muted-foreground">Total Issued</p>
+                  <p className="text-3xl font-bold text-foreground mt-1">{stats.total}</p>
                 </div>
                 <div className="h-14 w-14 rounded-xl bg-violet-100 flex items-center justify-center">
                   <Award className="h-7 w-7 text-violet-600" />
@@ -112,7 +112,7 @@ export default function IssuedTab() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Successfully Issued</p>
+                  <p className="text-sm text-muted-foreground">Successfully Issued</p>
                   <p className="text-3xl font-bold text-green-600 mt-1">{stats.issued}</p>
                 </div>
                 <div className="h-14 w-14 rounded-xl bg-green-100 flex items-center justify-center">
@@ -132,11 +132,11 @@ export default function IssuedTab() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-500">Pending</p>
-                  <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+                  <p className="text-sm text-muted-foreground">Pending</p>
+                  <p className="text-3xl font-bold text-warning mt-1">{stats.pending}</p>
                 </div>
-                <div className="h-14 w-14 rounded-xl bg-amber-100 flex items-center justify-center">
-                  <Award className="h-7 w-7 text-amber-600" />
+                <div className="h-14 w-14 rounded-xl bg-warning/10 flex items-center justify-center">
+                  <Award className="h-7 w-7 text-warning" />
                 </div>
               </div>
             </CardContent>
@@ -152,8 +152,8 @@ export default function IssuedTab() {
               <Info className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-900 mb-1">About BlockWards</h3>
-              <p className="text-sm text-slate-600">
+              <h3 className="font-semibold text-foreground mb-1">About BlockWards</h3>
+              <p className="text-sm text-muted-foreground">
                 BlockWards are permanent achievements that are securely stored and cannot be transferred.
                 Each award is uniquely tied to the student who earned it.
               </p>
@@ -171,7 +171,7 @@ export default function IssuedTab() {
           <div className="space-y-4 mb-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary" />
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -195,9 +195,9 @@ export default function IssuedTab() {
 
           {filteredBlockWards.length === 0 ? (
             <div className="text-center py-12">
-              <Award className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">No BlockWards yet</h3>
-              <p className="text-slate-500 mb-6">
+              <Award className="h-16 w-16 mx-auto text-tertiary mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No BlockWards yet</h3>
+              <p className="text-muted-foreground mb-6">
                 Start recognizing your students' achievements by issuing your first BlockWard
               </p>
               <Button asChild>
@@ -211,30 +211,30 @@ export default function IssuedTab() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Student</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">BlockWard</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Category</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Date</th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-slate-900">Status</th>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Student</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">BlockWard</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Category</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Date</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-foreground">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredBlockWards.map((bw) => (
-                    <tr key={bw.id} className="border-b border-slate-100 hover:bg-slate-50">
+                    <tr key={bw.id} className="border-b border-border hover:bg-hover">
                       <td className="py-4 px-4">
-                        <p className="font-medium text-slate-900">{bw.studentName}</p>
+                        <p className="font-medium text-foreground">{bw.studentName}</p>
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{bw.icon}</span>
-                          <p className="font-medium text-slate-900">{bw.title}</p>
+                          <p className="font-medium text-foreground">{bw.title}</p>
                         </div>
                       </td>
                       <td className="py-4 px-4">
                         <Badge variant="outline">{bw.category}</Badge>
                       </td>
-                      <td className="py-4 px-4 text-sm text-slate-600">
+                      <td className="py-4 px-4 text-sm text-muted-foreground">
                         {format(new Date(bw.issuedAt), 'MMM d, yyyy')}
                       </td>
                       <td className="py-4 px-4">

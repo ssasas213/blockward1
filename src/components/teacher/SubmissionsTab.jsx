@@ -79,15 +79,15 @@ export default function SubmissionsTab() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Awaiting My Review', value: awaitingMyReview, color: 'text-amber-600', alert: awaitingMyReview > 0 },
+          { label: 'Awaiting My Review', value: awaitingMyReview, color: 'text-warning', alert: awaitingMyReview > 0 },
           { label: 'Signed by Me', value: signedByMe, color: 'text-emerald-600' },
           { label: 'Verified & Published', value: verified, color: 'text-violet-600' },
-          { label: 'Total Submissions', value: records.length, color: 'text-slate-700' },
+          { label: 'Total Submissions', value: records.length, color: 'text-foreground' },
         ].map(s => (
           <Card key={s.label} className={`border-0 shadow-md ${s.alert ? 'ring-2 ring-violet-400' : ''}`}>
             <CardContent className="p-4 text-center">
               <p className={`text-3xl font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+              <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
             </CardContent>
           </Card>
         ))}
@@ -111,7 +111,7 @@ export default function SubmissionsTab() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by student or title..." className="pl-10" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -147,27 +147,27 @@ export default function SubmissionsTab() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-slate-400">
+                  <TableCell colSpan={6} className="text-center py-12 text-tertiary">
                     <Trophy className="h-10 w-10 mx-auto mb-3 opacity-40" />
                     <p>No submissions yet</p>
                   </TableCell>
                 </TableRow>
               ) : filtered.map(r => (
-                <TableRow key={r.id} className={`hover:bg-slate-50 ${r.status === 'awaiting_teacher_signature' ? 'bg-amber-50/40' : ''}`}>
+                <TableRow key={r.id} className={`hover:bg-hover ${r.status === 'awaiting_teacher_signature' ? 'bg-warning/5' : ''}`}>
                   <TableCell>
                     <p className="font-medium">{r.student_name}</p>
-                    <p className="text-xs text-slate-400">{r.student_email}</p>
+                    <p className="text-xs text-tertiary">{r.student_email}</p>
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium text-slate-800">{r.title}</p>
-                    <Badge className="text-xs bg-slate-100 text-slate-600 border-0 capitalize mt-0.5">{r.category}</Badge>
+                    <p className="font-medium text-foreground">{r.title}</p>
+                    <Badge className="text-xs bg-secondary text-muted-foreground border-0 capitalize mt-0.5">{r.category}</Badge>
                   </TableCell>
                   <TableCell>
                     {r.file_url
                       ? r.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i)
                         ? <img src={r.file_url} alt="evidence" className="h-10 w-10 rounded-lg object-cover border" />
                         : <Badge className="bg-blue-50 text-blue-600 border-0 text-xs">File attached</Badge>
-                      : <span className="text-xs text-slate-400">None</span>
+                      : <span className="text-xs text-tertiary">None</span>
                     }
                   </TableCell>
                   <TableCell>
@@ -179,10 +179,10 @@ export default function SubmissionsTab() {
                       </a>
                     )}
                     {r.verify_id && (
-                      <p className="text-xs text-slate-400 mt-0.5 font-mono">{r.verify_id}</p>
+                      <p className="text-xs text-tertiary mt-0.5 font-mono">{r.verify_id}</p>
                     )}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-500">
+                  <TableCell className="text-xs text-muted-foreground">
                     {r.created_date ? format(new Date(r.created_date), 'MMM d, yyyy') : '—'}
                   </TableCell>
                   <TableCell>

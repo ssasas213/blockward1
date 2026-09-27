@@ -56,17 +56,17 @@ export default function OrgsLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4">
           <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-orange-500/30">
             <div className="animate-pulse">
               <Trophy className="h-8 w-8 text-white" />
             </div>
           </div>
-          <div className="h-1 w-32 bg-slate-200 rounded-full overflow-hidden">
+          <div className="h-1 w-32 bg-secondary rounded-full overflow-hidden">
             <div className="h-full w-1/2 bg-gradient-to-r from-amber-500 to-orange-600 rounded-full animate-[shimmer_1s_ease-in-out_infinite]" />
           </div>
-          <p className="text-slate-600 text-sm font-medium">Loading BlockWard Organisations...</p>
+          <p className="text-muted-foreground text-sm font-medium">Loading BlockWard Organisations...</p>
         </div>
       </div>
     );
@@ -84,17 +84,17 @@ export default function OrgsLayout() {
   const currentPath = location.pathname;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 px-4 flex items-center justify-between">
-        <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-          <Menu className="h-5 w-5 text-slate-600" />
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b border-border z-50 px-4 flex items-center justify-between">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-hover rounded-lg transition-colors">
+          <Menu className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
             <Trophy className="h-4 w-4 text-white" />
           </div>
-          <span className="font-semibold text-slate-900">BlockWard Orgs</span>
+          <span className="font-semibold text-foreground">BlockWard Orgs</span>
         </div>
         <NotificationBell userEmail={user?.email} />
       </header>
@@ -103,7 +103,7 @@ export default function OrgsLayout() {
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
-          <div className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-2xl animate-in slide-in-from-left duration-300">
+          <div className="absolute left-0 top-0 bottom-0 w-72 bg-card shadow-2xl animate-in slide-in-from-left duration-300">
             <SidebarContent
               navItems={navItems}
               currentPath={currentPath}
@@ -125,7 +125,7 @@ export default function OrgsLayout() {
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white border-r border-slate-200">
+        <div className="flex flex-col flex-grow bg-card border-r border-border">
           <SidebarContent
             navItems={navItems}
             currentPath={currentPath}
@@ -152,19 +152,19 @@ function SidebarContent({ navItems, currentPath, platform, profile, user, roleLa
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/25">
             <Trophy className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-slate-900">BlockWard</h1>
-            <p className="text-xs text-slate-500">{roleLabel}</p>
+            <h1 className="font-bold text-foreground">BlockWard</h1>
+            <p className="text-xs text-muted-foreground">{roleLabel}</p>
           </div>
         </Link>
         {onClose && (
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg lg:hidden">
-            <X className="h-5 w-5 text-slate-500" />
+          <button onClick={onClose} className="p-2 hover:bg-hover rounded-lg lg:hidden">
+            <X className="h-5 w-5 text-muted-foreground" />
           </button>
         )}
       </div>
@@ -183,10 +183,10 @@ function SidebarContent({ navItems, currentPath, platform, profile, user, roleLa
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                 isActive
                   ? `bg-gradient-to-r ${platform.theme.activeGradient} text-white shadow-lg shadow-orange-500/25`
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  : 'text-muted-foreground hover:bg-hover hover:text-foreground'
               )}
             >
-              <Icon className={cn('h-5 w-5', isActive ? 'text-white' : 'text-slate-400')} />
+              <Icon className={cn('h-5 w-5', isActive ? 'text-white' : 'text-tertiary')} />
               {item.name}
             </Link>
           );
@@ -194,20 +194,20 @@ function SidebarContent({ navItems, currentPath, platform, profile, user, roleLa
       </nav>
 
       {/* User Section */}
-      <div className="p-4 border-t border-slate-100">
+      <div className="p-4 border-t border-border">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 transition-all">
+            <button className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-hover transition-all">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white font-semibold shadow-lg">
                 {profile?.first_name?.[0] || user?.email?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 text-left">
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-sm font-medium text-foreground">
                   {profile ? `${profile.first_name} ${profile.last_name}` : user?.email}
                 </p>
-                <p className="text-xs text-slate-500">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-4 w-4 text-tertiary" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

@@ -368,7 +368,7 @@ function InvitationRow({ inv, busy, onRevoke, onResend, onCopy, copied }) {
         <p className="text-xs text-muted-foreground capitalize">{inv.role} · sent {inv.invited_at ? format(new Date(inv.invited_at), 'dd MMM yyyy') : ''}</p>
         {inv.email_status === 'failed' && <p className="text-xs text-destructive mt-0.5">Email failed to send — use Resend</p>}
       </div>
-      <Badge variant="outline" className={`text-xs ${inv.status === 'accepted' ? 'border-success/30 bg-success/10 text-success' : inv.status === 'revoked' ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-warning/30 bg-warning/10 text-warning'}`}>{inv.status}</Badge>
+      <Badge variant="outline" className={`text-xs ${inv.status === 'accepted' ? 'border-success/30 bg-success/10 text-success' : inv.status === 'revoked' ? 'border-destructive/30 bg-destructive/10 text-destructive' : 'border-warning/30 bg-warning/10 text-warning'}`}><span className="capitalize">{inv.status}</span></Badge>
       <div className="flex items-center gap-1">
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => onCopy(link, `inv-${inv.id}`)} title="Copy invite link">
           {copied[`inv-${inv.id}`] ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}

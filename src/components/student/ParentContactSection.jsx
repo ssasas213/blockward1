@@ -167,7 +167,7 @@ export default function ParentContactSection({ profile, userEmail, onUpdated }) 
               </div>
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-slate-900">{profile.parent_name}</p>
+                  <p className="font-semibold text-foreground">{profile.parent_name}</p>
                   {profile.parent_relationship && (
                     <Badge className="bg-blue-100 text-blue-700 border-0 text-xs">
                       {RELATIONSHIP_LABELS[profile.parent_relationship] || profile.parent_relationship}
@@ -175,27 +175,27 @@ export default function ParentContactSection({ profile, userEmail, onUpdated }) 
                   )}
                 </div>
                 {profile.parent_email && (
-                  <div className="flex items-center gap-1.5 mt-1 text-sm text-slate-600">
-                    <Mail className="h-3.5 w-3.5 text-slate-400" />
+                  <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
+                    <Mail className="h-3.5 w-3.5 text-tertiary" />
                     {profile.parent_email}
                   </div>
                 )}
                 {profile.parent_phone && (
-                  <div className="flex items-center gap-1.5 mt-0.5 text-sm text-slate-600">
-                    <Phone className="h-3.5 w-3.5 text-slate-400" />
+                  <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
+                    <Phone className="h-3.5 w-3.5 text-tertiary" />
                     {profile.parent_phone}
                   </div>
                 )}
               </div>
             </div>
             {profile.parent_contact_updated_at && (
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-tertiary">
                 Last updated {format(new Date(profile.parent_contact_updated_at), 'MMM d, yyyy')}
               </p>
             )}
           </div>
         ) : (
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-tertiary">
             <Users className="h-10 w-10 mx-auto mb-2 opacity-40" />
             <p className="text-sm">No parent/guardian contact added yet.</p>
             <p className="text-xs mt-1">Click "Add" to link your parent or guardian's contact details.</p>
