@@ -18,6 +18,8 @@ import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
 import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
 import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipRequestsWidget';
 import AdminAlertsWidget from '@/components/admin/AdminAlertsWidget';
+import RecentCredentialsCard from '@/components/admin/RecentCredentialsCard';
+import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
 import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
 
 function AdminDashboardContent() {
@@ -34,6 +36,7 @@ function AdminDashboardContent() {
     driveConnected: 0,
     recordsPendingArchive: 0,
   });
+  const [notifications, setNotifications] = useState(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -44,9 +47,14 @@ function AdminDashboardContent() {
       // Persona-aware data — the backend resolves the effective actor
       // (test persona in Test Mode) and reads through the service role, so
       // the stats follow the persona's school instead of the controller's.
-      const res = await base44.functions.invoke('getDashboardData', {});
+      // Parallel: persona-aware org stats + persona-aware notifications.
+      const [res, notifRes] = await Promise.all([
+        base44.functions.invoke('getDashboardData', {}),
+        base44.functions.invoke('getNotifications', {}).catch(() => null),
+      ]);
       const d = res.data || {};
       if (!d.ok) throw new Error(d.error || 'Failed to load dashboard');
+      setNotifications(notifRes?.data?.ok ? (notifRes.data.notifications || []).slice(0, 5) : []);
       setSchool(d.school || null);
       const s = d.stats || {};
       setStats({
@@ -59,6 +67,7 @@ function AdminDashboardContent() {
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -120,6 +129,12 @@ function AdminDashboardContent() {
 
           {/* Operational alerts: missing registers, failed invites, staff approvals, anchors */}
           <AdminAlertsWidget />
+
+          {/* Recently issued credentials · Recent notifications */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RecentCredentialsCard />
+            <RecentActivityCard notifications={notifications} loading={notifications === null} />
+          </div>
 
           {/* Academic + Assignments + Assemblies */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

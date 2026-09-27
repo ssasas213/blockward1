@@ -25,7 +25,14 @@ function ManageSchoolImpl() {
         </p>
       </div>
 
-      <Tabs defaultValue="people">
+      {/* Deep-linkable tab (?tab=credentials) — the dashboard's "View
+          register" link lands directly on the credential register. */}
+      <Tabs defaultValue={(() => {
+        try {
+          const t = new URLSearchParams(window.location.search).get('tab');
+          return ['people', 'invitations', 'classes', 'credentials', 'announcements', 'calendar', 'opportunities'].includes(t) ? t : 'people';
+        } catch { return 'people'; }
+      })()}>
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="invitations">Invitations</TabsTrigger>

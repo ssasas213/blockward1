@@ -32,6 +32,7 @@ export default function AdminCredentials() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ credentials: [], summary: null });
   const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [revokeTarget, setRevokeTarget] = useState(null);
   const [reason, setReason] = useState('');
   const [supersededBy, setSupersededBy] = useState('');
@@ -90,7 +91,11 @@ export default function AdminCredentials() {
   }
 
   const s = data.summary || { total: 0, revoked: 0, anchors: {} };
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (c) => !q || [c.achievement_title, c.student_name, c.teacher_name, c.verification_id]
+    .some((v) => String(v || '').toLowerCase().includes(q));
   const filtered = data.credentials.filter(c => {
+    if (!matchesSearch(c)) return false;
     if (filter === 'revoked') return c.approval_status === 'revoked';
     if (filter === 'anchor_issues') return c.nft_status === 'failed' || c.nft_status === 'pending' || c.chain_status === 'hash_mismatch';
     return true;
@@ -116,6 +121,26 @@ export default function AdminCredentials() {
           <Ban className="h-5 w-5 text-muted-foreground" />
           <div><p className="text-xs text-muted-foreground">Revoked</p><p className="text-xl font-bold">{s.revoked || 0}</p></div>
         </CardContent></Card>
+      </div>
+
+      {/* Search — student, teacher, title or verification ID */}
+      <div className="relative max-w-sm">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search student, teacher, title or ID…"
+          aria-label="Search credentials"
+          className="h-9"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch('')}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary hover:text-foreground"
+            aria-label="Clear search"
+          >
+            ×
+          </button>
+        )}
       </div>
 
       <Tabs value={filter} onValueChange={setFilter}>

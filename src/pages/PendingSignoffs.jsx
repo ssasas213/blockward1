@@ -243,12 +243,21 @@ export default function PendingSignoffs() {
                           ))}
                         </div>
                       )}
-                      {needsAdminApproval && r.verifier_signoff && (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Verified by {r.nominated_verifier_name || 'the nominated verifier'} ({r.verifier_signoff.method?.replace(/_/g, ' ')})
-                          {r.verifier_signoff.signed_at && ` on ${new Date(r.verifier_signoff.signed_at).toLocaleDateString('en-GB')}`}
-                          {r.verification_tier === 3 && ' — Tier 3: after your approval an external verifier will be emailed a one-time link.'}
-                        </p>
+                      {needsAdminApproval && (
+                        <div className="mt-3 rounded-lg border border-info/30 bg-info/5 p-3">
+                          <p className="text-xs font-semibold text-info uppercase tracking-wide">Why your approval is needed</p>
+                          <p className="text-xs text-foreground mt-1">
+                            Tier {r.verification_tier} request — your organisation's approval is required after the verifier's signature.
+                            {r.verification_tier === 3 && ' After your approval, an external verifier is emailed a one-time confirmation link.'}
+                          </p>
+                          {r.verifier_signoff && (
+                            <p className="text-xs text-muted-foreground mt-1.5">
+                              Signed by {r.nominated_verifier_name || 'the nominated verifier'} ({r.verifier_signoff.method?.replace(/_/g, ' ')})
+                              {r.verifier_signoff.signed_at && ` on ${new Date(r.verifier_signoff.signed_at).toLocaleDateString('en-GB')}`}
+                              {r.verifier_signoff.signature && ` — signature on file`}
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
