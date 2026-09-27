@@ -75,6 +75,18 @@ import OrgPage from './pages/OrgPage';
 import Opportunities from './pages/Opportunities';
 import ManageOpportunities from './pages/ManageOpportunities';
 import Feed from './pages/Feed';
+// Role dashboards + core navigation destinations. These existing pages were
+// referenced by the sidebar/CTAs and post-login redirects but lost their
+// routes when routing became explicit — restored here, unchanged.
+import StudentDashboard from './pages/StudentDashboard';
+import TeacherDashboard from './pages/TeacherDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import Classes from './pages/Classes';
+import Messages from './pages/Messages';
+import Profile from './pages/Profile';
+import StudentBlockWards from './pages/StudentBlockWards';
+import Timetable from './pages/Timetable';
+import Resources from './pages/Resources';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -183,6 +195,16 @@ const AuthenticatedApp = () => {
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Feed" element={<LayoutWrapper currentPageName="Feed"><ProtectedRoute><Feed /></ProtectedRoute></LayoutWrapper>} />
+      {/* Role dashboards + core navigation destinations (see imports above) */}
+      <Route path="/StudentDashboard" element={<LayoutWrapper currentPageName="StudentDashboard"><ProtectedRoute><StudentDashboard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/TeacherDashboard" element={<LayoutWrapper currentPageName="TeacherDashboard"><ProtectedRoute><TeacherDashboard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/AdminDashboard" element={<LayoutWrapper currentPageName="AdminDashboard"><ProtectedRoute><AdminDashboard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Classes" element={<LayoutWrapper currentPageName="Classes"><ProtectedRoute><Classes /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Messages" element={<LayoutWrapper currentPageName="Messages"><ProtectedRoute><Messages /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Profile" element={<LayoutWrapper currentPageName="Profile"><ProtectedRoute><Profile /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Resources" element={<LayoutWrapper currentPageName="Resources"><ProtectedRoute><Resources /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
       {/* BlockWard AI is hidden during beta — any link to it lands on the
