@@ -78,11 +78,16 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
     }
   }, [open, initial]);
 
-  if (!meta) return null;
+  // meta can be null (the metadata call failed or was rejected) — the form
+  // still renders: independent verification needs none of it. A blank
+  // dialog must never be what a student sees on "Request an achievement".
+  const orgs = meta?.orgs || [];
+  const templates = meta?.templates || [];
+  const staff = meta?.staff || [];
 
   // With multiple organisations, templates and staff are scoped per org.
-  const orgTemplates = meta.templates.filter((t) => !t.school_id || t.school_id === form.orgId);
-  const orgStaff = meta.staff.filter((s) => !s.school_id || s.school_id === form.orgId);
+  const orgTemplates = templates.filter((t) => !t.school_id || t.school_id === form.orgId);
+  const orgStaff = staff.filter((s) => !s.school_id || s.school_id === form.orgId);
   const selectedTemplate = orgTemplates.find((t) => t.id === form.credentialTypeId);
   const isCustom = form.credentialTypeId === 'other';
   const effectiveTier = isCustom ? Number(form.tier) || 0 : selectedTemplate?.verification_tier || 0;

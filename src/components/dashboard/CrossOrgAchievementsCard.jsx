@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import AddOrganisationDialog from '@/components/profile/AddOrganisationDialog';
 import { domainOf, domainLabel, DOMAIN_ORDER } from '@/lib/achievementDomains';
+import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 import { Globe2, Plus, ExternalLink, Clock } from 'lucide-react';
 
 /**
@@ -27,12 +28,16 @@ export default function CrossOrgAchievementsCard({ profile, userEmail }) {
     let active = true;
     (async () => {
       try {
-        const [records, memberships] = await Promise.all([
-          base44.entities.BlockWardVerificationRegistry.filter({ student_id: profile.id }),
+        // Verified credentials come from the shared vault loader (the
+        // architecture-mandated single read). The registry is service-role
+        // only, so a direct client read is denied by RLS — the old call made
+        // this card render empty for every student.
+        const [earnedRes, memberships] = await Promise.all([
+          loadEarnedAchievements(),
           base44.entities.StudentOrgMembership.filter({ student_email: userEmail }),
         ]);
         if (!active) return;
-        const verified = records.filter((r) => r.approval_status === 'approved');
+        const verified = earnedRes.achievements.filter((a) => a.status === 'active');
 
         // Orgs: from verified records + memberships (incl. pending ones).
         const orgMap = {};
