@@ -176,7 +176,7 @@ export default function SchoolSwitcher({ onClose }) {
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          onClick={() => goTo(createPageUrl('SystemSettings'))}
+          onClick={() => goTo(createPageUrl('SchoolSettings'))}
           className="cursor-pointer flex items-center gap-2"
         >
           <Settings className="h-4 w-4 text-muted-foreground" />

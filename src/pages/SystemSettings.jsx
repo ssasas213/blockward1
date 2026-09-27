@@ -39,6 +39,7 @@ function SystemSettingsImpl() {
   const { activeSchool, profile, refresh, loading: schoolLoading } = useSchool();
   const [form, setForm] = useState(null);
   const [members, setMembers] = useState([]);
+  const [joinCodes, setJoinCodes] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
 
@@ -57,8 +58,22 @@ function SystemSettingsImpl() {
         admin_title: activeSchool.admin_title || '',
       });
       loadMembers();
+      loadJoinCodes();
     }
   }, [activeSchool]);
+
+  // The codes staff and students actually enter when joining — NOT the
+  // school's internal reference code. Surfacing the real join codes here
+  // keeps the admin→teacher handoff consistent with the join system.
+  const loadJoinCodes = async () => {
+    if (!activeSchool) return;
+    try {
+      const codes = await base44.entities.SchoolCode.filter({ school_id: activeSchool.id });
+      setJoinCodes(codes.filter(c => c.status === 'active'));
+    } catch {
+      setJoinCodes([]);
+    }
+  };
 
   const loadMembers = async () => {
     if (!activeSchool) return;
@@ -265,10 +280,26 @@ function SystemSettingsImpl() {
               {activeSchool.status || 'active'}
             </Badge>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">School Code</span>
-            <span className="text-sm font-mono text-foreground">{activeSchool.school_code || activeSchool.code}</span>
-          </div>
+          {joinCodes === null ? (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Join codes</span>
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : joinCodes.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No active join codes — create teacher and student codes in the School codes tab.
+            </p>
+          ) : joinCodes.map(c => (
+            <div key={c.id} className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {c.role_type === 'teacher' ? 'Teacher join code' : c.role_type === 'student' ? 'Student join code' : `${c.role_type} join code`}
+              </span>
+              <span className="text-sm font-mono text-foreground">{c.code}</span>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Staff enter the teacher join code when they sign up — it sends their request to you for approval.
+          </p>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Created By</span>
             <span className="text-sm text-foreground">{activeSchool.created_by || activeSchool.admin_email}</span>

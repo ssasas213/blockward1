@@ -92,7 +92,7 @@ const ROLE_VAULT = {
 const ROLE_CTA = {
   student: { label: 'Explore my dashboard', page: 'StudentDashboard' },
   teacher: { label: 'View my classes', page: 'Classes' },
-  admin: { label: 'Set up my school', page: 'SystemSettings' },
+  admin: { label: 'Set up my school', page: 'SchoolSettings' },
 };
 
 export function getTour(role) {

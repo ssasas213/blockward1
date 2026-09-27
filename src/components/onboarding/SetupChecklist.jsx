@@ -56,12 +56,12 @@ export default function SetupChecklist() {
   if (loading) return null;
 
   const checklist = [
-    { key: 'school_created', label: 'School created', icon: Building2, link: '/SystemSettings' },
-    { key: 'school_profile', label: 'School profile completed', icon: CheckCircle2, link: '/SystemSettings' },
-    { key: 'teacher_code', label: 'Teacher code generated', icon: KeyRound, link: '/SchoolCodes' },
-    { key: 'first_teacher', label: 'First teacher invited', icon: Users, link: '/ManageUsers' },
+    { key: 'school_created', label: 'School created', icon: Building2, link: '/SchoolSettings' },
+    { key: 'school_profile', label: 'School profile completed', icon: CheckCircle2, link: '/SchoolSettings' },
+    { key: 'teacher_code', label: 'Teacher code generated', icon: KeyRound, link: '/SchoolSettings' },
+    { key: 'first_teacher', label: 'First teacher invited', icon: Users, link: '/People' },
     { key: 'first_class', label: 'First class created', icon: BookOpen, link: '/Classes' },
-    { key: 'first_student', label: 'First student joined', icon: GraduationCap, link: '/ManageUsers' },
+    { key: 'first_student', label: 'First student joined', icon: GraduationCap, link: '/People' },
     { key: 'first_achievement', label: 'First achievement approved', icon: Award, link: '/AdminApprovalQueue' },
   ];
 

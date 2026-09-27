@@ -138,7 +138,8 @@ export default function JoinSchool() {
 
   const handleJoined = (data) => {
     setTimeout(() => {
-      window.location.href = data.role === 'teacher' ? '/TeacherDashboard' : '/StudentDashboard';
+      // Guarded redirect — a raw location.href is invisible to loop detection.
+      guardedRedirect(data.role === 'teacher' ? '/TeacherDashboard' : '/StudentDashboard');
     }, 1200);
   };
 
@@ -209,7 +210,7 @@ export default function JoinSchool() {
         {/* Never trap anyone on this page — students can always come back later */}
         {role === 'student' && (
           <button
-            onClick={() => { window.location.href = createPageUrl('StudentDashboard'); }}
+            onClick={() => { guardedRedirect(createPageUrl('StudentDashboard')); }}
             className="mx-auto mt-6 flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             I'll do this later <ArrowRight className="h-3.5 w-3.5" />

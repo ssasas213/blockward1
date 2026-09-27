@@ -64,6 +64,23 @@ export function normalizeJoinCode(raw) {
   return (raw || '').replace(/[\s-]+/g, '').toUpperCase();
 }
 
+// Resolve a school join code for provisioning — validates the RECORD (active,
+// unexpired, under its usage limit) and throws the user-facing errors used by
+// both the fresh-join and the interrupted-onboarding resume paths.
+export async function resolveJoinCode(svc, rawCode) {
+  const normalized = normalizeJoinCode(rawCode);
+  const codes = await svc.entities.SchoolCode.filter({ status: 'active' });
+  const code = codes.find(c => normalizeJoinCode(c.code) === normalized);
+  if (!code) throw new Error("That school code isn't valid. Check the code and try again.");
+  if (code.expires_at && new Date(code.expires_at) < new Date()) {
+    throw new Error('This code has expired. Contact the school administrator.');
+  }
+  if (code.max_uses && (code.use_count || 0) >= code.max_uses) {
+    throw new Error('This code has reached its usage limit.');
+  }
+  return code;
+}
+
 // Role a school join code grants — resolved from the code RECORD, never the
 // request. Codes can never grant admin.
 export function roleFromCode(code) {
@@ -204,7 +221,29 @@ export async function provisionProfile(svc, user, opts) {
   // stay a targeted exact-match query. The variant lookup covers profiles
   // created before normalisation existed — no full-table scans anywhere.
   const existing = await findProfileByEmail(svc, user.email);
-  if (existing) return { profile: existing, already_exists: true };
+  if (existing) {
+    // Resume path for interrupted teacher onboarding: the profile exists and
+    // is awaiting admin approval, but the StaffMembership write may have
+    // failed midway (the profile is written before the membership). If a
+    // join code is supplied, re-validate it and make sure the membership
+    // exists — ensureTeacherMembership is idempotent, and nothing is ever
+    // duplicated: an existing active/pending membership is returned as-is.
+    let teacher_membership = null;
+    if (opts.join_code && existing.user_type === 'teacher' && existing.status === 'pending_approval') {
+      const code = await resolveJoinCode(svc, opts.join_code);
+      if (roleFromCode(code) === 'teacher') {
+        const schools = await svc.entities.School.filter({ id: code.school_id });
+        const school = schools[0];
+        if (school && school.status === 'active') {
+          teacher_membership = await ensureTeacherMembership(svc, {
+            user, profile: existing, school, code: code.code,
+            mechanism: 'school join code (resume)',
+          });
+        }
+      }
+    }
+    return { profile: existing, already_exists: true, role: existing.user_type, status: existing.status, teacher_membership };
+  }
 
   const now = new Date().toISOString();
   const fallbackParts = (user.full_name || user.email || 'User').trim().split(/\s+/);
@@ -271,16 +310,7 @@ export async function provisionProfile(svc, user, opts) {
       granted_by_email: invitation.invited_by,
     };
   } else if (opts.join_code) {
-    const normalized = normalizeJoinCode(opts.join_code);
-    const codes = await svc.entities.SchoolCode.filter({ status: 'active' });
-    const code = codes.find(c => normalizeJoinCode(c.code) === normalized);
-    if (!code) throw new Error('Invalid school code. No school found with that code.');
-    if (code.expires_at && new Date(code.expires_at) < new Date()) {
-      throw new Error('This code has expired. Contact the school administrator.');
-    }
-    if (code.max_uses && (code.use_count || 0) >= code.max_uses) {
-      throw new Error('This code has reached its usage limit.');
-    }
+    const code = await resolveJoinCode(svc, opts.join_code);
     const role = roleFromCode(code); // teacher | student — never admin
     const schools = await svc.entities.School.filter({ id: code.school_id });
     const school = schools[0];

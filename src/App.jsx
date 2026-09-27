@@ -87,6 +87,13 @@ import Profile from './pages/Profile';
 import StudentBlockWards from './pages/StudentBlockWards';
 import Timetable from './pages/Timetable';
 import Resources from './pages/Resources';
+// Live dashboard destinations that lost their routes during the dead-page
+// pruning — the dashboards still link to them (Issue Points / Create
+// Achievement / My Points / Point categories). Role-guarded pages.
+import MyPoints from './pages/MyPoints';
+import IssuePoints from './pages/IssuePoints';
+import IssueBlockWard from './pages/IssueBlockWard';
+import PointCategories from './pages/PointCategories';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -205,6 +212,10 @@ const AuthenticatedApp = () => {
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Resources" element={<LayoutWrapper currentPageName="Resources"><ProtectedRoute><Resources /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/MyPoints" element={<LayoutWrapper currentPageName="MyPoints"><ProtectedRoute><MyPoints /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/IssuePoints" element={<LayoutWrapper currentPageName="IssuePoints"><ProtectedRoute><IssuePoints /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/IssueBlockWard" element={<LayoutWrapper currentPageName="IssueBlockWard"><ProtectedRoute><IssueBlockWard /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/PointCategories" element={<LayoutWrapper currentPageName="PointCategories"><ProtectedRoute><PointCategories /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
       {/* BlockWard AI is hidden during beta — any link to it lands on the

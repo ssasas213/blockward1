@@ -129,7 +129,7 @@ function LinkedSchoolView({ profile, school, memberships }) {
             {school?.country && <span className="text-xs text-muted-foreground">{school.country}</span>}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => navigate(createPageUrl('SystemSettings'))}>
+        <Button variant="outline" size="sm" onClick={() => navigate(createPageUrl('SchoolSettings'))}>
           View School <ArrowRight className="h-3.5 w-3.5 ml-1" />
         </Button>
       </div>

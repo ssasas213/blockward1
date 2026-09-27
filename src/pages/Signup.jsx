@@ -50,10 +50,33 @@ const NEXT_URL = {
   login: '/Login',
 };
 
+// Server-side validation failures come back as { error } with a 400 status —
+// the SDK then throws a transport error whose .message is the useless
+// "Request failed with status code 400". Pull the real server message out of
+// the response and translate it; users must never see the raw transport text.
+function friendlyProvisionError(e) {
+  const serverMsg = e?.response?.data?.error || e?.data?.error || '';
+  if (/invalid school code|no school found/i.test(serverMsg)) {
+    return "That school code isn't valid. Check the code and try again.";
+  }
+  if (/expired/i.test(serverMsg)) {
+    return 'This code has expired. Please ask your school administrator for a new one.';
+  }
+  if (/usage limit/i.test(serverMsg)) {
+    return 'This code has reached its usage limit. Please ask your school administrator for a new one.';
+  }
+  return serverMsg || 'We could not set up your account. Please try again.';
+}
+
 async function provisionAccount(payload) {
-  const res = await base44.functions.invoke('provisionProfile', payload);
-  const data = res.data;
-  if (!data?.ok) throw new Error(data?.error || 'Failed to create account');
+  let data;
+  try {
+    const res = await base44.functions.invoke('provisionProfile', payload);
+    data = res.data;
+  } catch (e) {
+    throw new Error(friendlyProvisionError(e));
+  }
+  if (!data?.ok) throw new Error(friendlyProvisionError({ response: { data } }));
   // Under-13: the account exists but stays inactive until the guardian
   // consents. The sign-in screen shows the waiting card with the guardian email.
   if (data.next === 'guardian_consent') {
@@ -285,7 +308,14 @@ export default function Signup() {
     setLoading(true);
     setError('');
     try {
-      await base44.auth.verifyOtp({ email: email.trim(), otpCode: otpCode.trim() });
+      try {
+        await base44.auth.verifyOtp({ email: email.trim(), otpCode: otpCode.trim() });
+      } catch (err) {
+        // "User is already verified" (e.g. the page was retried after a
+        // successful verification) is a SATISFIED state, not a failure —
+        // continue with the sign-in + provisioning instead of blocking.
+        if (!/already verified|already active/i.test(err?.message || '')) throw err;
+      }
       await base44.auth.loginViaEmailPassword(email.trim(), password);
       await provisionAccount({
         first_name: firstName.trim(),
@@ -295,6 +325,14 @@ export default function Signup() {
         guardian_email: ageFromDob(dateOfBirth) < 13 ? guardianEmail.trim() : undefined,
       });
     } catch (err) {
+      // If the account exists and is signed in but provisioning failed (e.g.
+      // an invalid school code), resume onboarding on the details form —
+      // never trap an authenticated user on the code step.
+      const me = await base44.auth.me().catch(() => null);
+      if (me) {
+        setAuthedUser(me);
+        setStep('details');
+      }
       setError(err?.message || 'Verification failed. Check the code and try again.');
       setLoading(false);
     }

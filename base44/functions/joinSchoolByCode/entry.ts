@@ -42,7 +42,7 @@ export default async function(req: Request): Promise<Response> {
     // Look up the code (status, expiry and role all come from the RECORD)
     const allCodes = await svc.entities.SchoolCode.filter({ status: 'active' });
     const schoolCode = allCodes.find(c => normalizeJoinCode(c.code) === normalized);
-    if (!schoolCode) return Response.json({ error: 'Invalid school code. No school found with that code.' }, { status: 404 });
+    if (!schoolCode) return Response.json({ error: "That school code isn't valid. Check the code and try again." }, { status: 404 });
     if (schoolCode.expires_at && new Date(schoolCode.expires_at) < new Date()) {
       return Response.json({ error: 'This code has expired. Contact the school administrator.' }, { status: 410 });
     }
