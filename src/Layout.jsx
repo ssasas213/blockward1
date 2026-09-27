@@ -16,6 +16,7 @@ import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 import { TestModeBanner, TestModeMenuItems } from '@/components/testmode/TestModeBanner';
 import UnverifiedSchoolBanner from '@/components/school/UnverifiedSchoolBanner';
 import { useSchool } from '@/lib/SchoolContext';
@@ -232,7 +233,10 @@ export default function Layout({ children, currentPageName }) {
       <main className={cn("lg:pl-64 lg:pt-14 pt-14 min-h-screen", userType === 'student' && "pb-16 lg:pb-0")}>
         <div className="p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto animate-page-in">
           <UnverifiedSchoolBanner />
-          {children}
+          {/* A crash in any page renders a visible, retryable error card —
+              never a silently blank content pane. Keyed by page so switching
+              sections always starts from a clean state. */}
+          <PageErrorBoundary key={currentPageName}>{children}</PageErrorBoundary>
         </div>
       </main>
 

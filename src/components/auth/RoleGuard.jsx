@@ -53,6 +53,14 @@ function RoleCheck({ roles, children }) {
       </div>
     );
   }
-  if (!effectiveRole || !roles.includes(effectiveRole) || redirecting) return null;
+  // Role mismatch paints a visible notice while the dashboard redirect fires —
+  // never a silently blank pane.
+  if (!effectiveRole || !roles.includes(effectiveRole) || redirecting) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <p className="text-sm text-muted-foreground animate-pulse">Taking you to your dashboard…</p>
+      </div>
+    );
+  }
   return children;
 }

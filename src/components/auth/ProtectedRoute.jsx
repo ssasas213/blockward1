@@ -88,17 +88,28 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     );
   }
 
-  if (!user) return null;
-  if (requireProfile && !profile) return null;
-  if (requireProfile && profile.user_type === 'pending') return null;
-  if (requireProfile && profile.user_type === 'admin' && !profile.school_id) return null;
-  if (requireProfile && profile.user_type === 'teacher' && !profile.school_id) return null;
+  // Denied states paint a visible notice while the guard's redirect fires —
+  // the frame between render and navigation must never be a blank pane.
+  if (!user) return <Redirecting />;
+  if (requireProfile && !profile) return <Redirecting />;
+  if (requireProfile && profile.user_type === 'pending') return <Redirecting />;
+  if (requireProfile && profile.user_type === 'admin' && !profile.school_id) return <Redirecting />;
+  if (requireProfile && profile.user_type === 'teacher' && !profile.school_id) return <Redirecting />;
   if (requireProfile && profile && (
     profile.status === 'awaiting_guardian_consent' ||
     profile.status === 'pending_approval' ||
     profile.status === 'suspended' ||
     profile.status === 'inactive'
-  )) return null;
+  )) return <Redirecting />;
 
   return children;
+}
+
+/** Visible placeholder while a denied route redirects (never a silent null). */
+function Redirecting() {
+  return (
+    <div className="min-h-[60vh] flex items-center justify-center p-6">
+      <p className="text-sm text-muted-foreground animate-pulse">Taking you to the right place…</p>
+    </div>
+  );
 }
