@@ -45,8 +45,13 @@ function PeopleImpl() {
       const schools = await base44.entities.School.filter({ id: p.school_id });
       if (schools.length) setSchool(schools[0]);
 
-      const allCodes = (await base44.entities.SchoolCode.filter({ school_id: p.school_id }))
-        .filter(c => c.role_type !== 'student');
+      // Existing codes come from the authorized server read (action: 'list') —
+      // the SchoolCode read rule cannot be satisfied by a direct client call
+      // (unresolvable profile template + platform-role check), which made
+      // generated codes vanish on every page remount. FETCH ONLY: page load
+      // must never create or regenerate a code.
+      const codeRes = await base44.functions.invoke('generateSchoolCodes', { action: 'list' });
+      const allCodes = (codeRes.data?.codes || []).filter(c => c.role_type !== 'student');
       const order = { teacher: 0, admin: 1 };
       allCodes.sort((a, b) => (order[a.role_type] ?? 9) - (order[b.role_type] ?? 9));
       setCodes(allCodes);
@@ -82,7 +87,9 @@ function PeopleImpl() {
     try {
       const res = await base44.functions.invoke('generateSchoolCodes', { action: 'generate' });
       if (!res.data?.ok) throw new Error(res.data?.error || 'Failed');
-      setCodes(res.data.codes);
+      // Same shape as the page-load list (staff codes only) so state is
+      // identical whether the codes were just generated or fetched.
+      setCodes((res.data.codes || []).filter(c => c.role_type !== 'student'));
       toast.success('Join codes created');
     } catch (e) {
       toast.error(e.message || 'Failed to generate codes');

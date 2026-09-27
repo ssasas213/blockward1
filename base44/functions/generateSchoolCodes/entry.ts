@@ -51,6 +51,17 @@ export default async function(req: Request): Promise<Response> {
     const schools = await svc.entities.School.filter({ id: profile.school_id });
     const schoolName = schools[0]?.name || 'School';
 
+    // list — READ ONLY: the codes that already exist for the caller's school.
+    // The SchoolCode read rule cannot be satisfied by any client call (the
+    // {{user.profile.school_id}} template is unresolvable and the role check
+    // targets the platform role), so this is the one authorized way to display
+    // existing codes — fetching must never regenerate or create anything.
+    if (action === 'list') {
+      const codes = await svc.entities.SchoolCode.filter({ school_id: profile.school_id });
+      codes.sort(sortByRole);
+      return Response.json({ ok: true, codes });
+    }
+
     if (action === 'generate') {
       const out = [];
       for (const def of ROLE_DEFS) {

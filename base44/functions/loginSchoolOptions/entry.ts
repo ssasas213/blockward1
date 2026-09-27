@@ -44,13 +44,10 @@ export default async function(req: Request): Promise<Response> {
         const rows = await svc.entities.School.filter({ id });
         const s = rows[0];
         if (!s || s.status === 'suspended' || s.status === 'inactive') continue;
+        // Full record (settings, verification status, …) — it is the caller's
+        // own school, and the client school context consumes the whole object.
         schools.push({
-          id: s.id,
-          name: s.name,
-          logo_url: s.logo_url || null,
-          org_type: s.org_type || 'school',
-          city: s.city || null,
-          country: s.country || null,
+          ...s,
           is_current: s.id === currentId,
           source,
         });

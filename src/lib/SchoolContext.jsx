@@ -132,8 +132,28 @@ export const SchoolProvider = ({ children }) => {
         setManagedSchools([...ownedSchools, ...memberSchools]);
         if (activeSchoolLists.length > 0) setActiveSchool(activeSchoolLists[0]);
       } else {
-        // Teachers and students — single school, no switcher
-        if (p.school_id) {
+        // Teachers and students — a MEMBER's school cannot be read directly:
+        // the School read rule matches the founder (admin_email) only, and the
+        // {{user.profile.school_id}} RLS template is not resolvable by the
+        // platform, so a direct School.filter returns nothing for members —
+        // which displayed "No school linked" for fully joined teachers. The
+        // authorized server path resolves profile + memberships instead.
+        let memberSchools = [];
+        try {
+          const res = await base44.functions.invoke('loginSchoolOptions');
+          memberSchools = res.data?.schools || [];
+        } catch { /* fall through to the direct reads below */ }
+        const currentSchool = memberSchools.find(s => s.is_current) || memberSchools[0] || null;
+        if (currentSchool) {
+          setActiveSchool(currentSchool);
+          // Self-heal: an active membership exists but the profile link was
+          // never written (earlier onboarding failures). Patch it server-side
+          // from the membership — idempotent, never duplicated, and it never
+          // touches other school relationships (multi-school safe).
+          if (!p.school_id && p.user_type === 'teacher') {
+            try { await base44.functions.invoke('activateTeacherSchool'); } catch { /* ignore */ }
+          }
+        } else if (p.school_id) {
           const schools = await base44.entities.School.filter({ id: p.school_id });
           if (schools.length > 0) setActiveSchool(schools[0]);
         } else if (p.user_type === 'teacher') {

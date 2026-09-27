@@ -68,8 +68,10 @@ function SystemSettingsImpl() {
   const loadJoinCodes = async () => {
     if (!activeSchool) return;
     try {
-      const codes = await base44.entities.SchoolCode.filter({ school_id: activeSchool.id });
-      setJoinCodes(codes.filter(c => c.status === 'active'));
+      // Authorized server read — a direct SchoolCode read returns nothing for
+      // any client caller (unresolvable RLS template + platform-role check).
+      const res = await base44.functions.invoke('generateSchoolCodes', { action: 'list' });
+      setJoinCodes((res.data?.codes || []).filter(c => c.status === 'active'));
     } catch {
       setJoinCodes([]);
     }

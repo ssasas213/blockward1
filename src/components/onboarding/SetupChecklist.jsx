@@ -28,15 +28,19 @@ export default function SetupChecklist() {
       if (!profile?.school_id) { setLoading(false); return; }
       const schoolId = profile.school_id;
 
-      const [school, codes, teachers, classes, enrollments, records] = await Promise.all([
+      const [school, codeRes, teachers, classes, enrollments, records] = await Promise.all([
         base44.entities.School.filter({ id: schoolId }),
-        base44.entities.SchoolCode.filter({ school_id: schoolId, status: 'active' }),
+        // Authorized server read — a direct SchoolCode read is always empty
+        // client-side (unresolvable RLS template), which made the checklist
+        // demand a teacher code that already existed.
+        base44.functions.invoke('generateSchoolCodes', { action: 'list' }).catch(() => ({ data: { codes: [] } })),
         base44.entities.StaffMembership.filter({ school_id: schoolId, status: 'active' }),
         base44.entities.Class.filter({ school_id: schoolId }),
         base44.entities.Enrollment.filter({ school_id: schoolId, status: 'active' }),
         base44.entities.StudentRecord.filter({ school_id: schoolId, status: 'delivered_to_vault' }),
       ]);
 
+      const codes = (codeRes.data?.codes || []).filter(c => c.status === 'active');
       setItems({
         school_created: school.length > 0,
         school_profile: school.length > 0 && (school[0].logo_url || school[0].website || school[0].address),
