@@ -1,7 +1,7 @@
 // Shared constants, helpers and email templates for the student-initiated
 // achievement request flow. Used by achievementRequestData,
 // achievementRequestAction and achievementRequestMaintenance.
-import { sendResendEmail } from './resendEmail.ts';
+import { sendTrackedEmail } from './emailDelivery.ts';
 
 // Statuses that count as "open" for the 10-open-requests cap.
 export const OPEN_STATUSES = [
@@ -108,6 +108,33 @@ export function requestEmailHtml(heading: string, lines: string[], ctaUrl?: stri
   </div>`;
 }
 
-export async function notifyRequest(to: string, subject: string, html: string) {
+// Tracked transactional email for the credential-lifecycle flows. Every
+// important credential email now persists its delivery outcome
+// (EmailDeliveryLog) instead of discarding { delivered, error } to console.
+// meta: { event_type, related_type?, related_id?, school_id?, retryable? }
+// Never throws — an email failure must never roll back a credential action.
+export async function notifyRequest(svc: any, to: string, subject: string, html: string, meta?: {
+  event_type: string;
+  related_type?: string;
+  related_id?: string | null;
+  school_id?: string | null;
+  retryable?: boolean;
+}) {
+  if (!svc) {
+    // Defensive fallback: an untracked send is better than a broken flow.
+    return sendResendEmailUntracked(to, subject, html);
+  }
+  return sendTrackedEmail(svc, {
+    to, subject, html,
+    event_type: meta?.event_type || 'uncategorised',
+    related_type: meta?.related_type || 'achievement_request',
+    related_id: meta?.related_id || null,
+    school_id: meta?.school_id || null,
+    retryable: meta?.retryable === true,
+  });
+}
+
+async function sendResendEmailUntracked(to: string, subject: string, html: string) {
+  const { sendResendEmail } = await import('./resendEmail.ts');
   return sendResendEmail(to, subject, html);
 }

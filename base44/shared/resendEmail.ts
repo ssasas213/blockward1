@@ -6,7 +6,7 @@
 // ever throwing — email delivery is always best-effort and must not block the
 // calling workflow.
 
-export async function sendResendEmail(to: string, subject: string, html: string): Promise<{ delivered: boolean; error?: string }> {
+export async function sendResendEmail(to: string, subject: string, html: string): Promise<{ delivered: boolean; error?: string; message_id?: string }> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("RESEND_FROM_EMAIL");
   if (!apiKey || !from) {
@@ -24,7 +24,7 @@ export async function sendResendEmail(to: string, subject: string, html: string)
       status: res.status, ok: res.ok, from, to,
       resendId: data?.id || null, resendError: data?.message || null,
     });
-    if (res.ok) return { delivered: true };
+    if (res.ok) return { delivered: true, message_id: data?.id || null };
     return { delivered: false, error: data?.message || res.statusText || `Resend error ${res.status}` };
   } catch (e) {
     console.log("[resend-email] fetch threw", { error: e?.message, to });

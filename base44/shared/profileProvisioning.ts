@@ -1,5 +1,5 @@
 import { defaultAdminPermissions } from './adminPermissions.ts';
-import { sendResendEmail } from './resendEmail.ts';
+import { sendTrackedEmail } from './emailDelivery.ts';
 import { findProfileByEmail } from './profileLookup.ts';
 
 // ============================================================================
@@ -380,11 +380,15 @@ export async function provisionProfile(svc, user, opts) {
   // always audited.
   if (guardianEmail && consentToken) {
     const link = `${appUrl()}/guardian-consent/${consentToken}`;
-    const mail = await sendResendEmail(
-      guardianEmail,
-      `Confirm ${first_name}'s BlockWard account`,
-      guardianEmailHtml(first_name, link),
-    );
+    const mail = await sendTrackedEmail(svc, {
+      to: guardianEmail,
+      subject: `Confirm ${first_name}'s BlockWard account`,
+      html: guardianEmailHtml(first_name, link),
+      event_type: 'guardian_consent',
+      related_type: 'profile',
+      related_id: profile.id,
+      school_id: grant.school_id || null,
+    });
     await svc.entities.AuditLog.create({
       record_id: profile.id,
       school_id: grant.school_id || 'unassigned',

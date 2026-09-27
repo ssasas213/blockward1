@@ -195,7 +195,7 @@ async function applyRequestEdit(svc, actor, request, edits, confirmInvalidate) {
       `${appUrl()}/PendingSignoffs`,
       'Open my review queue'
     );
-    await notifyRequest(notifyTo, `Details changed: "${request.title}" needs re-reviewing`, html);
+    await notifyRequest(svc, notifyTo, `Details changed: "${request.title}" needs re-reviewing`, html, { event_type: 'attested_edit_notice', related_id: request.id, school_id: request.school_id });
     try {
       await svc.entities.Notification.create({
         user_email: notifyTo,
@@ -461,7 +461,7 @@ export async function submitCorrection(svc, actor, body) {
     `${appUrl()}/PendingSignoffs`,
     'Review the correction'
   );
-  await notifyRequest(reviewer.email, `Correction requested: "${record.title || reg.achievement_title}"`, html);
+  await notifyRequest(svc, reviewer.email, `Correction requested: "${record.title || reg.achievement_title}"`, html, { event_type: 'correction_requested', related_id: record.id, school_id: record.school_id });
   try {
     await svc.entities.Notification.create({
       user_email: reviewer.email,
@@ -553,7 +553,7 @@ export async function reviewCorrection(svc, actor, body) {
         `${appUrl()}/StudentBlockWards`,
         'View my credentials'
       );
-      await notifyRequest(record.student_email, `Correction declined: "${record.title}"`, html);
+      await notifyRequest(svc, record.student_email, `Correction declined: "${record.title}"`, html, { event_type: 'correction_declined', related_id: record.id, school_id: record.school_id });
       await notifyEvent(svc, {
         to_email: record.student_email, school_id: record.school_id,
         event_type: 'request_changes',
@@ -801,7 +801,7 @@ export async function reviewCorrection(svc, actor, body) {
       `${appUrl()}/verify/${reg.verification_id}`,
       'View my credential'
     );
-    await notifyRequest(record.student_email, `Corrected: "${corrected.title ?? record.title}"`, html);
+    await notifyRequest(svc, record.student_email, `Corrected: "${corrected.title ?? record.title}"`, html, { event_type: 'correction_approved', related_id: record.id, school_id: record.school_id });
     await notifyEvent(svc, {
       to_email: record.student_email, school_id: record.school_id,
       event_type: 'request_signed_off',

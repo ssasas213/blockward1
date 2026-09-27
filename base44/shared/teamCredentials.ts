@@ -131,7 +131,7 @@ export async function ensureTeamCredential(svc: any, request: any, ctx: any) {
       `${appUrl()}/team-join/${p.token}`,
       'View & accept'
     );
-    await notifyRequest(p.email, `You're part of "${request.title}" — accept your credential`, html);
+    await notifyRequest(svc, p.email, `You're part of "${request.title}" — accept your credential`, html, { event_type: 'team_claim', related_type: 'team_credential', related_id: team.id, school_id: request.school_id });
   }
 
   return { ok: true, team };

@@ -454,7 +454,7 @@ export async function submitRequest(svc, actor, body, ctx) {
       `${appUrl()}/external-verify/${token}`,
       'Review this achievement'
     );
-    await notifyRequest(iv.email, `Can you verify an achievement for ${baseData.student_name}?`, html);
+    await notifyRequest(svc, iv.email, `Can you verify an achievement for ${baseData.student_name}?`, html, { event_type: 'independent_verification_link', related_id: saved.id, school_id: null, retryable: true });
   }
 
   // Email the nominated verifier when a request lands in their queue.
@@ -469,7 +469,7 @@ export async function submitRequest(svc, actor, body, ctx) {
       `${appUrl()}/PendingSignoffs`,
       'Review request'
     );
-    await notifyRequest(baseData.nominated_verifier_email, `New achievement request from ${baseData.student_name}`, html);
+    await notifyRequest(svc, baseData.nominated_verifier_email, `New achievement request from ${baseData.student_name}`, html, { event_type: 'verifier_nomination', related_id: saved.id, school_id: form.data.school_id });
   }
 
   return ok(200, { ok: true, request: saved, status });
@@ -518,7 +518,7 @@ export async function withdrawRequest(svc, actor, body) {
       appUrl(),
       'Go to BlockWard'
     );
-    await notifyRequest(notifyTo, `Request withdrawn: "${request.title}"`, html);
+    await notifyRequest(svc, notifyTo, `Request withdrawn: "${request.title}"`, html, { event_type: 'request_withdrawn_notice', related_id: request.id, school_id: request.school_id });
   }
   return ok(200, { ok: true, status: 'withdrawn' });
 }
@@ -677,7 +677,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         `${appUrl()}/external-verify/${token}`,
         'Verify this achievement'
       );
-      await notifyRequest(request.external_verifier_email, `Verify an achievement for ${request.school_name || 'an organisation'}`, html);
+      await notifyRequest(svc, request.external_verifier_email, `Verify an achievement for ${request.school_name || 'an organisation'}`, html, { event_type: 'tier3_external_link', related_id: request.id, school_id: request.school_id, retryable: true });
       return ok(200, { ok: true, status: 'awaiting_external_verification' });
     }
 
@@ -727,7 +727,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'Edit my request'
     );
-    await notifyRequest(request.student_email, `Changes requested on "${request.title}"`, html);
+    await notifyRequest(svc, request.student_email, `Changes requested on "${request.title}"`, html, { event_type: 'request_changes', related_id: request.id, school_id: request.school_id });
     // In-app notification (per-type preferences apply); the email above already covers this event.
     await notifyEvent(svc, {
       to_email: request.student_email,
@@ -763,7 +763,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'View my requests'
     );
-    await notifyRequest(request.student_email, `Your request for "${request.title}" was not approved`, html);
+    await notifyRequest(svc, request.student_email, `Your request for "${request.title}" was not approved`, html, { event_type: 'request_rejected', related_id: request.id, school_id: request.school_id });
 
     // ── Rejection-rate abuse signal → organisation admins ──
     const stats = await rejectionStatsFor(svc, request.student_email, request.school_id);
@@ -780,7 +780,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         'Review queue'
       );
       for (const a of admins) {
-        if (a.user_email) await notifyRequest(a.user_email, `High rejection rate: ${request.student_name || request.student_email}`, html2);
+        if (a.user_email) await notifyRequest(svc, a.user_email, `High rejection rate: ${request.student_name || request.student_email}`, html2, { event_type: 'high_rejection_flag', related_id: request.id, school_id: request.school_id });
       }
     }
     return ok(200, { ok: true, status: 'rejected' });
@@ -868,7 +868,7 @@ export async function runExternalAction(svc, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'Edit my request'
     );
-    await notifyRequest(request.student_email, `Your verifier declined: "${request.title}"`, html);
+    await notifyRequest(svc, request.student_email, `Your verifier declined: "${request.title}"`, html, { event_type: 'external_verifier_declined', related_id: request.id, school_id: request.school_id });
     await notifyEvent(svc, {
       to_email: request.student_email,
       school_id: request.school_id,
@@ -909,16 +909,16 @@ export async function runExternalAction(svc, body, ctx) {
       });
     } catch { /* best-effort audit */ }
     const html = requestEmailHtml(
-      'Your achievement request was withdrawn',
+      'Your achievement request was not approved',
       [
         `The person you nominated to verify <strong>${request.title}</strong> reported the claim as inaccurate:`,
         `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
-        `The request has been withdrawn. Rejections are private — nothing appears on your public profile.`,
+        `The request has been rejected. Rejections are private — nothing appears on your public profile.`,
       ],
       `${appUrl()}/AchievementRequests`,
       'View my requests'
     );
-    await notifyRequest(request.student_email, `Your request for "${request.title}" was withdrawn`, html);
+    await notifyRequest(svc, request.student_email, `Your request for "${request.title}" was not approved`, html, { event_type: 'request_reported_false', related_id: request.id, school_id: request.school_id });
     return ok(200, { ok: true, status: 'rejected' });
   }
 
@@ -1013,7 +1013,7 @@ export async function runExternalAction(svc, body, ctx) {
       `${appUrl()}/StudentBlockWards`,
       'Open my credentials'
     );
-    await notifyRequest(request.student_email, `Publishing "${request.title}" failed — action needed`, failHtml);
+    await notifyRequest(svc, request.student_email, `Publishing "${request.title}" failed — action needed`, failHtml, { event_type: 'mint_failed_notice', related_id: request.id, school_id: request.school_id });
     await notifyEvent(svc, {
       to_email: request.student_email,
       school_id: request.school_id,
@@ -1035,7 +1035,7 @@ export async function runExternalAction(svc, body, ctx) {
     `${appUrl()}/StudentBlockWards`,
     'View my credentials'
   );
-  await notifyRequest(request.student_email, `Verified: "${request.title}"`, html);
+  await notifyRequest(svc, request.student_email, `Verified: "${request.title}"`, html, { event_type: 'credential_verified', related_id: request.id, school_id: request.school_id });
   // In-app record for the same event (the email above already covered this).
   await notifyEvent(svc, {
     to_email: request.student_email,

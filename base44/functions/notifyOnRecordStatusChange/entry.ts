@@ -19,7 +19,7 @@
  *   rejected                                → student             (deep link: record review)
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-import { sendResendEmail } from '../../shared/resendEmail.ts';
+import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -59,9 +59,19 @@ Deno.serve(async (req) => {
     const adminApprovalUrl = appUrl + '/admin/approve/' + recordId;
     const schoolId = data.school_id || '';
 
+    // Tracked send — every status-transition email persists its delivery
+    // outcome (EmailDeliveryLog) instead of vanishing into console logs.
+    // Failures never break the notification flow itself.
     const sendEmail = async (to, subject, html) => {
-      const { delivered, error } = await sendResendEmail(to, subject, html);
-      if (!delivered) console.log('[notify] email not delivered', { to, error });
+      try {
+        await sendTrackedEmail(base44.asServiceRole, {
+          to, subject, html,
+          event_type: `record_${newStatus}`,
+          related_type: 'student_record',
+          related_id: recordId,
+          school_id: schoolId || null,
+        });
+      } catch (e) { /* best-effort */ }
     };
 
     const notifyInApp = async (userEmail, title, bodyText, priority) => {

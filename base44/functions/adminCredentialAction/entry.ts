@@ -14,6 +14,8 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
+import { requestEmailHtml } from '../../shared/achievementRequests.ts';
+import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -131,6 +133,34 @@ Deno.serve(async (req) => {
           related_id: reg.id,
         });
       } catch (e) { /* best-effort */ }
+    }
+
+    // 5. Professional revocation email to the student — best-effort and
+    //    tracked; a delivery failure NEVER undoes the revocation and is never
+    //    reported to the admin as an action failure.
+    if (reg.student_email) {
+      try {
+        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
+        const html = requestEmailHtml(
+          'A credential was revoked',
+          [
+            `<strong>${reg.achievement_title}</strong>, issued by <strong>${reg.organisation_name || 'your organisation'}</strong>, has been revoked and is no longer shown as valid.`,
+            `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
+            `You can view the credential and its current status in your BlockWard credentials at any time.`,
+          ],
+          `${appUrl}/StudentBlockWards`,
+          'View my credentials'
+        );
+        await sendTrackedEmail(svc, {
+          to: reg.student_email,
+          subject: `A credential was revoked: "${reg.achievement_title}"`,
+          html,
+          event_type: 'credential_revoked',
+          related_type: 'registry',
+          related_id: reg.id,
+          school_id: actor.school_id,
+        });
+      } catch (e) { /* best-effort — revocation stands */ }
     }
 
     return Response.json({

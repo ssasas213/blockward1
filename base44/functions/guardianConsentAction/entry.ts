@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { sendResendEmail } from '../../shared/resendEmail.ts';
+import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -125,7 +125,15 @@ export default async function(req: Request): Promise<Response> {
       });
 
       const link = `${appUrl()}/guardian-consent/${token}`;
-      const mail = await sendResendEmail(guardian, `Confirm ${p.first_name}'s BlockWard account`, guardianEmailHtml(p.first_name, link));
+      const mail = await sendTrackedEmail(svc, {
+        to: guardian,
+        subject: `Confirm ${p.first_name}'s BlockWard account`,
+        html: guardianEmailHtml(p.first_name, link),
+        event_type: 'guardian_consent',
+        related_type: 'profile',
+        related_id: p.id,
+        school_id: p.school_id || null,
+      });
       if (!mail.delivered) {
         return Response.json({ error: 'Could not send the consent email. ' + (mail.error || 'Please try again.') }, { status: 502 });
       }

@@ -7,6 +7,7 @@ import {
   PENDING_REVIEWER_STATUSES, DAY_MS,
   logEvent, appendEvent, requestEmailHtml, notifyRequest, appUrl,
 } from '../../shared/achievementRequests.ts';
+import { sendTrackedEmail, dedupeKey } from '../../shared/emailDelivery.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
               `${appUrl()}/AchievementRequests`,
               'View my requests'
             );
-            await notifyRequest(request.student_email, `Your verification request for "${request.title}" expired`, html);
+            await notifyRequest(svc, request.student_email, `Your verification request for "${request.title}" expired`, html, { event_type: 'request_expired', related_id: request.id, school_id: request.school_id });
             continue;
           }
           const second = ivIdle >= 7 && !request.reminder_2_at;
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
                 `${appUrl()}/external-verify/${request.external_token}`,
                 'Verify this achievement'
               );
-              await notifyRequest(request.external_verifier_email, `Reminder: verify "${request.title}"`, html);
+              await notifyRequest(svc, request.external_verifier_email, `Reminder: verify "${request.title}"`, html, { event_type: 'maintenance_reminder', related_id: request.id, school_id: null });
               await svc.entities.AchievementRequest.update(request.id, second
                 ? { reminder_2_at: new Date().toISOString() }
                 : { reminder_1_at: new Date().toISOString() });
@@ -101,7 +102,7 @@ Deno.serve(async (req) => {
           `${appUrl()}/AchievementRequests`,
           'View my requests'
         );
-        await notifyRequest(request.student_email, `Your request for "${request.title}" expired`, html);
+        await notifyRequest(svc, request.student_email, `Your request for "${request.title}" expired`, html, { event_type: 'request_expired', related_id: request.id, school_id: request.school_id });
         continue;
       }
 
@@ -121,7 +122,7 @@ Deno.serve(async (req) => {
           `${appUrl()}/PendingSignoffs`,
           'Review queue'
         );
-        await notifyRequest(to, `Reminder: "${request.title}" awaits your review`, html);
+        await notifyRequest(svc, to, `Reminder: "${request.title}" awaits your review`, html, { event_type: 'maintenance_reminder', related_id: request.id, school_id: request.school_id });
       }
       await svc.entities.AchievementRequest.update(request.id, second
         ? { reminder_2_at: new Date().toISOString() }
@@ -129,8 +130,78 @@ Deno.serve(async (req) => {
       reminded++;
     }
 
-    console.log(JSON.stringify({ fn: 'achievementRequestMaintenance', pending: pending.length, expired, reminded }));
-    return Response.json({ ok: true, pending: pending.length, expired, reminded }, { headers: CORS });
+    // ── Safe system retry for failed external-verification emails ──
+    // A failed Tier 3 / Independent link email is the one communication
+    // failure that can strand an otherwise-healthy verification: the student
+    // waits on someone who may never have received the link. The sweep
+    // re-sends it, re-rendered from CURRENT state with the EXISTING one-time
+    // token — never a replacement token, never a duplicate credential action —
+    // and only while the token is still live, capped at MAX_ATTEMPTS.
+    const MAX_ATTEMPTS = 3;
+    let retried = 0;
+    try {
+      const failed = await svc.entities.EmailDeliveryLog.filter(
+        { status: 'failed', retryable: true },
+        { sort: '-created_date', limit: 200 },
+      );
+      const handledKeys = new Set();
+      for (const log of failed || []) {
+        if (!['independent_verification_link', 'tier3_external_link'].includes(log.event_type)) continue;
+        const reqRows = await svc.entities.AchievementRequest.filter({ id: log.related_id }).catch(() => []);
+        const req = reqRows?.[0];
+        if (!req || req.status !== 'awaiting_external_verification' || !req.external_token) continue;
+        // Once the token has expired the normal expiry path has already told
+        // the student — a retry would point at a dead link.
+        if (req.external_token_expires_at && new Date(req.external_token_expires_at).getTime() <= Date.now()) continue;
+        const key = log.dedupe_key || dedupeKey(log.event_type, req.id, log.recipient_email);
+        if (handledKeys.has(key)) continue;
+        // Attempt budget across the key's whole history.
+        const all = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key }, { limit: 20 });
+        if ((all?.length || 0) >= MAX_ATTEMPTS) continue;
+        handledKeys.add(key);
+
+        const isIndependent = log.event_type === 'independent_verification_link';
+        const expiresLine = `on ${new Date(req.external_token_expires_at).toUTCString()}`;
+        const subject = isIndependent
+          ? `Can you verify an achievement for ${req.student_name || 'a student'}?`
+          : `Verify an achievement for ${req.school_name || 'an organisation'}`;
+        const html = isIndependent
+          ? requestEmailHtml(
+              `Can you verify an achievement for ${req.student_name || 'a student'}?`,
+              [
+                `<strong>${req.student_name || 'A student'}</strong> has asked you to verify: <strong>${req.title}</strong>`,
+                req.independent_verifier?.relationship ? `They wrote: <em>"${req.independent_verifier.relationship}"</em>` : null,
+                `You were named as their ${(req.independent_verifier?.role || '').replace(/_/g, ' ')}${req.independent_verifier?.organisation_label ? ` at ${req.independent_verifier.organisation_label}` : ''}. If you were in a position to confirm this, follow the link — no account needed.`,
+                `The link is one-time and expires ${expiresLine}.`,
+              ].filter(Boolean),
+              `${appUrl()}/external-verify/${req.external_token}`,
+              'Review this achievement'
+            )
+          : requestEmailHtml(
+              `External verification request from ${req.school_name || 'an organisation'}`,
+              [
+                `${req.student_name || 'A student'} has been awarded <strong>${req.title}</strong>.`,
+                `As an independent verifier, please confirm this achievement is accurate.`,
+                `This link is one-time use and expires ${expiresLine}.`,
+              ],
+              `${appUrl()}/external-verify/${req.external_token}`,
+              'Verify this achievement'
+            );
+        await sendTrackedEmail(svc, {
+          to: req.external_verifier_email || log.recipient_email,
+          subject, html,
+          event_type: log.event_type,
+          related_type: 'achievement_request',
+          related_id: req.id,
+          school_id: req.school_id,
+          retryable: true,
+        });
+        retried++;
+      }
+    } catch (e) { /* the retry pass is best-effort */ }
+
+    console.log(JSON.stringify({ fn: 'achievementRequestMaintenance', pending: pending.length, expired, reminded, retried }));
+    return Response.json({ ok: true, pending: pending.length, expired, reminded, retried }, { headers: CORS });
   } catch (e) {
     return Response.json({ ok: false, error: e?.message || String(e) }, { status: 500, headers: CORS });
   }

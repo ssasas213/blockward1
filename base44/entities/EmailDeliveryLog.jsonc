@@ -1,0 +1,110 @@
+{
+  "name": "EmailDeliveryLog",
+  "type": "object",
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "description": "Semantic event that triggered this email, e.g. verifier_nomination, independent_verification_link, tier3_external_link, request_changes, request_rejected, request_expired, maintenance_reminder, correction_requested, correction_approved, correction_declined, credential_revoked, record_delivered_to_vault, record_rejected, team_claim, guardian_consent, high_rejection_flag, attested_edit_notice, request_withdrawn_notice, external_verifier_declined, request_reported_false, mint_failed_notice, credential_verified."
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "Intended recipient (safe reference for org-admin observability)."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject line as sent \u2014 audit copy without storing full sensitive bodies."
+    },
+    "related_type": {
+      "type": "string",
+      "enum": [
+        "achievement_request",
+        "student_record",
+        "registry",
+        "invitation",
+        "profile",
+        "team_credential",
+        "none"
+      ],
+      "default": "none",
+      "description": "Kind of entity this communication belongs to."
+    },
+    "related_id": {
+      "type": "string",
+      "description": "Id of the originating entity \u2014 the causal link between a communication side effect and its event. Also the key the safe retry path uses to re-render content from current state."
+    },
+    "school_id": {
+      "type": "string",
+      "description": "Organisation scope where one exists. Null for school-less (independent) events."
+    },
+    "dedupe_key": {
+      "type": "string",
+      "description": "event_type:related_id:recipient \u2014 the short-window duplicate-send guard for double clicks and retried automations."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "'sent' = ACCEPTED BY THE PROVIDER (Resend) for sending \u2014 this integration cannot prove inbox delivery, so it never claims 'delivered'. 'pending' = attempt in flight. 'failed' = provider rejected or the request errored; retryable rows may be safely re-sent by the maintenance sweep."
+    },
+    "provider": {
+      "type": "string",
+      "default": "resend",
+      "description": "Email provider used for the attempt."
+    },
+    "provider_message_id": {
+      "type": "string",
+      "description": "Provider's message id when one is returned."
+    },
+    "error": {
+      "type": "string",
+      "description": "Failure reason / error category for failed attempts. Never a raw stack trace."
+    },
+    "attempts": {
+      "type": "number",
+      "default": 1,
+      "description": "Attempt number for this event+recipient \u2014 each retry appends a new log row with an incremented count so the full attempt history is retained."
+    },
+    "retryable": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when a safe system retry path exists for this email type (re-sent from CURRENT state by the maintenance sweep \u2014 never repeats the underlying credential action and never generates a replacement token)."
+    },
+    "last_attempted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the last (or only) attempt was made."
+    }
+  },
+  "required": [
+    "event_type",
+    "recipient_email",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.event_type": "__service_role_only__"
+    },
+    "read": {
+      "$and": [
+        {
+          "data.school_id": "{{user.profile.school_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.event_type": "__service_role_only__"
+    },
+    "delete": {
+      "data.event_type": "__service_role_only__"
+    }
+  }
+}
