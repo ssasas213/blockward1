@@ -266,11 +266,11 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
                     set('orgId', v);
                     // Reset picks that belong to a different organisation.
                     if (form.credentialTypeId && form.credentialTypeId !== 'other' &&
-                        !meta.templates.some((t) => t.id === form.credentialTypeId && (!t.school_id || t.school_id === v))) {
+                        !templates.some((t) => t.id === form.credentialTypeId && (!t.school_id || t.school_id === v))) {
                       set('credentialTypeId', '');
                     }
                     if (form.verifierEmail &&
-                        !meta.staff.some((s) => s.email === form.verifierEmail && (!s.school_id || s.school_id === v))) {
+                        !staff.some((s) => s.email === form.verifierEmail && (!s.school_id || s.school_id === v))) {
                       set('verifierEmail', '');
                     }
                   }}
@@ -278,7 +278,7 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
                 >
                   <SelectTrigger><SelectValue placeholder="Pick an organisation" /></SelectTrigger>
                   <SelectContent>
-                    {meta.orgs.map((o) => (
+                    {orgs.map((o) => (
                       <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
                     ))}
                   </SelectContent>
