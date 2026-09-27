@@ -80,6 +80,13 @@ Deno.serve(async (req) => {
             achievement_title: reg.achievement_title,
             student_name: reg.student_name,
             organisation_name: reg.organisation_name,
+            // Public revocation context — a viewer deserves to know who
+            // revoked it, when and why. Still no private data (no emails).
+            revocation: reg.revocation ? {
+              reason: reg.revocation.reason || null,
+              revoked_by_name: reg.revocation.revoked_by_name || null,
+              revoked_at: reg.revocation.revoked_at || null,
+            } : null,
           },
           message: 'This achievement has been revoked and is no longer valid.'
         }, { headers: CORS });

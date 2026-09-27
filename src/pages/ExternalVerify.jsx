@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import BrandHeader from '@/components/public/BrandHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -118,15 +119,21 @@ export default function ExternalVerify() {
     (form.method !== 'other' || form.methodNote.trim());
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-xl">
-        {/* Header */}
+    <div className="min-h-screen bg-background">
+      {/* Brand header — shared with the public verification page, so a
+          verifier who later opens the credential sees the same branding. */}
+      <BrandHeader />
+      <div className="w-full max-w-xl mx-auto px-4 py-8 md:py-12">
+        {/* Heading — who we are and what this page is, in plain language */}
         <div className="text-center mb-8">
           <div className="mx-auto h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">External verification</h1>
-          <p className="text-sm text-muted-foreground mt-1.5">BlockWard — verified achievements</p>
+          <h1 className="text-2xl font-bold text-foreground">Verify an achievement</h1>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
+            BlockWard gives students achievements that schools, clubs and independent verifiers like you
+            stand behind — each verified credential carries a permanent public link anyone can check.
+          </p>
         </div>
 
         {state === 'loading' && (
@@ -151,6 +158,11 @@ export default function ExternalVerify() {
                 {!errCode && "We can't verify with this link"}
               </p>
               <p className="text-sm text-muted-foreground mt-1.5">{error}</p>
+              {errCode === 'expired' && (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  For security, these one-time links expire automatically.
+                </p>
+              )}
               {(errCode === 'expired' || errCode === 'invalid') && (
                 <p className="text-xs text-muted-foreground mt-3">
                   Ask the student to send a fresh verification request.
@@ -170,8 +182,14 @@ export default function ExternalVerify() {
                 The credential is now published on their profile with your details in its verification chain.
               </p>
               {request?.verification_id && (
-                <p className="text-xs text-muted-foreground mt-3">Verification ID: {request.verification_id}</p>
+                <>
+                  <Button asChild variant="outline" size="sm" className="mt-5">
+                    <Link to={`/verify/${request.verification_id}`}>View the published credential</Link>
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-3 font-mono">{request.verification_id}</p>
+                </>
               )}
+              <p className="text-xs text-muted-foreground mt-3">You can close this page — the student has been notified.</p>
             </CardContent>
           </Card>
         )}
@@ -236,10 +254,15 @@ export default function ExternalVerify() {
                     </span>
                   </p>
                 ) : (
-                  <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5" />
-                    Internally verified by {request.nominated_verifier_name}. This one-time link expires{' '}
-                    {new Date(request.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.
+                  <p className="text-xs text-muted-foreground mt-4 flex items-start gap-1.5">
+                    <Clock className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {request.student_name} requested this achievement, already signed off by{' '}
+                      {request.nominated_verifier_name || 'their nominated verifier'} at their organisation.
+                      Your confirmation is the final independent check before it is published. This one-time
+                      link expires{' '}
+                      {new Date(request.expires_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.
+                    </span>
                   </p>
                 )}
               </CardContent>
@@ -306,6 +329,13 @@ export default function ExternalVerify() {
                   <Label>Your signature</Label>
                   <Input value={form.signature} onChange={(e) => set('signature', e.target.value)} placeholder="Type your full name" className="font-serif italic" />
                 </div>
+
+                <p className="text-xs text-muted-foreground leading-relaxed bg-secondary/50 border border-border rounded-lg p-3">
+                  <strong className="text-foreground">What your confirmation means:</strong> your name, role
+                  and organisation will appear on this credential's public verification page, together with
+                  how and when you verified it. It becomes part of the student's verified record — permanently
+                  and transparently. If you can't confirm it, you can decline; if the claim is false, report it.
+                </p>
 
                 <Button className="w-full" size="lg" disabled={!canSubmit || busy} onClick={submit}>
                   {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
