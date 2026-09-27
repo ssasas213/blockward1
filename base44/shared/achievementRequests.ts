@@ -108,6 +108,6 @@ export function requestEmailHtml(heading: string, lines: string[], ctaUrl?: stri
   </div>`;
 }
 
-export async function notifyRequest(to: string, subject: string, html: string) {
-  return sendResendEmail(to, subject, html);
+export async function notifyRequest(to: string, subject: string, html: string, svc?: any) {
+  return sendResendEmail(to, subject, html, svc);
 }

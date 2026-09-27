@@ -1,0 +1,53 @@
+{
+  "name": "EmailLog",
+  "type": "object",
+  "properties": {
+    "recipient_email": {
+      "type": "string",
+      "description": "Address this email was sent to"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject line \u2014 identifies the event/template"
+    },
+    "related_id": {
+      "type": "string",
+      "description": "Related entity id when the caller knows it (best-effort)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed"
+      ],
+      "description": "Outcome of the send attempt. A failed email NEVER rolls back the workflow that triggered it \u2014 the workflow stays valid and the failure stays inspectable here."
+    },
+    "error": {
+      "type": "string",
+      "description": "Provider error message when status is 'failed'"
+    },
+    "provider": {
+      "type": "string",
+      "default": "resend",
+      "description": "Email provider used for this send"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the send attempt completed"
+    }
+  },
+  "required": [
+    "recipient_email",
+    "subject",
+    "status"
+  ],
+  "rls": {
+    "create": {
+      "data.recipient_email": "__service_role_only__"
+    },
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}

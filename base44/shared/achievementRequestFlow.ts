@@ -454,7 +454,7 @@ export async function submitRequest(svc, actor, body, ctx) {
       `${appUrl()}/external-verify/${token}`,
       'Review this achievement'
     );
-    await notifyRequest(iv.email, `Can you verify an achievement for ${baseData.student_name}?`, html);
+    await notifyRequest(iv.email, `Can you verify an achievement for ${baseData.student_name}?`, html, svc);
   }
 
   // Email the nominated verifier when a request lands in their queue.
@@ -469,7 +469,7 @@ export async function submitRequest(svc, actor, body, ctx) {
       `${appUrl()}/PendingSignoffs`,
       'Review request'
     );
-    await notifyRequest(baseData.nominated_verifier_email, `New achievement request from ${baseData.student_name}`, html);
+    await notifyRequest(baseData.nominated_verifier_email, `New achievement request from ${baseData.student_name}`, html, svc);
   }
 
   return ok(200, { ok: true, request: saved, status });
@@ -518,7 +518,7 @@ export async function withdrawRequest(svc, actor, body) {
       appUrl(),
       'Go to BlockWard'
     );
-    await notifyRequest(notifyTo, `Request withdrawn: "${request.title}"`, html);
+    await notifyRequest(notifyTo, `Request withdrawn: "${request.title}"`, html, svc);
   }
   return ok(200, { ok: true, status: 'withdrawn' });
 }
@@ -543,6 +543,7 @@ export async function retryMint(svc, actor, body) {
     console.error(`[retry_mint] request ${request.id} threw`, e?.message || e);
     mint = { ok: false, error: 'publishing failed' };
   }
+  if (mint.busy) return bad(mint.error, 409);
   if (!mint.ok) {
     console.error(`[retry_mint] request ${request.id} failed`, mint.error);
     await svc.entities.AchievementRequest.update(request.id, {
@@ -677,12 +678,13 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         `${appUrl()}/external-verify/${token}`,
         'Verify this achievement'
       );
-      await notifyRequest(request.external_verifier_email, `Verify an achievement for ${request.school_name || 'an organisation'}`, html);
+      await notifyRequest(request.external_verifier_email, `Verify an achievement for ${request.school_name || 'an organisation'}`, html, svc);
       return ok(200, { ok: true, status: 'awaiting_external_verification' });
     }
 
     const fresh = (await svc.entities.AchievementRequest.filter({ id: request.id }))[0];
     const mint = await mintRequestCredential(svc, fresh);
+    if (mint.busy) return bad(mint.error, 409);
     if (!mint.ok) {
       await svc.entities.AchievementRequest.update(request.id, {
         event_log: appendEvent(fresh.event_log, logEvent('mint_failed', email, actorName, 'admin', mint.error)),
@@ -727,7 +729,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'Edit my request'
     );
-    await notifyRequest(request.student_email, `Changes requested on "${request.title}"`, html);
+    await notifyRequest(request.student_email, `Changes requested on "${request.title}"`, html, svc);
     // In-app notification (per-type preferences apply); the email above already covers this event.
     await notifyEvent(svc, {
       to_email: request.student_email,
@@ -763,7 +765,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'View my requests'
     );
-    await notifyRequest(request.student_email, `Your request for "${request.title}" was not approved`, html);
+    await notifyRequest(request.student_email, `Your request for "${request.title}" was not approved`, html, svc);
 
     // ── Rejection-rate abuse signal → organisation admins ──
     const stats = await rejectionStatsFor(svc, request.student_email, request.school_id);
@@ -780,7 +782,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         'Review queue'
       );
       for (const a of admins) {
-        if (a.user_email) await notifyRequest(a.user_email, `High rejection rate: ${request.student_name || request.student_email}`, html2);
+        if (a.user_email) await notifyRequest(a.user_email, `High rejection rate: ${request.student_name || request.student_email}`, html2, svc);
       }
     }
     return ok(200, { ok: true, status: 'rejected' });
@@ -790,6 +792,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
     if (!isAdmin) return bad('Only organisation admins can retry publishing', 403);
     if (request.status !== 'approved') return bad('Only approved requests can be published');
     const mint = await mintRequestCredential(svc, request);
+    if (mint.busy) return bad(mint.error, 409);
     if (!mint.ok) return bad(mint.error, 500);
     return ok(200, { ok: true, status: 'archived', verification_id: mint.verificationId });
   }
@@ -868,7 +871,7 @@ export async function runExternalAction(svc, body, ctx) {
       `${appUrl()}/AchievementRequests`,
       'Edit my request'
     );
-    await notifyRequest(request.student_email, `Your verifier declined: "${request.title}"`, html);
+    await notifyRequest(request.student_email, `Your verifier declined: "${request.title}"`, html, svc);
     await notifyEvent(svc, {
       to_email: request.student_email,
       school_id: request.school_id,
@@ -909,16 +912,16 @@ export async function runExternalAction(svc, body, ctx) {
       });
     } catch { /* best-effort audit */ }
     const html = requestEmailHtml(
-      'Your achievement request was withdrawn',
+      'Your achievement request was rejected',
       [
         `The person you nominated to verify <strong>${request.title}</strong> reported the claim as inaccurate:`,
         `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
-        `The request has been withdrawn. Rejections are private — nothing appears on your public profile.`,
+        `The request has been rejected. Rejections are private — nothing appears on your public profile.`,
       ],
       `${appUrl()}/AchievementRequests`,
       'View my requests'
     );
-    await notifyRequest(request.student_email, `Your request for "${request.title}" was withdrawn`, html);
+    await notifyRequest(request.student_email, `Your request for "${request.title}" was not approved`, html, svc);
     return ok(200, { ok: true, status: 'rejected' });
   }
 
@@ -998,6 +1001,7 @@ export async function runExternalAction(svc, body, ctx) {
     console.error(`[mint] request ${request.id} threw`, e?.message || e);
     mint = { ok: false, error: 'publishing failed' };
   }
+  if (mint.busy) return bad('This credential is already being published — refresh in a moment. Your confirmation was recorded; nothing more is needed from you.', 409);
   if (!mint.ok) {
     console.error(`[mint] request ${request.id} failed`, mint.error);
     const freshLog = fresh?.event_log || request.event_log || [];
@@ -1013,7 +1017,7 @@ export async function runExternalAction(svc, body, ctx) {
       `${appUrl()}/StudentBlockWards`,
       'Open my credentials'
     );
-    await notifyRequest(request.student_email, `Publishing "${request.title}" failed — action needed`, failHtml);
+    await notifyRequest(request.student_email, `Publishing "${request.title}" failed — action needed`, failHtml, svc);
     await notifyEvent(svc, {
       to_email: request.student_email,
       school_id: request.school_id,
@@ -1035,7 +1039,7 @@ export async function runExternalAction(svc, body, ctx) {
     `${appUrl()}/StudentBlockWards`,
     'View my credentials'
   );
-  await notifyRequest(request.student_email, `Verified: "${request.title}"`, html);
+  await notifyRequest(request.student_email, `Verified: "${request.title}"`, html, svc);
   // In-app record for the same event (the email above already covered this).
   await notifyEvent(svc, {
     to_email: request.student_email,

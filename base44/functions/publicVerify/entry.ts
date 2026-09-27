@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
         token_id: record.nft_token_id || null,
         transaction_hash: record.nft_transaction_hash || null,
         certificate_url: record.certificate_url || null,
-        public_verification_url: `https://blockward.me/verify/${record.verify_id}`,
+        public_verification_url: `${Deno.env.get('APP_URL') || 'https://blockward.me'}/verify/${record.verify_id}`,
       },
       teacherSignature: teacherSig ? {
         signer_name: teacherSig.signer_name,

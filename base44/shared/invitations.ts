@@ -57,7 +57,7 @@ export function renderInviteEmail(schoolName: string, inviterName: string, email
 // Delegates to the shared Resend dispatcher in resendEmail.ts so every
 // backend email flow uses one implementation.
 export async function sendInviteEmail(svc, to: string, subject: string, body: string): Promise<{ delivered: boolean; error?: string }> {
-  return sendResendEmail(to, subject, body);
+  return sendResendEmail(to, subject, body, svc);
 }
 
 // Core invitation flow shared by both function entries.
