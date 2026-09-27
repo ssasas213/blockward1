@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, AlertTriangle, FileText, LinkIcon, ChevronRight, Users, ShieldCheck, X, Copy, Loader2, PenLine } from 'lucide-react';
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, TIER_SHORT, TIER_LABELS, CATEGORY_LABELS } from '@/lib/achievementRequests';
 import { DIRECT_EDITABLE_STATUSES } from '@/lib/credentialEdits';
+import EvidenceChips from '@/components/achievements/EvidenceChips';
 
 // The student may cancel any of these; anything past this point is verified
 // (or terminal) and cannot be silently unmade.
@@ -223,12 +224,7 @@ export default function PendingTab({ requests, caps, onEdit, onEditDetail, onWit
                   {r.submitted_at && <span>Submitted {new Date(r.submitted_at).toLocaleDateString('en-GB')}</span>}
                   {(r.evidence || []).length > 0 && (
                     <span className="flex items-center gap-1.5">
-                      {(r.evidence || []).map((e, i) => (
-                        <a key={i} href={e.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
-                          {e.type === 'file' ? <FileText className="h-3.5 w-3.5" /> : <LinkIcon className="h-3.5 w-3.5" />}
-                          {e.name}
-                        </a>
-                      ))}
+                      <EvidenceChips evidence={r.evidence || []} requestId={r.id} variant="inline" />
                     </span>
                   )}
                 </div>

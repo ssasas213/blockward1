@@ -281,7 +281,7 @@ Deno.serve(async (req) => {
         verificationId = `BW-${year}-${rand}`;
         const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
         const publicSlug = `${slugify(record.title || 'achievement')}-${rand.substring(0, 4).toLowerCase()}`;
-        publicVerificationUrl = `https://blockward.me/verify/${verificationId}`;
+        publicVerificationUrl = `${Deno.env.get('APP_URL') || 'https://blockward.base44.app'}/verify/${verificationId}`;
 
         registryRecord = await base44.asServiceRole.entities.BlockWardVerificationRegistry.create({
           verification_id: verificationId,
@@ -414,7 +414,7 @@ Deno.serve(async (req) => {
     // Parent/guardian email notification (non-critical)
     try {
       if (studentProfile?.parent_email) {
-        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
+        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.base44.app';
         const verifyUrl = `${appUrl}/verify/${verificationId}`;
         await base44.asServiceRole.integrations.Core.SendEmail({
           to: studentProfile.parent_email,

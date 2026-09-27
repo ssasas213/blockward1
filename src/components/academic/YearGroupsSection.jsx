@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Archive, ArchiveRestore } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,12 +11,17 @@ import { toast } from 'sonner';
  * YearGroupsSection — organisation admins manage year groups, including
  * archiving a finished year. Archiving hides a year group from active use
  * without deleting anything — its history stays fully queryable.
+ *
+ * Mutations go through the academicSettingsAction backend function —
+ * BlockWard authorises on UserProfile.user_type, not the platform role the
+ * entity RLS checks. Reads stay on the school-scoped entity read.
  */
 export default function YearGroupsSection({ schoolId }) {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
 
   const load = useCallback(async () => {
     if (!schoolId) return;
@@ -30,26 +34,35 @@ export default function YearGroupsSection({ schoolId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const mutate = async (payload, successMessage) => {
+    const res = await base44.functions.invoke('academicSettingsAction', payload);
+    if (!res.data?.ok) throw new Error(res.data?.error || 'This change could not be saved');
+    if (successMessage) toast.success(successMessage);
+  };
+
   const create = async () => {
     if (!name.trim()) { toast.error('A name is required'); return; }
     setSaving(true);
     try {
-      await base44.entities.YearGroup.create({ school_id: schoolId, name: name.trim(), status: 'active' });
-      toast.success('Year group created');
+      await mutate({ entity: 'year_group', action: 'create', name: name.trim() }, 'Year group created');
       setName('');
       load();
-    } catch (e) { toast.error(e.message || 'Failed to create'); }
+    } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
   const toggleArchive = async (g) => {
     const archiving = g.status !== 'archived';
     if (archiving && !confirm(`Archive "${g.name}"? Its history is preserved and stays reportable.`)) return;
+    setUpdatingId(g.id);
     try {
-      await base44.entities.YearGroup.update(g.id, { status: archiving ? 'archived' : 'active' });
-      toast.success(archiving ? 'Year group archived — history preserved' : 'Year group restored');
+      await mutate(
+        { entity: 'year_group', action: 'update', id: g.id, status: archiving ? 'archived' : 'active' },
+        archiving ? 'Year group archived — history preserved' : 'Year group restored',
+      );
       load();
-    } catch (e) { toast.error(e.message || 'Failed to update'); }
+    } catch (e) { toast.error(e.message); }
+    finally { setUpdatingId(null); }
   };
 
   return (
@@ -80,8 +93,8 @@ export default function YearGroupsSection({ schoolId }) {
                   <p className="font-medium text-foreground text-sm">{g.name}</p>
                   {g.status === 'archived' && <Badge variant="secondary">Archived</Badge>}
                 </div>
-                <Button size="sm" variant={g.status === 'archived' ? 'outline' : 'ghost'} onClick={() => toggleArchive(g)}>
-                  {g.status === 'archived' ? <><ArchiveRestore className="h-4 w-4 mr-1" /> Restore</> : <><Archive className="h-4 w-4 mr-1" /> Archive</>}
+                <Button size="sm" variant={g.status === 'archived' ? 'outline' : 'ghost'} disabled={updatingId === g.id} onClick={() => toggleArchive(g)}>
+                  {updatingId === g.id ? <Loader2 className="h-4 w-4 animate-spin" /> : g.status === 'archived' ? <><ArchiveRestore className="h-4 w-4 mr-1" /> Restore</> : <><Archive className="h-4 w-4 mr-1" /> Archive</>}
                 </Button>
               </div>
             ))}

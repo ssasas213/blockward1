@@ -60,6 +60,14 @@ export async function mintRequestCredential(svc: any, request: any) {
   const evidenceFileType = evidenceFile
     ? (/\.(jpg|jpeg|png|webp|gif)$/i.test(evidenceFile.url) ? 'image' : 'file')
     : null;
+  // Public evidence URL for the registry — LEGACY public uploads only. New
+  // evidence lives in PRIVATE storage (a private file URI, not a URL): it is
+  // never exposed on the public verification page and is served to
+  // authorised viewers through getEvidenceAccess instead. The record's own
+  // file_url keeps the private URI (attested evidence, signed on access).
+  const publicEvidenceUrl = (evidenceFile && !evidenceFile.private && /^https?:/i.test(evidenceFile.url || ''))
+    ? evidenceFile.url
+    : null;
 
   // ── Cover image moderation — student-uploaded public images are checked
   // before they become public. A blocked cover never blocks the credential:
@@ -183,7 +191,7 @@ export async function mintRequestCredential(svc: any, request: any) {
       approval_status: 'approved',
       vault_status: 'delivered',
       achievement_image: coverUrl || existingRegs[0].achievement_image || null,
-      evidence_file_url: evidenceFile?.url || existingRegs[0].evidence_file_url || null,
+      evidence_file_url: publicEvidenceUrl || existingRegs[0].evidence_file_url || null,
       date_delivered: now,
       ...(teamSlug ? {
         team_slug: existingRegs[0].team_slug || teamSlug,
@@ -220,7 +228,7 @@ export async function mintRequestCredential(svc: any, request: any) {
       achievement_category: request.category || 'special',
       achievement_description: request.description || null,
       achievement_image: coverUrl,
-      evidence_file_url: evidenceFile?.url || null,
+      evidence_file_url: publicEvidenceUrl,
       date_achieved: request.date_achieved || null,
       date_approved: request.approved_at || now,
       date_delivered: now,

@@ -20,12 +20,17 @@ const TIERS = {
  * AwardTypesSection — organisation admins configure their credential
  * templates: which approval tier each type requires, and whether students
  * must attach evidence before submitting (enforced server-side at submit).
+ *
+ * Mutations go through the academicSettingsAction backend function —
+ * BlockWard authorises on UserProfile.user_type, not the platform role the
+ * entity RLS checks. Reads stay on the school-scoped entity read.
  */
 export default function AwardTypesSection({ schoolId }) {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
   const [form, setForm] = useState({ code: '', title: '', category: 'academic', verification_tier: '1', requires_evidence: false });
 
   const load = useCallback(async () => {
@@ -39,32 +44,51 @@ export default function AwardTypesSection({ schoolId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // All mutations run server-side (admin role + own-school scope enforced
+  // there). Only the function's user-facing error text is shown — never a
+  // raw backend error.
+  const mutate = async (payload, successMessage) => {
+    const res = await base44.functions.invoke('academicSettingsAction', payload);
+    if (!res.data?.ok) throw new Error(res.data?.error || 'This change could not be saved');
+    if (successMessage) toast.success(successMessage);
+  };
+
   const create = async () => {
     if (!form.code.trim() || !form.title.trim()) { toast.error('Code and title are required'); return; }
     setSaving(true);
     try {
-      await base44.entities.AwardTypes.create({
-        school_id: schoolId,
+      await mutate({
+        entity: 'award_type', action: 'create',
         code: form.code.trim().toUpperCase().replace(/\s+/g, '_'),
         title: form.title.trim(),
         category: form.category,
         verification_tier: Number(form.verification_tier),
         requires_evidence: form.requires_evidence,
-        is_active: true,
-      });
-      toast.success('Credential type created');
+      }, 'Credential type created');
       setShowForm(false);
       setForm({ code: '', title: '', category: 'academic', verification_tier: '1', requires_evidence: false });
       load();
-    } catch (e) { toast.error(e.message || 'Failed to create'); }
+    } catch (e) { toast.error(e.message); }
     finally { setSaving(false); }
   };
 
   const patch = async (t, updates) => {
+    setUpdatingId(t.id);
     try {
-      await base44.entities.AwardTypes.update(t.id, updates);
+      await mutate({ entity: 'award_type', action: 'update', id: t.id, ...updates });
       load();
-    } catch (e) { toast.error(e.message || 'Failed to update'); }
+    } catch (e) { toast.error(e.message); }
+    finally { setUpdatingId(null); }
+  };
+
+  const remove = async (t) => {
+    if (!confirm(`Delete credential type "${t.title}"? Existing credentials are unaffected.`)) return;
+    setUpdatingId(t.id);
+    try {
+      await mutate({ entity: 'award_type', action: 'delete', id: t.id }, 'Deleted');
+      load();
+    } catch (e) { toast.error(e.message); }
+    finally { setUpdatingId(null); }
   };
 
   return (
@@ -121,7 +145,9 @@ export default function AwardTypesSection({ schoolId }) {
           <p className="text-sm text-muted-foreground text-center py-6">No credential types yet — students can still submit custom types with a chosen tier.</p>
         ) : (
           <div className="space-y-2">
-            {types.map(t => (
+            {types.map(t => {
+              const busy = updatingId === t.id;
+              return (
               <div key={t.id} className="p-3 rounded-lg border border-border bg-background/50 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -130,16 +156,15 @@ export default function AwardTypesSection({ schoolId }) {
                     {t.requires_evidence && <Badge variant="warning">Evidence required</Badge>}
                     {!t.is_active && <Badge variant="secondary">Inactive</Badge>}
                   </div>
-                  <Button size="sm" variant="ghost" onClick={async () => {
-                    if (!confirm(`Delete credential type "${t.title}"? Existing credentials are unaffected.`)) return;
-                    await base44.entities.AwardTypes.delete(t.id); toast.success('Deleted'); load();
-                  }}><Trash2 className="h-4 w-4 text-muted-foreground" /></Button>
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => remove(t)}>
+                    {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4 text-muted-foreground" />}
+                  </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Approval:</span>
                     <Select value={String(t.verification_tier || 1)} onValueChange={(v) => patch(t, { verification_tier: Number(v) })}>
-                      <SelectTrigger className="h-8 text-xs w-64"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-8 text-xs w-64" disabled={busy}><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {[1, 2, 3].map(n => <SelectItem key={n} value={String(n)}>{TIERS[n]}</SelectItem>)}
                       </SelectContent>
@@ -147,11 +172,12 @@ export default function AwardTypesSection({ schoolId }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">Evidence required:</span>
-                    <Switch checked={t.requires_evidence !== false} onCheckedChange={(v) => patch(t, { requires_evidence: v })} />
+                    <Switch checked={t.requires_evidence !== false} disabled={busy} onCheckedChange={(v) => patch(t, { requires_evidence: v })} />
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>

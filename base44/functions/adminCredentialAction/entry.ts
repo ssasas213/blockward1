@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
     //    reported to the admin as an action failure.
     if (reg.student_email) {
       try {
-        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
+        const appUrl = Deno.env.get('APP_URL') || 'https://blockward.base44.app';
         const html = requestEmailHtml(
           'A credential was revoked',
           [

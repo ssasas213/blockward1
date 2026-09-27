@@ -724,7 +724,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         `<blockquote style="border-left:3px solid #7c3aed;padding-left:12px;color:#64748b;">${comment}</blockquote>`,
         `Edit your request and resubmit it for review.`,
       ],
-      `${appUrl()}/AchievementRequests`,
+      `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
       'Edit my request'
     );
     await notifyRequest(svc, request.student_email, `Changes requested on "${request.title}"`, html, { event_type: 'request_changes', related_id: request.id, school_id: request.school_id });
@@ -760,7 +760,7 @@ export async function runReviewerAction(svc, actor, body, ctx) {
         `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
         `Rejections are private — they never appear on your public profile.`,
       ],
-      `${appUrl()}/AchievementRequests`,
+      `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
       'View my requests'
     );
     await notifyRequest(svc, request.student_email, `Your request for "${request.title}" was not approved`, html, { event_type: 'request_rejected', related_id: request.id, school_id: request.school_id });
@@ -865,7 +865,7 @@ export async function runExternalAction(svc, body, ctx) {
         `The person you nominated to verify <strong>${request.title}</strong> declined.`,
         `You can edit your request and nominate someone else.`,
       ],
-      `${appUrl()}/AchievementRequests`,
+      `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
       'Edit my request'
     );
     await notifyRequest(svc, request.student_email, `Your verifier declined: "${request.title}"`, html, { event_type: 'external_verifier_declined', related_id: request.id, school_id: request.school_id });
@@ -915,7 +915,7 @@ export async function runExternalAction(svc, body, ctx) {
         `<blockquote style="border-left:3px solid #dc2626;padding-left:12px;color:#64748b;">${reason}</blockquote>`,
         `The request has been rejected. Rejections are private — nothing appears on your public profile.`,
       ],
-      `${appUrl()}/AchievementRequests`,
+      `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
       'View my requests'
     );
     await notifyRequest(svc, request.student_email, `Your request for "${request.title}" was not approved`, html, { event_type: 'request_reported_false', related_id: request.id, school_id: request.school_id });

@@ -19,6 +19,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { STATUS_LABELS, TIER_SHORT, TIER_LABELS, CATEGORY_LABELS, signOffOutcome, signOffSuccessMessage } from '@/lib/achievementRequests';
+import EvidenceChips from '@/components/achievements/EvidenceChips';
 
 export default function PendingSignoffs() {
   const [queue, setQueue] = useState([]);
@@ -234,13 +235,7 @@ export default function PendingSignoffs() {
                       {r.description && <p className="text-sm text-foreground/80 mt-2">{r.description}</p>}
                       {(r.evidence || []).length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {(r.evidence || []).map((e, i) => (
-                            <a key={i} href={e.url} target="_blank" rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground hover:bg-hover transition-colors">
-                              {e.type === 'file' ? <FileText className="h-3.5 w-3.5 text-primary" /> : <LinkIcon className="h-3.5 w-3.5 text-primary" />}
-                              {e.name}
-                            </a>
-                          ))}
+                          <EvidenceChips evidence={r.evidence || []} requestId={r.id} />
                         </div>
                       )}
                       {needsAdminApproval && (

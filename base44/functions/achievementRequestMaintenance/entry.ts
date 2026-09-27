@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
                 `The person you nominated to verify <strong>${request.title}</strong> didn't respond within 14 days.`,
                 `You can submit it again — or nominate a different verifier.`,
               ],
-              `${appUrl()}/AchievementRequests`,
+              `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
               'View my requests'
             );
             await notifyRequest(svc, request.student_email, `Your verification request for "${request.title}" expired`, html, { event_type: 'request_expired', related_id: request.id, school_id: request.school_id });
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
             `Your request for <strong>${request.title}</strong> expired without a reviewer responding within 30 days.`,
             `You can submit it again — or nominate a different verifier.`,
           ],
-          `${appUrl()}/AchievementRequests`,
+          `${appUrl()}/StudentBlockWards?tab=pending&request=${request.id}`,
           'View my requests'
         );
         await notifyRequest(svc, request.student_email, `Your request for "${request.title}" expired`, html, { event_type: 'request_expired', related_id: request.id, school_id: request.school_id });

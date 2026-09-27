@@ -24,6 +24,7 @@ import NextActionBadge from '@/components/records/NextActionBadge';
 import EditResubmitDialog from '@/components/records/EditResubmitDialog';
 import SignatureSetup from '@/components/records/SignatureSetup';
 import SignatureConfirmDialog from '@/components/records/SignatureConfirmDialog';
+import { isPrivateEvidence, openEvidenceFile } from '@/lib/evidenceAccess';
 
 const CATEGORY_COLORS = {
   academic: 'bg-blue-500/10 text-blue-400',
@@ -571,7 +572,11 @@ export default function RecordDetail() {
               {record.file_url && (
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">Evidence</p>
-                  {record.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                  {isPrivateEvidence(record.file_url) ? (
+                    <Button variant="outline" size="sm" onClick={() => openEvidenceFile({ url: record.file_url, recordId: record.id })}>
+                      <ExternalLink className="h-4 w-4 mr-2" /> View Evidence File
+                    </Button>
+                  ) : record.file_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                     <img src={record.file_url} alt="Evidence" className="max-h-64 rounded-lg border border-border" />
                   ) : (
                     <Button variant="outline" size="sm" asChild>

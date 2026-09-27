@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CATEGORY_LABELS } from '@/lib/achievementRequests';
+import { isPrivateEvidence, openEvidenceFile } from '@/lib/evidenceAccess';
 
 /**
  * BlockWardDetailModal — the private vault detail view for ONE achievement.
@@ -154,9 +155,16 @@ export default function BlockWardDetailModal({ blockWard, open, onClose, onEdit 
             )}
             {blockWard.file_url && (
               <Row icon={FileText} label="Evidence">
-                <a href={blockWard.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                  View evidence file
-                </a>
+                {isPrivateEvidence(blockWard.file_url) ? (
+                  <button type="button" onClick={() => openEvidenceFile({ url: blockWard.file_url, recordId: blockWard.record_id || blockWard.id })}
+                    className="text-primary hover:underline">
+                    View evidence file
+                  </button>
+                ) : (
+                  <a href={blockWard.file_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                    View evidence file
+                  </a>
+                )}
               </Row>
             )}
             {blockWard.corrected_at && (

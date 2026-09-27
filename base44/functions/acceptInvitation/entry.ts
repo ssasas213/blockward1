@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { provisionProfile, logRoleGrant } from '../../shared/profileProvisioning.ts';
+import { defaultAdminPermissions } from '../../shared/adminPermissions.ts';
 import { resolveEffectiveActor } from '../../shared/testMode.ts';
 
 function normalizeEmail(e) {
@@ -181,13 +182,26 @@ export default async function(req: Request): Promise<Response> {
           date_of_birth: body.date_of_birth, guardian_email: body.guardian_email,
         })).profile;
       } else {
+        // An admin invitation is the ONLY way an existing account can gain
+        // the admin role (join codes can never grant it) — so it must actually
+        // grant it, mirroring provisionProfile's seeding for new profiles.
+        // Without this the user ended up with an AdminSchoolMembership but
+        // user_type unchanged, so every server-side admin check denied them.
         const oldRole = existingProfile.user_type;
+        const wasAdmin = oldRole === 'admin';
         await svc.entities.UserProfile.update(existingProfile.id, {
+          user_type: 'admin',
           school_id: school.id,
           active_school_id: school.id,
           status: 'active',
+          // Seed the standard invitation defaults only for profiles that were
+          // not already admins — an existing admin keeps their level/permissions.
+          ...(wasAdmin ? {} : {
+            admin_level: 'basic_admin',
+            admin_permissions: defaultAdminPermissions('basic_admin'),
+          }),
         });
-        if (oldRole !== 'admin') {
+        if (!wasAdmin) {
           await logRoleGrant(svc, {
             record_id: existingProfile.id,
             school_id: school.id,

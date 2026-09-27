@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Shield, ShieldCheck, FileText, LinkIcon, Clock, XCircle, X, Flag } from 'lucide-react';
 import { INDEPENDENT_ROLE_OPTIONS } from '@/lib/achievementRequests';
 import { METHOD_OPTIONS, ATTESTATION_TEXT, CATEGORY_LABELS } from '@/lib/achievementRequests';
+import EvidenceChips from '@/components/achievements/EvidenceChips';
 
 // Public, token-authenticated page where a Tier 3 external verifier
 // (examiner, referee, federation officer, event organiser) confirms an
@@ -235,13 +236,7 @@ export default function ExternalVerify() {
                 )}
                 {(request.evidence || []).length > 0 && (
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {request.evidence.map((e, i) => (
-                      <a key={i} href={e.url} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground hover:bg-hover transition-colors">
-                        {e.type === 'file' ? <FileText className="h-3.5 w-3.5 text-primary" /> : <LinkIcon className="h-3.5 w-3.5 text-primary" />}
-                        {e.name}
-                      </a>
-                    ))}
+                    <EvidenceChips evidence={request.evidence} requestId={request.id} token={token} />
                   </div>
                 )}
                 {request.verification_mode === 'independent' ? (

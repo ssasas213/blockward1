@@ -28,6 +28,13 @@ const CORS = {
   'content-type': 'application/json'
 };
 
+// Abuse protection for the anonymous verification-event log: at most one
+// event per credential per minute per isolate, so an anonymous caller
+// cannot grow the log unboundedly. Verification itself is NEVER blocked —
+// an over-throttle view is simply not counted. Best-effort by design.
+const VERIFICATION_EVENT_MIN_INTERVAL_MS = 60_000;
+const verificationEventThrottle = new Map();
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
@@ -63,9 +70,16 @@ Deno.serve(async (req) => {
         }, { headers: CORS });
       }
 
-      // Count this public verification check (best-effort — never blocks the check).
+      // Count this public verification check (best-effort — never blocks the
+      // check, and throttled per credential per minute).
       try {
-        await svc.entities.VerificationEvent.create({ verification_id: reg.verification_id, source: 'registry' });
+        const nowMs = Date.now();
+        const last = verificationEventThrottle.get(reg.verification_id) || 0;
+        if (nowMs - last >= VERIFICATION_EVENT_MIN_INTERVAL_MS) {
+          if (verificationEventThrottle.size > 5000) verificationEventThrottle.clear();
+          verificationEventThrottle.set(reg.verification_id, nowMs);
+          await svc.entities.VerificationEvent.create({ verification_id: reg.verification_id, source: 'registry' });
+        }
       } catch (e) { /* metrics only */ }
 
       // REVOKED — no longer valid.
@@ -190,7 +204,9 @@ Deno.serve(async (req) => {
           achievement_description: reg.achievement_description,
           achievement_category: reg.achievement_category,
           achievement_image: reg.achievement_image,
-          evidence_file_url: reg.evidence_file_url,
+          // Legacy public evidence URLs only — privately stored evidence
+          // (non-http file URIs) is never exposed on the public page.
+          evidence_file_url: /^https?:/i.test(reg.evidence_file_url || '') ? reg.evidence_file_url : null,
           date_achieved: reg.date_achieved,
           date_approved: reg.date_approved,
           date_delivered: reg.date_delivered,
@@ -372,7 +388,7 @@ Deno.serve(async (req) => {
         achievement_description: record.description || null,
         achievement_category: record.category,
         achievement_image: record.nft_image_url || null,
-        evidence_file_url: record.file_url || null,
+        evidence_file_url: /^https?:/i.test(record.file_url || '') ? record.file_url : null,
         date_achieved: record.date_achieved || null,
         date_approved: record.approved_at || null,
         date_delivered: record.vault_delivered_at || null,
@@ -389,7 +405,7 @@ Deno.serve(async (req) => {
         token_id: record.nft_token_id || null,
         transaction_hash: record.nft_transaction_hash || null,
         certificate_url: record.certificate_url || null,
-        public_verification_url: `https://blockward.me/verify/${record.verify_id}`,
+        public_verification_url: `${Deno.env.get('APP_URL') || 'https://blockward.base44.app'}/verify/${record.verify_id}`,
       },
       teacherSignature: teacherSig ? {
         signer_name: teacherSig.signer_name,

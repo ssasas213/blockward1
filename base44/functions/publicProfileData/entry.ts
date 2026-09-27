@@ -145,7 +145,7 @@ export default async function (req: Request): Promise<Response> {
       participant_role: r.participant_role || null,
       team_slug: r.team_slug || null,
       image_url: r.achievement_image || null,
-      evidence_url: (r.visibility === 'public' || r.visibility === 'link_only') ? (r.evidence_file_url || null) : null,
+      evidence_url: (r.visibility === 'public' || r.visibility === 'link_only') && /^https?:/i.test(r.evidence_file_url || '') ? r.evidence_file_url : null,
       certificate_url: r.certificate_url || null,
       date_achieved: r.date_achieved || null,
       date_approved: r.date_approved || null,

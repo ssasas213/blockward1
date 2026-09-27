@@ -75,11 +75,14 @@ function ParentCommsImpl() {
 
     setSending(true);
     try {
-      await base44.integrations.Core.SendEmail({
+      // Tracked, authorisation-checked send — the recipient must be on the
+      // teacher's own school roster (parentCommsSend enforces this).
+      const res = await base44.functions.invoke('parentCommsSend', {
         to: selectedStudent.parent_email,
         subject: emailData.subject,
-        body: emailData.message
+        message: emailData.message,
       });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'The email could not be sent just now');
       
       toast.success('Email sent to parent');
       setShowDialog(false);
@@ -99,11 +102,12 @@ function ParentCommsImpl() {
 
     setSending(true);
     try {
-      await base44.integrations.Core.SendEmail({
+      const res = await base44.functions.invoke('parentCommsSend', {
         to: student.user_email,
         subject: emailData.subject,
-        body: emailData.message
+        message: emailData.message,
       });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'The email could not be sent just now');
       
       toast.success('Email sent to student');
     } catch (error) {

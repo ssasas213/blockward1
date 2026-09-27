@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -96,6 +96,19 @@ function StudentBlockWardsContent() {
   }, [user, testMode?.isTestSuperUser, testMode?.effectiveEmail, testMode?.activePersona]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Email deep link (?request=<id>) — transactional emails link straight to
+  // the relevant request. The id only resolves if it appears in the
+  // student's own server-authorized request list, so a crafted link can
+  // never open someone else's request.
+  const deepRequestId = useRef(new URLSearchParams(window.location.search).get('request')).current;
+  const deepHandled = useRef(false);
+  useEffect(() => {
+    if (!deepRequestId || deepHandled.current || !requests) return;
+    deepHandled.current = true;
+    const r = (requests || []).find((x) => x.id === deepRequestId);
+    if (r) setEditTarget({ kind: 'request', data: r });
+  }, [deepRequestId, requests]);
 
   // Celebration — fires once per achievement the first time it appears as
   // Verified on this device, then never again. The first-ever visit just

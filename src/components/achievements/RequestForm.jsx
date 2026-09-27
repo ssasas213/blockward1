@@ -19,6 +19,7 @@ import { base44 } from '@/api/base44Client';
 import CoverImagePicker from '@/components/achievements/CoverImagePicker';
 import { validateEvidenceFile, processEvidenceImage } from '@/lib/achievementImages';
 import { CATEGORY_LABELS, TIER_LABELS, INDEPENDENT_ROLE_OPTIONS } from '@/lib/achievementRequests';
+import { isPrivateEvidence, openEvidenceFile } from '@/lib/evidenceAccess';
 
 const EMPTY = {
   mode: 'org', // 'org' | 'independent'
@@ -113,8 +114,10 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
         if (err) { toast.error(`${file.name}: ${err}`); continue; }
         // Images are compressed client-side; PDFs pass through untouched.
         const processed = await processEvidenceImage(file);
-        const res = await base44.integrations.Core.UploadFile({ file: processed });
-        if (res?.file_url) added.push({ type: 'file', url: res.file_url, name: file.name });
+        // Private storage — a copied URI is worthless without a
+        // permission-checked signed URL (getEvidenceAccess).
+        const res = await base44.integrations.Core.UploadPrivateFile({ file: processed });
+        if (res?.file_uri) added.push({ type: 'file', url: res.file_uri, name: file.name, private: true });
       }
       if (added.length) set('evidence', [...form.evidence, ...added]);
     } catch (e) {
@@ -482,7 +485,16 @@ export default function RequestForm({ open, onOpenChange, meta, initial, onSubmi
                 {form.evidence.map((e, i) => (
                   <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
                     {e.type === 'file' ? <FileText className="h-4 w-4 text-primary" /> : <LinkIcon className="h-4 w-4 text-primary" />}
-                    <a href={e.url} target="_blank" rel="noreferrer" className="text-sm text-foreground truncate flex-1 hover:text-primary">{e.name}</a>
+                    {isPrivateEvidence(e.url) ? (
+                      initial?.id ? (
+                        <button type="button" onClick={() => openEvidenceFile({ url: e.url, requestId: initial.id })}
+                          className="text-sm text-foreground truncate flex-1 hover:text-primary text-left">{e.name}</button>
+                      ) : (
+                        <span className="text-sm text-foreground truncate flex-1">{e.name} <span className="text-tertiary">· private until submitted</span></span>
+                      )
+                    ) : (
+                      <a href={e.url} target="_blank" rel="noreferrer" className="text-sm text-foreground truncate flex-1 hover:text-primary">{e.name}</a>
+                    )}
                     <button type="button" onClick={() => set('evidence', form.evidence.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive">
                       <X className="h-4 w-4" />
                     </button>

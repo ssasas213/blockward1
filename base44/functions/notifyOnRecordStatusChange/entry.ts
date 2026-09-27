@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
     }
 
     const recordId = data.id || (body?.event && body.event.entity_id) || '';
-    const appUrl = Deno.env.get('APP_URL') || 'https://blockward.me';
+    const appUrl = Deno.env.get('APP_URL') || 'https://blockward.base44.app';
     const recordUrl = appUrl + '/RecordDetail?id=' + recordId;
     const adminApprovalUrl = appUrl + '/admin/approve/' + recordId;
     const schoolId = data.school_id || '';

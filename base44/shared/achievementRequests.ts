@@ -38,7 +38,7 @@ export const WEEKLY_PER_ORG_LIMIT = 3;
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function appUrl(): string {
-  return Deno.env.get('APP_URL') || 'https://blockward.me';
+  return Deno.env.get('APP_URL') || 'https://blockward.base44.app';
 }
 
 export function logEvent(event: string, actorEmail?: string, actorName?: string, actorRole?: string, note?: string) {
