@@ -280,7 +280,7 @@ export default function Verify() {
             <Shield className="h-8 w-8 text-muted-foreground" />
           </div>
           <h1 className="text-xl font-bold text-foreground mb-2">Private credential</h1>
-          <p className="text-muted-foreground mb-4 text-sm">{message || 'This credential exists, but its owner has made it private. Only they can share it.'}</p>
+          <p className="text-muted-foreground mb-4 text-sm">{data.message || 'This credential exists, but its owner has made it private. Only they can share it.'}</p>
           <p className="text-xs text-tertiary font-mono break-all">ID: {verificationId}</p>
         </CardContent>
       </Card>

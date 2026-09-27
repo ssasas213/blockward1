@@ -407,6 +407,9 @@ export async function submitCorrection(svc, actor, body) {
     return bad('Independently verified credentials carry their verifier\'s personal attestation — contact us and we\'ll help correct it with your verifier.');
   }
   if (!record) return bad('The source record for this credential could not be found', 404);
+  if (reg.approval_status === 'revoked') {
+    return bad('This credential has been revoked — it can no longer be corrected');
+  }
   if (record.correction_status === 'pending') return bad('A correction on this credential is already awaiting review');
 
   const proposed = {};
@@ -513,9 +516,27 @@ export async function reviewCorrection(svc, actor, body) {
   const regRows = await svc.entities.BlockWardVerificationRegistry.filter({ student_record_id: record.id }).catch(() => []);
   const reg = regRows?.[0] || null;
 
+  // A revoked credential's content is permanently frozen — approving a
+  // correction would publish a new version of a credential the organisation
+  // has withdrawn. Declining (closing the pending correction) stays allowed.
+  if (action === 'approve' && reg?.approval_status === 'revoked') {
+    return bad('This credential has been revoked — its content can no longer be corrected. The pending correction can be declined instead.');
+  }
+
   if (action === 'decline') {
     const reason = String(body.reason || '').trim();
     if (!reason) return bad('A reason is required when declining a correction');
+    // Single-flight claim: only one reviewer action can win. A concurrent
+    // approve/decline on the same correction can never both apply.
+    const claim = crypto.randomUUID();
+    await svc.entities.StudentRecord.updateMany(
+      { id: record.id, correction_status: 'pending' },
+      { $set: { correction_claim: claim } }
+    );
+    const declinedClaim = (await svc.entities.StudentRecord.filter({ id: record.id }))?.[0];
+    if (declinedClaim?.correction_claim !== claim) {
+      return bad('This correction was just actioned by someone else — refresh to see the latest state', 409);
+    }
     await svc.entities.StudentRecord.update(record.id, {
       correction_status: 'declined',
       correction_declined_reason: reason,
@@ -564,6 +585,20 @@ export async function reviewCorrection(svc, actor, body) {
     category: proposed.category ?? record.category,
   }, ['title', 'description', 'date_achieved', 'category']);
   if (!changes.length) return bad('Nothing to correct — the proposed details match the current credential');
+
+  // Single-flight claim: only one approval can win. The conditional claim
+  // write (pending-only) means a second concurrent approval — double click,
+  // retry, two admins — can never create a second version from one
+  // correction. The claim survives the flow harmlessly on the old record.
+  const claim = crypto.randomUUID();
+  await svc.entities.StudentRecord.updateMany(
+    { id: record.id, correction_status: 'pending' },
+    { $set: { correction_claim: claim } }
+  );
+  const approvedClaim = (await svc.entities.StudentRecord.filter({ id: record.id }))?.[0];
+  if (approvedClaim?.correction_claim !== claim) {
+    return bad('This correction was just actioned by someone else — refresh to see the latest state', 409);
+  }
 
   const now = nowIso();
   const newVersion = (record.version || 1) + 1;

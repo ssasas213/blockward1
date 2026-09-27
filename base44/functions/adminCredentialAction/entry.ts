@@ -69,16 +69,27 @@ Deno.serve(async (req) => {
     const actorName = `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || actor.actor_email;
 
     // 1. Registry — the public source of truth for the verification page.
-    await svc.entities.BlockWardVerificationRegistry.update(reg.id, {
-      approval_status: 'revoked',
-      revocation: {
-        reason,
-        revoked_by: actor.actor_email,
-        revoked_by_name: actorName,
-        revoked_at: now,
-        superseded_by_verification_id: supersededBy,
-      },
-    });
+    //    The flip is CONDITIONAL (approved → revoked) so a double click or two
+    //    concurrent revocations can never double-fire the audit + notification:
+    //    only the call that actually performed the flip continues.
+    await svc.entities.BlockWardVerificationRegistry.updateMany(
+      { id: reg.id, approval_status: 'approved' },
+      { $set: {
+        approval_status: 'revoked',
+        revocation: {
+          reason,
+          revoked_by: actor.actor_email,
+          revoked_by_name: actorName,
+          revoked_at: now,
+          superseded_by_verification_id: supersededBy,
+        },
+      } }
+    );
+    const reRows = await svc.entities.BlockWardVerificationRegistry.filter({ id: reg.id });
+    const fresh = reRows?.[0] || null;
+    if (fresh?.approval_status !== 'revoked' || fresh?.revocation?.revoked_at !== now) {
+      return Response.json({ ok: false, error: 'This credential was just revoked', verification_id: verificationId }, { status: 409, headers: CORS });
+    }
 
     // 2. Underlying BlockWard (legacy verification path checks this).
     if (reg.blockward_id) {

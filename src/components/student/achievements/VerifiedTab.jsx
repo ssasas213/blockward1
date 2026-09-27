@@ -12,7 +12,8 @@ import {
 import AchievementCard, { AchievementRow, cardFromVault } from '@/components/achievements/AchievementCard';
 import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import VaultDetailsModal from '@/components/blockwards/VaultDetailsModal';
-import { Shield, Award, CheckCircle2 } from 'lucide-react';
+import { Shield, Award, CheckCircle2, History, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
  * VerifiedTab — archived StudentRecords with their minted BlockWards, loaded
@@ -22,6 +23,14 @@ import { Shield, Award, CheckCircle2 } from 'lucide-react';
 export default function VerifiedTab({ achievements, profile, onSelect, onShare, viewMode = 'grid', loading = false }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showVaultModal, setShowVaultModal] = useState(false);
+  const [showEarlier, setShowEarlier] = useState(false);
+
+  // The collection shows the CURRENT authoritative credential for each
+  // achievement. Superseded versions (an approved correction replaced them)
+  // live in their own collapsed history section — a corrected credential must
+  // never look like the same achievement earned twice.
+  const currentAchievements = achievements.filter((a) => a.status !== 'superseded');
+  const earlierVersions = achievements.filter((a) => a.status === 'superseded');
 
   const vault = profile ? {
     studentId: profile.id,
@@ -30,7 +39,7 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
     createdAt: profile.created_date
   } : null;
 
-  const filteredBlockWards = achievements.filter(bw =>
+  const filteredBlockWards = currentAchievements.filter(bw =>
     categoryFilter === 'all' || bw.category === categoryFilter
   );
 
@@ -57,7 +66,7 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total BlockWards</p>
-                <p className="text-4xl font-bold text-foreground mt-1">{achievements.length}</p>
+                <p className="text-4xl font-bold text-foreground mt-1">{currentAchievements.length}</p>
                 <p className="text-sm text-muted-foreground mt-1">Achievements earned</p>
               </div>
               <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
@@ -126,10 +135,10 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
             <div className="text-center py-16">
               <Award className="h-20 w-20 mx-auto text-muted-foreground/30 mb-4" />
               <h3 className="text-xl font-semibold text-foreground mb-2">
-                {achievements.length === 0 ? 'No BlockWards Yet' : 'No matches found'}
+                {currentAchievements.length === 0 ? 'No BlockWards Yet' : 'No matches found'}
               </h3>
               <p className="text-muted-foreground max-w-md mx-auto">
-                {achievements.length === 0
+                {currentAchievements.length === 0
                   ? "When your teacher issues awards, they'll show up here. Keep up the great work!"
                   : 'Try selecting a different category'}
               </p>
@@ -154,6 +163,38 @@ export default function VerifiedTab({ achievements, profile, onSelect, onShare, 
           )}
         </CardContent>
       </Card>
+
+      {/* Earlier versions — superseded history, never shown as regular cards */}
+      {earlierVersions.length > 0 && (
+        <Card className="border-info/20 bg-info/5">
+          <CardContent className="p-4 sm:p-5">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-3 text-left"
+              onClick={() => setShowEarlier((s) => !s)}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <History className="h-4 w-4 text-info flex-shrink-0" />
+                <p className="text-sm font-semibold text-foreground">
+                  Earlier versions ({earlierVersions.length})
+                </p>
+              </div>
+              <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform flex-shrink-0', showEarlier && 'rotate-180')} />
+            </button>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              These were replaced by approved corrections — the current version of each achievement shows in your
+              collection above. Earlier versions stay here for your records.
+            </p>
+            {showEarlier && (
+              <div className="mt-3 space-y-2 animate-fade-in">
+                {earlierVersions.map((bw) => (
+                  <AchievementRow key={bw.id} item={cardFromVault(bw)} onClick={() => onSelect(bw)} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Card */}
       <Card className="border-primary/20 bg-primary/5">
