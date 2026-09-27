@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
-import { toLogin, setPostAuthRedirect } from '@/lib/authRedirectGuard';
+import { guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,10 +36,13 @@ export default function SchoolSetup() {
         setUser(currentUser);
         setForm(f => ({ ...f, contact_email: currentUser.email }));
       } catch {
-        // Not signed in — remember the intent so the user lands straight back
-        // here after signing in, instead of a dead-end redirect to /Login.
+        // Not signed in — an organisation cannot be created before an account
+        // exists, so send the visitor into REGISTRATION (not Sign In) with
+        // this page preserved as the post-auth destination: they create and
+        // verify their account, then land straight back here to create the
+        // organisation and become its administrator.
         setPostAuthRedirect('/SchoolSetup');
-        toLogin();
+        guardedRedirect('/Signup');
       } finally {
         setLoading(false);
       }

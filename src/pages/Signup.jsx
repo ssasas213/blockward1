@@ -9,6 +9,7 @@ import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { consumePostAuthRedirect, guardedRedirect } from '@/lib/authRedirectGuard';
+import { handlePostLoginRedirect } from '@/lib/authHelpers';
 import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
 import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
@@ -156,8 +157,12 @@ export default function Signup() {
         // Authenticated — check whether this is a Google return with pending details.
         const profiles = await base44.entities.UserProfile.filter({ user_email: currentUser.email });
         if (profiles.length > 0) {
-          // Already has an account — hand off to the normal post-login router.
-          guardedRedirect('/Login');
+          // Already has a complete account — a signup URL must never create a
+          // second profile. The canonical post-login router sends them to
+          // their own dashboard (or the pending/consent holding screen) in
+          // one hop instead of bouncing through Sign In.
+          const result = await handlePostLoginRedirect().catch(() => null);
+          if (result) guardedRedirect('/Login');
           return;
         }
 
