@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
               `${appUrl()}/AchievementRequests`,
               'View my requests'
             );
-            await notifyRequest(request.student_email, `Your verification request for "${request.title}" expired`, html, svc);
+            await notifyRequest(request.student_email, `Your verification request for "${request.title}" expired`, html);
             continue;
           }
           const second = ivIdle >= 7 && !request.reminder_2_at;
@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
                 `${appUrl()}/external-verify/${request.external_token}`,
                 'Verify this achievement'
               );
-              await notifyRequest(request.external_verifier_email, `Reminder: verify "${request.title}"`, html, svc);
+              await notifyRequest(request.external_verifier_email, `Reminder: verify "${request.title}"`, html);
               await svc.entities.AchievementRequest.update(request.id, second
                 ? { reminder_2_at: new Date().toISOString() }
                 : { reminder_1_at: new Date().toISOString() });
@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
           `${appUrl()}/AchievementRequests`,
           'View my requests'
         );
-        await notifyRequest(request.student_email, `Your request for "${request.title}" expired`, html, svc);
+        await notifyRequest(request.student_email, `Your request for "${request.title}" expired`, html);
         continue;
       }
 
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
           `${appUrl()}/PendingSignoffs`,
           'Review queue'
         );
-        await notifyRequest(to, `Reminder: "${request.title}" awaits your review`, html, svc);
+        await notifyRequest(to, `Reminder: "${request.title}" awaits your review`, html);
       }
       await svc.entities.AchievementRequest.update(request.id, second
         ? { reminder_2_at: new Date().toISOString() }

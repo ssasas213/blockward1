@@ -49,28 +49,6 @@ export async function mintRequestCredential(svc: any, request: any) {
     return { ok: false, error: `Cannot publish "${request.title}" — no issuer could be resolved on request ${request.id || '(unknown id)'}. The sign-off chain is incomplete.` };
   }
 
-  // ── 0. Concurrency claim — the mint-side mirror of the anchoring lock
-  // (chainAnchor.ts). A conditional update means repeated clicks, retries and
-  // concurrent approvals can never mint twice; a stale claim (>10 min, a
-  // crashed mint) is released and taken over automatically. The claim rides
-  // on minted_at: a successful mint overwrites it with the clean timestamp
-  // (step 5 below), and a crashed mint is recovered by the stale takeover.
-  // ──
-  const CLAIM_STALE_MS = 10 * 60 * 1000;
-  const CLAIM_BUSY = { ok: false, busy: true, error: 'This credential is already being published — refresh in a moment.' };
-  if (request.minted_at) {
-    const claimAge = Date.now() - new Date(String(request.minted_at).split('#')[0]).getTime();
-    if (Number.isFinite(claimAge) && claimAge < CLAIM_STALE_MS) return CLAIM_BUSY;
-  }
-  const claim = `${now}#${crypto.randomUUID()}`;
-  const claimQuery = request.minted_at
-    ? { id: request.id, status: 'approved', minted_at: request.minted_at }
-    : { id: request.id, status: 'approved', $or: [{ minted_at: null }, { minted_at: { $exists: false } }] };
-  await svc.entities.AchievementRequest.updateMany(claimQuery, { $set: { minted_at: claim } });
-  const claimed = (await svc.entities.AchievementRequest.filter({ id: request.id }))[0];
-  if (!claimed || claimed.minted_at !== claim) return CLAIM_BUSY;
-  request = claimed;
-
   // ── Resolve the student's UserProfile (permanent owner) ──
   let studentProfile: any = null;
   try {
@@ -152,12 +130,6 @@ export async function mintRequestCredential(svc: any, request: any) {
       approved_at: request.approved_at || now,
       status: 'approved',
     });
-    // ── 1.5 Persist the record link IMMEDIATELY so a retry after any later
-    // failure reuses this record instead of minting a duplicate credential. ──
-    if (!request.student_record_id) {
-      await svc.entities.AchievementRequest.update(request.id, { student_record_id: record.id });
-      request = { ...request, student_record_id: record.id };
-    }
   }
 
   // ── 2. BlockWard (idempotent by student_record_id) ──
