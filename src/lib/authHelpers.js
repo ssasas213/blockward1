@@ -50,8 +50,16 @@ export async function handlePostLoginRedirect() {
       if (fresh.length > 0) {
         const tp = fresh[0];
         if (tp.status === 'inactive' || tp.status === 'suspended') return 'suspended';
+        // Resolve the persona's ROLE exactly like SchoolContext does: demo
+        // personas (demo_student…) carry their real role on the persona entry;
+        // classic persona keys ARE their role. Mapping the KEY directly missed
+        // every demo persona and dumped the test student on the admin
+        // dashboard, which bounced them back into the guard.
         const persona = testRes.data.active_persona || 'admin';
-        guardedRedirect(SCHOOLS_DASHBOARD_MAP[persona] || '/AdminDashboard');
+        const info = (testRes.data.personas || {})[persona] || {};
+        const role = info.role
+          || (['student', 'teacher', 'admin'].includes(persona) ? persona : 'admin');
+        guardedRedirect(SCHOOLS_DASHBOARD_MAP[role] || '/AdminDashboard');
         return null;
       }
     }

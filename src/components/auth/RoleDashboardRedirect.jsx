@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useSchool } from '@/lib/SchoolContext';
 import AppLoadingGate from '@/components/auth/AppLoadingGate';
+import { guardedRedirect } from '@/lib/authRedirectGuard';
 
 const DASHBOARD_MAP = {
   student: '/StudentDashboard',
@@ -19,7 +20,9 @@ export default function RoleDashboardRedirect() {
 
   useEffect(() => {
     if (loading) return;
-    window.location.href = DASHBOARD_MAP[effectiveRole] || (user ? '/Login' : '/');
+    // Through the redirect guard: counted for loop detection, and a
+    // same-path target is a no-op instead of an endless self-reload.
+    guardedRedirect(DASHBOARD_MAP[effectiveRole] || (user ? '/Login' : '/'));
   }, [loading, effectiveRole, user]);
 
   return <AppLoadingGate message="Taking you to your dashboard…" />;

@@ -5,7 +5,7 @@ import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSchool } from '@/lib/SchoolContext';
-import { toLogin, logoutToLogin } from '@/lib/authRedirectGuard';
+import { toLogin, logoutToLogin, guardedRedirect } from '@/lib/authRedirectGuard';
 import { Building2, Plus, Clock, GraduationCap, Users, ArrowRight, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import CodeJoinCard from '@/components/join/CodeJoinCard';
@@ -29,9 +29,13 @@ export default function JoinSchool() {
   useEffect(() => {
     if (ctxLoading) return;
     if (!user) { toLogin(); return; }
-    // Test Super User bypass: auto-provisioned server-side — never show the join form.
+    // Test Super User bypass: auto-provisioned server-side — never show the
+    // join form. Counted by the redirect guard (raw location.href is invisible
+    // to loop detection) and persona-aware: the active persona belongs on
+    // THEIR dashboard, not the admin one.
     if (testMode?.isTestSuperUser) {
-      window.location.href = createPageUrl('AdminDashboard');
+      const dashboards = { student: 'StudentDashboard', teacher: 'TeacherDashboard', admin: 'AdminDashboard' };
+      guardedRedirect(createPageUrl(dashboards[testMode.activeRole] || 'AdminDashboard'));
       return;
     }
     let cancelled = false;

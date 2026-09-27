@@ -10,7 +10,11 @@ import { clearSignupSession } from '@/lib/signupSession';
  */
 
 const REDIRECT_LOG_KEY = 'blockward_auth_redirect_log';
-const WINDOW_MS = 10000;
+// 45s, not 10s: every guarded redirect is a FULL page load (2-5s of bundle +
+// auth round-trips per hop), so a 10s window aged out before a real loop
+// accumulated 4 hops — the loop ran forever as "Taking you to the right
+// place…". Legitimate automatic chains are 1-3 hops; 4 inside 45s is a loop.
+const WINDOW_MS = 45000;
 const MAX_REDIRECTS = 3;
 
 const AUTH_LOAD_LOG_KEY = 'blockward_auth_load_log';

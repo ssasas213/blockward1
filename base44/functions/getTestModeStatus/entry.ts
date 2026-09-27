@@ -94,97 +94,110 @@ export default async function(req) {
       }
     }
 
-    // 3. Ensure test class (teacher assigned, student enrolled)
-    let classes = await svc.entities.Class.filter({ school_id: school.id, name: TEST_CLASS_NAME });
-    let testClass = classes[0];
-    if (!testClass) {
-      testClass = await svc.entities.Class.create({
-        school_id: school.id, name: TEST_CLASS_NAME, subject: 'General',
-        teacher_email: PERSONA_EMAILS.teacher,
-        student_emails: [PERSONA_EMAILS.student],
-        status: 'active',
-      });
-    } else {
-      const upd: any = {};
-      if (testClass.teacher_email !== PERSONA_EMAILS.teacher) upd.teacher_email = PERSONA_EMAILS.teacher;
-      const enrolled = testClass.student_emails || [];
-      if (!enrolled.includes(PERSONA_EMAILS.student)) upd.student_emails = [...enrolled, PERSONA_EMAILS.student];
-      if (Object.keys(upd).length) testClass = await svc.entities.Class.update(testClass.id, upd);
-    }
+    // 3-6. Test fixtures (class, staff/admin memberships, signature profiles).
+    // HARDENED: these are re-creatable fixtures, not core persona state — a
+    // transient failure (e.g. a concurrent resetTestData/seed run racing this
+    // bootstrap) must not 500 the whole response, because a 500 here drops
+    // the client into the signed-out/denied path mid-test. Steps degrade
+    // independently and log for diagnosis.
+    let testClass = null;
+    try {
+      const classes = await svc.entities.Class.filter({ school_id: school.id, name: TEST_CLASS_NAME });
+      testClass = classes[0];
+      if (!testClass) {
+        testClass = await svc.entities.Class.create({
+          school_id: school.id, name: TEST_CLASS_NAME, subject: 'General',
+          teacher_email: PERSONA_EMAILS.teacher,
+          student_emails: [PERSONA_EMAILS.student],
+          status: 'active',
+        });
+      } else {
+        const upd: any = {};
+        if (testClass.teacher_email !== PERSONA_EMAILS.teacher) upd.teacher_email = PERSONA_EMAILS.teacher;
+        const enrolled = testClass.student_emails || [];
+        if (!enrolled.includes(PERSONA_EMAILS.student)) upd.student_emails = [...enrolled, PERSONA_EMAILS.student];
+        if (Object.keys(upd).length) testClass = await svc.entities.Class.update(testClass.id, upd);
+      }
 
-    // 4. Ensure teacher StaffMembership
-    const teacherMembership = await svc.entities.StaffMembership.filter({ school_id: school.id, user_email: PERSONA_EMAILS.teacher });
-    if (teacherMembership.length === 0) {
-      await svc.entities.StaffMembership.create({
-        school_id: school.id, school_name: school.name,
-        user_email: PERSONA_EMAILS.teacher, user_id: personaIds.teacher,
-        teacher_name: `${PERSONA_NAMES.teacher.first_name} ${PERSONA_NAMES.teacher.last_name}`,
-        role: 'TEACHER', class_ids: [testClass.id], status: 'active',
-      });
-    }
-
-    // 5. Ensure admin AdminSchoolMembership
-    const adminMembership = await svc.entities.AdminSchoolMembership.filter({ admin_email: PERSONA_EMAILS.admin, school_id: school.id });
-    if (adminMembership.length === 0) {
-      await svc.entities.AdminSchoolMembership.create({
-        admin_user_id: personaIds.admin, admin_email: PERSONA_EMAILS.admin,
-        admin_name: `${PERSONA_NAMES.admin.first_name} ${PERSONA_NAMES.admin.last_name}`,
-        school_id: school.id, school_name: school.name,
-        role: 'owner', status: 'active', is_primary: true,
-        joined_at: new Date().toISOString(), invited_by: user.email,
-      });
-    }
-
-    // 6. Ensure signature profiles for teacher + admin personas
-    for (const role of ['teacher', 'admin']) {
-      const email = PERSONA_EMAILS[role];
-      const name = PERSONA_NAMES[role];
-      const existing = await svc.entities.SignatureProfile.filter({ user_email: email, school_id: school.id });
-      if (existing.length === 0) {
-        await svc.entities.SignatureProfile.create({
-          user_email: email, school_id: school.id, user_role: role,
-          display_name: `${name.first_name} ${name.last_name}`,
-          title: role === 'teacher' ? 'Test Teacher' : 'Test Administrator',
-          signature_type: 'typed', signature_value: `${name.first_name} ${name.last_name}`.replace(' (TEST MODE)', ''),
-          created_at: new Date().toISOString(),
+      const teacherMembership = await svc.entities.StaffMembership.filter({ school_id: school.id, user_email: PERSONA_EMAILS.teacher });
+      if (teacherMembership.length === 0) {
+        await svc.entities.StaffMembership.create({
+          school_id: school.id, school_name: school.name,
+          user_email: PERSONA_EMAILS.teacher, user_id: personaIds.teacher,
+          teacher_name: `${PERSONA_NAMES.teacher.first_name} ${PERSONA_NAMES.teacher.last_name}`,
+          role: 'TEACHER', class_ids: [testClass.id], status: 'active',
         });
       }
+
+      const adminMembership = await svc.entities.AdminSchoolMembership.filter({ admin_email: PERSONA_EMAILS.admin, school_id: school.id });
+      if (adminMembership.length === 0) {
+        await svc.entities.AdminSchoolMembership.create({
+          admin_user_id: personaIds.admin, admin_email: PERSONA_EMAILS.admin,
+          admin_name: `${PERSONA_NAMES.admin.first_name} ${PERSONA_NAMES.admin.last_name}`,
+          school_id: school.id, school_name: school.name,
+          role: 'owner', status: 'active', is_primary: true,
+          joined_at: new Date().toISOString(), invited_by: user.email,
+        });
+      }
+
+      for (const role of ['teacher', 'admin']) {
+        const email = PERSONA_EMAILS[role];
+        const name = PERSONA_NAMES[role];
+        const existing = await svc.entities.SignatureProfile.filter({ user_email: email, school_id: school.id });
+        if (existing.length === 0) {
+          await svc.entities.SignatureProfile.create({
+            user_email: email, school_id: school.id, user_role: role,
+            display_name: `${name.first_name} ${name.last_name}`,
+            title: role === 'teacher' ? 'Test Teacher' : 'Test Administrator',
+            signature_type: 'typed', signature_value: `${name.first_name} ${name.last_name}`.replace(' (TEST MODE)', ''),
+            created_at: new Date().toISOString(),
+          });
+        }
+      }
+    } catch (fixtureError) {
+      console.error('[getTestModeStatus] fixture step failed (non-fatal):', fixtureError?.message || fixtureError);
     }
 
     // 7. Ensure the controller profile (the real Google account) + link persona IDs
     let controllerProfiles = await svc.entities.UserProfile.filter({ user_email: user.email });
     let controller = controllerProfiles[0];
     const activePersona = (controller?.active_test_persona && isValidPersona(controller.active_test_persona)) ? controller.active_test_persona : 'admin';
-    if (!controller) {
-      const name = PERSONA_NAMES[activePersona];
-      controller = await svc.entities.UserProfile.create({
-        user_email: user.email, user_type: 'admin',
-        first_name: name.first_name, last_name: name.last_name,
-        school_id: school.id, active_school_id: school.id, admin_email: user.email,
-        status: 'active', test_super_user: true, active_test_persona: activePersona,
-        test_persona_ids: personaIds,
-        admin_level: 'super_admin', admin_permissions: defaultAdminPermissions('super_admin'),
-        total_achievement_points: 0, total_behaviour_points: 0,
-      });
-    } else {
-      // Force-promote the controller to admin and link the test school, overwriting
-      // any stale role/school from prior onboarding (e.g. a student signup). This is
-      // idempotent and preserves the profile record + its id; only role/school/persona
-      // metadata is normalised so the super user always lands on the Admin Dashboard.
-      const upd: any = {
-        test_super_user: true,
-        user_type: 'admin',
-        active_test_persona: activePersona,
-        school_id: school.id,
-        active_school_id: school.id,
-        test_persona_ids: personaIds,
-      };
-      if (controller.status !== 'active') upd.status = 'active';
-      if (!controller.admin_level) upd.admin_level = 'super_admin';
-      if (!controller.admin_permissions || !Object.keys(controller.admin_permissions || {}).length) {
-        upd.admin_permissions = defaultAdminPermissions('super_admin');
+    try {
+      if (!controller) {
+        const name = PERSONA_NAMES[activePersona];
+        controller = await svc.entities.UserProfile.create({
+          user_email: user.email, user_type: 'admin',
+          first_name: name.first_name, last_name: name.last_name,
+          school_id: school.id, active_school_id: school.id, admin_email: user.email,
+          status: 'active', test_super_user: true, active_test_persona: activePersona,
+          test_persona_ids: personaIds,
+          admin_level: 'super_admin', admin_permissions: defaultAdminPermissions('super_admin'),
+          total_achievement_points: 0, total_behaviour_points: 0,
+        });
+      } else {
+        // Force-promote the controller to admin and link the test school, overwriting
+        // any stale role/school from prior onboarding (e.g. a student signup). This is
+        // idempotent and preserves the profile record + its id; only role/school/persona
+        // metadata is normalised so the super user always lands on the Admin Dashboard.
+        const upd: any = {
+          test_super_user: true,
+          user_type: 'admin',
+          active_test_persona: activePersona,
+          school_id: school.id,
+          active_school_id: school.id,
+          test_persona_ids: personaIds,
+        };
+        if (controller.status !== 'active') upd.status = 'active';
+        if (!controller.admin_level) upd.admin_level = 'super_admin';
+        if (!controller.admin_permissions || !Object.keys(controller.admin_permissions || {}).length) {
+          upd.admin_permissions = defaultAdminPermissions('super_admin');
+        }
+        controller = await svc.entities.UserProfile.update(controller.id, upd);
       }
-      controller = await svc.entities.UserProfile.update(controller.id, upd);
+    } catch (controllerError) {
+      // Non-fatal: the personas above are already resolved — the client can
+      // still enter test mode with the controller's existing (stale) profile.
+      console.error('[getTestModeStatus] controller normalisation failed (non-fatal):', controllerError?.message || controllerError);
     }
 
     return Response.json({
@@ -192,9 +205,9 @@ export default async function(req) {
       is_test_super_user: true,
       active_persona: activePersona,
       test_school: { id: school.id, name: school.name },
-      test_class: { id: testClass.id, name: testClass.name },
+      test_class: testClass ? { id: testClass.id, name: testClass.name } : null,
       personas,
-      profile_id: controller.id,
+      profile_id: controller?.id || null,
     });
   } catch (error) {
     return Response.json({ error: error.message, test_mode_enabled: false, is_test_super_user: false }, { status: 500 });
