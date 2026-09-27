@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -22,10 +22,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
-  Users, BookOpen, FileText, Award, ArrowLeft,
-  Copy, Check, UserPlus, Trash2, Shield, Sparkles, GraduationCap, ClipboardList, MessageSquare, BarChart3, DoorOpen, TrendingUp,
+  Users, BookOpen, FileText, ArrowLeft, School as SchoolIcon,
+  Copy, Check, UserPlus, Trash2, Shield, Sparkles, GraduationCap, ClipboardList, MessageSquare, BarChart3, DoorOpen, TrendingUp, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSchool } from '@/lib/SchoolContext';
@@ -37,14 +37,17 @@ import GradesTab from '@/components/classwork/GradesTab';
 export default function ClassDetail() {
   const [loading, setLoading] = useState(true);
   const [classData, setClassData] = useState(null);
+  const [schoolName, setSchoolName] = useState('');
   const [students, setStudents] = useState([]);
-  const [teachers, setTeachers] = useState([]);
   const [resources, setResources] = useState([]);
   const [copiedCode, setCopiedCode] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [studentEmail, setStudentEmail] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [removingEmail, setRemovingEmail] = useState(null);
 
   const { profile } = useSchool();
+  const isStaff = profile?.user_type === 'teacher' || profile?.user_type === 'admin';
 
   const urlParams = new URLSearchParams(window.location.search);
   const classId = urlParams.get('id');
@@ -60,28 +63,27 @@ export default function ClassDetail() {
         const cls = classes[0];
         setClassData(cls);
 
-        // People: teacher + co-teachers + enrolled student profiles.
-        const teacherEmails = [cls.teacher_email, ...(cls.co_teachers || [])].filter(Boolean);
-        const [profiles, classResources] = await Promise.all([
-          cls.school_id
-            ? base44.entities.UserProfile.filter({ school_id: cls.school_id })
-            : base44.entities.UserProfile.list(),
+        const [classResources, schoolRows] = await Promise.all([
           base44.entities.Resource.filter({ class_id: classId }),
+          cls.school_id
+            ? base44.entities.School.filter({ id: cls.school_id })
+            : Promise.resolve([]),
         ]);
-        setTeachers(
-          teacherEmails
-            .map((email) => profiles.find((p) => p.user_email === email))
-            .filter(Boolean)
-        );
-        setStudents(
-          (cls.student_emails || [])
-            .map((email) => profiles.find((p) => p.user_email === email))
-            .filter(Boolean)
-        );
         setResources(classResources);
+        if (schoolRows.length > 0) setSchoolName(schoolRows[0].name);
+
+        // Staff roster via the server: profile reads are RLS-blocked for
+        // teachers (their own row only), so the old client-side lookup always
+        // rendered an empty People tab. getClassStudents scopes the roster to
+        // the caller's own classes and school.
+        if (profile?.user_type === 'teacher' || profile?.user_type === 'admin') {
+          const res = await base44.functions.invoke('getClassStudents', { class_id: classId });
+          if (res.data?.ok) setStudents(res.data.students || []);
+        }
       }
     } catch (error) {
       console.error('Error loading class:', error);
+      toast.error('Failed to load class details');
     } finally {
       setLoading(false);
     }
@@ -96,31 +98,47 @@ export default function ClassDetail() {
   };
 
   const handleAddStudent = async () => {
-    if (!studentEmail) return;
+    if (!studentEmail || adding) return;
+    setAdding(true);
     try {
-      const updatedStudents = [...(classData.student_emails || []), studentEmail];
-      await base44.entities.Class.update(classId, { student_emails: updatedStudents });
+      const res = await base44.functions.invoke('classRosterAction', {
+        action: 'add_student',
+        class_id: classId,
+        student_email: studentEmail.trim().toLowerCase(),
+      });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to add student');
       setShowAddStudent(false);
       setStudentEmail('');
-      loadData();
-      toast.success('Student added successfully');
+      await loadData();
+      toast.success('Student added — they\u2019ll see this class in My Classes');
     } catch (error) {
-      toast.error('Failed to add student');
+      toast.error(error.message || 'Failed to add student');
+    } finally {
+      setAdding(false);
     }
   };
 
   const handleRemoveStudent = async (email) => {
+    if (removingEmail) return;
+    setRemovingEmail(email);
     try {
-      const updatedStudents = classData.student_emails.filter((e) => e !== email);
-      await base44.entities.Class.update(classId, { student_emails: updatedStudents });
-      loadData();
+      const res = await base44.functions.invoke('classRosterAction', {
+        action: 'remove_student',
+        class_id: classId,
+        student_email: email,
+      });
+      if (!res.data?.ok) throw new Error(res.data?.error || 'Failed to remove student');
+      await loadData();
       toast.success('Student removed');
     } catch (error) {
-      toast.error('Failed to remove student');
+      toast.error(error.message || 'Failed to remove student');
+    } finally {
+      setRemovingEmail(null);
     }
   };
 
-  const isTeacher = profile?.user_type === 'teacher' || profile?.user_type === 'admin';
+  const teacherEmails = [classData?.teacher_email, ...(classData?.co_teachers || [])].filter(Boolean);
+  const studentCount = isStaff ? students.length : (classData?.student_emails?.length || 0);
 
   if (loading) {
     return (
@@ -135,6 +153,7 @@ export default function ClassDetail() {
       <div className="text-center py-16">
         <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold text-foreground mb-2">Class not found</h2>
+        <p className="text-sm text-muted-foreground mb-4">This class may not exist, or you don't have access to it.</p>
         <Link to={createPageUrl('Classes')}>
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -156,20 +175,29 @@ export default function ClassDetail() {
           </Link>
           <h1 className="text-3xl font-bold text-foreground">{classData.name}</h1>
           <p className="text-muted-foreground mt-1">
+            {schoolName && (
+              <span className="inline-flex items-center gap-1">
+                <SchoolIcon className="h-3.5 w-3.5" />
+                {schoolName}
+              </span>
+            )}
+            {schoolName && (classData.subject || classData.room) && <span className="mx-2">·</span>}
             {classData.subject}
-            {classData.room && <span className="mx-2">·</span>}
+            {classData.subject && classData.room && <span className="mx-2">·</span>}
             {classData.room && <span>Room {classData.room}</span>}
           </p>
         </div>
-        {isTeacher && (
+        {isStaff && (
           <div className="flex items-center gap-3 flex-wrap">
-            <Button variant="outline" onClick={copyJoinCode}>
-              {copiedCode ? <Check className="h-4 w-4 mr-2 text-success" /> : <Copy className="h-4 w-4 mr-2" />}
-              {classData.join_code}
-            </Button>
+            {classData.join_code && (
+              <Button variant="outline" onClick={copyJoinCode}>
+                {copiedCode ? <Check className="h-4 w-4 mr-2 text-success" /> : <Copy className="h-4 w-4 mr-2" />}
+                <span className="font-mono">{classData.join_code}</span>
+              </Button>
+            )}
             <Button className="bg-gradient-to-br from-brand-violet via-primary to-brand-pink text-primary-foreground" asChild>
               <Link to={createPageUrl(`IssuePoints?class=${classId}`)}>
-                <Award className="h-4 w-4 mr-2" />
+                <Sparkles className="h-4 w-4 mr-2" />
                 Issue Points
               </Link>
             </Button>
@@ -186,7 +214,7 @@ export default function ClassDetail() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Students</p>
-              <p className="text-2xl font-bold text-foreground">{students.length}</p>
+              <p className="text-2xl font-bold text-foreground">{studentCount}</p>
             </div>
           </CardContent>
         </Card>
@@ -233,7 +261,7 @@ export default function ClassDetail() {
             <GraduationCap className="h-4 w-4 mr-2" />
             Grades
           </TabsTrigger>
-          {isTeacher && (
+          {isStaff && (
             <TabsTrigger value="seating">
               <BookOpen className="h-4 w-4 mr-2" />
               Seating
@@ -246,11 +274,11 @@ export default function ClassDetail() {
         </TabsList>
 
         <TabsContent value="stream">
-          <StreamTab classId={classId} classData={classData} profile={profile} isTeacher={isTeacher} />
+          <StreamTab classId={classId} classData={classData} profile={profile} isTeacher={isStaff} />
         </TabsContent>
 
         <TabsContent value="classwork">
-          <ClassworkTab classId={classId} canManage={isTeacher} />
+          <ClassworkTab classId={classId} canManage={isStaff} />
         </TabsContent>
 
         <TabsContent value="people">
@@ -260,13 +288,10 @@ export default function ClassDetail() {
               <CardHeader><CardTitle className="text-base">Teaching staff</CardTitle></CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {teachers.length > 0 ? teachers.map((t) => (
-                    <div key={t.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/60 border border-border">
+                  {teacherEmails.length > 0 ? teacherEmails.map((email) => (
+                    <div key={email} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/60 border border-border">
                       <Shield className="h-4 w-4 text-primary" />
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{t.first_name} {t.last_name}</p>
-                        <p className="text-xs text-tertiary">{t.department || 'Teacher'}</p>
-                      </div>
+                      <p className="text-sm font-medium text-foreground">{email}</p>
                     </div>
                   )) : (
                     <p className="text-sm text-muted-foreground">No staff assigned</p>
@@ -278,8 +303,8 @@ export default function ClassDetail() {
             {/* Students */}
             <Card className="surface-card">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Students ({students.length})</CardTitle>
-                {isTeacher && (
+                <CardTitle className="text-base">Students ({studentCount})</CardTitle>
+                {isStaff && (
                   <Button variant="outline" size="sm" onClick={() => setShowAddStudent(true)}>
                     <UserPlus className="h-4 w-4 mr-2" />
                     Add Student
@@ -287,32 +312,30 @@ export default function ClassDetail() {
                 )}
               </CardHeader>
               <CardContent>
-                {students.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Student ID</TableHead>
-                        <TableHead>Points</TableHead>
-                        {isTeacher && <TableHead className="w-32">Actions</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {students.map((student) => (
-                        <TableRow key={student.id}>
-                          <TableCell className="font-medium">
-                            {student.first_name} {student.last_name}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">{student.user_email}</TableCell>
-                          <TableCell>{student.student_id || '-'}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-success/15 text-success">+{student.total_achievement_points || 0}</Badge>
-                              <Badge variant="outline" className="text-destructive">-{student.total_behaviour_points || 0}</Badge>
-                            </div>
-                          </TableCell>
-                          {isTeacher && (
+                {isStaff ? (
+                  students.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Points</TableHead>
+                          <TableHead className="w-40">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {students.map((student) => (
+                          <TableRow key={student.id}>
+                            <TableCell className="font-medium">
+                              {student.first_name} {student.last_name}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{student.user_email}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-success/15 text-success">+{student.total_achievement_points || 0}</Badge>
+                                <Badge variant="outline" className="text-destructive">-{student.total_behaviour_points || 0}</Badge>
+                              </div>
+                            </TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Button
@@ -341,24 +364,34 @@ export default function ClassDetail() {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleRemoveStudent(student.user_email)}
+                                  disabled={removingEmail === student.user_email}
                                   className="text-destructive hover:text-destructive"
+                                  aria-label="Remove student"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  {removingEmail === student.user_email
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Trash2 className="h-4 w-4" />}
                                 </Button>
                               </div>
                             </TableCell>
-                          )}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                      <p>No students enrolled yet</p>
+                      {classData.join_code && (
+                        <p className="text-sm mt-2">Share the join code: <span className="font-mono font-bold">{classData.join_code}</span></p>
+                      )}
+                    </div>
+                  )
                 ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No students enrolled yet</p>
-                    {isTeacher && (
-                      <p className="text-sm mt-2">Share the join code: <span className="font-mono font-bold">{classData.join_code}</span></p>
-                    )}
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
+                    <p>{studentCount === 1 ? '1 student is enrolled' : `${studentCount} students are enrolled`} in this class.</p>
+                    <p className="text-xs text-tertiary mt-1">Your teacher manages the class roster.</p>
                   </div>
                 )}
               </CardContent>
@@ -367,12 +400,12 @@ export default function ClassDetail() {
         </TabsContent>
 
         <TabsContent value="grades">
-          <GradesTab classId={classId} classData={classData} isTeacher={isTeacher} />
+          <GradesTab classId={classId} classData={classData} isTeacher={isStaff} />
         </TabsContent>
 
         <TabsContent value="seating">
-          {isTeacher ? (
-            <SeatingPlanTab classId={classId} canEdit={isTeacher} />
+          {isStaff ? (
+            <SeatingPlanTab classId={classId} canEdit={isStaff} />
           ) : (
             <Card><CardContent className="py-12 text-center text-muted-foreground">Seating plans are managed by your teacher.</CardContent></Card>
           )}
@@ -382,7 +415,7 @@ export default function ClassDetail() {
           <Card className="surface-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Class Resources</CardTitle>
-              {isTeacher && (
+              {isStaff && (
                 <Button variant="outline" size="sm" asChild>
                   <Link to={createPageUrl(`Resources?class=${classId}`)}>
                     <FileText className="h-4 w-4 mr-2" />
@@ -425,7 +458,7 @@ export default function ClassDetail() {
       </Tabs>
 
       {/* Join code QR — teachers only */}
-      {isTeacher && classData.join_code && (
+      {isStaff && classData.join_code && (
         <Card className="surface-card">
           <CardContent className="p-5 flex flex-col sm:flex-row items-center gap-5">
             <div className="flex-shrink-0">
@@ -468,7 +501,11 @@ export default function ClassDetail() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddStudent(false)}>Cancel</Button>
-            <Button onClick={handleAddStudent} disabled={!studentEmail}>Add Student</Button>
+            <Button onClick={handleAddStudent} disabled={!studentEmail || adding}>
+              {adding ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding...</>
+              ) : 'Add Student'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

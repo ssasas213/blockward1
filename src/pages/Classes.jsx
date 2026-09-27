@@ -24,7 +24,7 @@ import PageHeader from '@/components/ui/page-header';
 import EmptyState from '@/components/ui/empty-state';
 import { TableSkeleton } from '@/components/ui/loading-skeleton';
 import {
-  Plus, BookOpen, Users, Search, ChevronRight,
+  Plus, BookOpen, Users, Search, ChevronRight, AlertTriangle, RefreshCw,
   Copy, Check, Loader2, QrCode, Archive, ArchiveRestore
 } from 'lucide-react';
 import ClassInviteDialog from '@/components/classwork/ClassInviteDialog';
@@ -47,6 +47,7 @@ function ClassesContent() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loadError, setLoadError] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -65,6 +66,7 @@ function ClassesContent() {
   }, []);
 
   const loadData = async () => {
+    setLoadError(false);
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
@@ -111,6 +113,7 @@ function ClassesContent() {
       setClasses(classData);
     } catch (error) {
       console.error('Error loading classes:', error);
+      setLoadError(true);
       toast.error('Failed to load classes');
     } finally {
       setLoading(false);
@@ -467,6 +470,17 @@ function ClassesContent() {
             );
           })}
         </div>
+      ) : loadError ? (
+        <EmptyState
+          icon={AlertTriangle}
+          title="Couldn't load classes"
+          description="Something went wrong while loading your classes. Nothing was lost — try again in a moment."
+        >
+          <Button variant="outline" onClick={loadData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
+        </EmptyState>
       ) : (
         <EmptyState
           icon={BookOpen}

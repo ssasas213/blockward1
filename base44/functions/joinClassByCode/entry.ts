@@ -78,17 +78,31 @@ Deno.serve(async (req) => {
       return Response.json({ ok: false, error: 'This class is no longer active.' }, { status: 403, headers: CORS });
     }
 
-    const studentEmail = actor.actor_email;
-    const alreadyIn = (cls.student_emails || []).includes(studentEmail);
+    const studentEmail = String(actor.actor_email || '').toLowerCase();
+
+    const profiles = await svc.entities.UserProfile.filter({ user_email: studentEmail }).catch(() => []);
+    const profile = profiles[0] || null;
+
+    // A class code must never move an already-enrolled student between
+    // schools: joining another school's class would silently rewrite their
+    // school membership and grant access to that school's data. School-less
+    // students are linked to the class's school on their first join (below).
+    if (profile?.school_id && cls.school_id && cls.school_id !== profile.school_id) {
+      return Response.json({ ok: false, error: 'This class belongs to another school. Ask your teacher for your school\u2019s class code.' }, { status: 403, headers: CORS });
+    }
+
+    const alreadyIn = (cls.student_emails || []).some((e) => String(e).toLowerCase() === studentEmail);
     if (alreadyIn) {
       return Response.json({ ok: false, error: 'You are already in this class.' }, { status: 409, headers: CORS });
     }
 
-    // Add the student to the class roster.
+    // Add the student to the class roster (stored case preserved).
     const updatedEmails = [...(cls.student_emails || []), studentEmail];
     await svc.entities.Class.update(cls.id, { student_emails: updatedEmails });
 
-    // Create the Enrollment record if one doesn't already exist.
+    // Exactly one Enrollment per student per class — create it, or reactivate
+    // the existing one when the student was removed and rejoins (My Classes
+    // reads active enrollments, so a dead Enrollment would hide the class).
     const existingEnrollments = await svc.entities.Enrollment.filter({ class_id: cls.id, student_email: studentEmail }).catch(() => []);
     if (!existingEnrollments.length) {
       await svc.entities.Enrollment.create({
@@ -99,30 +113,27 @@ Deno.serve(async (req) => {
         student_name: `${actor.first_name || ''} ${actor.last_name || ''}`.trim() || studentEmail,
         status: 'active',
       });
+    } else if (existingEnrollments[0].status !== 'active') {
+      await svc.entities.Enrollment.update(existingEnrollments[0].id, { status: 'active' });
     }
 
-    // Bootstrap the student's school/teacher/admin hierarchy fields if unset —
-    // mirrors the prior client-side behaviour so first-time joins still link
-    // the student to the class's school.
-    const profiles = await svc.entities.UserProfile.filter({ user_email: studentEmail }).catch(() => []);
-    const profile = profiles[0] || null;
-    if (profile) {
-      const patch = {};
-      if (cls.school_id) {
-        patch.school_id = cls.school_id;
-        patch.active_school_id = cls.school_id;
-      }
+    // First-time join links a school-less student to the class's school and
+    // seeds their teacher/admin hierarchy. A student who already has a school
+    // keeps it untouched — the cross-school guard above guarantees they match.
+    if (profile && !profile.school_id && cls.school_id) {
+      const patch: any = {
+        school_id: cls.school_id,
+        active_school_id: cls.school_id,
+      };
       if (cls.teacher_email) patch.primary_teacher_email = cls.teacher_email;
-      if (cls.school_id) {
-        try {
-          const schools = await svc.entities.School.filter({ id: cls.school_id }).catch(() => []);
-          if (schools[0]?.admin_email) patch.admin_email = schools[0].admin_email;
-        } catch { /* best-effort */ }
-      }
-      if (Object.keys(patch).length) {
-        await svc.entities.UserProfile.update(profile.id, patch);
-      }
+      try {
+        const schools = await svc.entities.School.filter({ id: cls.school_id }).catch(() => []);
+        if (schools[0]?.admin_email) patch.admin_email = schools[0].admin_email;
+      } catch { /* best-effort */ }
+      await svc.entities.UserProfile.update(profile.id, patch);
+    }
 
+    if (profile) {
       // Provision a vault for the student if they don't have one — students receive BlockWards.
       try {
         await ensureVault(svc, actor.controller_user_id, profile);
