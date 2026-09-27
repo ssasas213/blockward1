@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import EmptyState from '@/components/ui/empty-state';
 import AchievementCard, { AchievementRow, cardFromVault, cardFromRequest, cardFromSelf } from '@/components/achievements/AchievementCard';
 import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
-import { Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Trophy, Plus } from 'lucide-react';
 
 /**
  * AllTab — everything the student has, newest first, as one grid of shared
@@ -12,7 +13,7 @@ import { Trophy } from 'lucide-react';
  * render twice with different subtitles and icons. Revoked and superseded
  * versions stay visible with their own labels — the history is the student's.
  */
-export default function AllTab({ verified, requests, selfReported, onSelectVerified, onGoTo, onShare, onGetVerified, viewMode = 'grid', loading = false }) {
+export default function AllTab({ verified, requests, selfReported, onSelectVerified, onGoTo, onShare, onGetVerified, onNewRequest, viewMode = 'grid', loading = false }) {
   const items = useMemo(() => {
     const merged = [
       ...verified.map(v => ({ type: 'verified', card: cardFromVault(v), raw: v, date: v.minted_at || v.created_date })),
@@ -36,7 +37,13 @@ export default function AllTab({ verified, requests, selfReported, onSelectVerif
         icon={Trophy}
         title="No achievements yet"
         description="Request your first achievement to get it verified and permanently recorded."
-      />
+      >
+        {onNewRequest && (
+          <Button onClick={onNewRequest}>
+            <Plus className="h-4 w-4 mr-2" /> Request an achievement
+          </Button>
+        )}
+      </EmptyState>
     );
   }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -25,6 +25,8 @@ import RecentAnnouncementsWidget from '@/components/dashboard/RecentAnnouncement
 import CrossOrgAchievementsCard from '@/components/dashboard/CrossOrgAchievementsCard';
 import SelfAchievementsCard from '@/components/dashboard/SelfAchievementsCard';
 import StudentOnboardingChecklist from '@/components/dashboard/StudentOnboardingChecklist';
+import StudentAttentionCard from '@/components/dashboard/StudentAttentionCard';
+import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
 
 /** Small pulse rows shaped like the real list content — no centred spinners. */
 function ListRowSkeleton({ rows = 3, height = 'h-16' }) {
@@ -39,7 +41,8 @@ function ListRowSkeleton({ rows = 3, height = 'h-16' }) {
 
 function StudentDashboardContent() {
   // Identity comes from SchoolContext — fetched once per session, never here.
-  const { user, profile } = useSchool();
+  const { user, profile, testMode } = useSchool();
+  const navigate = useNavigate();
 
   // Per-section loading: null = still loading. The page shell renders
   // immediately; every section resolves and un-skeletons on its own.
@@ -47,10 +50,14 @@ function StudentDashboardContent() {
   const [todaySchedule, setTodaySchedule] = useState(null);
   const [points, setPoints] = useState(null);
   const [blockWards, setBlockWards] = useState(null);
+  const [requests, setRequests] = useState(null);
+  const [notifications, setNotifications] = useState(null);
 
   useEffect(() => {
     if (!user) return;
-    const email = user.email;
+    // Test Mode personas read their persona's data, exactly like the bell.
+    const email = testMode?.isTestSuperUser && testMode.effectiveEmail
+      ? testMode.effectiveEmail : user.email;
     const sid = profile?.school_id || null;
     const today = new Date().getDay();
     const dayIndex = today === 0 ? 6 : today - 1;
@@ -65,10 +72,16 @@ function StudentDashboardContent() {
       { student_email: email }, '-created_date', 10
     ).catch(() => []);
     const vaultP = loadEarnedAchievements().then(r => r.achievements).catch(() => []);
+    const reqP = base44.functions.invoke('achievementRequestData', { mode: 'student' }).catch(() => null);
+    const notifP = base44.entities.Notification.filter(
+      { user_email: email }, '-created_date', 6
+    ).catch(() => []);
 
     classesP.then((all) => setMyClasses(all.filter(c => c.student_emails?.includes(email))));
     pointsP.then(setPoints);
     vaultP.then(setBlockWards);
+    reqP.then((res) => setRequests(res?.data?.ok ? (res.data.requests || []) : []));
+    notifP.then(setNotifications);
     Promise.all([classesP, scheduleP]).then(([allClasses, allSchedules]) => {
       const classIds = new Set(allClasses.map(c => c.id));
       setTodaySchedule(
@@ -77,7 +90,7 @@ function StudentDashboardContent() {
           .sort((a, b) => a.start_time.localeCompare(b.start_time))
       );
     });
-  }, [user, profile?.school_id]);
+  }, [user, profile?.school_id, testMode?.isTestSuperUser, testMode?.effectiveEmail]);
 
   // Points totals — same derivation as before, computed once points arrive.
   let achievementPoints = 0;
@@ -109,6 +122,9 @@ function StudentDashboardContent() {
         </Button>
       </PageHeader>
 
+      {/* Requests the student must act on — hidden when everything is up to date */}
+      <StudentAttentionCard requests={requests} loading={requests === null} />
+
       {isEmptyState ? (
         <div className="space-y-6">
           <StudentOnboardingChecklist profile={profile} userEmail={user?.email} />
@@ -121,7 +137,7 @@ function StudentDashboardContent() {
           {(blockWards === null || blockWards.length > 0) && (
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">My BlockWards</CardTitle>
+                <CardTitle className="text-base">My achievements</CardTitle>
                 <Button variant="ghost" size="sm" asChild>
                   <Link to={createPageUrl('StudentBlockWards')}>
                     View All
@@ -135,7 +151,7 @@ function StudentDashboardContent() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {blockWards.slice(0, 3).map((bw) => (
-                      <BlockWardCard key={bw.id} blockWard={bw} onClick={() => window.location.href = createPageUrl(`StudentBlockWards`)} showStudent={false} />
+                      <BlockWardCard key={bw.id} blockWard={bw} onClick={() => navigate(createPageUrl('StudentBlockWards'))} showStudent={false} />
                     ))}
                   </div>
                 )}
@@ -196,8 +212,9 @@ function StudentDashboardContent() {
             <AttendanceWidget />
           </div>
 
-          {/* Recent Points + Grades */}
+          {/* Recent activity + Recent points */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <RecentActivityCard notifications={notifications} loading={notifications === null} />
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">Recent Points</CardTitle>
@@ -237,13 +254,11 @@ function StudentDashboardContent() {
             </Card>
 
             <GradesWidget />
+            <AssignmentsWidget />
           </div>
 
-          {/* Assignments + Announcements */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AssignmentsWidget />
-            <RecentAnnouncementsWidget />
-          </div>
+          {/* School announcements */}
+          <RecentAnnouncementsWidget />
 
           {/* Assemblies */}
           <StudentAssembliesWidget />

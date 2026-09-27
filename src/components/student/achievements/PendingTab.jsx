@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, AlertTriangle, FileText, LinkIcon, ChevronRight, Users, ShieldCheck, X, Copy, Loader2, PenLine } from 'lucide-react';
-import { STATUS_LABELS, STATUS_BADGE_VARIANTS, TIER_SHORT, CATEGORY_LABELS } from '@/lib/achievementRequests';
+import { STATUS_LABELS, STATUS_BADGE_VARIANTS, TIER_SHORT, TIER_LABELS, CATEGORY_LABELS } from '@/lib/achievementRequests';
 import { DIRECT_EDITABLE_STATUSES } from '@/lib/credentialEdits';
 
 // The student may cancel any of these; anything past this point is verified
@@ -106,7 +106,12 @@ export default function PendingTab({ requests, caps, onEdit, onEditDetail, onWit
                       <h3 className="text-base font-semibold text-foreground">{r.title}</h3>
                       <Badge variant={STATUS_BADGE_VARIANTS[r.status] || 'secondary'}>{STATUS_LABELS[r.status] || r.status}</Badge>
                       {r.verification_mode !== 'independent' && (
-                        <Badge variant="outline">{TIER_SHORT[r.verification_tier] || 'Tier ?'}</Badge>
+                        <Badge
+                          variant="outline"
+                          title={TIER_LABELS[r.verification_tier] ? `${TIER_LABELS[r.verification_tier]} — how many approvals this needs` : undefined}
+                        >
+                          {TIER_SHORT[r.verification_tier] || 'Tier ?'}
+                        </Badge>
                       )}
                       {r.is_team && (
                         <Badge variant="outline" className="gap-1">

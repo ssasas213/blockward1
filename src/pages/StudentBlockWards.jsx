@@ -50,7 +50,14 @@ function StudentBlockWardsContent() {
   const [meta, setMeta] = useState(null);
   const [caps, setCaps] = useState(null);
   const [selfReported, setSelfReported] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+  // Deep-linkable tab (?tab=pending) — the dashboard's attention card and
+  // other CTAs can land the student directly on the section they need.
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const t = new URLSearchParams(window.location.search).get('tab');
+      return ['all', 'verified', 'pending', 'unverified'].includes(t) ? t : 'all';
+    } catch { return 'all'; }
+  });
   const [selectedBlockWard, setSelectedBlockWard] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -226,9 +233,9 @@ function StudentBlockWardsContent() {
       {/* Header — renders immediately from the session identity */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">My BlockWards</h1>
+          <h1 className="text-3xl font-bold text-foreground">My Achievements</h1>
           <p className="text-muted-foreground mt-1">
-            Your achievements are stored securely in your BlockWard Vault
+            Every verified achievement is permanently recorded in your BlockWard Vault
           </p>
           {profile?.handle && (
             <div className="flex flex-wrap items-center gap-2 mt-3">
@@ -285,7 +292,7 @@ function StudentBlockWardsContent() {
         <TabsList>
           <TabsTrigger value="all">All ({totalCount === null ? '…' : totalCount})</TabsTrigger>
           <TabsTrigger value="verified">Verified ({verified === null ? '…' : verified.length})</TabsTrigger>
-          <TabsTrigger value="pending">Pending ({requests === null ? '…' : openRequestCount})</TabsTrigger>
+          <TabsTrigger value="pending">Requests ({requests === null ? '…' : openRequestCount})</TabsTrigger>
           <TabsTrigger value="unverified">Unverified ({selfReported === null ? '…' : unverifiedCount})</TabsTrigger>
         </TabsList>
 
@@ -298,6 +305,7 @@ function StudentBlockWardsContent() {
             onGoTo={setActiveTab}
             onShare={setShareTarget}
             onGetVerified={handleGetVerified}
+            onNewRequest={() => { setEditing(null); setFormOpen(true); }}
             viewMode={viewMode}
             loading={!allLoaded}
           />

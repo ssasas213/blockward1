@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import {
   Calendar, User, Award, ExternalLink, FileText, ShieldCheck, Link2,
-  UserCheck, Ban, History, PenLine, CheckCircle2, BadgeCheck,
+  UserCheck, Ban, History, PenLine, CheckCircle2, BadgeCheck, Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { CATEGORY_LABELS } from '@/lib/achievementRequests';
 
 /**
  * BlockWardDetailModal — the private vault detail view for ONE achievement.
@@ -77,6 +78,22 @@ export default function BlockWardDetailModal({ blockWard, open, onClose, onEdit 
             <ver.Icon className="h-3.5 w-3.5" /> {ver.label}
           </div>
 
+          {/* Revocation — the recorded reason, kept visible with the history */}
+          {status === 'revoked' && blockWard.revocation?.reason && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold text-destructive uppercase tracking-wide">Revocation</p>
+              <p className="text-sm text-foreground mt-1">{blockWard.revocation.reason}</p>
+              {(blockWard.revocation.revoked_by_name || blockWard.revocation.revoked_by) && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  By {blockWard.revocation.revoked_by_name || blockWard.revocation.revoked_by}
+                  {blockWard.revocation.revoked_at
+                    ? ` · ${format(new Date(blockWard.revocation.revoked_at), 'd MMM yyyy')}`
+                    : ''}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Card preview */}
           <div
             className={`h-36 rounded-xl p-5 flex flex-col justify-end relative overflow-hidden ${!imageUrl ? 'bg-gradient-to-br from-violet-500 to-indigo-600' : ''}`}
@@ -118,7 +135,10 @@ export default function BlockWardDetailModal({ blockWard, open, onClose, onEdit 
 
           {/* Details */}
           <div className="space-y-2">
-            <Row icon={Award} label="Category">{blockWard.category || '—'}</Row>
+            <Row icon={Award} label="Category">{CATEGORY_LABELS[blockWard.category] || blockWard.category || '—'}</Row>
+            {blockWard.organisation_name && !iv && (
+              <Row icon={Building2} label="Issued by">{blockWard.organisation_name}</Row>
+            )}
             {iv && (
               <Row icon={User} label="Independently verified by">
                 {[iv.name, iv.role, iv.organisation_label].filter(Boolean).join(' · ')}
@@ -164,6 +184,30 @@ export default function BlockWardDetailModal({ blockWard, open, onClose, onEdit 
                       </p>
                       {s.method_note && <p className="text-xs text-muted-foreground mt-0.5 italic">{s.method_note}</p>}
                     </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Version history — every approved correction, in plain language */}
+          {(blockWard.correction_history || []).length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-foreground mb-2">Version history</h4>
+              <ol className="space-y-2">
+                {(blockWard.correction_history || []).map((c, i) => (
+                  <li key={i} className="rounded-lg border border-border bg-background p-2.5">
+                    <p className="text-sm font-medium text-foreground">
+                      Version {c.version}
+                      {c.corrected_at ? ` · corrected ${format(new Date(c.corrected_at), 'd MMM yyyy')}` : ''}
+                    </p>
+                    {c.approved_by && <p className="text-xs text-muted-foreground">Re-signed by {c.approved_by}</p>}
+                    {c.reason && <p className="text-xs text-muted-foreground italic mt-0.5">"{c.reason}"</p>}
+                    {(c.changes || []).map((ch, j) => (
+                      <p key={j} className="text-xs text-muted-foreground/80 mt-1">
+                        {String(ch.field || '').replace(/_/g, ' ')}: {String(ch.old_value ?? '—')} → {String(ch.new_value ?? '—')}
+                      </p>
+                    ))}
                   </li>
                 ))}
               </ol>
