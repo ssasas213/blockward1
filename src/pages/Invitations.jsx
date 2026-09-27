@@ -196,7 +196,7 @@ function InvitationTable({ invitations, busy, onResend, onCancel, onCopy }) {
                 'border-warning/30 bg-warning/10 text-warning'
               }`}
             >
-              {inv.status}
+              <span className="capitalize">{inv.status}</span>
             </Badge>
             <div className="flex items-center gap-1">
               {isPending && onResend && (

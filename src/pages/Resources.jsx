@@ -202,7 +202,7 @@ export default function Resources() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Resources</h1>
+          <h1 className="text-2xl font-bold text-foreground">Resources</h1>
           <p className="text-muted-foreground mt-1">
             {isTeacher ? 'Upload and manage learning materials' : 'Access class materials'}
           </p>

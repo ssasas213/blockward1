@@ -46,7 +46,7 @@ export default function Messages() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Inbox</h1>
+            <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
             <p className="text-muted-foreground mt-1">Messages, announcements and parent communications</p>
           </div>
           {dmUnread > 0 && (
@@ -83,7 +83,7 @@ export default function Messages() {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Inbox</h1>
+            <h1 className="text-2xl font-bold text-foreground">Inbox</h1>
             <p className="text-muted-foreground mt-1">Messages and announcements</p>
           </div>
           {combined > 0 && (

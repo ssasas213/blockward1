@@ -173,7 +173,7 @@ export default function ClassDetail() {
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to Classes
           </Link>
-          <h1 className="text-3xl font-bold text-foreground">{classData.name}</h1>
+          <h1 className="text-2xl font-bold text-foreground">{classData.name}</h1>
           <p className="text-muted-foreground mt-1">
             {schoolName && (
               <span className="inline-flex items-center gap-1">
