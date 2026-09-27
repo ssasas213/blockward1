@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Loader2, Check, X, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { gradeColor, averagePercentages } from '@/lib/grades';
-import { ASSESSMENT_TYPES, assignmentStatusLabel } from '@/lib/grades';
+import { gradeColor, averagePercentages, ASSESSMENT_TYPES, assignmentStatusLabel } from '@/lib/grades';
 
 const typeLabel = (v) => (ASSESSMENT_TYPES.find((t) => t.value === v) || {}).label || v;
 

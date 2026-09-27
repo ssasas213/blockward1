@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { EmptyState } from '@/components/ui/empty-state';
+import EmptyState from '@/components/ui/empty-state';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
 import CreateAssessmentDialog from '@/components/grades/CreateAssessmentDialog';
 import GradebookGrid from '@/components/grades/GradebookGrid';
