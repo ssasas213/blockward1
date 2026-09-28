@@ -13,7 +13,7 @@ function safeJson(obj, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: corsHeaders });
 }
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+const GEMINI_MODEL = "gemini-3.8-flash";
 const MAX_STEPS = 6;
 
 const PENDING_REVIEW_STATUSES = ["submitted", "awaiting_teacher_signature", "awaiting_admin_signature", "changes_requested"];
@@ -656,14 +656,21 @@ async function callGemini(apiKey, systemInstruction, contents, tools) {
   };
   if (tools?.length) payload.tools = tools;
 
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-  const data = await res.json().catch(() => null);
-  return { ok: res.ok, status: res.status, data };
+  // The model endpoint can return a transient 503 ("high demand") — spikes
+  // are short, so retry a couple of times before falling back to OpenAI.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const data = await res.json().catch(() => null);
+    if (res.ok || res.status !== 503) return { ok: res.ok, status: res.status, data };
+    await new Promise(r => setTimeout(r, 2000));
+  }
+  return { ok: false, status: 503, data: null };
 }
 
 function friendlyGeminiError(status, data) {
   const msg = data?.error?.message || "";
-  if (status === 400 || status === 401 || status === 403) return { ok: false, code: "AI_AUTH", message: "The AI service rejected the request. Please check the Gemini API key configuration." };
+  const detail = msg ? ` (${msg})` : "";
+  if (status === 400 || status === 401 || status === 403) return { ok: false, code: "AI_AUTH", message: "The AI service rejected the request. Please check the Gemini API key configuration." + detail };
   if (status === 429) return { ok: false, code: "AI_RATE_LIMIT", message: "The AI service is busy right now. Please wait a moment and try again." };
   if (status >= 500) return { ok: false, code: "AI_UNAVAILABLE", message: "The AI service is temporarily unavailable. Please try again shortly." };
   return { ok: false, code: "AI_ERROR", message: msg || `AI service error (${status})` };
@@ -784,11 +791,13 @@ Deno.serve(async (req) => {
     for (let step = 0; step < MAX_STEPS; step++) {
       const gr = apiKey ? await callGemini(apiKey, systemInstruction, contents, tools) : { ok: false, status: 401, data: null };
       if (!gr.ok) {
+        // Diagnostic only — logs the upstream status/error message, never the key.
+        console.log(JSON.stringify({ step: "gemini_failed", status: gr.status, error: gr.data?.error?.message || null }));
         // Gemini unavailable (missing/invalid key) — the same tool loop runs on
         // OpenAI so the assistant keeps answering with real role-scoped data.
         if (openaiKey) {
           const r = await runOpenAILoop({ apiKey: openaiKey, model: openaiModel, systemInstruction, userText, role, isTestMode: !!actor.is_test_mode, roleTools, toolCtx, calledTools });
-          if (r.error) return safeJson(r.error, r.status >= 400 && r.status < 500 ? r.status : 502);
+          if (r.error) return safeJson({ ...r.error, gemini_status: gr.status, gemini_error: gr.data?.error?.message || null }, r.status >= 400 && r.status < 500 ? r.status : 502);
           return safeJson(r.payload);
         }
         return safeJson(friendlyGeminiError(gr.status, gr.data), gr.status >= 400 && gr.status < 500 ? gr.status : 502);
