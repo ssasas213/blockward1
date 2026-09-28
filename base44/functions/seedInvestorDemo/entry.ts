@@ -39,20 +39,19 @@ import { createPublicClient, createWalletClient, http, parseAbi, getAddress } fr
 import { encodeBytes32String } from 'npm:ethers@6.13.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
 import { sepolia } from 'npm:viem@2.7.0/chains';
-import { verifyTestSuperUser } from '../../shared/testMode.ts';
 import { provisionProfile } from '../../shared/profileProvisioning.ts';
 import { createSchoolForAdmin } from '../../shared/schoolSetup.ts';
 import { reviewStaffMembership } from '../../shared/staffApprovals.ts';
 import { isHandleAvailable } from '../../shared/handles.ts';
 import { endorseAchievement, buildAffiliation } from '../../shared/endorsements.ts';
 import { submitRequest, runReviewerAction, runExternalAction, retryMint } from '../../shared/achievementRequestFlow.ts';
+import {
+  appUrl, ago, day, fail, sleep, retryRateLimit, gradeFor,
+  profileByEmail, findRequest, authorizeDemo,
+} from '../../shared/demoSeeding.ts';
 
 const D = 'demo.blockward.test';
 const IMG = 'https://media.base44.com/images/public/6936b840baa53bb465f68d09';
-const appUrl = () => Deno.env.get('APP_URL') || 'https://blockward.base44.app';
-const ago = (days) => new Date(Date.now() - days * 86400000).toISOString();
-const day = (days) => new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-const fail = (msg) => { throw new Error(msg); };
 
 // ── The demo world cast (all clearly fictional, all on the demo domain) ──
 const SCHOOL_NAME = 'Northgate Grammar School';
@@ -202,29 +201,7 @@ const PURGE_BY_EMAIL = [
   ['Notification', 'user_email'],
 ];
 
-async function authorize(base44) {
-  const check = await verifyTestSuperUser(base44);
-  if (check.authorized) return { ok: true, email: check.user.email };
-  const user = await base44.auth.me();
-  if (!user) return { ok: false, status: 401, reason: 'Not authenticated' };
-  const svc = base44.asServiceRole;
-  const profiles = await svc.entities.UserProfile.filter({ user_email: user.email });
-  const p = profiles[0];
-  if (!p || p.user_type !== 'admin' || p.admin_level !== 'super_admin') {
-    return { ok: false, status: 403, reason: 'Only super admins can manage demo data' };
-  }
-  return { ok: true, email: user.email };
-}
 
-async function findRequest(svc, email, title) {
-  const rows = await svc.entities.AchievementRequest.filter({ student_email: email }, '-created_date', 200);
-  return rows.find((r) => r.title === title) || null;
-}
-
-async function profileByEmail(svc, email) {
-  const rows = await svc.entities.UserProfile.filter({ user_email: email });
-  return rows[0] || null;
-}
 
 // ── The real organisation-verified flow: student submits → nominated verifier
 // signs → (Tier 2: admin approves) → credentialDelivery publishes ──
@@ -446,29 +423,7 @@ async function mintOnChain(svc, heroProfile, registry) {
   return { ok: true, tx: receipt.transactionHash, token_id: tokenId, block: receipt.blockNumber ? String(receipt.blockNumber) : null, student_wallet: studentAddr };
 }
 
-// ── Rate-limit resilience ──
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-// Retries a unit of seeding work when the platform's write-rate limit trips.
-// Every unit re-derives its own state (idempotent), so retrying is safe.
-async function retryRateLimit(fn, label, tries = 5) {
-  for (let t = 0; ; t++) {
-    try {
-      return await fn();
-    } catch (e) {
-      const msg = String(e?.message || e);
-      if (t < tries && /rate limit/i.test(msg)) {
-        console.log(`[seed] ${label} hit a rate limit — backing off ${(5 + t * 10)}s`);
-        await sleep((5 + t * 10) * 1000);
-        continue;
-      }
-      throw e;
-    }
-  }
-}
-
 // ── Gradebook helpers ──
-const gradeFor = (pct) =>
-  pct >= 90 ? 'A*' : pct >= 80 ? 'A' : pct >= 70 ? 'B' : pct >= 60 ? 'C' : pct >= 50 ? 'D' : pct >= 40 ? 'E' : 'U';
 const attStatus = (i, d) => {
   const v = (i * 5 + d * 3 + ((i + d) % 4)) % 23;
   return v === 2 || v === 15 ? 'late' : v === 21 ? 'absent' : 'present';
@@ -480,7 +435,7 @@ export default async function (req) {
     if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 });
 
     const base44 = createClientFromRequest(req);
-    const auth = await authorize(base44);
+    const auth = await authorizeDemo(base44);
     if (!auth.ok) return Response.json({ error: auth.reason }, { status: auth.status });
     const callerEmail = auth.email;
 

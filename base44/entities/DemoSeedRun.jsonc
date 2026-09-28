@@ -4,16 +4,17 @@
   "properties": {
     "run_label": {
       "type": "string",
-      "description": "Identifier for this seeding run (e.g. demo-1718000000000, investor-1718000000000)."
+      "description": "Identifier for this seeding run (e.g. demo-1718000000000, investor-1718000000000, pitch-1718000000000)."
     },
     "kind": {
       "type": "string",
       "enum": [
         "organisation",
-        "investor_world"
+        "investor_world",
+        "pitch_world"
       ],
       "default": "organisation",
-      "description": "Which seeder produced this run: 'organisation' \u2014 the test organisation (seedDemoOrganisation); 'investor_world' \u2014 the investor-deck demo world (seedInvestorDemo)."
+      "description": "Which seeder produced this run: 'organisation' \u2014 the test organisation (seedDemoOrganisation); 'investor_world' \u2014 the investor-deck demo world (seedInvestorDemo); 'pitch_world' \u2014 the live-pitch demonstration school (seedPitchDemo)."
     },
     "school_id": {
       "type": "string",

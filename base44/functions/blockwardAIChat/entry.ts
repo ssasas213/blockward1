@@ -669,6 +669,78 @@ function friendlyGeminiError(status, data) {
   return { ok: false, code: "AI_ERROR", message: msg || `AI service error (${status})` };
 }
 
+// ───────────────────────── OpenAI fallback ─────────────────────────
+// Used when the Gemini key is missing or rejected: the SAME tool loop in
+// OpenAI function-calling format, same role tools, same system instruction.
+// Never triggered when Gemini succeeds.
+async function callOpenAI(apiKey, model, systemInstruction, messages, tools) {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      temperature: 0.2,
+      messages: [{ role: "system", content: systemInstruction }, ...messages],
+      ...(tools?.length ? { tools, tool_choice: "auto" } : {}),
+    }),
+  });
+  const data = await res.json().catch(() => null);
+  return { ok: res.ok, status: res.status, data };
+}
+
+function friendlyOpenAIError(status, data) {
+  const detail = data?.error?.message ? ` (${data.error.message})` : "";
+  if (status === 400 || status === 401 || status === 403) return { ok: false, code: "AI_AUTH", message: "The AI service rejected the request. Please check the API key configuration." + detail };
+  if (status === 429) return { ok: false, code: "AI_RATE_LIMIT", message: "The AI service is busy right now. Please wait a moment and try again." + detail };
+  if (status >= 500) return { ok: false, code: "AI_UNAVAILABLE", message: "The AI service is temporarily unavailable. Please try again shortly." };
+  return { ok: false, code: "AI_ERROR", message: `AI service error (${status})` };
+}
+
+async function runOpenAILoop(opts) {
+  const { apiKey, model, systemInstruction, userText, role, isTestMode, roleTools, toolCtx, calledTools } = opts;
+  const messages = [{ role: "user", content: userText }];
+  const tools = roleTools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
+  const sources = () => [...new Set([...calledTools].map((n) => TOOL_LABELS[n]).filter(Boolean))];
+  for (let step = 0; step < MAX_STEPS; step++) {
+    const r = await callOpenAI(apiKey, model, systemInstruction, messages, tools);
+    if (!r.ok) return { error: friendlyOpenAIError(r.status, r.data), status: r.status };
+    const choice = r.data?.choices?.[0];
+    const msg = choice?.message;
+    if (!msg) return { error: { ok: false, code: "AI_BLOCKED", message: "No response from AI." }, status: 502 };
+    const toolCalls = msg.tool_calls || [];
+    if (!toolCalls.length) {
+      return { payload: {
+        ok: true,
+        role,
+        answer: (msg.content || "").trim() || "I don't have enough information to answer that right now.",
+        tools_called: [...calledTools],
+        data_sources: sources(),
+        is_test_mode: isTestMode,
+      } };
+    }
+    messages.push(msg);
+    for (const tc of toolCalls) {
+      const name = tc.function?.name;
+      let args = {};
+      try { args = JSON.parse(tc.function?.arguments || "{}"); } catch (_e) { args = {}; }
+      calledTools.add(name);
+      const tool = roleTools.find((t) => t.name === name);
+      let result;
+      if (!tool) {
+        result = { error: "This tool is not available to your role." };
+      } else {
+        try {
+          result = await tool.run(args, toolCtx);
+        } catch (e) {
+          result = { error: "Tool failed to return data.", detail: String(e?.message || e) };
+        }
+      }
+      messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+    }
+  }
+  return { payload: { ok: true, role, answer: "I couldn't complete that request within the allowed steps. Please try rephrasing.", tools_called: [...calledTools], data_sources: sources(), is_test_mode: isTestMode } };
+}
+
 // ───────────────────────── Main handler ─────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
@@ -682,7 +754,9 @@ Deno.serve(async (req) => {
     if (!actor.authorized) return safeJson({ ok: false, code: "FORBIDDEN", message: actor.reason || "Not authorised" }, actor.status || 403);
 
     const apiKey = Deno.env.get("GEMINI_API_KEY") || "";
-    if (!apiKey) return safeJson({ ok: false, code: "MISSING_SECRET", message: "Gemini API key is not configured." }, 500);
+    const openaiKey = Deno.env.get("OPENAI_API_KEY") || "";
+    const openaiModel = Deno.env.get("AI_MODEL") || "gpt-4o-mini";
+    if (!apiKey && !openaiKey) return safeJson({ ok: false, code: "MISSING_SECRET", message: "No AI provider is configured." }, 500);
 
     const body = await req.json().catch(() => ({}));
     const message = String(body?.message || "").trim();
@@ -708,8 +782,17 @@ Deno.serve(async (req) => {
     const calledTools = new Set();
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      const gr = await callGemini(apiKey, systemInstruction, contents, tools);
-      if (!gr.ok) return safeJson(friendlyGeminiError(gr.status, gr.data), gr.status >= 400 && gr.status < 500 ? gr.status : 502);
+      const gr = apiKey ? await callGemini(apiKey, systemInstruction, contents, tools) : { ok: false, status: 401, data: null };
+      if (!gr.ok) {
+        // Gemini unavailable (missing/invalid key) — the same tool loop runs on
+        // OpenAI so the assistant keeps answering with real role-scoped data.
+        if (openaiKey) {
+          const r = await runOpenAILoop({ apiKey: openaiKey, model: openaiModel, systemInstruction, userText, role, isTestMode: !!actor.is_test_mode, roleTools, toolCtx, calledTools });
+          if (r.error) return safeJson(r.error, r.status >= 400 && r.status < 500 ? r.status : 502);
+          return safeJson(r.payload);
+        }
+        return safeJson(friendlyGeminiError(gr.status, gr.data), gr.status >= 400 && gr.status < 500 ? gr.status : 502);
+      }
 
       const cand = gr.data?.candidates?.[0];
       if (!cand) {
