@@ -647,19 +647,22 @@ Today is ${new Date().toDateString()}.`;
 }
 
 // ───────────────────────── Gemini call ─────────────────────────
-async function callGemini(apiKey, systemInstruction, contents, tools) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+// Interactions API (stateless): store=false means Google keeps no copy of
+// the conversation — the full step history is managed here, client-side.
+async function callGemini(apiKey, systemInstruction, inputSteps, tools) {
+  const url = "https://generativelanguage.googleapis.com/v1beta/interactions";
   const payload = {
-    systemInstruction: { parts: [{ text: systemInstruction }] },
-    contents,
-    generationConfig: { temperature: 0.2 },
+    model: GEMINI_MODEL,
+    store: false,
+    system_instruction: systemInstruction,
+    input: inputSteps,
   };
   if (tools?.length) payload.tools = tools;
 
   // The model endpoint can return a transient 503 ("high demand") — spikes
   // are short, so retry a couple of times before falling back to OpenAI.
   for (let attempt = 0; attempt < 3; attempt++) {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, body: JSON.stringify(payload) });
     const data = await res.json().catch(() => null);
     if (res.ok || res.status !== 503) return { ok: res.ok, status: res.status, data };
     await new Promise(r => setTimeout(r, 2000));
@@ -778,18 +781,19 @@ Deno.serve(async (req) => {
     if (!roleTools.length) return safeJson({ ok: false, code: "FORBIDDEN", message: "No AI tools available for this role." }, 403);
 
     const toolCtx = { svc, actor };
-    const declarations = roleTools.map(t => ({ name: t.name, description: t.description, parameters: t.parameters }));
-    const tools = [{ functionDeclarations: declarations }];
+    // Interactions API tool shape — flat function declarations.
+    const tools = roleTools.map(t => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters }));
     const systemInstruction = buildSystemInstruction(actor);
 
     let userText = message;
     if (pageContext) userText += `\n\n(Page context: ${pageContext})`;
 
-    const contents = [{ role: "user", parts: [{ text: userText }] }];
+    // Stateless step history — re-sent in full on every turn.
+    const inputSteps = [{ type: "user_input", content: [{ type: "text", text: userText }] }];
     const calledTools = new Set();
 
     for (let step = 0; step < MAX_STEPS; step++) {
-      const gr = apiKey ? await callGemini(apiKey, systemInstruction, contents, tools) : { ok: false, status: 401, data: null };
+      const gr = apiKey ? await callGemini(apiKey, systemInstruction, inputSteps, tools) : { ok: false, status: 401, data: null };
       if (!gr.ok) {
         // Diagnostic only — logs the upstream status/error message, never the key.
         console.log(JSON.stringify({ step: "gemini_failed", status: gr.status, error: gr.data?.error?.message || null }));
@@ -803,16 +807,14 @@ Deno.serve(async (req) => {
         return safeJson(friendlyGeminiError(gr.status, gr.data), gr.status >= 400 && gr.status < 500 ? gr.status : 502);
       }
 
-      const cand = gr.data?.candidates?.[0];
-      if (!cand) {
-        const blockReason = gr.data?.promptFeedback?.blockReason;
-        return safeJson({ ok: false, code: "AI_BLOCKED", message: blockReason ? "The AI service blocked this request." : "No response from AI." });
+      // Interactions API response — typed execution steps instead of candidates.
+      const steps = gr.data?.steps || [];
+      if (!steps.length) {
+        return safeJson({ ok: false, code: "AI_BLOCKED", message: "No response from AI." });
       }
-      const parts = cand.content?.parts || [];
-
-      const fcPart = parts.find(p => p.functionCall);
-      if (!fcPart) {
-        const text = parts.map(p => p.text).filter(Boolean).join("").trim();
+      const fcSteps = steps.filter(s => s.type === "function_call");
+      if (!fcSteps.length) {
+        const text = steps.filter(s => s.type === "model_output").flatMap(s => s.content || []).map(c => c.text).filter(Boolean).join("").trim();
         return safeJson({
           ok: true,
           role,
@@ -823,22 +825,25 @@ Deno.serve(async (req) => {
         });
       }
 
-      const { name, args } = fcPart.functionCall;
-      calledTools.add(name);
-      const tool = roleTools.find(t => t.name === name);
-      let result;
-      if (!tool) {
-        result = { error: "This tool is not available to your role." };
-      } else {
-        try {
-          result = await tool.run(args || {}, toolCtx);
-        } catch (e) {
-          result = { error: "Tool failed to return data.", detail: String(e?.message || e) };
+      // Stateless contract: re-send every model-generated step exactly as
+      // received, then the function results for each call in this turn.
+      inputSteps.push(...steps.filter(s => s.type !== "user_input"));
+      for (const fcStep of fcSteps) {
+        const name = fcStep.name;
+        calledTools.add(name);
+        const tool = roleTools.find(t => t.name === name);
+        let result;
+        if (!tool) {
+          result = { error: "This tool is not available to your role." };
+        } else {
+          try {
+            result = await tool.run(fcStep.arguments || {}, toolCtx);
+          } catch (e) {
+            result = { error: "Tool failed to return data.", detail: String(e?.message || e) };
+          }
         }
+        inputSteps.push({ type: "function_result", name, call_id: fcStep.id, result: [{ type: "text", text: JSON.stringify(result) }] });
       }
-
-      contents.push({ role: "model", parts: [{ functionCall: { name, args: args || {} } }] });
-      contents.push({ role: "user", parts: [{ functionResponse: { name, response: result } }] });
     }
 
     return safeJson({ ok: true, role, answer: "I couldn't complete that request within the allowed steps. Please try rephrasing.", tools_called: [...calledTools], data_sources: [...new Set([...calledTools].map(n => TOOL_LABELS[n]).filter(Boolean))], is_test_mode: !!actor.is_test_mode });
