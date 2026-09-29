@@ -1,0 +1,184 @@
+{
+  "name": "VerificationRequest",
+  "type": "object",
+  "properties": {
+    "achievement_id": {
+      "type": "string",
+      "description": "Achievement.id this request is for"
+    },
+    "holder_id": {
+      "type": "string",
+      "description": "UserProfile.id of the requesting holder"
+    },
+    "holder_email": {
+      "type": "string",
+      "description": "Holder email"
+    },
+    "holder_name": {
+      "type": "string",
+      "description": "Denormalised holder display name"
+    },
+    "achievement_title": {
+      "type": "string",
+      "description": "Denormalised achievement title (snapshot at request time)"
+    },
+    "issuer_org": {
+      "type": "string",
+      "description": "Issuing organisation name"
+    },
+    "issuer_contact_name": {
+      "type": "string",
+      "description": "Issuer contact name if known"
+    },
+    "issuer_email": {
+      "type": "string",
+      "description": "Issuer email \u2014 the verification link is sent here"
+    },
+    "issuer_website": {
+      "type": "string",
+      "description": "Issuer website if available"
+    },
+    "token": {
+      "type": "string",
+      "description": "Secure random one-time verification token \u2014 the ONLY way to act on this request. Never expose the database id."
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the verification link expires"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "opened",
+        "approved",
+        "rejected",
+        "expired",
+        "withdrawn"
+      ],
+      "default": "pending",
+      "description": "pending = awaiting the issuer. opened = issuer viewed the page (still actionable). approved/rejected = terminal. expired = token window passed. withdrawn = holder cancelled before response."
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "First time the issuer opened the secure link"
+    },
+    "open_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times the secure link has been opened"
+    },
+    "responded_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the issuer responded"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "cannot_verify"
+      ],
+      "description": "The issuer's decision"
+    },
+    "decision_reason": {
+      "type": "string",
+      "description": "Optional reason when the issuer cannot verify"
+    },
+    "decision_method": {
+      "type": "string",
+      "enum": [
+        "witnessed_in_person",
+        "reviewed_evidence",
+        "official_records",
+        "third_party",
+        "other"
+      ],
+      "description": "How the issuer verified \u2014 recorded for the public verification page"
+    },
+    "decision_note": {
+      "type": "string",
+      "description": "Optional free-text note from the issuer"
+    },
+    "decision_ip": {
+      "type": "string",
+      "description": "IP the decision was submitted from (audit trail)"
+    },
+    "decision_user_agent": {
+      "type": "string",
+      "description": "Browser user agent at decision time (audit trail)"
+    },
+    "email_status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed",
+        "pending"
+      ],
+      "description": "Outcome of the last verification email attempt"
+    },
+    "email_sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reminder_count": {
+      "type": "number",
+      "default": 0
+    },
+    "last_reminder_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Anchors the resend cooldown"
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "created | email_sent | email_failed | opened | confirmed | declined | reminded | expired | withdrawn"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Timestamped audit trail of this verification request"
+    }
+  },
+  "required": [
+    "achievement_id",
+    "holder_email",
+    "issuer_email",
+    "token"
+  ],
+  "rls": {
+    "create": {
+      "data.achievement_id": "__service_role_only__"
+    },
+    "read": {
+      "data.holder_email": "{{user.email}}"
+    },
+    "update": {
+      "data.achievement_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.achievement_id": "__service_role_only__"
+    }
+  }
+}

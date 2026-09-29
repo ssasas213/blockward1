@@ -1,0 +1,189 @@
+{
+  "name": "Achievement",
+  "type": "object",
+  "properties": {
+    "holder_id": {
+      "type": "string",
+      "description": "UserProfile.id of the holder"
+    },
+    "holder_email": {
+      "type": "string",
+      "description": "Holder email \u2014 RLS anchor"
+    },
+    "holder_name": {
+      "type": "string",
+      "description": "Denormalised holder display name"
+    },
+    "title": {
+      "type": "string",
+      "description": "Achievement title"
+    },
+    "issuer_org": {
+      "type": "string",
+      "description": "Issuing organisation name"
+    },
+    "issuer_contact_name": {
+      "type": "string",
+      "description": "Issuer contact name if known"
+    },
+    "issuer_email": {
+      "type": "string",
+      "description": "Issuer contact email \u2014 receives the verification request"
+    },
+    "issuer_website": {
+      "type": "string",
+      "description": "Issuer website if available"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "certification",
+        "competition",
+        "academic",
+        "professional",
+        "course",
+        "training",
+        "award",
+        "challenge",
+        "other"
+      ],
+      "default": "certification",
+      "description": "Achievement category"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the achievement is"
+    },
+    "date_achieved": {
+      "type": "string",
+      "format": "date",
+      "description": "When the achievement was earned"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiry date if applicable (null = never expires)"
+    },
+    "external_credential_id": {
+      "type": "string",
+      "description": "Credential/certificate ID printed on the certificate, if available"
+    },
+    "certificate_url": {
+      "type": "string",
+      "description": "PRIVATE storage file_uri of the uploaded certificate \u2014 access only via permission-checked signed URLs"
+    },
+    "certificate_name": {
+      "type": "string",
+      "description": "Display name of the uploaded certificate"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "PRIVATE storage file_uri for uploads, or an external https link"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Supporting evidence files and links"
+    },
+    "is_public": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this achievement appears on the holder's public profile. NEVER confers verification \u2014 only issuer confirmation + blockchain success do."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unverified",
+        "verification_requested",
+        "issuer_confirmed",
+        "blockchain_processing",
+        "verified",
+        "rejected",
+        "expired",
+        "revoked"
+      ],
+      "default": "unverified",
+      "description": "Lifecycle status. BLOCKWARD VERIFIED is only ever granted after issuer confirmation AND a successful blockchain transaction. Set exclusively by backend functions."
+    },
+    "verification_request_id": {
+      "type": "string",
+      "description": "VerificationRequest.id of the active/most recent request"
+    },
+    "credential_id": {
+      "type": "string",
+      "description": "Credential.id once issued"
+    },
+    "reject_reason": {
+      "type": "string",
+      "description": "Issuer's reason when they cannot verify"
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "created | edited | verification_requested | issuer_opened | issuer_confirmed | issuer_declined | blockchain_started | blockchain_confirmed | blockchain_failed | verified | revoked"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Timestamped audit trail of everything that happened to this achievement"
+    }
+  },
+  "required": [
+    "holder_email",
+    "holder_id",
+    "title",
+    "category"
+  ],
+  "rls": {
+    "create": {
+      "data.holder_email": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.holder_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.holder_email": "__service_role_only__"
+    },
+    "delete": {
+      "data.holder_email": "__service_role_only__"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "Issuer",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Issuer contact email \u2014 unique key (lowercased). Issuers do NOT need a Blockward account."
+    },
+    "name": {
+      "type": "string",
+      "description": "Issuing organisation name"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Contact name if known"
+    },
+    "website": {
+      "type": "string"
+    },
+    "first_request_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_activity_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "request_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Verification requests ever received"
+    },
+    "confirmed_count": {
+      "type": "number",
+      "default": 0
+    },
+    "declined_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "email",
+    "name"
+  ],
+  "rls": {
+    "create": {
+      "data.email": "__service_role_only__"
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "data.email": "__service_role_only__"
+    },
+    "delete": {
+      "data.email": "__service_role_only__"
+    }
+  }
+}

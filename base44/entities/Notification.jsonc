@@ -32,7 +32,16 @@
         "org_approved",
         "classwork_posted",
         "classwork_due_soon",
-        "classwork_returned"
+        "classwork_returned",
+        "verification_sent",
+        "issuer_opened",
+        "issuer_confirmed",
+        "issuer_declined",
+        "blockchain_completed",
+        "achievement_verified",
+        "achievement_rejected",
+        "credential_revoked",
+        "credential_expiring"
       ],
       "description": "Notification type"
     },
