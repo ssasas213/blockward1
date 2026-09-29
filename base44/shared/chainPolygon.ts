@@ -65,7 +65,7 @@ export function getPolygonConfig() {
     network: chain.id === polygonMainnet.id ? 'polygon' : 'polygon_amoy',
     chain,
     testnet: chain.id !== polygonMainnet.id,
-    rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygonMainnet.id ? 'https://polygon-rpc.com' : 'https://rpc-amoy.polygon.technology'),
+    rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygonMainnet.id ? 'https://polygon-bor-rpc.publicnode.com' : 'https://polygon-amoy-bor-rpc.publicnode.com'),
     contract: Deno.env.get('BLOCKWARD_CONTRACT_ADDRESS') || null,
     pk: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
   };
@@ -196,7 +196,7 @@ export async function anchorCredential(svc, credentialId: string) {
     const blockTimestamp = receipt.blockTimestamp
       ? new Date(Number(receipt.blockTimestamp)).toISOString()
       : new Date().toISOString();
-    log('anchored', { txHash, block: receipt.blockNumber });
+    log('anchored', { txHash, block: String(receipt.blockNumber) });
 
     const blockchain = {
       status: 'confirmed',
@@ -306,7 +306,7 @@ export async function verifyCredentialAnchor(svc, cred: any) {
       // Calldata mode — the transaction's input data must equal the exact
       // commitment payload recomputed from the CURRENT content.
       const tx = await pub.getTransaction({ hash: bc.transaction_hash as `0x${string}` });
-      const input = typeof tx?.input === 'string' ? toHex(tx.input) : String(tx?.input || '');
+      const input = typeof tx?.input === 'string' ? tx.input : String(tx?.input || '');
       const expected = stringToHex(buildCommitmentPayload(cred.bw_id, recomputed));
       const committedBytes = commitmentFromPayload(new TextDecoder().decode(hexToBytes(input)));
       result.committed_hash = committedBytes;
