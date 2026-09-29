@@ -15,11 +15,12 @@ export function isPrivateEvidence(url) {
   return !!url && !/^https?:\/\//i.test(url);
 }
 
-export async function openEvidenceFile({ url, requestId, recordId, token }) {
+export async function openEvidenceFile({ url, requestId, recordId, achievementId, token }) {
   try {
     const res = await base44.functions.invoke('getEvidenceAccess', {
       request_id: requestId || null,
       record_id: recordId || null,
+      achievement_id: achievementId || null,
       file_uri: url,
       token: token || null,
     });
