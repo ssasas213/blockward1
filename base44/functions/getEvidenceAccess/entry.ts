@@ -26,7 +26,7 @@ export default async function (req: Request): Promise<Response> {
 
     const base44 = createClientFromRequest(req);
     const body = await req.json().catch(() => ({})) || {};
-    const { request_id, record_id, file_uri, token } = body;
+    const { request_id, record_id, achievement_id, file_uri, token } = body;
     if (!file_uri) return bad('file_uri is required');
     const svc = base44.asServiceRole;
 
@@ -53,6 +53,29 @@ export default async function (req: Request): Promise<Response> {
       // The requested file must actually belong to this request.
       const belongs = (request.evidence || []).some((e: any) => e && e.url === file_uri);
       if (!belongs) return bad('File not found on this request', 404);
+    } else if (achievement_id) {
+      // Individual verification loop — an achievement's own evidence.
+      // Authorised: the holder, or an ACTIVE member (owner/verifier) of an
+      // Issuer Organisation that currently holds the verification request.
+      const actor = await resolveEffectiveActor(base44);
+      if (!actor.authorized) return bad(actor.reason || 'Not authorised', actor.status || 401);
+      const email = lower(actor.actor_email);
+      const rows = await svc.entities.Achievement.filter({ id: achievement_id });
+      const ach = rows?.[0];
+      if (!ach) return bad('Achievement not found', 404);
+      const belongs = (ach.evidence || []).some((e: any) => e && e.url === file_uri) || ach.certificate_url === file_uri;
+      if (!belongs) return bad('File not found on this achievement', 404);
+      const isOwner = lower(ach.holder_email) === email;
+      let isOrgVerifier = false;
+      if (!isOwner) {
+        const reqs = await svc.entities.VerificationRequest.filter({ achievement_id, org_id: { $ne: null }, status: { $in: ['pending', 'opened'] } }).catch(() => []);
+        for (const vr of (reqs || [])) {
+          if (!vr.org_id) continue;
+          const m = await svc.entities.OrganisationMember.filter({ org_id: vr.org_id, user_email: email, status: 'active' }).catch(() => []);
+          if (m?.[0]) { isOrgVerifier = true; break; }
+        }
+      }
+      if (!isOwner && !isOrgVerifier) return bad('You do not have access to this evidence', 403);
     } else if (record_id) {
       const actor = await resolveEffectiveActor(base44);
       if (!actor.authorized) return bad(actor.reason || 'Not authorised', actor.status || 401);

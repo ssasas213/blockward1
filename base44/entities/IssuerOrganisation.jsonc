@@ -1,0 +1,149 @@
+{
+  "name": "IssuerOrganisation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Issuer organisation name (e.g. AWS, Imperial College London, Dubai College)"
+    },
+    "org_type": {
+      "type": "string",
+      "enum": [
+        "company",
+        "university",
+        "school",
+        "certification_provider",
+        "training_provider",
+        "competition",
+        "sports_organisation",
+        "nonprofit",
+        "professional_organisation",
+        "other"
+      ],
+      "default": "other",
+      "description": "Type of issuing organisation"
+    },
+    "website": {
+      "type": "string",
+      "description": "Official website (https)"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country where the organisation is based"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "Organisation logo (public URL)"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short public description of the organisation"
+    },
+    "email_domain": {
+      "type": "string",
+      "description": "Official email domain (e.g. aws.com) \u2014 used to help verify authorised verifiers"
+    },
+    "contact_email": {
+      "type": "string",
+      "description": "Organisation contact email \u2014 receives verification requests and join invitations"
+    },
+    "handle": {
+      "type": "string",
+      "description": "Public handle for the /issuer/[handle] public profile page (lowercase, unique)"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email of the Organisation Owner (the person who registered it)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "rejected",
+        "suspended"
+      ],
+      "default": "pending",
+      "description": "Blockward verification state. Only VERIFIED organisations hold full issuing authority \u2014 approval is manual by Blockward staff for the MVP."
+    },
+    "verified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When Blockward verified the organisation"
+    },
+    "verified_by": {
+      "type": "string",
+      "description": "Blockward staff email who verified/rejected/suspended the organisation"
+    },
+    "claim_source": {
+      "type": "string",
+      "enum": [
+        "self_registered",
+        "holder_suggestion"
+      ],
+      "default": "self_registered",
+      "description": "self_registered = an owner registered it. holder_suggestion = a holder submitted it as 'Can't find your issuer?' \u2014 pending until a representative claims it"
+    },
+    "suggested_by_email": {
+      "type": "string",
+      "description": "Holder email who suggested the organisation (holder_suggestion only)"
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "Email of the account that created this record"
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "registered | verified | rejected | suspended | verifier_invited | verifier_joined | verifier_removed | profile_updated | policy_changed"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Timestamped audit trail of this organisation"
+    }
+  },
+  "required": [
+    "name",
+    "owner_email"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "data.name": "__service_role_only__"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "data.name": "__service_role_only__"
+    }
+  }
+}

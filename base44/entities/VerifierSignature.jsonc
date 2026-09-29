@@ -1,0 +1,72 @@
+{
+  "name": "VerifierSignature",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Verifier account email (lowercased)"
+    },
+    "member_id": {
+      "type": "string",
+      "description": "OrganisationMember.id the signature belongs to"
+    },
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id (signatures are per-membership)"
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "drawn",
+        "uploaded"
+      ],
+      "description": "How the signature was created"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Signature image URL \u2014 intentionally PUBLIC so it can render on verification screens and public credentials"
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the verifier confirmed ownership of the signature"
+    },
+    "consent": {
+      "type": "boolean",
+      "description": "True only after the verifier ticked: 'I confirm that this is my signature and authorise Blockward to use it when I explicitly approve credential verification requests.'"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "The verifier's current signature \u2014 saving a new one deactivates previous records (history retained)"
+    }
+  },
+  "required": [
+    "user_email",
+    "method",
+    "image_url"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {
+      "data.user_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
+}

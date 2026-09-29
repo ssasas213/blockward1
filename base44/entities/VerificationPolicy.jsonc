@@ -1,0 +1,63 @@
+{
+  "name": "VerificationPolicy",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id this policy belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Policy name (e.g. Standard Certificate, Major Academic Award)"
+    },
+    "required_signatures": {
+      "type": "number",
+      "default": 1,
+      "description": "How many verifier signatures an achievement needs under this policy (1 = single verification, 2+ = joint verification)"
+    },
+    "specific_verifier_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "When non-empty, ONLY these active verifiers may sign under this policy; empty = any authorised verifier of the organisation"
+    },
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Achievement categories this policy applies to; empty = all categories. The first matching active policy is used when a verification request is created"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "Owner email who created the policy"
+    }
+  },
+  "required": [
+    "org_id",
+    "name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "data.org_id": "__service_role_only__"
+    },
+    "update": {
+      "data.org_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.org_id": "__service_role_only__"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "name": "VerificationSignature",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "description": "VerificationRequest.id this signature belongs to"
+    },
+    "achievement_id": {
+      "type": "string",
+      "description": "Achievement.id the verification covers"
+    },
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id the signing verifier belongs to"
+    },
+    "verifier_email": {
+      "type": "string",
+      "description": "Authenticated verifier's account email \u2014 the actual person responsible (lowercased, one signature per verifier per request)"
+    },
+    "verifier_name": {
+      "type": "string",
+      "description": "Verifier full name (public \u2014 shown on the credential)"
+    },
+    "verifier_title": {
+      "type": "string",
+      "description": "Verifier job title (public \u2014 shown on the credential)"
+    },
+    "verifier_user_id": {
+      "type": "string",
+      "description": "Verifier's UserProfile/User id"
+    },
+    "signature_id": {
+      "type": "string",
+      "description": "VerifierSignature.id of the stored signature used"
+    },
+    "signature_image_url": {
+      "type": "string",
+      "description": "Snapshot of the signature image at signing time (public URL)"
+    },
+    "verification_method": {
+      "type": "string",
+      "description": "How the verifier checked the achievement (witnessed_in_person, reviewed_evidence, official_records, third_party, other)"
+    },
+    "decision_note": {
+      "type": "string",
+      "description": "Optional note from the verifier"
+    },
+    "signed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Explicit authorisation timestamp \u2014 the moment the verifier signed"
+    },
+    "decision_ip": {
+      "type": "string",
+      "description": "IP the signature was submitted from (audit trail)"
+    }
+  },
+  "required": [
+    "request_id",
+    "verifier_email",
+    "signed_at"
+  ],
+  "rls": {
+    "read": false,
+    "create": {
+      "data.request_id": "__service_role_only__"
+    },
+    "update": {
+      "data.request_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.request_id": "__service_role_only__"
+    }
+  }
+}

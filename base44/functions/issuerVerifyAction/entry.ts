@@ -4,8 +4,8 @@
 // method, attestation), and a confirmation immediately starts the credential
 // + blockchain stage. NEVER trusts client-side state.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { anchorCredential } from '../../shared/chainPolygon.ts';
-import { pushEvent, notifyHolder, ensureUniqueBwId, appBaseUrl, rateLimit } from '../../shared/verificationFlow.ts';
+import { issueCredential } from '../../shared/credentialIssuance.ts';
+import { pushEvent, notifyHolder, appBaseUrl, rateLimit } from '../../shared/verificationFlow.ts';
 import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 import { holderRejectedEmail, holderVerifiedEmail, methodLabel } from '../../shared/issuerEmails.ts';
 
@@ -101,57 +101,17 @@ export default async function (req: Request): Promise<Response> {
       event_log: pushEvent(vr.event_log, 'confirmed', vr.issuer_email, `Confirmed via ${methodLabel(method)}`),
     });
 
-    const bwId = await ensureUniqueBwId(svc);
-    const cred = await svc.entities.Credential.create({
-      bw_id: bwId,
-      achievement_id: ach.id,
-      holder_id: ach.holder_id,
-      holder_email: ach.holder_email,
-      holder_display_name: ach.holder_name || vr.holder_name || 'Blockward member',
-      issuer_org: ach.issuer_org || vr.issuer_org,
-      issuer_website: ach.issuer_website || null,
-      title: ach.title,
-      category: ach.category,
-      description: ach.description || '',
-      date_achieved: ach.date_achieved || null,
-      expires_at: ach.expires_at || null,
-      verified_at: nowIso,
-      verification_method: method,
-      verification_request_id: vr.id,
-      schema_version: 1,
-      hash_version: 1,
-      anchor_status: 'pending',
-      blockchain: { status: 'pending' },
-      is_public: true,
-      status: 'active',
-      event_log: [{ event: 'created', actor: vr.issuer_email, note: `Issuer confirmed via ${methodLabel(method)}`, timestamp: nowIso }],
+    // The shared issuance pipeline — identical for the token flow and the
+    // organisation/verifier flow (BW-HASH-V1 → Polygon anchor → public verify).
+    const issuance = await issueCredential(svc, {
+      ach,
+      vr,
+      method,
+      verifiers: [],
+      methodNote: String(body.method_note || '').slice(0, 500) || null,
+      actorEmail: vr.issuer_email,
     });
-
-    await svc.entities.Achievement.update(ach.id, {
-      status: 'blockchain_processing',
-      credential_id: cred.id,
-      event_log: pushEvent(ach.event_log, 'issuer_confirmed', vr.issuer_email, `Issuer confirmed via ${methodLabel(method)} — creating blockchain proof`),
-    });
-
-    // The blockchain stage — Blockward pays the gas in the background; the
-    // issuer's page response is not blocked on the chain being fast.
-    const anchor = await anchorCredential(svc, cred.id);
-    if (anchor.ok) {
-      await svc.entities.Achievement.update(ach.id, {
-        status: 'verified',
-        event_log: pushEvent(ach.event_log, 'verified', 'system', `Blockward Verified — Polygon PoS anchor confirmed (tx ${String(anchor.transaction_hash || '').slice(0, 18)}…)`),
-      });
-      const verifyUrl = `${appBaseUrl()}/verify/${bwId}`;
-      const mail = holderVerifiedEmail({ achievementTitle: ach.title, bwId, verifyUrl });
-      await sendTrackedEmail(svc, { to: ach.holder_email, subject: mail.subject, html: mail.html, event_type: 'record_delivered_to_vault', related_id: cred.id, retryable: true });
-      await notifyHolder(svc, ach.holder_email, 'Achievement is Blockward Verified', `"${ach.title}" is confirmed and secured on the blockchain. Credential ID: ${bwId}.`, 'achievement_verified', ach.id);
-    } else {
-      await svc.entities.Achievement.update(ach.id, {
-        status: 'issuer_confirmed',
-        event_log: pushEvent(ach.event_log, 'blockchain_failed', 'system', `Blockchain anchor failed: ${anchor.error || anchor.reason || 'unknown'} — retryable`),
-      });
-      await notifyHolder(svc, ach.holder_email, 'Issuer confirmed — blockchain processing', `${vr.issuer_org || 'The issuer'} confirmed "${ach.title}". The blockchain proof is being processed.`, 'issuer_confirmed', ach.id);
-    }
+    const anchor = issuance.anchor;
 
     try {
       const is = await svc.entities.Issuer.filter({ email: vr.issuer_email });
@@ -161,7 +121,7 @@ export default async function (req: Request): Promise<Response> {
     return Response.json({
       ok: true,
       outcome: 'confirmed',
-      credential: { bw_id: bwId },
+      credential: { bw_id: issuance.bwId },
       blockchain: anchor.ok
         ? { confirmed: true, transaction_hash: anchor.transaction_hash, network: anchor.network, testnet: anchor.testnet }
         : { confirmed: false, error: anchor.error || anchor.reason || 'pending' },

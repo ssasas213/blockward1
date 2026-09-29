@@ -41,7 +41,14 @@
         "achievement_verified",
         "achievement_rejected",
         "credential_revoked",
-        "credential_expiring"
+        "credential_expiring",
+        "org_verification_requested",
+        "org_signature_received",
+        "org_additional_signature_required",
+        "verifier_invited",
+        "org_member_joined",
+        "org_verified",
+        "org_rejected"
       ],
       "description": "Notification type"
     },

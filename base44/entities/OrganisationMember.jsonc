@@ -1,0 +1,101 @@
+{
+  "name": "OrganisationMember",
+  "type": "object",
+  "properties": {
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id this membership belongs to"
+    },
+    "org_name": {
+      "type": "string",
+      "description": "Denormalised organisation name for display"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Member email \u2014 lowercased, unique per org"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "UserProfile/User id once the member has an account"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Member full name"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "Role/title inside the organisation (e.g. Mathematics Teacher, Certification Manager)"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "owner",
+        "verifier"
+      ],
+      "default": "verifier",
+      "description": "owner = manages the organisation (invites verifiers, sets policies, edits profile). verifier = confirms achievements. Owners may also verify."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "invited",
+        "active",
+        "suspended",
+        "removed"
+      ],
+      "default": "invited",
+      "description": "invited = email invitation sent, not yet joined. active = can review and sign. suspended/removed = cannot act (suspended is reversible)."
+    },
+    "invite_token": {
+      "type": "string",
+      "description": "One-time join token emailed to the invitee \u2014 cleared after joining"
+    },
+    "invited_by_email": {
+      "type": "string",
+      "description": "Owner email who sent the invitation"
+    },
+    "invited_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "joined_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "avatar_url": {
+      "type": "string",
+      "description": "Optional profile image (public URL)"
+    },
+    "last_active_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "org_id",
+    "user_email"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.user_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.org_id": "__service_role_only__"
+    },
+    "update": {
+      "data.org_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.org_id": "__service_role_only__"
+    }
+  }
+}

@@ -32,15 +32,45 @@
     },
     "issuer_email": {
       "type": "string",
-      "description": "Issuer email \u2014 the verification link is sent here"
+      "description": "Issuer email \u2014 the verification link is sent here (token flow)"
     },
     "issuer_website": {
       "type": "string",
       "description": "Issuer website if available"
     },
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id \u2014 set when the request was sent to a registered Issuer Organisation (org flow). Null for the legacy token-email flow."
+    },
+    "org_name": {
+      "type": "string",
+      "description": "Denormalised IssuerOrganisation name"
+    },
+    "org_handle": {
+      "type": "string",
+      "description": "Denormalised IssuerOrganisation handle for public links"
+    },
+    "org_logo_url": {
+      "type": "string",
+      "description": "Denormalised organisation logo"
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "VerificationPolicy.id applied to this request"
+    },
+    "required_signatures": {
+      "type": "number",
+      "default": 1,
+      "description": "Verifier signatures needed before issuer verification is complete (from the applied policy; 1 = single, 2+ = joint)"
+    },
+    "signature_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Signatures received so far \u2014 incremented by orgVerificationReview; issuer verification completes only at required_signatures"
+    },
     "token": {
       "type": "string",
-      "description": "Secure random one-time verification token \u2014 the ONLY way to act on this request. Never expose the database id."
+      "description": "Secure random one-time verification token \u2014 the ONLY way to act on this request in the token flow. Never expose the database id."
     },
     "token_expires_at": {
       "type": "string",
@@ -58,17 +88,17 @@
         "withdrawn"
       ],
       "default": "pending",
-      "description": "pending = awaiting the issuer. opened = issuer viewed the page (still actionable). approved/rejected = terminal. expired = token window passed. withdrawn = holder cancelled before response."
+      "description": "pending = awaiting the issuer. opened = viewed (still actionable). approved/rejected = terminal. expired = token window passed. withdrawn = holder cancelled before response."
     },
     "opened_at": {
       "type": "string",
       "format": "date-time",
-      "description": "First time the issuer opened the secure link"
+      "description": "First time the issuer opened the request"
     },
     "open_count": {
       "type": "number",
       "default": 0,
-      "description": "How many times the secure link has been opened"
+      "description": "How many times the request has been opened"
     },
     "responded_at": {
       "type": "string",
@@ -139,7 +169,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "created | email_sent | email_failed | opened | confirmed | declined | reminded | expired | withdrawn"
+            "description": "created | email_sent | email_failed | opened | confirmed | declined | reminded | expired | withdrawn | signed | threshold_reached | additional_signature_requested"
           },
           "actor": {
             "type": "string"
