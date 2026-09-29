@@ -32,13 +32,13 @@ export default async function (req: Request): Promise<Response> {
     const country = String(body.country || '').trim().slice(0, 80) || null;
 
     // Duplicate guard — one organisation record per exact name.
-    const dupes = await svc.entities.IssuerOrganisation.filter({ name }, { limit: 1 }).catch(() => []);
+    const dupes = await svc.entities.IssuerOrganisation.filter({ name }, '-created_date', 1).catch(() => []);
     if (dupes?.length) return Response.json({ error: `An organisation named "${name}" already exists on Blockward` }, { status: 409 });
 
     // Unique public handle.
     let handle = slugifyHandle(name);
     for (let i = 0; i < 5; i++) {
-      const taken = await svc.entities.IssuerOrganisation.filter({ handle }, { limit: 1 }).catch(() => []);
+      const taken = await svc.entities.IssuerOrganisation.filter({ handle }, '-created_date', 1).catch(() => []);
       if (!taken?.length) break;
       handle = `${slugifyHandle(name)}-${Math.floor(Math.random() * 9000 + 1000)}`;
     }

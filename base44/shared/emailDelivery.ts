@@ -45,7 +45,7 @@ export async function sendTrackedEmail(svc: any, opts: {
 
   // ── Short-window duplicate guard ──
   try {
-    const rows = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key, status: 'sent' }, { sort: '-created_date', limit: 5 });
+    const rows = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key, status: 'sent' }, '-created_date', 5);
     const dup = (rows || []).find((r: any) =>
       r.created_date && Date.now() - new Date(r.created_date).getTime() < DEDUPE_WINDOW_MS
     );
@@ -55,7 +55,7 @@ export async function sendTrackedEmail(svc: any, opts: {
   // ── Attempt count for this event+recipient (full retry history retained) ──
   let attempts = 1;
   try {
-    const prior = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key }, { sort: '-created_date', limit: 10 });
+    const prior = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key }, '-created_date', 10);
     attempts = (prior?.length || 0) + 1;
   } catch { /* best-effort */ }
 

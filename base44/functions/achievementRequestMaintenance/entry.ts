@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
         const key = log.dedupe_key || dedupeKey(log.event_type, req.id, log.recipient_email);
         if (handledKeys.has(key)) continue;
         // Attempt budget across the key's whole history.
-        const all = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key }, { limit: 20 });
+        const all = await svc.entities.EmailDeliveryLog.filter({ dedupe_key: key }, '-created_date', 20);
         if ((all?.length || 0) >= MAX_ATTEMPTS) continue;
         handledKeys.add(key);
 

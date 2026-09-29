@@ -31,7 +31,7 @@ export default async function (req: Request): Promise<Response> {
       if (!EMAIL_RE.test(contactEmail)) return Response.json({ error: 'Add a valid contact email for the organisation' }, { status: 400 });
       if (isDisposableEmail(contactEmail)) return Response.json({ error: 'Disposable email addresses cannot be used' }, { status: 400 });
 
-      const dupes = await svc.entities.IssuerOrganisation.filter({ name }, { limit: 1 }).catch(() => []);
+      const dupes = await svc.entities.IssuerOrganisation.filter({ name }, '-created_date', 1).catch(() => []);
       if (dupes?.length) return Response.json({ error: `"${name}" already exists on Blockward — search for it instead` }, { status: 409 });
 
       const profile = await getActorProfile(svc, email);
@@ -62,14 +62,12 @@ export default async function (req: Request): Promise<Response> {
     // ── Search verified issuers ──
     const q = String(body.q || '').trim().slice(0, 80);
     if (!q) return Response.json({ ok: true, results: [] });
-    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const rows = await svc.entities.IssuerOrganisation.filter(
-      { status: 'verified', name: { $regex: safe, $options: 'i' } },
-      { limit: 8 }
-    ).catch(async (e) => {
-      console.error('searchIssuers filter failed', e?.message || e);
-      return [];
-    });
+    // Verified organisations are a small, curated set — fetch and match in
+    // code, which is immune to per-SDK-version $regex/$options differences.
+    const verified = await svc.entities.IssuerOrganisation.filter({ status: 'verified' }, '-created_date', 200)
+      .catch((e) => { console.error('searchIssuers filter failed', e?.message || e); return []; });
+    const ql = q.toLowerCase();
+    const rows = (verified || []).filter((o: any) => (o.name || '').toLowerCase().includes(ql)).slice(0, 8);
     return Response.json({ ok: true, results: rows || [] });
   } catch (error) {
     return Response.json({ error: error?.message || 'Issuer search failed' }, { status: 500 });
