@@ -152,8 +152,8 @@ export default function Verify() {
     document.title = `${r.achievement_title} — verified · BlockWard`;
     setMeta('property', 'og:title', `${r.achievement_title} — verified achievement`);
     setMeta('property', 'og:description', r.verification_mode === 'independent'
-      ? `${r.student_name || 'Student'} · independently verified by ${r.independent_verifier?.name || 'a named verifier'}`
-      : `${r.student_name || 'Student'} · issued by ${r.organisation_name || 'their organisation'}`);
+      ? `${r.student_name || 'Holder'} · independently verified by ${r.independent_verifier?.name || 'a named verifier'}`
+      : `${r.student_name || 'Holder'} · issued by ${r.organisation_name || 'their organisation'}`);
     setMeta('property', 'og:url', window.location.href);
     setMeta('property', 'og:type', 'website');
     setMeta('name', 'twitter:card', 'summary_large_image');
@@ -334,7 +334,14 @@ export default function Verify() {
     ? { base: 'https://amoy.polygonscan.com', name: 'PolygonScan (Amoy testnet)' }
     : networkKey.includes('polygon')
       ? { base: 'https://polygonscan.com', name: 'PolygonScan' }
-      : { base: 'https://sepolia.etherscan.io', name: 'Etherscan (Sepolia testnet)' };
+      : { base: 'https://sepolia.etherscan.io', name: 'Etherscan (Sepolia — legacy beta anchor)' };
+  // Beta anchors are Polygon Amoy testnet; older credentials were anchored on
+  // Sepolia — each is labelled accurately wherever it appears.
+  const networkLabel = networkKey.includes('amoy')
+    ? 'Polygon Amoy — Testnet'
+    : networkKey.includes('polygon')
+      ? 'Polygon PoS'
+      : 'Sepolia — legacy beta anchor';
   const explorerUrl = record.transaction_hash
     ? `${explorer.base}/tx/${record.transaction_hash}`
     : record.contract_address
@@ -410,11 +417,11 @@ export default function Verify() {
               <CheckCircle2 className="h-8 w-8 text-success" />
             </div>
             <div>
-              <p className="font-bold text-2xl tracking-tight text-foreground">Verified BlockWard</p>
+              <p className="font-bold text-2xl tracking-tight text-foreground">✓ Blockward Verified</p>
               <p className="text-sm text-muted-foreground">
                 {orgVerified === false
-                  ? <>Signed by staff of {record.organisation_name || 'the issuing organisation'} — this organisation is still being verified by BlockWard</>
-                  : <>Verified by {record.organisation_name || 'the issuing organisation'}, a BlockWard member organisation</>}
+                  ? <>Signed by {record.organisation_name || 'the issuing organisation'} — this Issuer Organisation is still awaiting Blockward approval</>
+                  : <>Verified by {record.organisation_name || 'the issuing organisation'}, a Blockward Verified Issuer Organisation</>}
               </p>
             </div>
           </div>
@@ -449,7 +456,7 @@ export default function Verify() {
                   </span>
                   {chain?.status === 'confirmed' && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-success/10 border border-success/30 text-xs font-medium text-success">
-                      <Network className="h-3 w-3" /> Blockchain verified · Sepolia testnet
+                      <Network className="h-3 w-3" /> Blockchain verified · {networkLabel}
                     </span>
                   )}
                   {record.nft_status === 'minted' && chain && !['confirmed', 'confirmed_legacy'].includes(chain.status) && (
@@ -480,7 +487,7 @@ export default function Verify() {
                   )}
                   {record.student_requested && (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-accent/10 border border-accent/20 text-xs font-medium text-accent">
-                      <UserCheck className="h-3 w-3" /> Requested by student
+                      <UserCheck className="h-3 w-3" /> Requested by holder
                     </span>
                   )}
                   {record.is_team_credential && (
@@ -511,7 +518,7 @@ export default function Verify() {
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-tertiary uppercase tracking-wide">Recipient</p>
+                    <p className="text-[11px] font-medium text-tertiary uppercase tracking-wide">Holder</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <p className="text-sm font-medium text-foreground break-words">{record.student_name}</p>
                       {data.student_badge && (
@@ -581,8 +588,8 @@ export default function Verify() {
               <ul className="space-y-3">
                 <CheckItem>{independent ? 'Named verifier attested' : 'Issuer verified'}</CheckItem>
                 <CheckItem>Credential valid</CheckItem>
-                <CheckItem>BlockWard secured</CheckItem>
-                {chain?.status === 'confirmed' && <CheckItem>Blockchain commitment matches — anchored on Sepolia testnet</CheckItem>}
+                <CheckItem>Blockward secured</CheckItem>
+                {chain?.status === 'confirmed' && <CheckItem>Blockchain commitment matches — anchored on {networkLabel}</CheckItem>}
                 {chain?.status === 'confirmed_legacy' && <CheckItem>Blockchain anchor present (legacy format — no content commitment)</CheckItem>}
                 {chain?.status === 'pending' && record.nft_status !== 'anchoring' && (
                   <li className="flex items-center gap-2.5 text-sm">
@@ -640,7 +647,7 @@ export default function Verify() {
               <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground leading-relaxed">
                 {independent
                   ? `Independently verified credentials are signed by a named person outside BlockWard's organisation network. They carry that person's personal attestation — the full identity, method and timestamp are shown above — rather than an institutional guarantee from a member organisation.`
-                  : `Organisation-verified credentials are signed by staff of a BlockWard member organisation and carry that organisation's institutional guarantee.`}
+                  : `Organisation-verified credentials are signed by authorised Verifiers of a Blockward Verified Issuer Organisation and carry that organisation's institutional guarantee.`}
               </p>
             </CardContent>
           </Card>
@@ -651,7 +658,7 @@ export default function Verify() {
           <Card className="surface-card">
             <CardContent className="p-6">
               <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-4 flex items-center gap-2">
-                <PenTool className="h-4 w-4" /> Signatures
+                <PenTool className="h-4 w-4" /> Issuer Verification
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {teacherSignature && (
@@ -823,7 +830,7 @@ export default function Verify() {
               <div className="flex items-start justify-between gap-3 mb-2">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {chain?.status === 'confirmed'
-                    ? <>This credential's content commitment is anchored on <strong className="text-foreground">the Sepolia testnet</strong> (not mainnet). The on-chain entry is permanent and outside anyone's control — it cannot be quietly edited by the issuing organisation or by BlockWard. The displayed details were independently recalculated and match the committed hash.</>
+                    ? <>This credential's content commitment is anchored on <strong className="text-foreground">{networkLabel}</strong> (not mainnet). The on-chain entry is permanent and outside anyone's control — it cannot be quietly edited by the issuing organisation or by BlockWard. The displayed details were independently recalculated and match the committed hash.</>
                     : chain?.status === 'hash_mismatch'
                       ? 'The displayed details were recalculated and do NOT match the hash committed on-chain. Do not trust this credential in its current form.'
                       : chain?.status === 'chain_unavailable'
@@ -850,7 +857,7 @@ export default function Verify() {
                     : 'Not confirmed'}
                 </span>
               </div>
-              <Field icon={Network} label="Network" value="Sepolia testnet" />
+              <Field icon={Network} label="Network" value={networkLabel} />
               {chain?.transaction_hash && <Field icon={Hash} label="Transaction hash" value={chain.transaction_hash} mono />}
               <Field icon={Hash} label="Token ID" value={chain?.token_id ? `#${chain.token_id}` : (record.token_id ? `#${record.token_id}` : null)} mono />
               <Field icon={Hash} label="Contract address" value={chain?.contract_address || record.contract_address} mono />
@@ -860,8 +867,8 @@ export default function Verify() {
               )}
               {chain?.transaction_hash && (
                 <Button asChild variant="outline" size="sm" className="mt-2">
-                  <a href={`https://sepolia.etherscan.io/tx/${chain.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
-                    <ExternalLink className="h-3.5 w-3.5" /> View on Etherscan (Sepolia testnet)
+                  <a href={`${explorer.base}/tx/${chain.transaction_hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5">
+                    <ExternalLink className="h-3.5 w-3.5" /> View on {explorer.name}
                   </a>
                 </Button>
               )}
@@ -892,9 +899,9 @@ export default function Verify() {
                 <CheckItem>Revocation is permanent and public — a revoked credential can never quietly become valid again</CheckItem>
               </ul>
               <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground leading-relaxed">
-                While BlockWard is in beta, anchors are recorded on a public test network (Sepolia) — this is
-                labelled everywhere it appears. Full technical details — network, transaction and content
-                hash — are in the Technical details section.
+                While Blockward is in beta, anchors are recorded on Polygon Amoy — a public test network,
+                clearly labelled as testnet everywhere it appears. Full technical details — network,
+                transaction and content hash — are in the Technical details section.
               </p>
             </CardContent>
           </Card>

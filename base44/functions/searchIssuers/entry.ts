@@ -65,8 +65,11 @@ export default async function (req: Request): Promise<Response> {
     const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const rows = await svc.entities.IssuerOrganisation.filter(
       { status: 'verified', name: { $regex: safe, $options: 'i' } },
-      { limit: 8, fields: ['id', 'name', 'org_type', 'logo_url', 'country', 'handle', 'website'] }
-    ).catch(() => []);
+      { limit: 8 }
+    ).catch(async (e) => {
+      console.error('searchIssuers filter failed', e?.message || e);
+      return [];
+    });
     return Response.json({ ok: true, results: rows || [] });
   } catch (error) {
     return Response.json({ error: error?.message || 'Issuer search failed' }, { status: 500 });

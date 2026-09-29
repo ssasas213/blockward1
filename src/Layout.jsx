@@ -5,7 +5,7 @@ import { base44 } from '@/api/base44Client';
 import {
   LayoutDashboard, Users, BookOpen, Calendar, Award,
   FileText, Settings, LogOut, Menu, X, ChevronDown,
-  Shield, UserCircle, Bell, BarChart3, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox, Globe
+  Shield, UserCircle, Bell, BarChart3, Megaphone, Trophy, HardDrive, PenLine, Search, Send, GraduationCap, ClipboardList, ClipboardCheck, CalendarDays, Briefcase, Rss, Inbox, Globe, Building2
 } from 'lucide-react';
 import NotificationBell from '@/components/notifications/NotificationBell';
 import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
@@ -62,64 +62,42 @@ export default function Layout({ children, currentPageName }) {
     ? (testMode.activeRole || testMode.activePersona || 'admin')
     : (profile?.user_type || 'student');
 
-  // Everyday classroom navigation — daily tasks first, configuration last.
-  // All items map to existing pages; only grouping and labels changed.
+  // Core Blockward navigation — holders, verifiers and organisation admins.
+  // School-life product surfaces (classes, timetables, attendance, gradebooks,
+  // points, parent comms, social feed) are hidden during the migration; the
+  // routes still resolve but are no longer part of the product navigation.
+  const isStaffRole = user?.role === 'admin';
   const navigationGroups = {
     admin: [
-      { label: 'Every day', items: [
-        { name: 'Overview', icon: LayoutDashboard, page: 'AdminDashboard' },
-        { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'approvals' },
-        { name: 'People & invitations', icon: Users, page: 'People', badge: 'pendingTeachers' },
-        { name: 'Records', icon: FileText, page: 'Records' },
+      { label: 'Overview', items: [
+        { name: 'Overview', icon: LayoutDashboard, page: 'AdminDashboard', path: '/AdminDashboard' },
+        { name: 'Approvals', icon: ClipboardCheck, page: 'PendingSignoffs', path: '/PendingSignoffs', badge: 'approvals' },
+        { name: 'Credentials', icon: FileText, page: 'Records', path: '/Records' },
+        { name: 'Organisation', icon: Building2, page: 'organisations/dashboard', path: '/organisations/dashboard' },
       ]},
-      { label: 'Manage school', items: [
-        { name: 'Classes', icon: BookOpen, page: 'Classes' },
-        { name: 'Attendance', icon: ClipboardList, page: 'AdminAttendance' },
-        { name: 'Reports', icon: BarChart3, page: 'Insights' },
-        { name: 'School', icon: GraduationCap, page: 'ManageSchool' },
-        { name: 'Settings', icon: Settings, page: 'SchoolSettings' },
-        { name: 'Inbox', icon: Inbox, page: 'Messages' },
+      { label: 'More', items: [
+        { name: 'People', icon: Users, page: 'People', path: '/People', badge: 'pendingTeachers' },
+        ...(isStaffRole ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/admin/organisations' }] : []),
       ]},
     ],
     teacher: [
-      { label: 'Teaching', items: [
-        { name: 'Today', icon: LayoutDashboard, page: 'TeacherDashboard' },
-        { name: 'Classes', icon: BookOpen, page: 'MyTeaching' },
-        { name: 'To review', icon: ClipboardCheck, page: 'PendingSignoffs', badge: 'signoffs' },
-        { name: 'Calendar', icon: CalendarDays, page: 'Timetable' },
-        { name: 'Resources', icon: FileText, page: 'Resources' },
-        { name: 'Inbox', icon: Inbox, page: 'Messages' },
-      ]},
-      { label: 'More', items: [
-        { name: 'Achievements', icon: Trophy, page: 'TeacherRecords' },
-        { name: 'Explore', icon: Rss, page: 'Feed' },
+      { label: 'Verification', items: [
+        { name: 'Today', icon: LayoutDashboard, page: 'TeacherDashboard', path: '/TeacherDashboard' },
+        { name: 'To review', icon: ClipboardCheck, page: 'PendingSignoffs', path: '/PendingSignoffs', badge: 'signoffs' },
+        { name: 'Credentials', icon: FileText, page: 'TeacherRecords', path: '/TeacherRecords' },
+        { name: 'My achievements', icon: Trophy, page: 'Achievements', path: '/Achievements' },
       ]},
     ],
     student: [
-      { label: 'My school', items: [
-        { name: 'Today', icon: LayoutDashboard, page: 'StudentDashboard' },
-        { name: 'My classes', icon: BookOpen, page: 'Classes' },
-        { name: 'To do', icon: ClipboardList, page: 'Assignments' },
-        { name: 'Calendar', icon: CalendarDays, page: 'SchoolCalendar' },
-        { name: 'My achievements', icon: Shield, page: 'StudentBlockWards' },
-      ]},
-      { label: 'More', items: [
-        { name: 'Explore', icon: Rss, page: 'Feed' },
-        { name: 'School', icon: GraduationCap, page: 'MySchool' },
-        { name: 'Inbox', icon: Inbox, page: 'Messages' },
+      { label: 'My achievements', items: [
+        { name: 'Today', icon: LayoutDashboard, page: 'StudentDashboard', path: '/StudentDashboard' },
+        { name: 'My achievements', icon: Shield, page: 'Achievements', path: '/Achievements' },
+        { name: 'Credentials', icon: FileText, page: 'StudentBlockWards', path: '/StudentBlockWards' },
       ]},
     ],
   };
 
   let groups = navigationGroups[userType] || navigationGroups.student;
-  // The School nav is meaningless without an active membership — hide it
-  // entirely until the student has one. Joining an organisation is optional.
-  if (userType === 'student' && !profile?.school_id) {
-    // Joining an organisation is optional — hide school-scoped destinations
-    // until the student has a membership.
-    const schoolScoped = ['MySchool', 'Classes', 'Assignments', 'SchoolCalendar'];
-    groups = groups.map((g) => ({ ...g, items: g.items.filter((i) => !schoolScoped.includes(i.page)) }));
-  }
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 
@@ -216,7 +194,7 @@ export default function Layout({ children, currentPageName }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary pointer-events-none" />
           <input
             type="text"
-            placeholder="Search students, classes, achievements…"
+            placeholder="Search achievements…"
             className="w-full h-9 pl-9 pr-3 rounded-lg bg-secondary/60 border border-border text-sm text-foreground placeholder:text-tertiary focus:outline-none focus:border-primary/40 focus:bg-secondary focus:ring-2 focus:ring-primary/15 transition-colors"
           />
         </div>
@@ -274,7 +252,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
                 return (
                   <Link
                     key={item.page}
-                    to={createPageUrl(item.page)}
+                    to={item.path || createPageUrl(item.page)}
                     onClick={onClose}
                     className={cn(
                       "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",

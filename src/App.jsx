@@ -95,6 +95,8 @@ import MyPoints from './pages/MyPoints';
 import IssuePoints from './pages/IssuePoints';
 import IssueBlockWard from './pages/IssueBlockWard';
 import PointCategories from './pages/PointCategories';
+import MyAchievements from './pages/MyAchievements';
+import OrgApprovals from './pages/admin/OrgApprovals';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -212,6 +214,11 @@ const AuthenticatedApp = () => {
       <Route path="/Messages" element={<LayoutWrapper currentPageName="Messages"><ProtectedRoute><Messages /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Profile" element={<LayoutWrapper currentPageName="Profile"><ProtectedRoute><Profile /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
+      {/* Blockward staff internal tools — role re-checked server-side */}
+      <Route path="/admin/organisations" element={<OrgApprovals />} />
+      {/* Issuer invitation landing — organisations register here */}
+      <Route path="/register-organisation" element={<Navigate to="/organisations/signup" replace />} />
       <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Resources" element={<LayoutWrapper currentPageName="Resources"><ProtectedRoute><Resources /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MyPoints" element={<LayoutWrapper currentPageName="MyPoints"><ProtectedRoute><MyPoints /></ProtectedRoute></LayoutWrapper>} />
