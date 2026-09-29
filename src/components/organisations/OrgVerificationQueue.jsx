@@ -18,7 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { openEvidenceFile } from '@/lib/evidenceAccess';
 import {
   ClipboardCheck, Loader2, FileText, Paperclip, PenTool,
-  CheckCircle2, XCircle, User, ShieldCheck,
+  CheckCircle2, XCircle, User, ShieldAlert,
 } from 'lucide-react';
 
 const METHODS = [
@@ -339,6 +339,3 @@ export default function OrgVerificationQueue({ org, queue, mySignature, onChange
     </>
   );
 }
-
-// Imported late to avoid a name clash with the JSX icon set above.
-import { ShieldAlert } from 'lucide-react';
