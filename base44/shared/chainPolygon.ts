@@ -65,7 +65,7 @@ export function getPolygonConfig() {
     network: chain.id === polygonMainnet.id ? 'polygon' : 'polygon_amoy',
     chain,
     testnet: chain.id !== polygonMainnet.id,
-    rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygon.id ? 'https://polygon-rpc.com' : 'https://rpc-amoy.polygon.technology'),
+    rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygonMainnet.id ? 'https://polygon-rpc.com' : 'https://rpc-amoy.polygon.technology'),
     contract: Deno.env.get('BLOCKWARD_CONTRACT_ADDRESS') || null,
     pk: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
   };
