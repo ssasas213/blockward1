@@ -25,9 +25,26 @@
 //   POLYGON_RPC_URL     — optional RPC override; public Amoy RPC otherwise
 //   BLOCKWARD_CONTRACT_ADDRESS — optional; enables contract anchor mode
 // ============================================================================
-import { createPublicClient, createWalletClient, http, stringToHex, toHex, parseAbi } from 'npm:viem@2.7.0';
+import { createPublicClient, createWalletClient, http, stringToHex, toHex, parseAbi, defineChain } from 'npm:viem@2.7.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
-import { polygonAmoy, polygon } from 'npm:viem@2.7.0/chains';
+
+// Polygon PoS mainnet and Amoy testnet, defined explicitly (no reliance on
+// the viem chains bundle).
+const polygonAmoy = defineChain({
+  id: 80002,
+  name: 'Polygon Amoy',
+  nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+  rpcUrls: { default: { http: ['https://rpc-amoy.polygon.technology'] } },
+  blockExplorers: { default: { name: 'PolygonScan', url: 'https://amoy.polygonscan.com' } },
+  testnet: true,
+});
+const polygonMainnet = defineChain({
+  id: 137,
+  name: 'Polygon',
+  nativeCurrency: { name: 'POL', symbol: 'POL', decimals: 18 },
+  rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
+  blockExplorers: { default: { name: 'PolygonScan', url: 'https://polygonscan.com' } },
+});
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
 
 const CONTRACT_ABI = parseAbi([
@@ -43,11 +60,11 @@ const FAIL_TTL_MS = 2 * 60 * 1000;
 export function getPolygonConfig() {
   const network = Deno.env.get('NETWORK') || 'polygon_amoy';
   const isMainnet = String(network).startsWith('polygon');
-  const chain = network === 'polygon' || network === 'polygon_mainnet' ? polygon : polygonAmoy;
+  const chain = network === 'polygon' || network === 'polygon_mainnet' ? polygonMainnet : polygonAmoy;
   return {
-    network: chain.id === polygon.id ? 'polygon' : 'polygon_amoy',
+    network: chain.id === polygonMainnet.id ? 'polygon' : 'polygon_amoy',
     chain,
-    testnet: chain.id !== polygon.id,
+    testnet: chain.id !== polygonMainnet.id,
     rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygon.id ? 'https://polygon-rpc.com' : 'https://rpc-amoy.polygon.technology'),
     contract: Deno.env.get('BLOCKWARD_CONTRACT_ADDRESS') || null,
     pk: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
@@ -70,6 +87,7 @@ function commitmentFromPayload(input: string): string | null {
 }
 
 // ═════════════════════ ANCHORING (idempotent, claim-locked) ═════════════════════
+//
 
 export async function anchorCredential(svc, credentialId: string) {
   const log = (step: string, extra: Record<string, unknown> = {}) =>
