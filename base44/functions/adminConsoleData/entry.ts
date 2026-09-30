@@ -57,22 +57,26 @@ export default async function (req: Request): Promise<Response> {
         const rx: any = { $regex: q, $options: 'i' };
         query.$or = [{ bw_id: rx }, { holder_display_name: rx }, { issuer_org: rx }, { title: rx }];
       }
-      const res = await svc.entities.Credential.filter(query, { sort: '-created_date', limit: 50 });
-      const list: any[] = norm(res);
+      // NOTE: the function runtime SDK returns [] when filter() is given the
+      // {sort,limit} options form, so we read without options and sort/limit here.
+      const res: any[] = norm(await svc.entities.Credential.filter(query));
+      const list = res.sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()).slice(0, 50);
       return Response.json({ ok: true, credentials: list, anchor_labels: ANCHOR_FLOW });
     }
 
     // ── Overview + queues ──
+    // The function-runtime SDK returns [] for filter(query, {sort,limit}); read
+    // with the query only, then sort/limit in JS.
     const [orgs, recentCreds, failedCreds, audit] = await Promise.all([
-      svc.entities.IssuerOrganisation.filter({}, { sort: '-created_date', limit: 200 }),
-      svc.entities.Credential.filter({}, { sort: '-created_date', limit: 12 }),
-      svc.entities.Credential.filter({ anchor_status: 'failed' }, { sort: '-created_date', limit: 20 }),
-      svc.entities.AdminAuditLog.filter({}, { sort: '-timestamp', limit: 25 }),
+      svc.entities.IssuerOrganisation.filter({}),
+      svc.entities.Credential.filter({}),
+      svc.entities.Credential.filter({ anchor_status: 'failed' }),
+      svc.entities.AdminAuditLog.filter({}),
     ]);
-    const orgList: any[] = norm(orgs);
-    const credList: any[] = norm(recentCreds);
-    const failedList: any[] = norm(failedCreds);
-    const auditList: any[] = norm(audit);
+    const orgList: any[] = norm(orgs).sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
+    const credList: any[] = norm(recentCreds).sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()).slice(0, 12);
+    const failedList: any[] = norm(failedCreds).sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()).slice(0, 20);
+    const auditList: any[] = norm(audit).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 25);
 
     const counts = { pending: 0, verified: 0, rejected: 0, suspended: 0 };
     for (const o of orgList) counts[o.status as string] = (counts[o.status as string] || 0) + 1;
