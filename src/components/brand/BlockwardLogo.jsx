@@ -18,19 +18,37 @@ const SIZES = {
 
 export function BlockwardMark({ size = 'md', className }) {
   const s = SIZES[size] || SIZES.md;
+  // Unique gradient ids per instance — the mark renders many times per page
+  // (sidebar, header, footer) and duplicate ids would collide in the DOM.
+  const uid = React.useId().replace(/:/g, '');
+  const top = `bw-top-${uid}`;
+  const mid = `bw-mid-${uid}`;
+  const bot = `bw-bot-${uid}`;
   return (
     <svg
-      width={s.box} height={s.box} viewBox="0 0 32 32" fill="none"
+      width={s.box} height={s.box} viewBox="0 0 64 64" fill="none"
       className={cn('flex-shrink-0', className)} aria-hidden="true"
     >
       <defs>
-        <linearGradient id="bw-blue-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#2563EB" />
-          <stop offset="1" stopColor="#60A5FA" />
+        <linearGradient id={top} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#D1E7FF" />
+          <stop offset="1" stopColor="#4A9EFF" />
+        </linearGradient>
+        <linearGradient id={mid} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#0066FF" />
+          <stop offset="1" stopColor="#2563EB" />
+        </linearGradient>
+        <linearGradient id={bot} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#4D9FFF" />
+          <stop offset="1" stopColor="#2563EB" />
         </linearGradient>
       </defs>
-      <rect x="2" y="2" width="28" height="28" rx="9" fill="url(#bw-blue-grad)" />
-      <path d="M9 16.5l4.5 4.5L23 11" stroke="#FFFFFF" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {/* Mark only — no background, fully transparent. Same geometry as
+          /favicon.svg so the in-app brand icon matches the browser tab. */}
+      <rect x="11" y="9" width="11" height="46" rx="3.5" fill={`url(#${mid})`} />
+      <path d="M20 11 C 39 11, 47 19, 41 27 C 35 32, 25 31, 20 31 Z" fill={`url(#${top})`} />
+      <path d="M20 33 L36 33 L40 37 L20 37 Z" fill="#0066FF" />
+      <path d="M20 33 C 41 33, 50 41, 44 49 C 38 55, 27 54, 20 54 Z" fill={`url(#${bot})`} />
     </svg>
   );
 }
