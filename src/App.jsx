@@ -30,12 +30,10 @@ import PublicPortfolio from './pages/PublicPortfolio';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
 import { SchoolProvider } from '@/lib/SchoolContext';
-import SchoolSetup from './pages/SchoolSetup';
-import JoinSchool from './pages/JoinSchool';
-import StudentOnboarding from './pages/StudentOnboarding';
+
 import OrgsLayout from '@/components/layouts/OrgsLayout';
-import SchoolsSignup from './pages/schools/Signup';
 import OrgsSignup from './pages/organisations/Signup';
+import Register from './pages/organisations/Register';
 import About from './pages/marketing/About';
 import MarketingContact from './pages/marketing/Contact';
 import Documentation from './pages/marketing/Documentation';
@@ -51,7 +49,7 @@ import Assignments from './pages/Assignments';
 import Assemblies from './pages/Assemblies';
 import SchoolCalendar from './pages/SchoolCalendar';
 import AdminAttendance from './pages/AdminAttendance';
-import JoinClass from './pages/JoinClass';
+
 import StudentAttendance from './pages/StudentAttendance';
 import PendingSignoffs from './pages/PendingSignoffs';
 import MyTeaching from './pages/MyTeaching';
@@ -169,10 +167,11 @@ const AuthenticatedApp = () => {
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/CustodianDashboard" element={<Navigate to="/Records" replace />} />
-      <Route path="/SchoolSetup" element={<SchoolSetup />} />
-      <Route path="/JoinClass" element={<JoinClass />} />
-      <Route path="/JoinSchool" element={<JoinSchool />} />
-      <Route path="/StudentOnboarding" element={<StudentOnboarding />} />
+      {/* Legacy school onboarding — the product now onboards organisations only */}
+      <Route path="/SchoolSetup" element={<Navigate to="/register-organisation" replace />} />
+      <Route path="/JoinClass" element={<Navigate to="/StudentDashboard" replace />} />
+      <Route path="/JoinSchool" element={<Navigate to="/organisation" replace />} />
+      <Route path="/StudentOnboarding" element={<Navigate to="/StudentDashboard" replace />} />
       <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
       {/* Grades — one canonical, role-aware page; legacy grade routes redirect here */}
@@ -217,8 +216,8 @@ const AuthenticatedApp = () => {
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
       {/* Blockward staff internal tools — role re-checked server-side */}
       <Route path="/admin/organisations" element={<OrgApprovals />} />
-      {/* Issuer invitation landing — organisations register here */}
-      <Route path="/register-organisation" element={<Navigate to="/organisations/signup" replace />} />
+      {/* Issuer organisation registration — persistent IssuerOrganisation record */}
+      <Route path="/register-organisation" element={<Register />} />
       <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Resources" element={<LayoutWrapper currentPageName="Resources"><ProtectedRoute><Resources /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/MyPoints" element={<LayoutWrapper currentPageName="MyPoints"><ProtectedRoute><MyPoints /></ProtectedRoute></LayoutWrapper>} />
@@ -236,7 +235,7 @@ const AuthenticatedApp = () => {
           /organisations/login are the canonical STAFF entry (same shared
           auth system as /Login, with explicit school-workspace context). */}
       <Route path="/schools/login" element={<Login staffEntry />} />
-      <Route path="/schools/signup" element={<SchoolsSignup />} />
+      <Route path="/schools/signup" element={<Navigate to="/organisations/signup" replace />} />
       <Route path="/organisations/login" element={<Login staffEntry />} />
       <Route path="/organisations/signup" element={<OrgsSignup />} />
       <Route path="/orgs/login" element={<Navigate to="/schools/login" replace />} />

@@ -3,10 +3,9 @@ import SignupEntryRoute from '@/components/auth/SignupEntryRoute';
 
 // Organisation registration entry (/organisations/signup). The founder may
 // be completely unauthenticated and their organisation may not exist yet —
-// this routes them into /Signup with /SchoolSetup preserved as the
-// post-registration destination, so the flow is: create account → verify →
-// create organisation → become its initial administrator. Previously this
-// route was a toLogin() stub that bounced every new visitor to Sign In.
+// this routes them into /Signup with /register-organisation preserved as the
+// post-registration destination: create account → verify → register the
+// organisation → become its Owner.
 export default function OrgsSignup() {
-  return <SignupEntryRoute intent="/SchoolSetup" />;
+  return <SignupEntryRoute intent="/register-organisation" />;
 }

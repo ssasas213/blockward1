@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import RouteSeo from '@/components/RouteSeo';
 import { Shield, Loader2, CheckCircle2, XCircle } from 'lucide-react';
@@ -23,11 +24,15 @@ export default function OrgInviteAccept() {
     base44.auth.isAuthenticated().then(setAuthed).catch(() => setAuthed(false));
   }, []);
 
-  const accept = async () => {
+  const [manualToken, setManualToken] = useState('');
+
+  // Accept a token from the email link (?invite=…) or one pasted manually.
+  const accept = async (tok) => {
+    const t = tok || token;
     setBusy(true);
     setError('');
     try {
-      const res = await base44.functions.invoke('orgAction', { action: 'join', token });
+      const res = await base44.functions.invoke('orgAction', { action: 'join', token: t });
       if (!res?.data?.ok) throw new Error(res?.data?.error || 'This invitation is no longer valid');
       setDone(true);
       setTimeout(() => navigate('/organisations/dashboard'), 1200);
@@ -82,10 +87,22 @@ export default function OrgInviteAccept() {
                 You've been invited to join an organisation on Blockward as a verifier — confirming achievements
                 and signing verifiable credentials.
               </p>
-              <Button className="w-full" onClick={accept} disabled={busy || !token}>
+              <Button className="w-full" onClick={() => accept()} disabled={busy || !token}>
                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                 Accept invitation
               </Button>
+              {/* No emailed link handy — the code from the invitation email works too */}
+              <div className="pt-2 border-t border-border space-y-2">
+                <Input
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value.trim())}
+                  placeholder="Paste your invitation code"
+                  disabled={busy}
+                />
+                <Button variant="outline" className="w-full" onClick={() => accept(manualToken)} disabled={busy || !manualToken}>
+                  Join with invitation code
+                </Button>
+              </div>
               {error && (
                 <p className="text-xs text-destructive flex items-center justify-center gap-1">
                   <XCircle className="h-3.5 w-3.5" /> {error}

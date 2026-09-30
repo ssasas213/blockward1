@@ -181,6 +181,22 @@ export default async function (req: Request): Promise<Response> {
       event_log: pushEvent(vr.event_log, 'threshold_reached', email, `All ${required} required signatures received — issuer verification complete`),
     });
 
+    // A PENDING organisation cannot mint Blockward Verified credentials — its
+    // queue can receive requests and collect signatures, but the blockchain
+    // credential is only issued once Blockward has verified the organisation.
+    if (vr.org_id) {
+      const orgRows = await svc.entities.IssuerOrganisation.filter({ id: vr.org_id }).catch(() => []);
+      const org = orgRows?.[0];
+      if (org && org.status !== 'verified') {
+        await svc.entities.Achievement.update(ach.id, {
+          status: 'issuer_confirmed',
+          event_log: pushEvent(ach.event_log, 'issuer_confirmed', email, `All ${required} signatures received — Blockward organisation verification for ${org.name} is pending, so the Polygon credential is held`),
+        });
+        await notifyHolder(svc, ach.holder_email, 'Verification nearly complete', `All required verifiers at ${org.name} signed "${ach.title}". The credential will be secured on Polygon once Blockward completes the organisation's verification.`, 'issuer_confirmed', ach.id);
+        return Response.json({ ok: true, outcome: 'held_pending_org_verification', signatures: newCount, required });
+      }
+    }
+
     // Full signer snapshot from the persisted signature records.
     const sigRecords = await svc.entities.VerificationSignature.filter({ request_id: vr.id });
     const verifiers = (sigRecords || [])

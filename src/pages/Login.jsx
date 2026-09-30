@@ -311,8 +311,8 @@ export default function Login({ staffEntry = false }) {
           <>
             <p className="text-center text-sm text-muted-foreground mt-2">
               Setting up a new organisation?{' '}
-              <Link to="/SchoolSetup" className="text-primary font-medium hover:underline">
-                Create your organisation workspace
+              <Link to="/register-organisation" className="text-primary font-medium hover:underline">
+                Register your organisation
               </Link>
             </p>
             <p className="text-center text-sm text-muted-foreground mt-2">

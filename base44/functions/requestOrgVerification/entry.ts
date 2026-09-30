@@ -32,8 +32,12 @@ export default async function (req: Request): Promise<Response> {
     const orgRows = await svc.entities.IssuerOrganisation.filter({ id: String(body.org_id || '') });
     const org = orgRows?.[0];
     if (!org) return Response.json({ error: 'Issuer organisation not found' }, { status: 404 });
-    if (org.status !== 'verified') {
-      return Response.json({ error: `"${org.name}" hasn't completed Blockward verification yet, so it cannot accept verification requests` }, { status: 409 });
+    // Pending organisations CAN receive verification requests — the request
+    // enters their queue and verifiers may sign, but Blockward Verified is
+    // NEVER minted until Blockward itself verifies the organisation (gated in
+    // orgVerificationReview).
+    if (!['verified', 'pending'].includes(org.status)) {
+      return Response.json({ error: `"${org.name}" is not accepting verification requests on Blockward` }, { status: 409 });
     }
 
     const dupes = await svc.entities.VerificationRequest.filter({ achievement_id: achievementId, status: { $in: ['pending', 'opened'] } });

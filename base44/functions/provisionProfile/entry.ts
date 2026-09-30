@@ -39,10 +39,12 @@ export default async function(req: Request): Promise<Response> {
     if (result.already_exists) next = 'login';
     else if (result.status === 'awaiting_guardian_consent') next = 'guardian_consent';
     else if (result.status === 'pending_approval') next = 'awaiting_approval';
-    else if (result.role === 'student') next = 'student_setup';
+    // Every personal account is complete on its own — the personal dashboard
+    // ("My Blockward") is the destination. Organisation membership is a
+    // separate, invitation-gated layer and never part of basic provisioning.
     else if (result.role === 'teacher') next = 'teacher_dashboard';
     else if (result.role === 'admin') next = 'admin_dashboard';
-    else next = 'join_school';
+    else next = 'personal_dashboard';
 
     return Response.json({
       ok: true,

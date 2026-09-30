@@ -5,13 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign } from 'lucide-react';
+import { Shield, Building2, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign, UserRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { consumePostAuthRedirect, guardedRedirect } from '@/lib/authRedirectGuard';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
 import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
-import NotAStudentDialog from '@/components/auth/NotAStudentDialog';
 
 function GoogleIcon({ className }) {
   return (
@@ -40,14 +39,14 @@ function ageFromDob(dob) {
   return age;
 }
 
-// Where to go after the server provisions the profile. Role and school are
-// decided server-side (provisionProfile) — the client just follows the map.
+// Where to go after the server provisions the profile. Every personal account
+// is complete on its own — the personal dashboard ("My Blockward") is the
+// destination. Organisation roles are granted through membership, never here.
 const NEXT_URL = {
   awaiting_approval: '/Login', // Login shows the "Awaiting Approval" holding screen
-  student_setup: '/StudentOnboarding',
+  personal_dashboard: '/StudentDashboard',
   teacher_dashboard: '/TeacherDashboard',
   admin_dashboard: '/AdminDashboard',
-  join_school: '/JoinSchool',
   login: '/Login',
 };
 
@@ -57,15 +56,6 @@ const NEXT_URL = {
 // the response and translate it; users must never see the raw transport text.
 function friendlyProvisionError(e) {
   const serverMsg = e?.response?.data?.error || e?.data?.error || '';
-  if (/invalid school code|no school found/i.test(serverMsg)) {
-    return "That school code isn't valid. Check the code and try again.";
-  }
-  if (/expired/i.test(serverMsg)) {
-    return 'This code has expired. Please ask your school administrator for a new one.';
-  }
-  if (/usage limit/i.test(serverMsg)) {
-    return 'This code has reached its usage limit. Please ask your school administrator for a new one.';
-  }
   return serverMsg || 'We could not set up your account. Please try again.';
 }
 
@@ -84,28 +74,28 @@ async function provisionAccount(payload) {
     guardedRedirect('/Login');
     return;
   }
-  // A pre-auth intent (e.g. "Create an organisation") overrides the default
+  // A pre-auth intent (e.g. "Register an organisation") overrides the default
   // landing page — except for blocked states (approval/consent waiting).
   const postAuthIntent = consumePostAuthRedirect();
   if (postAuthIntent && data.next !== 'awaiting_approval') {
     guardedRedirect(postAuthIntent);
     return;
   }
-  // Unrecognised `next` values default to the student dashboard — an unknown
+  // Unrecognised `next` values default to the personal dashboard — an unknown
   // response must never land anyone on a join screen.
   guardedRedirect(NEXT_URL[data.next] || '/StudentDashboard');
 }
 
 export default function Signup() {
+  // mode: 'landing' (two choices) → 'personal' (account creation) | 'org' (create or join)
+  const [mode, setMode] = useState('landing');
   const [authChecking, setAuthChecking] = useState(true);
-  const [notAStudentOpen, setNotAStudentOpen] = useState(false);
   const [step, setStep] = useState('details'); // 'details' | 'otp'
   // Set when the visitor is already authenticated (e.g. back from Google) but
   // has no BlockWard profile — the details form then finishes the account.
   const [authedUser, setAuthedUser] = useState(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
   // Email carried over from the sign-in screen (a brand-new email is routed
   // here instead of hitting a dead-end error).
   const [email, setEmail] = useState(() => {
@@ -168,20 +158,16 @@ export default function Signup() {
 
         const pf = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.first);
         const pl = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.last);
-        const pc = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.code);
         const pd = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.dob);
         const pg = sessionStorage.getItem(SIGNUP_STORAGE_KEYS.guardian);
         if (pf) {
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.first);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.last);
-          sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.code);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.dob);
           sessionStorage.removeItem(SIGNUP_STORAGE_KEYS.guardian);
           try {
-            // The server derives role/school from the code (or leaves the
-            // account unplaced until they join a school).
             await provisionAccount({
-              first_name: pf, last_name: pl, join_code: pc || undefined,
+              first_name: pf, last_name: pl,
               date_of_birth: pd || undefined,
               guardian_email: pg || undefined,
             });
@@ -203,9 +189,10 @@ export default function Signup() {
         }
         if (currentUser.email) setEmail(currentUser.email);
         setAuthedUser(currentUser);
+        setMode('personal');
         setAuthChecking(false);
       } catch {
-        // Not authenticated — show the signup form.
+        // Not authenticated — show the signup landing.
         setAuthChecking(false);
       }
     })();
@@ -230,7 +217,6 @@ export default function Signup() {
       await provisionAccount({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        join_code: joinCode.trim() || undefined,
         date_of_birth: dateOfBirth,
         guardian_email: ageFromDob(dateOfBirth) < 13 ? guardianEmail.trim() : undefined,
       });
@@ -253,7 +239,6 @@ export default function Signup() {
     // Stash the details so we can finish provisioning after the Google redirect.
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.first, firstName.trim());
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.last, lastName.trim());
-    if (joinCode.trim()) sessionStorage.setItem(SIGNUP_STORAGE_KEYS.code, joinCode.trim());
     sessionStorage.setItem(SIGNUP_STORAGE_KEYS.dob, dateOfBirth);
     if (ageFromDob(dateOfBirth) < 13 && guardianEmail.trim()) {
       sessionStorage.setItem(SIGNUP_STORAGE_KEYS.guardian, guardianEmail.trim());
@@ -325,14 +310,13 @@ export default function Signup() {
       await provisionAccount({
         first_name: firstName.trim(),
         last_name: lastName.trim(),
-        join_code: joinCode.trim() || undefined,
         date_of_birth: dateOfBirth,
         guardian_email: ageFromDob(dateOfBirth) < 13 ? guardianEmail.trim() : undefined,
       });
     } catch (err) {
-      // If the account exists and is signed in but provisioning failed (e.g.
-      // an invalid school code), resume onboarding on the details form —
-      // never trap an authenticated user on the code step.
+      // If the account exists and is signed in but provisioning failed,
+      // resume onboarding on the details form — never trap an authenticated
+      // user on the code step.
       const me = await base44.auth.me().catch(() => null);
       if (me) {
         setAuthedUser(me);
@@ -362,6 +346,132 @@ export default function Signup() {
     );
   }
 
+  // ── LANDING — Join Blockward ──
+  if (mode === 'landing') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
+        <div className="w-full max-w-2xl">
+          <div className="text-center mb-10">
+            <Link to="/" className="inline-flex flex-col items-center gap-2">
+              <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-2">
+                <Shield className="h-7 w-7 text-primary-foreground" />
+              </div>
+              <CardTitle className="text-3xl tracking-tight">Join Blockward</CardTitle>
+            </Link>
+            <CardDescription className="mt-2 text-base">
+              Build a verified record of your achievements — or represent an organisation that issues them.
+            </CardDescription>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Option 1 — personal account */}
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => setMode('personal')}>
+              <CardContent className="p-6">
+                <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-4">
+                  <UserRound className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">Create a personal profile</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Add achievements, request verification, build your Blockward profile and share
+                  verified credentials.
+                </p>
+                <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                  Create Personal Account <ArrowRight className="h-4 w-4" />
+                </div>
+                <p className="text-xs text-tertiary mt-4">
+                  For students, professionals, athletes, competitors and anyone with achievements to prove.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Option 2 — organisation */}
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => setMode('org')}>
+              <CardContent className="p-6">
+                <div className="h-11 w-11 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center mb-4">
+                  <Building2 className="h-5 w-5 text-accent" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">Create or join an organisation</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  For organisations and the authorised people who verify achievements on their behalf.
+                </p>
+                <div className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-accent">
+                  Create or Join an Organisation <ArrowRight className="h-4 w-4" />
+                </div>
+                <p className="text-xs text-tertiary mt-4">
+                  For companies, schools, universities, certification providers, competitions, training
+                  organisations and other issuers.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            Already invited to an organisation?{' '}
+            <Link to="/organisation" className="text-primary font-medium hover:underline">Join with an invitation</Link>
+          </p>
+          <p className="text-center text-sm text-muted-foreground mt-2">
+            Already have an account? <Link to="/Login" className="text-primary font-medium hover:underline">Sign in</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── ORG CHOICE — create new or join by invitation ──
+  if (mode === 'org') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
+        <div className="w-full max-w-lg">
+          <div className="text-center mb-8">
+            <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-3">
+              <Building2 className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl">How are you joining Blockward?</CardTitle>
+            <CardDescription className="mt-2">
+              Organisation access is always tied to a normal Blockward account — there is no separate login.
+            </CardDescription>
+          </div>
+
+          <div className="space-y-4">
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => (window.location.href = '/register-organisation')}>
+              <CardContent className="p-6">
+                <h3 className="text-base font-semibold text-foreground">Create a new organisation</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Register your company, school, university, certification provider, competition or
+                  training organisation. You become its Organisation Owner.
+                </p>
+                <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                  Create a New Organisation <ArrowRight className="h-4 w-4" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => (window.location.href = '/organisation')}>
+              <CardContent className="p-6">
+                <h3 className="text-base font-semibold text-foreground">Join an existing organisation</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Organisation access is granted by invitation. Open the invitation link from your
+                  email, or paste your invitation code.
+                </p>
+                <div className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+                  Join with an Invitation <ArrowRight className="h-4 w-4" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <button
+            onClick={() => setMode('landing')}
+            className="mt-8 mx-auto block text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowRight className="h-3.5 w-3.5 inline mr-1 rotate-180" /> Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── PERSONAL ACCOUNT CREATION ──
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background accent-glow">
       <Card className="w-full max-w-lg border-border bg-card">
@@ -370,10 +480,10 @@ export default function Signup() {
             <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-2">
               <Shield className="h-7 w-7 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">Create your BlockWard account</CardTitle>
+            <CardTitle className="text-2xl">Create your personal account</CardTitle>
             <CardDescription>
               {step === 'details'
-                ? 'Start collecting achievements — a school or club is optional'
+                ? 'Build a verified record of your achievements — no organisation needed'
                 : 'Verify your email to finish'}
             </CardDescription>
           </Link>
@@ -429,21 +539,6 @@ export default function Signup() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1.5">
-                    <KeyRound className="h-3.5 w-3.5" /> School or club code (optional)
-                  </Label>
-                  <Input
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    placeholder="Have a code from your school or club? Enter it here"
-                    className="font-mono uppercase"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    With a code you join your school, club or academy straight away. Without one you can add it later — you don't need one to use BlockWard.
-                  </p>
-                </div>
-
                 {authedUser ? (
                   <>
                     {/* Google return with no profile — just finish the details */}
@@ -481,7 +576,7 @@ export default function Signup() {
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@school.ac.uk"
+                          placeholder="you@example.com"
                           autoComplete="email"
                           disabled={loading}
                         />
@@ -504,6 +599,14 @@ export default function Signup() {
                     </form>
                   </>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => setMode('landing')}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowRight className="h-3.5 w-3.5 inline mr-1 rotate-180" /> Back
+                </button>
               </motion.div>
             )}
 
@@ -567,20 +670,18 @@ export default function Signup() {
 
           <div className="mt-4 pt-4 border-t border-border text-center">
             <p className="text-sm text-muted-foreground">
-              Not a student?{' '}
+              Represent an organisation?{' '}
               <button
                 type="button"
-                onClick={() => setNotAStudentOpen(true)}
+                onClick={() => setMode('org')}
                 className="text-primary font-medium hover:underline"
               >
-                Set up your school or join as a teacher
+                Create or join an organisation
               </button>
             </p>
           </div>
         </CardContent>
       </Card>
-
-      <NotAStudentDialog open={notAStudentOpen} onOpenChange={setNotAStudentOpen} context="signup" />
     </div>
   );
 }

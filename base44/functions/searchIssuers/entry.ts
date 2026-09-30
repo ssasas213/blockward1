@@ -1,5 +1,6 @@
-// searchIssuers — the holder searches Blockward's VERIFIED issuer
-// organisations by name, or (when nothing matches) submits the organisation
+// searchIssuers — the holder searches Blockward's registered issuer
+// organisations (verified first, then pending) by name, handle or official
+// domain, or (when nothing matches) submits the organisation
 // as a suggestion: Blockward emails the organisation an invitation to
 // register. Only VERIFIED organisations accept verification requests.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
@@ -59,15 +60,27 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ ok: true, suggested: true, email_sent: !!sent.delivered });
     }
 
-    // ── Search verified issuers ──
+    // ── Search issuer organisations ──
     const q = String(body.q || '').trim().slice(0, 80);
     if (!q) return Response.json({ ok: true, results: [] });
-    // Verified organisations are a small, curated set — fetch and match in
-    // code, which is immune to per-SDK-version $regex/$options differences.
-    const verified = await svc.entities.IssuerOrganisation.filter({ status: 'verified' }, '-created_date', 200)
+    // Registered organisations (VERIFIED + PENDING_REVIEW) are a small,
+    // curated set — fetched fresh from the database on every search (never a
+    // hardcoded list) and matched in code, which is immune to per-SDK-version
+    // $regex/$options differences. Verified issuers rank first; pending ones
+    // still surface (they can receive queue requests before sign-off).
+    const orgs = await svc.entities.IssuerOrganisation
+      .filter({ status: { $in: ['verified', 'pending'] } }, '-created_date', 200)
       .catch((e) => { console.error('searchIssuers filter failed', e?.message || e); return []; });
     const ql = q.toLowerCase();
-    const rows = (verified || []).filter((o: any) => (o.name || '').toLowerCase().includes(ql)).slice(0, 8);
+    const matched = (orgs || []).filter((o: any) => {
+      const n = (o.name || '').toLowerCase();
+      const h = (o.handle || '').toLowerCase();
+      const d = (o.email_domain || '').toLowerCase();
+      return n.includes(ql) || (h && h.includes(ql)) || (d && (ql.endsWith(d) || d.includes(ql)));
+    });
+    const rows = matched
+      .sort((a: any, b: any) => (a.status === 'verified' ? 0 : 1) - (b.status === 'verified' ? 0 : 1))
+      .slice(0, 8);
     return Response.json({ ok: true, results: rows || [] });
   } catch (error) {
     return Response.json({ error: error?.message || 'Issuer search failed' }, { status: 500 });

@@ -33,7 +33,7 @@ const STATUS_META = {
 
 const EMPTY_FORM = {
   title: '', category: '', description: '', date: '', expires: '',
-  issuer_org: '', issuer_email: '', issuer_website: '',
+  issuer_org: '', issuer_org_id: '', issuer_status: '', issuer_email: '', issuer_website: '',
   certificate_url: '', certificate_name: '',
   evidence: [], linkUrl: '', linkName: '',
 };
@@ -90,7 +90,7 @@ export default function MyAchievements() {
   };
 
   const pickIssuer = (o) => {
-    setForm((f) => ({ ...f, issuer_org: o.name, issuer_email: o.contact_email || '', issuer_website: o.website || '' }));
+    setForm((f) => ({ ...f, issuer_org: o.name, issuer_org_id: o.id || '', issuer_status: o.status || 'pending', issuer_email: o.contact_email || '', issuer_website: o.website || '' }));
     setIssuerQuery(o.name);
     setIssuerResults(null);
   };
@@ -167,7 +167,20 @@ export default function MyAchievements() {
     if (!requestEmail.includes('@')) { toast.error('Add the issuer contact email'); return; }
     setRequesting(true);
     try {
-      const res = await base44.functions.invoke('requestVerification', { achievement_id: requestFor.id, issuer_email: requestEmail.trim() });
+      // Prefer the persistent organisation queue when the issuer is a
+      // registered Blockward Issuer Organisation; fall back to the
+      // email-token flow for issuers that aren't on Blockward yet.
+      let orgId = requestFor.issuer_org_id || null;
+      if (!orgId && requestFor.issuer_org) {
+        try {
+          const s = await base44.functions.invoke('searchIssuers', { q: requestFor.issuer_org });
+          const match = (s.data?.results || []).find((o) => (o.name || '').toLowerCase() === (requestFor.issuer_org || '').toLowerCase());
+          if (match) orgId = match.id;
+        } catch { /* fall through to the token flow */ }
+      }
+      const res = orgId
+        ? await base44.functions.invoke('requestOrgVerification', { achievement_id: requestFor.id, org_id: orgId })
+        : await base44.functions.invoke('requestVerification', { achievement_id: requestFor.id, issuer_email: requestEmail.trim() });
       if (res.data?.ok) { toast.success('Verification request sent'); setRequestFor(null); load(); }
       else { toast.error(res.data?.error || 'Could not send the request'); }
     } catch (e) {
@@ -317,7 +330,7 @@ export default function MyAchievements() {
                 <Input
                   value={issuerQuery}
                   onChange={(e) => runIssuerSearch(e.target.value)}
-                  placeholder="Search issuer… e.g. AWS, Microsoft, Dubai College"
+                  placeholder="Search organisations…"
                   className="pl-9"
                 />
                 {searching && <Loader2 className="h-4 w-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-tertiary" />}
@@ -326,8 +339,15 @@ export default function MyAchievements() {
                 <div className="rounded-lg border border-border divide-y divide-border max-h-44 overflow-y-auto">
                   {issuerResults.map((o) => (
                     <button key={o.id} type="button" onClick={() => pickIssuer(o)} className="w-full text-left px-3 py-2 hover:bg-hover flex items-center justify-between gap-2">
-                      <span className="text-sm text-foreground">{o.name}</span>
-                      <span className="text-[10px] text-success flex items-center gap-1"><ShieldCheck className="h-3 w-3" /> Verified issuer</span>
+                      <span className="min-w-0">
+                        <span className="block text-sm text-foreground truncate">{o.name}</span>
+                        <span className="block text-[10px] text-tertiary capitalize truncate">{(o.org_type || 'other').replace(/_/g, ' ')}</span>
+                      </span>
+                      {o.status === 'verified' ? (
+                        <span className="text-[10px] text-success flex items-center gap-1 flex-shrink-0"><ShieldCheck className="h-3 w-3" /> Verified Issuer</span>
+                      ) : (
+                        <span className="text-[10px] text-warning flex items-center gap-1 flex-shrink-0"><Clock className="h-3 w-3" /> Registered — Verification Pending</span>
+                      )}
                     </button>
                   ))}
                 </div>
