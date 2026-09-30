@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toLogin } from '@/lib/authRedirectGuard';
 import SiteHeader from '@/components/home/SiteHeader';
 import UniversalHero from '@/components/home/UniversalHero';
+import CertificateTransformation from '@/components/evidence/CertificateTransformation';
 import ProblemSection from '@/components/home/ProblemSection';
 import WhyBlockward from '@/components/home/WhyBlockward';
 import StatementSection from '@/components/home/StatementSection';
@@ -63,6 +64,7 @@ export default function Home() {
         ctaLabel="Create Profile"
       />
       <UniversalHero />
+      <CertificateTransformation />
       <ProblemSection />
       <WhyBlockward />
       <StatementSection />

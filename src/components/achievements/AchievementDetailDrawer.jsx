@@ -7,6 +7,7 @@ import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import BlockwardVerifiedCredential from './BlockwardVerifiedCredential';
 import VerificationTimeline from './VerificationTimeline';
 import ShareCredentialDialog from './ShareCredentialDialog';
+import EvidencePreview from '@/components/evidence/EvidencePreview';
 import { resolveStatus, formatDate, formatDateTime } from '@/lib/achievementStatus';
 
 function Section({ title, children, right }) {
@@ -84,6 +85,31 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
               {a.description && <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{a.description}</p>}
             </div>
           )}
+
+          {/* Evidence — the original proof the holder uploaded. Kept visually
+              distinct from the verified credential above/below. */}
+          {(() => {
+            const evidence = [
+              ...((a.evidence || [])),
+              ...(a.certificate_url ? [{ name: a.certificate_name || 'Certificate', url: a.certificate_url }] : []),
+            ].filter((e) => e && e.url);
+            if (!evidence.length) return null;
+            return (
+              <Section title="Evidence" right={<span className="text-xs text-tertiary">Original submission</span>}>
+                <div className="surface-card rounded-xl p-3">
+                  <EvidencePreview
+                    items={evidence}
+                    context={{ achievementId: a.id }}
+                    emptyText="No evidence attached."
+                  />
+                </div>
+                <p className="mt-1.5 text-[11px] text-tertiary">
+                  This is what the holder uploaded. It is evidence, not a credential —
+                  verification comes from the issuing organisation and the blockchain.
+                </p>
+              </Section>
+            );
+          })()}
 
           {/* Issuer Verification */}
           <Section title="Issuer verification">

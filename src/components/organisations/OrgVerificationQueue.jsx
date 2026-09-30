@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { openEvidenceFile } from '@/lib/evidenceAccess';
+import EvidencePreview from '@/components/evidence/EvidencePreview';
 import {
   ClipboardCheck, Loader2, FileText, Paperclip, PenTool,
   CheckCircle2, XCircle, User, ShieldAlert,
@@ -201,29 +202,27 @@ export default function OrgVerificationQueue({ org, queue, mySignature, onChange
                   <p className="text-xs text-muted-foreground">Certificate ID: {req.achievement.external_credential_id}</p>
                 )}
 
-                {/* Evidence + certificate — private files open via permission-checked signed URLs */}
-                {(req.achievement?.evidence?.length > 0 || req.achievement?.certificate_url) && (
-                  <div className="pt-2 space-y-2">
-                    <p className="text-xs font-medium text-foreground">Supporting evidence</p>
-                    <div className="flex flex-wrap gap-2">
-                      {req.achievement?.certificate_url && (
-                        <Button
-                          size="sm" variant="outline"
-                          onClick={() => openEvidence(req, req.achievement.certificate_url)}
-                        >
-                          <FileText className="h-3.5 w-3.5" />
-                          {req.achievement.certificate_name || 'Certificate'}
-                        </Button>
-                      )}
-                      {(req.achievement?.evidence || []).map((ev, i) => (
-                        <Button key={i} size="sm" variant="outline" onClick={() => openEvidence(req, ev.url)}>
-                          <Paperclip className="h-3.5 w-3.5" />
-                          {ev.name || `Evidence ${i + 1}`}
-                        </Button>
-                      ))}
+                {/* Evidence + certificate — private files open via in-app viewer
+                    with permission-checked signed URLs (getEvidenceAccess). */}
+                {(() => {
+                  const evidence = [
+                    ...(req.achievement?.evidence || []),
+                    ...(req.achievement?.certificate_url
+                      ? [{ name: req.achievement.certificate_name || 'Certificate', url: req.achievement.certificate_url }]
+                      : []),
+                  ].filter((e) => e && e.url);
+                  if (!evidence.length) return null;
+                  return (
+                    <div className="pt-2 space-y-2">
+                      <p className="text-xs font-medium text-foreground">Supporting evidence — inspect before signing</p>
+                      <EvidencePreview
+                        items={evidence}
+                        context={{ achievementId: req.achievement?.id }}
+                        emptyText="No evidence attached."
+                      />
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
               {/* Signatures so far (joint verification) */}

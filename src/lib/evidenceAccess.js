@@ -15,6 +15,25 @@ export function isPrivateEvidence(url) {
   return !!url && !/^https?:\/\//i.test(url);
 }
 
+/**
+ * getEvidenceSignedUrl — fetch a time-limited signed URL for a private
+ * evidence file WITHOUT opening it. Used by inline thumbnails and the
+ * in-app evidence viewer. Same permission checks as openEvidenceFile.
+ */
+export async function getEvidenceSignedUrl({ url, requestId, recordId, achievementId, token }) {
+  const res = await base44.functions.invoke('getEvidenceAccess', {
+    request_id: requestId || null,
+    record_id: recordId || null,
+    achievement_id: achievementId || null,
+    file_uri: url,
+    token: token || null,
+  });
+  if (!res?.data?.ok || !res.data.signed_url) {
+    throw new Error(res?.data?.error || 'Could not access this evidence file');
+  }
+  return res.data.signed_url;
+}
+
 export async function openEvidenceFile({ url, requestId, recordId, achievementId, token }) {
   try {
     const res = await base44.functions.invoke('getEvidenceAccess', {

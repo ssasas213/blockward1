@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import AchievementListItem from '@/components/achievements/AchievementListItem';
 import AchievementDetailDrawer from '@/components/achievements/AchievementDetailDrawer';
+import EvidenceUpload from '@/components/evidence/EvidenceUpload';
 
 const CATEGORIES = [
   ['certification', 'Certification'], ['competition', 'Competition'], ['academic', 'Academic'],
@@ -115,18 +116,6 @@ export default function MyAchievements() {
     } catch (e) {
       toast.error(e?.response?.data?.error || 'Could not send the invitation');
     } finally { setInviting(false); }
-  };
-
-  const uploadOne = async (file, kind) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      const res = await base44.integrations.Core.UploadPrivateFile({ file });
-      if (res?.file_uri) {
-        if (kind === 'certificate') { set('certificate_url', res.file_uri); set('certificate_name', file.name); }
-        else set('evidence', [...form.evidence, { name: file.name, url: res.file_uri }]);
-      }
-    } catch { toast.error('Upload failed — try again'); } finally { setUploading(false); }
   };
 
   const handleCreate = async () => {
@@ -327,45 +316,19 @@ export default function MyAchievements() {
               )}
             </div>
 
-            {/* Certificate */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-primary" /> Certificate <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              {form.certificate_url ? (
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-foreground truncate flex-1">{form.certificate_name}</span>
-                  <button type="button" onClick={() => { set('certificate_url', ''); set('certificate_name', ''); }} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
-                </div>
-              ) : (
-                <label className="cursor-pointer inline-flex">
-                  <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(e) => uploadOne(e.target.files?.[0], 'certificate')} />
-                  <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-hover transition-colors">
-                    {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload certificate
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Evidence */}
-            <div className="sm:col-span-2 space-y-1.5">
-              <Label>Evidence</Label>
-              {form.evidence.length > 0 && (
-                <div className="space-y-1.5">
-                  {form.evidence.map((e, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <span className="text-sm text-foreground truncate flex-1">{e.name}</span>
-                      <button type="button" onClick={() => set('evidence', form.evidence.filter((_, j) => j !== i))} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <label className="cursor-pointer inline-flex">
-                <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={(e) => { for (const f of Array.from(e.target.files || [])) uploadOne(f, 'evidence'); }} />
-                <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground hover:bg-hover transition-colors">
-                  {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />} Upload evidence
-                </span>
-              </label>
+            {/* Supporting evidence */}
+            <div className="sm:col-span-2 space-y-2">
+              <Label className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5 text-primary" /> Supporting evidence</Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Upload proof of your achievement — a certificate, award letter, result document or other
+                supporting evidence. The issuing organisation's verifier inspects it before signing.
+              </p>
+              <EvidenceUpload
+                value={form.evidence}
+                onChange={(v) => set('evidence', v)}
+                onBusyChange={setUploading}
+                helpText="PDF, PNG, JPG or WEBP · up to 5 files · 10 MB each · stored privately"
+              />
             </div>
           </div>
           <DialogFooter className="mt-2">
