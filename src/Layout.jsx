@@ -15,6 +15,7 @@ import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
 import BrandMark from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
+import ContextSwitcher from '@/components/sidebar/ContextSwitcher';
 import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
@@ -29,11 +30,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { getRoleLabel } from '@/lib/orgTypes';
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, profile, activeSchool: school, loading, testMode } = useSchool();
+  const { user, profile, activeSchool: school, managedSchools, switchSchool, loading, testMode } = useSchool();
 
   const publicPages = ['Home', 'Login', 'Signup', 'SchoolSetup'];
   const isPublicPage = publicPages.includes(currentPageName);
@@ -102,12 +102,11 @@ export default function Layout({ children, currentPageName }) {
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 
-  const orgType = school?.org_type || 'school';
-  const orgRoleLabels = school?.settings?.role_labels;
-  // Holders no longer carry a generic role label under their name — the
-  // sidebar shows the person; organisation membership is surfaced on the
-  // organisation dashboard. Staff roles keep their label.
-  const roleLabel = userType === 'student' ? '' : (orgRoleLabels?.[userType] || getRoleLabel(orgType, userType));
+  // Blockward account-type labels — replaces legacy student/teacher/admin
+  // terminology. A school is one possible Issuer Organisation, not an account
+  // type, so the label reflects the person's role in the verification product.
+  const ROLE_LABELS = { student: 'Holder', teacher: 'Verifier', admin: 'Organisation Owner' };
+  const roleLabel = ROLE_LABELS[userType] || 'Holder';
   const displayName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
 
   return (
@@ -171,6 +170,8 @@ export default function Layout({ children, currentPageName }) {
               userType={userType}
               roleLabel={roleLabel}
               school={school}
+              managedSchools={managedSchools}
+              onSwitchSchool={switchSchool}
               onClose={() => setSidebarOpen(false)}
               onLogout={logout}
             />
@@ -188,6 +189,8 @@ export default function Layout({ children, currentPageName }) {
           userType={userType}
           roleLabel={roleLabel}
           school={school}
+          managedSchools={managedSchools}
+          onSwitchSchool={switchSchool}
           onLogout={logout}
         />
       </aside>
@@ -229,11 +232,11 @@ export default function Layout({ children, currentPageName }) {
   );
 }
 
-function SidebarContent({ groups, currentPageName, profile, user, userType, roleLabel, school, onClose, onLogout }) {
+function SidebarContent({ groups, currentPageName, profile, user, userType, roleLabel, school, managedSchools, onSwitchSchool, onClose, onLogout }) {
   const displayName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
   return (
     <div className="flex flex-col h-full">
-      {/* Logo + School Switcher */}
+      {/* Brand + context switcher */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border">
         <BrandMark />
         {onClose && (
@@ -241,6 +244,14 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
             <X className="h-4 w-4 text-muted-foreground" />
           </button>
         )}
+      </div>
+      <div className="px-3 pt-3">
+        <ContextSwitcher
+          profile={profile}
+          activeSchool={school}
+          managedSchools={managedSchools}
+          onSwitchSchool={onSwitchSchool}
+        />
       </div>
 
       {/* Navigation */}

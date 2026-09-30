@@ -1,320 +1,204 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useSchool } from '@/lib/SchoolContext';
 import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import PageHeader from '@/components/ui/page-header';
-import StatCard from '@/components/ui/stat-card';
+import { resolveStatus, formatDate } from '@/lib/achievementStatus';
+import { Button } from '@/components/ui/button';
 import EmptyState from '@/components/ui/empty-state';
 import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
-import {
-  Award, Shield, Calendar, BookOpen,
-  ChevronRight, Star, Send
-} from 'lucide-react';
-import BlockWardCard from '@/components/blockwards/BlockWardCard';
-import GradesWidget from '@/components/grades/GradesWidget';
-import AttendanceWidget from '@/components/dashboard/AttendanceWidget';
-import AssignmentsWidget from '@/components/dashboard/AssignmentsWidget';
-import StudentAssembliesWidget from '@/components/dashboard/StudentAssembliesWidget';
-import RecentAnnouncementsWidget from '@/components/dashboard/RecentAnnouncementsWidget';
-import CrossOrgAchievementsCard from '@/components/dashboard/CrossOrgAchievementsCard';
-import SelfAchievementsCard from '@/components/dashboard/SelfAchievementsCard';
-import StudentOnboardingChecklist from '@/components/dashboard/StudentOnboardingChecklist';
-import StudentAttentionCard from '@/components/dashboard/StudentAttentionCard';
-import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
+import { StatusIndicator, StatusDot } from '@/components/ui/status';
+import { BlockwardVerifiedMark } from '@/components/brand/BlockwardVerifiedMark';
+import { Plus, ChevronRight, Building2, Clock, CheckCircle2, Share2, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-/** Small pulse rows shaped like the real list content — no centred spinners. */
-function ListRowSkeleton({ rows = 3, height = 'h-16' }) {
+/** Greeting based on local hour. */
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/** Compact achievement row for the overview — title, issuer, date, status. */
+function OverviewAchievementRow({ item, onOpen }) {
+  const st = resolveStatus(item);
+  const a = item;
   return (
-    <div className="space-y-2" aria-hidden="true">
-      {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className={`${height} rounded-lg bg-muted/60 animate-pulse`} />
-      ))}
-    </div>
+    <button
+      type="button"
+      onClick={() => onOpen?.(a)}
+      className="w-full text-left group flex items-center gap-4 py-3 border-b border-border/60 last:border-0 hover:bg-hover/40 -mx-2 px-2 rounded-md transition-colors"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-foreground text-sm truncate">{a.title}</p>
+        <p className="text-xs text-tertiary truncate flex items-center gap-1.5 mt-0.5">
+          <Building2 className="h-3 w-3 flex-shrink-0" />
+          {a.issuer_org || 'No issuer connected'}
+          {a.date_achieved && <span className="text-tertiary/70">· {formatDate(a.date_achieved)}</span>}
+        </p>
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <StatusIndicator tone={st.tone} label={st.label} pulse={st.tone === 'amber'} />
+        {a.credential?.bw_id && (
+          <span className="text-[10px] text-tertiary font-mono">{a.credential.bw_id}</span>
+        )}
+      </div>
+      <ChevronRight className="h-4 w-4 text-tertiary flex-shrink-0 group-hover:text-primary transition-colors" />
+    </button>
   );
 }
 
-function StudentDashboardContent() {
-  // Identity comes from SchoolContext — fetched once per session, never here.
+function HolderOverviewContent() {
   const { user, profile, testMode } = useSchool();
-  const navigate = useNavigate();
+  const email = testMode?.isTestSuperUser && testMode.effectiveEmail ? testMode.effectiveEmail : user?.email;
 
-  // Per-section loading: null = still loading. The page shell renders
-  // immediately; every section resolves and un-skeletons on its own.
-  const [myClasses, setMyClasses] = useState(null);
-  const [todaySchedule, setTodaySchedule] = useState(null);
-  const [points, setPoints] = useState(null);
-  const [blockWards, setBlockWards] = useState(null);
+  const [achievements, setAchievements] = useState(null);
   const [requests, setRequests] = useState(null);
-  const [notifications, setNotifications] = useState(null);
 
   useEffect(() => {
     if (!user) return;
-    // Test Mode personas read their persona's data, exactly like the bell.
-    const email = testMode?.isTestSuperUser && testMode.effectiveEmail
-      ? testMode.effectiveEmail : user.email;
-    const sid = profile?.school_id || null;
-    const today = new Date().getDay();
-    const dayIndex = today === 0 ? 6 : today - 1;
+    loadEarnedAchievements()
+      .then((r) => setAchievements(r.achievements || []))
+      .catch(() => setAchievements([]));
+    base44.functions
+      .invoke('achievementRequestData', { mode: 'student' })
+      .then((res) => setRequests(res?.data?.ok ? (res.data.requests || []) : []))
+      .catch(() => setRequests([]));
+  }, [user, email]);
 
-    // Every call is independent of the others — one parallel batch, each
-    // section resolves into its own state as soon as its data lands.
-    const classesP = base44.entities.Class.filter(sid ? { school_id: sid } : {}).catch(() => []);
-    const scheduleP = base44.entities.TimetableEntry.filter(
-      sid ? { school_id: sid, day_of_week: dayIndex } : { day_of_week: dayIndex }
-    ).catch(() => []);
-    const pointsP = base44.entities.PointEntry.filter(
-      { student_email: email }, '-created_date', 10
-    ).catch(() => []);
-    const vaultP = loadEarnedAchievements().then(r => r.achievements).catch(() => []);
-    const reqP = base44.functions.invoke('achievementRequestData', { mode: 'student' }).catch(() => null);
-    const notifP = base44.entities.Notification.filter(
-      { user_email: email }, '-created_date', 6
-    ).catch(() => []);
-
-    classesP.then((all) => setMyClasses(all.filter(c => c.student_emails?.includes(email))));
-    pointsP.then(setPoints);
-    vaultP.then(setBlockWards);
-    reqP.then((res) => setRequests(res?.data?.ok ? (res.data.requests || []) : []));
-    notifP.then(setNotifications);
-    Promise.all([classesP, scheduleP]).then(([allClasses, allSchedules]) => {
-      const classIds = new Set(allClasses.map(c => c.id));
-      setTodaySchedule(
-        allSchedules
-          .filter(s => classIds.has(s.class_id))
-          .sort((a, b) => a.start_time.localeCompare(b.start_time))
-      );
+  const { verified, awaiting, readyToShare, recent } = useMemo(() => {
+    const list = achievements || [];
+    const v = list.filter((a) => resolveStatus(a).key === 'blockward_verified');
+    const aw = list.filter((a) => {
+      const k = resolveStatus(a).key;
+      return k === 'awaiting_issuer' || k === 'awaiting_signature' || k === 'verification_requested' || k === 'securing' || k === 'issuer_verified' || k === 'integrity_pending';
     });
-  }, [user, profile?.school_id, testMode?.isTestSuperUser, testMode?.effectiveEmail]);
+    const r = v.filter((a) => a.credential?.bw_id);
+    return { verified: v, awaiting: aw, readyToShare: r, recent: list.slice(0, 5) };
+  }, [achievements]);
 
-  // Points totals — same derivation as before, computed once points arrive.
-  let achievementPoints = 0;
-  let behaviourPoints = 0;
-  (points || []).forEach(p => {
-    if (p.type === 'achievement') achievementPoints += p.points;
-    else behaviourPoints += Math.abs(p.points);
-  });
-  const statsAchievementPoints = profile?.total_achievement_points || achievementPoints;
-  const statsBehaviourPoints = profile?.total_behaviour_points || behaviourPoints;
-  const recentPoints = (points || []).slice(0, 5);
-
-  // Onboarding state — a brand-new student with no organisations and no
-  // achievements sees a single checklist instead of the empty data cards.
-  // Unknown until the achievements cache resolves; skeletons show until then.
-  const isEmptyState = !profile?.school_id && blockWards !== null && blockWards.length === 0;
+  const loading = achievements === null;
+  const firstName = profile?.first_name || 'there';
+  const isEmpty = !loading && achievements.length === 0 && (requests || []).length === 0;
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Welcome back, ${profile?.first_name || 'there'}`}
-        description={profile?.grade_level ? `Grade ${profile.grade_level} · Your achievement overview` : 'Your achievement overview'}
-      >
-        <Button asChild>
-          <Link to={createPageUrl('StudentBlockWards')}>
-            <Send className="h-4 w-4 mr-2" />
-            Request an achievement
-          </Link>
-        </Button>
-      </PageHeader>
+    <div className="space-y-7 max-w-5xl">
+      {/* Greeting + summary line */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">{greeting()}, {firstName}</h1>
+        <p className="text-sm text-muted-foreground mt-1">Your credentials and verification activity.</p>
+        {!loading && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            <span className="text-foreground"><span className="font-semibold tabular-nums">{achievements.length}</span> <span className="text-tertiary">achievements</span></span>
+            <span className="h-3 w-px bg-border" />
+            <span className="text-foreground"><span className="font-semibold tabular-nums text-success">{verified.length}</span> <span className="text-tertiary">verified</span></span>
+            <span className="h-3 w-px bg-border" />
+            <span className="text-foreground"><span className="font-semibold tabular-nums text-warning">{awaiting.length}</span> <span className="text-tertiary">awaiting verification</span></span>
+            <Link to={createPageUrl('Achievements')} className="ml-auto text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+              All achievements <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        )}
+      </div>
 
-      {/* Requests the student must act on — hidden when everything is up to date */}
-      <StudentAttentionCard requests={requests} loading={requests === null} />
-
-      {isEmptyState ? (
-        <div className="space-y-6">
-          <StudentOnboardingChecklist profile={profile} userEmail={user?.email} />
-          {/* Achievements can be added right away — no organisation needed. */}
-          <SelfAchievementsCard profile={profile} userEmail={user?.email} />
+      {isEmpty ? (
+        <div className="rounded-xl border border-border bg-card/40 p-8">
+          <h3 className="text-base font-semibold text-foreground">No achievements yet</h3>
+          <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
+            Add an achievement to begin building your verified profile. You can request issuer verification once it's recorded.
+          </p>
+          <Button asChild>
+            <Link to={createPageUrl('Achievements')}>
+              <Plus className="h-4 w-4 mr-2" /> Add achievement
+            </Link>
+          </Button>
         </div>
       ) : (
-        <>
-          {/* My BlockWards — first content block */}
-          {(blockWards === null || blockWards.length > 0) && (
-            <Card className="shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">My achievements</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to={createPageUrl('StudentBlockWards')}>
-                    View All
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {blockWards === null ? (
-                  <AchievementGridSkeleton count={3} />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {blockWards.slice(0, 3).map((bw) => (
-                      <BlockWardCard key={bw.id} blockWard={bw} onClick={() => navigate(createPageUrl('StudentBlockWards'))} showStudent={false} />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Aggregated achievements across every organisation the student belongs to */}
-          <CrossOrgAchievementsCard profile={profile} userEmail={user?.email} />
-
-          {/* Self-reported achievements — instant, verifiable later */}
-          <SelfAchievementsCard profile={profile} userEmail={user?.email} />
-
-          {/* Stats — one compact row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Achievement Points" value={statsAchievementPoints} icon={Award} />
-            <StatCard label="Behaviour Points" value={statsBehaviourPoints} icon={Award} />
-            <StatCard label="BlockWards Earned" value={blockWards === null ? '…' : blockWards.length} icon={Shield} />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent achievements — dominates */}
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card/40 p-5">
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-foreground">Recent achievements</h2>
+              <Link to={createPageUrl('Achievements')} className="text-xs font-medium text-primary hover:underline">
+                View all
+              </Link>
+            </div>
+            {loading ? (
+              <AchievementGridSkeleton count={3} />
+            ) : recent.length > 0 ? (
+              <div>
+                {recent.map((a) => (
+                  <OverviewAchievementRow key={a.id} item={a} onOpen={() => { window.location.href = createPageUrl('Achievements'); }} />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-tertiary py-6 text-center">No achievements recorded yet.</p>
+            )}
           </div>
 
-          {/* Today's Classes and Attendance */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Today's Classes</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to={createPageUrl('Timetable')}>
-                    View Full
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {todaySchedule === null ? (
-                  <ListRowSkeleton rows={3} height="h-16" />
-                ) : todaySchedule.length > 0 ? (
-                  <div className="space-y-2">
-                    {todaySchedule.map((entry) => (
-                      <div key={entry.id} className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
-                        <div className="text-center min-w-[56px]">
-                          <p className="text-sm font-medium text-foreground">{entry.start_time}</p>
-                          <p className="text-xs text-muted-foreground">{entry.end_time}</p>
-                        </div>
-                        <div className="w-px h-10 bg-border" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground text-sm">{entry.class_name || entry.subject}</p>
-                          <p className="text-xs text-muted-foreground">Room {entry.room}</p>
-                        </div>
-                      </div>
-                    ))}
+          {/* Verification activity */}
+          <div className="rounded-xl border border-border bg-card/40 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-foreground">Verification activity</h2>
+            </div>
+            {requests === null ? (
+              <div className="space-y-2" aria-hidden="true">
+                {[0, 1, 2].map((i) => <div key={i} className="h-12 rounded-md bg-muted/60 animate-pulse" />)}
+              </div>
+            ) : requests.length > 0 ? (
+              <div className="space-y-3">
+                {requests.slice(0, 4).map((r) => (
+                  <div key={r.id} className="text-sm">
+                    <p className="text-foreground font-medium truncate">{r.achievement_title || r.title}</p>
+                    <p className="text-xs text-tertiary truncate">{r.org_name || r.issuer_org || 'Issuer'}</p>
+                    <div className="mt-1">
+                      <StatusIndicator
+                        tone={r.status === 'approved' ? 'green' : r.status === 'rejected' ? 'red' : 'amber'}
+                        label={r.status === 'approved' ? 'Verified' : r.status === 'rejected' ? 'Rejected' : r.status === 'opened' ? 'Opened' : 'Awaiting issuer'}
+                      />
+                    </div>
                   </div>
-                ) : (
-                  <EmptyState icon={Calendar} title="No classes scheduled today" />
-                )}
-              </CardContent>
-            </Card>
-
-            <AttendanceWidget />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-tertiary py-6 text-center">No active verification requests.</p>
+            )}
           </div>
 
-          {/* Recent activity + Recent points */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <RecentActivityCard notifications={notifications} loading={notifications === null} />
-            <Card className="shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">Recent Points</CardTitle>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to={createPageUrl('MyPoints')}>
-                    View All
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Link>
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {points === null ? (
-                  <ListRowSkeleton rows={3} height="h-14" />
-                ) : recentPoints.length > 0 ? (
-                  <div className="space-y-2">
-                    {recentPoints.map((point) => (
-                      <div key={point.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`h-8 w-8 rounded-md flex items-center justify-center flex-shrink-0 ${point.type === 'achievement' ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}>
-                            {point.type === 'achievement' ? <Star className="h-4 w-4" /> : <Award className="h-4 w-4" />}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-foreground text-sm truncate">{point.category_name || point.reason}</p>
-                            <p className="text-xs text-muted-foreground truncate">{point.reason}</p>
-                          </div>
-                        </div>
-                        <Badge variant={point.type === 'achievement' ? 'default' : 'destructive'} className="flex-shrink-0">
-                          {point.points > 0 ? '+' : ''}{point.points}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyState icon={Award} title="No points recorded yet" />
-                )}
-              </CardContent>
-            </Card>
-
-            <GradesWidget />
-            <AssignmentsWidget />
-          </div>
-
-          {/* School announcements */}
-          <RecentAnnouncementsWidget />
-
-          {/* Assemblies */}
-          <StudentAssembliesWidget />
-
-          {/* My Classes */}
-          <Card className="shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">My Classes</CardTitle>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to={createPageUrl('Classes')}>
-                  View All
-                  <ChevronRight className="h-4 w-4 ml-1" />
+          {/* Credentials ready to share */}
+          {readyToShare.length > 0 && (
+            <div className="lg:col-span-3 rounded-xl border border-border bg-card/40 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-foreground">Credentials ready to share</h2>
+                <Link to={createPageUrl('StudentBlockWards')} className="text-xs font-medium text-primary hover:underline">
+                  All credentials
                 </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {myClasses === null ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" aria-hidden="true">
-                  {[0, 1, 2].map(i => (
-                    <div key={i} className="h-[92px] rounded-lg border border-border bg-muted/60 animate-pulse" />
-                  ))}
-                </div>
-              ) : myClasses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {myClasses.map((cls) => (
-                    <Link
-                      key={cls.id}
-                      to={createPageUrl(`ClassDetail?id=${cls.id}`)}
-                      className="p-4 border border-border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                          <BookOpen className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-foreground text-sm truncate">{cls.name}</p>
-                          <p className="text-xs text-muted-foreground">{cls.subject}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Room {cls.room || 'TBA'}</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState icon={BookOpen} title="Not enrolled in any classes yet">
-                  <Button variant="outline" size="sm" asChild>
-                    <Link to={createPageUrl('Classes')}>Join a Class</Link>
-                  </Button>
-                </EmptyState>
-              )}
-            </CardContent>
-          </Card>
-        </>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {readyToShare.slice(0, 6).map((a) => (
+                  <div key={a.id} className="rounded-lg border border-border bg-background/40 p-4 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-medium text-foreground text-sm leading-tight line-clamp-2">{a.title}</p>
+                      <Share2 className="h-3.5 w-3.5 text-tertiary flex-shrink-0 mt-0.5" />
+                    </div>
+                    <p className="text-xs text-tertiary truncate">{a.issuer_org || '—'}</p>
+                    {a.credential?.bw_id && (
+                      <Link to={`/verify/${a.credential.bw_id}`} className="text-[11px] font-mono text-primary hover:underline mt-1">
+                        {a.credential.bw_id}
+                      </Link>
+                    )}
+                    <div className="pt-1 border-t border-border/50">
+                      <BlockwardVerifiedMark size="sm" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -323,7 +207,7 @@ function StudentDashboardContent() {
 export default function StudentDashboard() {
   return (
     <ProtectedRoute>
-      <StudentDashboardContent />
+      <HolderOverviewContent />
     </ProtectedRoute>
   );
 }

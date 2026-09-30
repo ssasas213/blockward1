@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-gradient-to-br from-brand-violet via-primary to-brand-pink text-primary-foreground shadow-button hover:-translate-y-0.5 hover:shadow-button-hover active:translate-y-0",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:bg-primary/95",
         destructive:
-          "bg-gradient-to-b from-destructive to-destructive/90 text-destructive-foreground shadow-sm hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 active:bg-destructive/95",
         outline:
-          "border border-border bg-secondary text-foreground hover:bg-hover hover:border-primary/40 hover:text-foreground",
+          "border border-border bg-transparent text-foreground hover:bg-hover hover:border-primary/40",
         secondary:
-          "bg-secondary text-secondary-foreground border border-border shadow-sm hover:bg-hover hover:border-primary/30",
+          "bg-secondary text-secondary-foreground border border-border hover:bg-hover",
         ghost: "hover:bg-hover hover:text-foreground text-muted-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        success: "bg-gradient-to-b from-success to-success/90 text-success-foreground shadow-sm hover:-translate-y-0.5 hover:shadow-glow active:translate-y-0",
+        success: "bg-success text-success-foreground shadow-sm hover:bg-success/90 active:bg-success/95",
       },
       size: {
         default: "h-9 px-4 py-2",
