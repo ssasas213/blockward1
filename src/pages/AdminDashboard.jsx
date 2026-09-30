@@ -13,7 +13,6 @@ import AdminAcademicWidget from '@/components/dashboard/AdminAcademicWidget';
 import AdminAssignmentsWidget from '@/components/dashboard/AdminAssignmentsWidget';
 import AdminAssembliesWidget from '@/components/dashboard/AdminAssembliesWidget';
 import StaffApprovalsCard from '@/components/people/StaffApprovalsCard';
-import SetupChecklist from '@/components/onboarding/SetupChecklist';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
 import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
 import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipRequestsWidget';
@@ -112,7 +111,9 @@ function AdminDashboardContent() {
       {isEmpty ? (
         /* Empty school — the Setup Checklist is the hero; it encodes the correct onboarding order. */
         <div className="space-y-6">
-          <SetupChecklist />
+          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            No activity yet. Achievements awaiting verification will appear here.
+          </div>
           <StaffApprovalsCard hideWhenEmpty />
         </div>
       ) : (
@@ -145,7 +146,6 @@ function AdminDashboardContent() {
 
           {/* Setup Checklist + Pending Teacher Requests */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SetupChecklist />
             <StaffApprovalsCard hideWhenEmpty />
           </div>
 

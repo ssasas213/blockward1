@@ -24,6 +24,7 @@ import AdminApprovalPage from './pages/AdminApprovalPage';
 import Records from './pages/Records';
 import People from './pages/People';
 import TeacherRecords from './pages/TeacherRecords';
+import PendingSignoffs from './pages/PendingSignoffs';
 import Verify from './pages/Verify';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';

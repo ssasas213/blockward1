@@ -141,14 +141,8 @@ export async function handlePostLoginRedirect() {
     return null;
   }
 
-  // ===== Multi-school users pick a school instead of a silent default =====
-  try {
-    const res = await base44.functions.invoke('loginSchoolOptions');
-    if ((res.data?.schools || []).length > 1) {
-      guardedRedirect('/SchoolPicker');
-      return null;
-    }
-  } catch { /* ignore — fall through to dashboard routing */ }
+  // Legacy multi-school picker removed — the Issuer Organisation model is 1:1
+  // (one owner dashboard). Normal dashboard routing continues below.
 
   // ===== Determine platform (organisations vs schools) =====
   const roleLabel = (profile.role_label || '').toLowerCase();
