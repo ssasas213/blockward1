@@ -17,7 +17,6 @@ import AppLoadingGate from '@/components/auth/AppLoadingGate';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import AuthLoopError from './pages/AuthLoopError';
-import SchoolPicker from './pages/SchoolPicker';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import RecordDetail from './pages/RecordDetail';
@@ -42,29 +41,11 @@ import Privacy from './pages/marketing/Privacy';
 import Terms from './pages/marketing/Terms';
 import OrgDashboard from './pages/organisations/Dashboard';
 import Invitations from './pages/Invitations';
-// Grades/Gradebook are routed through the role-aware /Grades dispatcher
-// (src/pages/Grades.jsx), which imports them directly.
-import AcademicSettings from './pages/AcademicSettings';
-import Assignments from './pages/Assignments';
-import Assemblies from './pages/Assemblies';
-import SchoolCalendar from './pages/SchoolCalendar';
-import AdminAttendance from './pages/AdminAttendance';
-
-import StudentAttendance from './pages/StudentAttendance';
-import PendingSignoffs from './pages/PendingSignoffs';
-import MyTeaching from './pages/MyTeaching';
-import StudentProgress from './pages/StudentProgress';
-import ManageSchool from './pages/ManageSchool';
-import Insights from './pages/Insights';
-import SchoolSettings from './pages/SchoolSettings';
-import MySchool from './pages/MySchool';
 import ExternalVerify from './pages/ExternalVerify';
 import GuardianConsent from './pages/GuardianConsent';
 import ForOrganisations from './pages/ForOrganisations';
 import DemoProfile from './pages/DemoProfile';
 import SampleVerification from './pages/SampleVerification';
-import Grades from './pages/Grades';
-import RouteSeo from '@/components/RouteSeo';
 import RoleDashboardRedirect from '@/components/auth/RoleDashboardRedirect';
 import TeamPage from './pages/TeamPage';
 import TeamJoin from './pages/TeamJoin';
@@ -74,27 +55,17 @@ import OrgInviteAccept from './pages/OrgInviteAccept';
 import Opportunities from './pages/Opportunities';
 import ManageOpportunities from './pages/ManageOpportunities';
 import Feed from './pages/Feed';
-// Role dashboards + core navigation destinations. These existing pages were
-// referenced by the sidebar/CTAs and post-login redirects but lost their
-// routes when routing became explicit — restored here, unchanged.
+// Role dashboards — landing pages for the Holder / Verifier / Organisation
+// Owner personas. The role MODEL is Holder/Verifier/Org Owner/Internal Admin
+// (see Layout.jsx ROLE_LABELS); these pages are the per-persona dashboards.
 import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
-import Classes from './pages/Classes';
-import Messages from './pages/Messages';
 import Profile from './pages/Profile';
 import StudentBlockWards from './pages/StudentBlockWards';
-import Timetable from './pages/Timetable';
-import Resources from './pages/Resources';
-// Live dashboard destinations that lost their routes during the dead-page
-// pruning — the dashboards still link to them (Issue Points / Create
-// Achievement / My Points / Point categories). Role-guarded pages.
-import MyPoints from './pages/MyPoints';
-import IssuePoints from './pages/IssuePoints';
-import IssueBlockWard from './pages/IssueBlockWard';
-import PointCategories from './pages/PointCategories';
 import MyAchievements from './pages/MyAchievements';
 import AdminConsole from './pages/internal/AdminConsole';
+import RouteSeo from '@/components/RouteSeo';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -147,54 +118,26 @@ const AuthenticatedApp = () => {
       <Route path="/Login" element={<Login />} />
       <Route path="/Signup" element={<Signup />} />
       <Route path="/AuthLoopError" element={<AuthLoopError />} />
-      {/* Legacy onboarding URL — the flow now lives in /Signup */}
+      {/* Legacy onboarding URL — the flow now lives in / Signup (global Blockward onboarding) */}
       <Route path="/Onboarding" element={<Navigate to="/Signup" replace />} />
-      <Route path="/SchoolPicker" element={<ProtectedRoute><SchoolPicker /></ProtectedRoute>} />
+      {/* Legacy school setup / join URLs — redirect to the organisation flow */}
+      <Route path="/SchoolSetup" element={<Navigate to="/register-organisation" replace />} />
+      <Route path="/JoinSchool" element={<Navigate to="/organisation" replace />} />
       <Route path="/ForgotPassword" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/RecordDetail" element={<LayoutWrapper currentPageName="RecordDetail"><ProtectedRoute><RecordDetail /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AdminApprovalQueue" element={<Navigate to="/Records" replace />} />
       <Route path="/admin/approve/:recordId" element={<LayoutWrapper currentPageName="AdminApprovalPage"><ProtectedRoute><AdminApprovalPage /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AdminRecords" element={<Navigate to="/Records" replace />} />
       <Route path="/Records" element={<LayoutWrapper currentPageName="Records"><ProtectedRoute><Records /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherRecords" element={<LayoutWrapper currentPageName="TeacherRecords"><ProtectedRoute><TeacherRecords /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/People" element={<LayoutWrapper currentPageName="People"><ProtectedRoute><People /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentMyRecords" element={<Navigate to="/StudentBlockWards" replace />} />
-      <Route path="/StudentPortfolioVault" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       {/* Sample verification page for the example profile — clearly labelled, never a real credential */}
       <Route path="/verify/demo" element={<SampleVerification />} />
       <Route path="/verify/:verification_id" element={<Verify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
-      <Route path="/CustodianDashboard" element={<Navigate to="/Records" replace />} />
-      {/* Legacy school onboarding — the product now onboards organisations only */}
-      <Route path="/SchoolSetup" element={<Navigate to="/register-organisation" replace />} />
-      <Route path="/JoinClass" element={<Navigate to="/StudentDashboard" replace />} />
-      <Route path="/JoinSchool" element={<Navigate to="/organisation" replace />} />
-      <Route path="/StudentOnboarding" element={<Navigate to="/StudentDashboard" replace />} />
       <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />
-      {/* Grades — one canonical, role-aware page; legacy grade routes redirect here */}
-      <Route path="/Grades" element={<LayoutWrapper currentPageName="Grades"><ProtectedRoute><Grades /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentGrades" element={<Navigate to="/Grades" replace />} />
-      <Route path="/Gradebook" element={<Navigate to="/Grades" replace />} />
-      <Route path="/GradeManagement" element={<Navigate to="/Grades" replace />} />
-      <Route path="/AcademicSettings" element={<LayoutWrapper currentPageName="AcademicSettings"><ProtectedRoute><AcademicSettings /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Assignments" element={<LayoutWrapper currentPageName="Assignments"><ProtectedRoute><Assignments /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Assemblies" element={<LayoutWrapper currentPageName="Assemblies"><ProtectedRoute><Assemblies /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/SchoolCalendar" element={<LayoutWrapper currentPageName="SchoolCalendar"><ProtectedRoute><SchoolCalendar /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AdminAttendance" element={<LayoutWrapper currentPageName="AdminAttendance"><ProtectedRoute><AdminAttendance /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentAttendance" element={<LayoutWrapper currentPageName="StudentAttendance"><ProtectedRoute><StudentAttendance /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/AchievementRequests" element={<Navigate to="/StudentBlockWards" replace />} />
       <Route path="/PendingSignoffs" element={<LayoutWrapper currentPageName="PendingSignoffs"><ProtectedRoute><PendingSignoffs /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/MyTeaching" element={<LayoutWrapper currentPageName="MyTeaching"><ProtectedRoute><MyTeaching /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentProgress" element={<LayoutWrapper currentPageName="StudentProgress"><ProtectedRoute><StudentProgress /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/ManageSchool" element={<LayoutWrapper currentPageName="ManageSchool"><ProtectedRoute><ManageSchool /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Insights" element={<LayoutWrapper currentPageName="Insights"><ProtectedRoute><Insights /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/SchoolSettings" element={<LayoutWrapper currentPageName="SchoolSettings"><ProtectedRoute><SchoolSettings /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/MySchool" element={<LayoutWrapper currentPageName="MySchool"><ProtectedRoute><MySchool /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/TeacherBlockWards" element={<Navigate to="/TeacherRecords" replace />} />
-      <Route path="/GradeBook" element={<Navigate to="/Grades" replace />} />
       <Route path="/external-verify/:token" element={<ExternalVerify />} />
       <Route path="/guardian-consent/:token" element={<GuardianConsent />} />
       <Route path="/team/:slug" element={<TeamPage />} />
@@ -205,12 +148,10 @@ const AuthenticatedApp = () => {
       <Route path="/Opportunities" element={<LayoutWrapper currentPageName="Opportunities"><ProtectedRoute><Opportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ManageOpportunities" element={<LayoutWrapper currentPageName="ManageOpportunities"><ProtectedRoute><ManageOpportunities /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Feed" element={<LayoutWrapper currentPageName="Feed"><ProtectedRoute><Feed /></ProtectedRoute></LayoutWrapper>} />
-      {/* Role dashboards + core navigation destinations (see imports above) */}
+      {/* Role dashboards — per-persona landing pages (Holder / Verifier / Org Owner) */}
       <Route path="/StudentDashboard" element={<LayoutWrapper currentPageName="StudentDashboard"><ProtectedRoute><StudentDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/TeacherDashboard" element={<LayoutWrapper currentPageName="TeacherDashboard"><ProtectedRoute><TeacherDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminDashboard" element={<LayoutWrapper currentPageName="AdminDashboard"><ProtectedRoute><AdminDashboard /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Classes" element={<LayoutWrapper currentPageName="Classes"><ProtectedRoute><Classes /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Messages" element={<LayoutWrapper currentPageName="Messages"><ProtectedRoute><Messages /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Profile" element={<LayoutWrapper currentPageName="Profile"><ProtectedRoute><Profile /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
@@ -220,12 +161,6 @@ const AuthenticatedApp = () => {
       <Route path="/admin/organisations" element={<Navigate to="/internal/admin" replace />} />
       {/* Issuer organisation registration — persistent IssuerOrganisation record */}
       <Route path="/register-organisation" element={<Register />} />
-      <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/Resources" element={<LayoutWrapper currentPageName="Resources"><ProtectedRoute><Resources /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/MyPoints" element={<LayoutWrapper currentPageName="MyPoints"><ProtectedRoute><MyPoints /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/IssuePoints" element={<LayoutWrapper currentPageName="IssuePoints"><ProtectedRoute><IssuePoints /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/IssueBlockWard" element={<LayoutWrapper currentPageName="IssueBlockWard"><ProtectedRoute><IssueBlockWard /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/PointCategories" element={<LayoutWrapper currentPageName="PointCategories"><ProtectedRoute><PointCategories /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
       {/* BlockWard AI is hidden during beta — any link to it lands on the

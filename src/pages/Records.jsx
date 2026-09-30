@@ -1,36 +1,25 @@
 import React from 'react';
 import RoleGuard from '@/components/auth/RoleGuard';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import AllRecordsTab from '@/components/records/AllRecordsTab';
-import GradeManagement from '@/pages/GradeManagement';
 
 /**
- * Records — the admin records hub: All records (StudentRecord by school_id)
- * and Grade management, behind one tabbed route.
+ * Records — the organisation owner's credentials hub. Lists every achievement
+ * record for review, signing, delivery and verification. (Grade management
+ * — a legacy school-management feature — was removed during the product
+ * pivot and is no longer a tab here.)
  */
-export default function Records() { return <RoleGuard roles={['admin']}><RecordsImpl /></RoleGuard>; }
-function RecordsImpl() {
+export default function Records() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Records</h1>
-        <p className="text-muted-foreground mt-1">
-          Every student achievement record — review, sign, deliver, verify, and manage grades
-        </p>
+    <RoleGuard roles={['admin']}>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Records</h1>
+          <p className="text-muted-foreground mt-1">
+            Every achievement record — review, sign, deliver, and verify
+          </p>
+        </div>
+        <AllRecordsTab />
       </div>
-
-      <Tabs defaultValue="records">
-        <TabsList>
-          <TabsTrigger value="records">All records</TabsTrigger>
-          <TabsTrigger value="grades">Grade management</TabsTrigger>
-        </TabsList>
-        <TabsContent value="records" className="mt-6">
-          <AllRecordsTab />
-        </TabsContent>
-        <TabsContent value="grades" className="mt-6">
-          <GradeManagement />
-        </TabsContent>
-      </Tabs>
-    </div>
+    </RoleGuard>
   );
 }
