@@ -111,7 +111,7 @@ function StudentDashboardContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Welcome back, ${profile?.first_name || 'Student'}`}
+        title={`Welcome back, ${profile?.first_name || 'there'}`}
         description={profile?.grade_level ? `Grade ${profile.grade_level} · Your achievement overview` : 'Your achievement overview'}
       >
         <Button asChild>

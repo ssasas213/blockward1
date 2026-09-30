@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Shield, Building2, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign, UserRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { consumePostAuthRedirect, guardedRedirect } from '@/lib/authRedirectGuard';
+import { consumePostAuthRedirect, guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
 import { SIGNUP_STORAGE_KEYS } from '@/lib/signupSession';
 
@@ -121,6 +121,12 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
+  // A pre-auth organisation intent (Create/Join Organisation chosen while
+  // signed out). Stashed on the post-auth redirect so it survives account
+  // creation; mirrored here to show a "what happens next" banner on the form.
+  const [pendingIntent, setPendingIntent] = useState(() => {
+    try { return sessionStorage.getItem('blockward_post_auth_intent') || ''; } catch { return ''; }
+  });
 
   // DOB is always collected; a guardian email becomes required under 13.
   const validateAgeFields = () => {
@@ -433,7 +439,7 @@ export default function Signup() {
           </div>
 
           <div className="space-y-4">
-            <Card className="surface-card card-hover cursor-pointer" onClick={() => (window.location.href = '/register-organisation')}>
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => { setPostAuthRedirect('/register-organisation'); setPendingIntent('/register-organisation'); setMode('personal'); }}>
               <CardContent className="p-6">
                 <h3 className="text-base font-semibold text-foreground">Create a new organisation</h3>
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -446,7 +452,7 @@ export default function Signup() {
               </CardContent>
             </Card>
 
-            <Card className="surface-card card-hover cursor-pointer" onClick={() => (window.location.href = '/organisation')}>
+            <Card className="surface-card card-hover cursor-pointer" onClick={() => { setPostAuthRedirect('/organisation'); setPendingIntent('/organisation'); setMode('personal'); }}>
               <CardContent className="p-6">
                 <h3 className="text-base font-semibold text-foreground">Join an existing organisation</h3>
                 <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -492,6 +498,12 @@ export default function Signup() {
           <AnimatePresence mode="wait">
             {step === 'details' && (
               <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                {pendingIntent && (
+                  <div className="flex items-center gap-2 rounded-lg border border-accent/25 bg-accent/5 px-3 py-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4 flex-shrink-0 text-accent" />
+                    <span>After your account is created, we'll continue to <strong className="text-foreground">{pendingIntent === '/register-organisation' ? 'register your organisation' : 'join your organisation'}</strong>.</span>
+                  </div>
+                )}
                 {claimHandle && (
                   <div className="flex items-center gap-2 rounded-lg border border-success/25 bg-success/5 px-3 py-2 text-sm text-success">
                     <AtSign className="h-4 w-4 flex-shrink-0" />

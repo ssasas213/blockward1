@@ -237,7 +237,7 @@ export default function Register() {
                 Create Organisation <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                The organisation is saved to Blockward's database immediately — refreshing or signing out never loses it.
+                You'll become the Organisation Owner and can invite authorised Verifiers after setup.
               </p>
             </form>
           </CardContent>
