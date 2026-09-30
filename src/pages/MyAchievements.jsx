@@ -14,6 +14,8 @@ import {
   Plus, Search, Building2, Loader2, Upload, X, FileText, ExternalLink,
   ShieldCheck, Clock, PenTool, UserPlus,
 } from 'lucide-react';
+import AchievementListItem from '@/components/achievements/AchievementListItem';
+import AchievementDetailDrawer from '@/components/achievements/AchievementDetailDrawer';
 
 const CATEGORIES = [
   ['certification', 'Certification'], ['competition', 'Competition'], ['academic', 'Academic'],
@@ -58,6 +60,7 @@ export default function MyAchievements() {
   const [requestEmail, setRequestEmail] = useState('');
   const [requesting, setRequesting] = useState(false);
   const [retryingId, setRetryingId] = useState(null);
+  const [detail, setDetail] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -238,79 +241,10 @@ export default function MyAchievements() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {items.map((a) => {
-            const meta = STATUS_META[a.status] || STATUS_META.unverified;
-            const r = a.request;
-            return (
-              <Card key={a.id} className="surface-card">
-                <CardContent className="p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-foreground">{a.title}</h3>
-                        <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${meta.cls}`}>{meta.label}</span>
-                      </div>
-                      <p className="text-xs text-tertiary capitalize">{(a.category || '').replace(/_/g, ' ')} · {a.issuer_org || 'No issuer connected'}{a.date_achieved ? ` · ${format(new Date(a.date_achieved), 'd MMM yyyy')}` : ''}</p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {['unverified', 'rejected'].includes(a.status) && (
-                        <Button size="sm" onClick={() => openRequest(a)}>
-                          <PenTool className="h-3.5 w-3.5 mr-1.5" /> Request verification
-                        </Button>
-                      )}
-                      {['verification_requested', 'issuer_confirmed'].includes(a.status) && (
-                        <Button size="sm" variant="outline" onClick={() => openRequest(a)}>
-                          <PenTool className="h-3.5 w-3.5 mr-1.5" /> Resend request
-                        </Button>
-                      )}
-                      {a.credential && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to={`/verify/${a.credential.bw_id}`}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View credential
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Request progress */}
-                  {r && ['pending', 'opened', 'approved'].includes(r.status) && (
-                    <div className="mt-3 rounded-lg border border-border bg-secondary/40 px-3 py-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        {r.status === 'approved' ? 'Issuer verification complete' : `Awaiting ${r.required_signatures || 1} verifier signature${(r.required_signatures || 1) > 1 ? 's' : ''}`}
-                      </span>
-                      {(r.required_signatures || 1) > 1 && (
-                        <span className="font-medium text-foreground">{r.signature_count || 0} of {r.required_signatures} signatures</span>
-                      )}
-                      {r.status === 'approved' && a.status === 'issuer_confirmed' && !a.credential && (
-                        <span className="text-info">Issuer verified — awaiting Blockward organisation approval</span>
-                      )}
-                      {r.status === 'approved' && ['pending', 'processing'].includes(a.credential?.anchor_status) && (
-                        <span className="text-warning">Securing on Polygon Amoy…</span>
-                      )}
-                      {r.status === 'approved' && a.credential?.anchor_status === 'confirmed' && (
-                        <span className="text-success">Blockchain secured — confirming integrity…</span>
-                      )}
-                      {r.status === 'approved' && a.credential?.anchor_status === 'failed' && (
-                        <>
-                          <span className="text-destructive">Blockchain confirmation delayed</span>
-                          <Button size="sm" variant="outline" onClick={() => retryAnchor(a)} disabled={retryingId === a.id}>
-                            {retryingId === a.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
-                            Retry
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  {r && r.status === 'rejected' && (
-                    <p className="mt-3 text-xs text-destructive">The issuer could not verify this{r.decision_reason ? ` — "${r.decision_reason}"` : ''}.</p>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="space-y-3">
+          {items.map((a) => (
+            <AchievementListItem key={a.id} item={a} onOpen={setDetail} />
+          ))}
         </div>
       )}
 
@@ -500,6 +434,8 @@ export default function MyAchievements() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AchievementDetailDrawer item={detail} open={!!detail} onOpenChange={(v) => !v && setDetail(null)} onResend={openRequest} onRetry={retryAnchor} retrying={retryingId} />
     </div>
   );
 }

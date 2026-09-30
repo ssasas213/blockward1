@@ -15,15 +15,15 @@ module.exports = {
   			'2xl': 'calc(var(--radius) + 8px)'
   		},
   		boxShadow: {
-  		'glow': '0 0 24px hsl(258 90% 66% / 0.18)',
-  		'glow-sm': '0 0 12px hsl(258 90% 66% / 0.12)',
-  		'glow-accent': '0 0 18px hsl(330 81% 60% / 0.14)',
+  		'glow': '0 0 24px hsl(217 84% 53% / 0.16)',
+  		'glow-sm': '0 0 12px hsl(217 84% 53% / 0.12)',
+  		'glow-accent': '0 0 18px hsl(213 94% 60% / 0.12)',
   		'card': '0 1px 3px hsl(0 0% 0% / 0.24), 0 1px 1px hsl(0 0% 0% / 0.12), inset 0 1px 0 hsl(0 0% 100% / 0.04)',
-  		'card-hover': '0 8px 30px hsl(0 0% 0% / 0.30), 0 0 20px hsl(258 90% 66% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
-  		'button': '0 1px 2px hsl(0 0% 0% / 0.30), 0 4px 14px hsl(258 90% 66% / 0.20)',
-  		'button-hover': '0 2px 4px hsl(0 0% 0% / 0.34), 0 6px 20px hsl(258 90% 66% / 0.30)',
+  		'card-hover': '0 8px 30px hsl(0 0% 0% / 0.30), 0 0 20px hsl(217 84% 53% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
+  		'button': '0 1px 2px hsl(0 0% 0% / 0.30), 0 4px 14px hsl(217 84% 53% / 0.20)',
+  		'button-hover': '0 2px 4px hsl(0 0% 0% / 0.34), 0 6px 20px hsl(217 84% 53% / 0.30)',
   		'elevated': '0 4px 24px hsl(0 0% 0% / 0.34), inset 0 1px 0 hsl(0 0% 100% / 0.05)',
-  		'brand-glow': '0 0 0 1px hsl(258 90% 66% / 0.15), 0 8px 30px hsl(0 0% 0% / 0.30), 0 0 24px hsl(258 90% 66% / 0.10)',
+  		'brand-glow': '0 0 0 1px hsl(217 84% 53% / 0.15), 0 8px 30px hsl(0 0% 0% / 0.30), 0 0 24px hsl(217 84% 53% / 0.10)',
   		},
   		colors: {
   			background: 'hsl(var(--background))',

@@ -10,6 +10,7 @@ import { getActorProfile, pushEvent, appBaseUrl } from '../../shared/verificatio
 import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 import { verifierInviteEmail } from '../../shared/orgEmails.ts';
 import { issueCredential } from '../../shared/credentialIssuance.ts';
+import { requireInternalAdmin } from '../../shared/internalAdmin.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -55,6 +56,87 @@ export default async function (req: Request): Promise<Response> {
         }
       } catch { /* best-effort */ }
       return Response.json({ ok: true, org_id: m.org_id, org_name: m.org_name });
+    }
+
+    // ── INTERNAL ADMIN actions (Blockward staff; NO org membership required) ──
+    if (action === 'set_org_status' || action === 'request_info') {
+      const { me, error: adminErr } = await requireInternalAdmin(base44);
+      if (adminErr) return adminErr;
+      const orgIdA = String(body.org_id || '');
+      const orgRowsA = await svc.entities.IssuerOrganisation.filter({ id: orgIdA });
+      const org = orgRowsA?.[0];
+      if (!org) return Response.json({ error: 'Organisation not found' }, { status: 404 });
+
+      const prev = org.status;
+      const reason = String(body.reason || '').trim();
+      let newStatus = prev;
+      let auditAction: string = 'request_info';
+
+      if (action === 'set_org_status') {
+        const status = String(body.status || '');
+        if (!['verified', 'rejected', 'suspended', 'pending'].includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
+        if (['rejected', 'suspended'].includes(status) && reason.length < 4) return Response.json({ error: 'A reason is required for rejection or suspension' }, { status: 400 });
+        auditAction = status === 'verified' ? 'approve' : status === 'rejected' ? 'reject' : status === 'suspended' ? 'suspend' : 'restore';
+        newStatus = status;
+      } else {
+        // request_info — org stays pending; the reason IS the information request.
+        if (reason.length < 4) return Response.json({ error: 'Describe the information you need from the organisation' }, { status: 400 });
+        newStatus = 'pending';
+      }
+
+      await svc.entities.IssuerOrganisation.update(org.id, {
+        status: newStatus,
+        verified_at: newStatus === 'verified' ? nowIso : org.verified_at,
+        verified_by: me.email,
+      });
+      await orgEvent(svc, org, newStatus, me.email, reason ? `Reason: ${reason}` : undefined);
+
+      // Append-only internal admin audit trail.
+      await svc.entities.AdminAuditLog.create({
+        admin_email: me.email,
+        admin_name: me.full_name || me.email,
+        action: auditAction,
+        org_id: org.id,
+        org_name: org.name,
+        previous_status: prev,
+        new_status: newStatus,
+        reason: reason || null,
+        timestamp: nowIso,
+      }).catch(() => {});
+
+      // Notify the organisation owner.
+      try {
+        const verb = newStatus === 'verified' ? 'approved' : newStatus === 'rejected' ? 'rejected' : newStatus === 'suspended' ? 'suspended' : 'reviewed';
+        await svc.entities.Notification.create({
+          user_email: org.owner_email,
+          title: `Organisation ${verb}`,
+          body: action === 'request_info'
+            ? `Blockward needs more information about ${org.name}: ${reason}`
+            : `${org.name} is now ${newStatus}.${reason ? ` Reason: ${reason}` : ''}`,
+          type: newStatus === 'verified' ? 'org_verified' : newStatus === 'rejected' ? 'org_rejected' : 'org_verification_requested',
+          related_id: org.id,
+        });
+      } catch { /* best-effort */ }
+
+      // On verification: resume achievements held while the org was pending.
+      // (Credential → BW-HASH-V1 → Polygon Amoy anchor → integrity, idempotent.)
+      if (newStatus === 'verified') {
+        try {
+          const held = await svc.entities.VerificationRequest.filter({ org_id: org.id, status: 'approved' }).catch(() => []);
+          for (const vr of held || []) {
+            const achRows = await svc.entities.Achievement.filter({ id: vr.achievement_id, status: 'issuer_confirmed' }).catch(() => []);
+            const ach = achRows?.[0];
+            if (!ach || ach.credential_id) continue;
+            const sigRecords = await svc.entities.VerificationSignature.filter({ request_id: vr.id }).catch(() => []);
+            const verifiers = (sigRecords || [])
+              .sort((a: any, b: any) => new Date(a.signed_at).getTime() - new Date(b.signed_at).getTime())
+              .map((s: any) => ({ name: s.verifier_name, title: s.verifier_title, signed_at: s.signed_at }));
+            await issueCredential(svc, { ach, vr, method: vr.decision_method || 'reviewed_evidence', verifiers, actorEmail: me.email }).catch(() => {});
+          }
+        } catch { /* best-effort: the org is verified regardless */ }
+      }
+
+      return Response.json({ ok: true, status: newStatus });
     }
 
     // ── Everything below needs an ACTIVE membership ──
@@ -176,45 +258,6 @@ export default async function (req: Request): Promise<Response> {
       }
       await orgEvent(svc, org, 'policy_changed', email, `${policyName} — requires ${required} signature(s)`);
       return Response.json({ ok: true });
-    }
-
-    if (action === 'set_org_status') {
-      // Blockward STAFF only — manual organisation verification (MVP).
-      // Platform admin (User.role) or the test super user.
-      const me = await base44.auth.me().catch(() => null);
-      const staffOk = me?.role === 'admin' || (isTestModeEnabled() && String(me?.email || '').toLowerCase() === getTestSuperUserEmail());
-      if (!staffOk) return Response.json({ error: 'Only Blockward staff can verify organisations' }, { status: 403 });
-      const status = String(body.status || '');
-      if (!['verified', 'rejected', 'suspended', 'pending'].includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
-      await svc.entities.IssuerOrganisation.update(org.id, { status, verified_at: status === 'verified' ? nowIso : org.verified_at, verified_by: email });
-      await orgEvent(svc, org, status, email);
-
-      // ── On verification: resume achievements that were held while this org
-      // was pending. Each had reached the verifier signature threshold, but
-      // the credential was deliberately NOT minted until Blockward verified
-      // the organisation. Now the full issuance pipeline runs for each —
-      // credential → BW-HASH-V1 → Polygon Amoy anchor → integrity —
-      // idempotently (issueCredential + anchorCredential already guard
-      // against double-anchoring). ──
-      if (status === 'verified') {
-        try {
-          const held = await svc.entities.VerificationRequest.filter({ org_id: org.id, status: 'approved' }).catch(() => []);
-          for (const vr of held || []) {
-            const achRows = await svc.entities.Achievement.filter({ id: vr.achievement_id, status: 'issuer_confirmed' }).catch(() => []);
-            const ach = achRows?.[0];
-            // Only resume truly-held achievements (no credential yet). A
-            // credential that already exists is left to its own anchor state.
-            if (!ach || ach.credential_id) continue;
-            const sigRecords = await svc.entities.VerificationSignature.filter({ request_id: vr.id }).catch(() => []);
-            const verifiers = (sigRecords || [])
-              .sort((a: any, b: any) => new Date(a.signed_at).getTime() - new Date(b.signed_at).getTime())
-              .map((s: any) => ({ name: s.verifier_name, title: s.verifier_title, signed_at: s.signed_at }));
-            await issueCredential(svc, { ach, vr, method: vr.decision_method || 'reviewed_evidence', verifiers, actorEmail: email }).catch(() => {});
-          }
-        } catch { /* best-effort: the org is verified regardless */ }
-      }
-
-      return Response.json({ ok: true, status });
     }
 
     return Response.json({ error: 'Unknown action' }, { status: 400 });

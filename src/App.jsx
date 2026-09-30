@@ -94,7 +94,7 @@ import IssuePoints from './pages/IssuePoints';
 import IssueBlockWard from './pages/IssueBlockWard';
 import PointCategories from './pages/PointCategories';
 import MyAchievements from './pages/MyAchievements';
-import OrgApprovals from './pages/admin/OrgApprovals';
+import AdminConsole from './pages/internal/AdminConsole';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -215,7 +215,9 @@ const AuthenticatedApp = () => {
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
       {/* Blockward staff internal tools — role re-checked server-side */}
-      <Route path="/admin/organisations" element={<OrgApprovals />} />
+      <Route path="/internal" element={<Navigate to="/internal/admin" replace />} />
+      <Route path="/internal/admin" element={<AdminConsole />} />
+      <Route path="/admin/organisations" element={<Navigate to="/internal/admin" replace />} />
       {/* Issuer organisation registration — persistent IssuerOrganisation record */}
       <Route path="/register-organisation" element={<Register />} />
       <Route path="/Timetable" element={<LayoutWrapper currentPageName="Timetable"><ProtectedRoute><Timetable /></ProtectedRoute></LayoutWrapper>} />

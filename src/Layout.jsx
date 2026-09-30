@@ -15,6 +15,7 @@ import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
 import BrandMark from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
+import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
 import PageErrorBoundary from '@/components/PageErrorBoundary';
 import { TestModeBanner, TestModeMenuItems } from '@/components/testmode/TestModeBanner';
@@ -150,7 +151,7 @@ export default function Layout({ children, currentPageName }) {
           </button>
         )}
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <BlockwardMark className="h-5 w-5" />
           <span className="font-semibold text-foreground text-sm">BlockWard</span>
         </div>
         <TestModeBanner />

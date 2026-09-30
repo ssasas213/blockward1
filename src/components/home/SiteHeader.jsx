@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Shield, ArrowRight, Menu, X } from 'lucide-react';
+import { ArrowRight, Menu, X } from 'lucide-react';
+import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -26,7 +27,7 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <BlockwardMark className="h-5 w-5" />
           <span className={cn(
             "font-semibold text-base tracking-tight transition-colors",
             scrolled || menuOpen ? "text-foreground" : "text-white"

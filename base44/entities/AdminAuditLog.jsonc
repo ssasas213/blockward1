@@ -1,0 +1,69 @@
+{
+  "name": "AdminAuditLog",
+  "type": "object",
+  "properties": {
+    "admin_email": {
+      "type": "string",
+      "description": "Email of the Blockward internal admin who performed the action"
+    },
+    "admin_name": {
+      "type": "string",
+      "description": "Display name of the internal admin"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "reject",
+        "suspend",
+        "restore",
+        "request_info"
+      ],
+      "description": "The organisational action taken by the internal admin"
+    },
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id the action targeted"
+    },
+    "org_name": {
+      "type": "string",
+      "description": "Denormalised organisation name at action time"
+    },
+    "previous_status": {
+      "type": "string",
+      "description": "Organisation status before the action"
+    },
+    "new_status": {
+      "type": "string",
+      "description": "Organisation status after the action"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Internal admin's recorded reason (required for reject/suspend/request_info)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "admin_email",
+    "action",
+    "org_id",
+    "timestamp"
+  ],
+  "rls": {
+    "create": {
+      "data.admin_email": "__service_role_only__"
+    },
+    "read": {
+      "data.admin_email": "__service_role_only__"
+    },
+    "update": {
+      "data.admin_email": "__service_role_only__"
+    },
+    "delete": {
+      "data.admin_email": "__service_role_only__"
+    }
+  }
+}

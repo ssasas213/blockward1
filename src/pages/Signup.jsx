@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Building2, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign, UserRound } from 'lucide-react';
+import { Building2, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign, UserRound } from 'lucide-react';
+import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { consumePostAuthRedirect, guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
@@ -359,9 +360,7 @@ export default function Signup() {
         <div className="w-full max-w-2xl">
           <div className="text-center mb-10">
             <Link to="/" className="inline-flex flex-col items-center gap-2">
-              <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-2">
-                <Shield className="h-7 w-7 text-primary-foreground" />
-              </div>
+              <BlockwardMark size="xl" className="mx-auto mb-2" />
               <CardTitle className="text-3xl tracking-tight">Join Blockward</CardTitle>
             </Link>
             <CardDescription className="mt-2 text-base">
@@ -483,9 +482,7 @@ export default function Signup() {
       <Card className="w-full max-w-lg border-border bg-card">
         <CardHeader className="text-center pb-2">
           <Link to="/" className="inline-flex flex-col items-center gap-2">
-            <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-2">
-              <Shield className="h-7 w-7 text-primary-foreground" />
-            </div>
+            <BlockwardMark size="xl" className="mx-auto mb-2" />
             <CardTitle className="text-2xl">Create your personal account</CardTitle>
             <CardDescription>
               {step === 'details'

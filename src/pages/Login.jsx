@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { handlePostLoginRedirect } from '@/lib/authHelpers';
-import { Shield, Loader2, Clock, Ban, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
+import { Loader2, Clock, Ban, AlertCircle, Mail, ArrowLeft } from 'lucide-react';
+import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -194,10 +195,8 @@ export default function Login({ staffEntry = false }) {
         {/* Branding */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex flex-col items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center">
-              <Shield className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <span className="text-xl font-semibold text-foreground tracking-tight">BlockWard</span>
+            <BlockwardMark size="xl" className="mx-auto" />
+            <span className="text-xl font-semibold text-foreground tracking-tight">Blockward</span>
           </Link>
         </div>
 
