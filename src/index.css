@@ -600,3 +600,27 @@ img, video { max-width: 100%; height: auto; }
 /* Density — tighter grids and list rows on the public profile. */
 .pf-page[data-density='compact'] .pf-grid { gap: 0.5rem; }
 .pf-page[data-density='compact'] .pf-list > * + * { margin-top: 0.375rem; }
+
+/* ===== Marketing light bands — near-white sections inside the dark site ===== */
+.mkt-light { background: hsl(263 33% 97%); color: hsl(267 25% 12%); }
+.mkt-light .mkt-ink { color: hsl(267 25% 12%); }
+.mkt-light .mkt-sub { color: hsl(276 9% 37%); }
+.mkt-light .mkt-line { border-color: hsl(263 22% 90%); }
+.mkt-light .mkt-card { background: hsl(0 0% 100%); border: 1px solid hsl(263 22% 90%); box-shadow: 0 1px 3px hsl(267 25% 12% / 0.06); }
+.mkt-light .mkt-soft { background: hsl(266 30% 95%); }
+.mkt-light .mkt-grid-bg {
+  background-image: linear-gradient(hsl(267 25% 12% / 0.04) 1px, transparent 1px), linear-gradient(90deg, hsl(267 25% 12% / 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+.mkt-light .mkt-gradient-border {
+  border: 1px solid transparent;
+  background-image: linear-gradient(hsl(0 0% 100%), hsl(0 0% 100%)), linear-gradient(135deg, hsl(258 70% 53% / 0.45), hsl(330 80% 50% / 0.45));
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 1px 3px hsl(267 25% 12% / 0.06);
+}
+/* Dark bands */
+.mkt-grid-bg {
+  background-image: linear-gradient(hsl(var(--foreground) / 0.035) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground) / 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}

@@ -56,11 +56,6 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
             </Button>
           ) : (
             <>
-              {/* Professional access is a first-class link, not hidden behind
-                  "Not a student?" */}
-              <Link to="/schools/login" className={cn(ghostText, "hidden sm:block")}>
-                Teachers &amp; school admins
-              </Link>
               <button onClick={onSignIn} className={ghostText}>
                 Sign In
               </button>
@@ -98,13 +93,6 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
             ))}
           </div>
           <div className="pt-3 mt-2 border-t border-border space-y-1">
-            <Link
-              to="/schools/login"
-              onClick={() => setMenuOpen(false)}
-              className="block px-3 py-2.5 rounded-lg text-sm text-foreground font-medium hover:bg-hover transition-colors"
-            >
-              Teachers &amp; school admins
-            </Link>
             {user && profile ? (
               <Button onClick={() => { setMenuOpen(false); onDashboard(); }} size="sm" className="w-full mt-1">
                 Dashboard <ArrowRight className="ml-1.5 h-4 w-4" />

@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toLogin } from '@/lib/authRedirectGuard';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, Search } from 'lucide-react';
 import SiteHeader from '@/components/home/SiteHeader';
 import UniversalHero from '@/components/home/UniversalHero';
-import UniversalSections from '@/components/home/UniversalSections';
+import ProblemSection from '@/components/home/ProblemSection';
+import WhyBlockward from '@/components/home/WhyBlockward';
+import StatementSection from '@/components/home/StatementSection';
+import HowItWorksTimeline from '@/components/home/HowItWorksTimeline';
+import VerifiedMeaning from '@/components/home/VerifiedMeaning';
+import ProfileShowcase from '@/components/home/ProfileShowcase';
+import UseCases from '@/components/home/UseCases';
+import AudienceProof from '@/components/home/AudienceProof';
+import VerifyWidget from '@/components/home/VerifyWidget';
+import OrgCta from '@/components/home/OrgCta';
+import FinalCta from '@/components/home/FinalCta';
 import SiteFooter from '@/components/home/SiteFooter';
 
 const NAV_LINKS = [
   { label: 'How it works', href: '#how-it-works' },
+  { label: 'For individuals', href: '#why-blockward' },
   { label: 'For organisations', href: '/ForOrganisations' },
-  { label: 'Verify a credential', href: '/verify' },
+  { label: 'Verify a credential', href: '#verify' },
 ];
 
 export default function Home() {
@@ -51,36 +60,20 @@ export default function Home() {
         onSignIn={toLogin}
         onGetStarted={() => (window.location.href = '/Signup')}
         onDashboard={handleGoToDashboard}
-        ctaLabel="Create Your Profile"
+        ctaLabel="Create Profile"
       />
       <UniversalHero />
-      <UniversalSections />
-
-      {/* Final CTA */}
-      <section className="relative py-24 sm:py-32 px-4 sm:px-6 lg:px-8 border-t border-border">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl sm:text-5xl font-bold text-foreground tracking-tight leading-tight">
-            Prove it once.
-            <br />
-            Prove it everywhere.
-          </h2>
-          <p className="text-base sm:text-lg text-muted-foreground mt-5 max-w-xl mx-auto">
-            Turn your achievements into Blockward Verified credentials — issuer-signed, cryptographically
-            secured and independently checkable from one link.
-          </p>
-          <div className="mt-9 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button size="lg" className="text-base px-8 h-12" onClick={() => (window.location.href = '/Signup')}>
-              Create Your Profile
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button size="lg" variant="outline" className="text-base px-8 h-12" onClick={() => (window.location.href = '/verify')}>
-              <Search className="mr-1 h-5 w-5" />
-              Verify a Credential
-            </Button>
-          </div>
-        </div>
-      </section>
-
+      <ProblemSection />
+      <WhyBlockward />
+      <StatementSection />
+      <HowItWorksTimeline />
+      <VerifiedMeaning />
+      <ProfileShowcase />
+      <UseCases />
+      <AudienceProof />
+      <VerifyWidget />
+      <OrgCta />
+      <FinalCta />
       <SiteFooter />
     </div>
   );

@@ -1,29 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Shield, Building2, Award, FileSearch } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const ORG_URL = '/ForOrganisations';
 
 const COLUMNS = [
-  { title: 'For students', links: [
-    { label: 'Example profile', href: '/DemoProfile' },
-    { label: 'Benefits', href: '/#benefits' },
-    { label: 'Claim your profile', href: '/Signup' },
+  { title: 'Individuals', links: [
+    { label: 'Create Profile', href: '/Signup' },
+    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'Example Profile', href: '/DemoProfile' },
   ]},
-  { title: 'For organisations', links: [
-    { label: 'Overview', href: ORG_URL },
-    { label: 'How it works', href: `${ORG_URL}#how-it-works` },
-    { label: 'Features', href: `${ORG_URL}#features` },
-    { label: 'Industries', href: `${ORG_URL}#industries` },
+  { title: 'Organisations', links: [
+    { label: 'For Organisations', href: ORG_URL },
+    { label: 'Register Organisation', href: '/register-organisation' },
+    { label: 'Verification', href: `${ORG_URL}#how-it-works` },
+  ]},
+  { title: 'Resources', links: [
+    { label: 'Verify a Credential', href: '/verify' },
+    { label: 'Documentation', href: '/documentation' },
+    { label: 'Security', href: '/security' },
   ]},
   { title: 'Company', links: [
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact' },
-  ]},
-  { title: 'Resources', links: [
-    { label: 'Verify a credential', href: '/verify' },
-    { label: 'Documentation', href: '/documentation' },
-    { label: 'Security', href: '/security' },
+    { label: 'Privacy', href: '/privacy' },
+    { label: 'Terms', href: '/terms' },
   ]},
 ];
 
@@ -33,9 +34,9 @@ const COLUMNS = [
  * returns show: false below its thresholds) — no vanity metrics, no fake "10k+".
  */
 function TrustStats() {
-  const [stats, setStats] = useState(null);
+  const [stats, setStats] = React.useState(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     let active = true;
     base44.functions.invoke('platformStats', {})
       .then((res) => { if (active && res.data?.ok && res.data.show) setStats(res.data); })
@@ -70,14 +71,14 @@ export default function SiteFooter() {
       <div className="max-w-7xl mx-auto">
         <TrustStats />
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <Shield className="h-5 w-5 text-primary" />
               <span className="font-semibold text-foreground">BlockWard</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Verified achievements, owned by you — a portable profile that travels with you.
+              Verified achievements. Proof that travels with you.
             </p>
           </div>
 
