@@ -12,7 +12,7 @@ import SignoffCountBadge from '@/components/sidebar/SignoffCountBadge';
 import PendingTeachersBadge from '@/components/sidebar/PendingTeachersBadge';
 import ApprovalsCountBadge from '@/components/sidebar/ApprovalsCountBadge';
 import StudentBottomTabs from '@/components/sidebar/StudentBottomTabs';
-import SchoolSwitcher from '@/components/sidebar/SchoolSwitcher';
+import BrandMark from '@/components/sidebar/SchoolSwitcher';
 import ThemeToggle, { ThemeToggleCompact } from '@/components/sidebar/ThemeToggle';
 import InitialsAvatar from '@/components/ui/InitialsAvatar';
 import BlockWardGuide from '@/components/onboarding/BlockWardGuide';
@@ -103,7 +103,10 @@ export default function Layout({ children, currentPageName }) {
 
   const orgType = school?.org_type || 'school';
   const orgRoleLabels = school?.settings?.role_labels;
-  const roleLabel = orgRoleLabels?.[userType] || getRoleLabel(orgType, userType);
+  // Holders no longer carry a generic role label under their name — the
+  // sidebar shows the person; organisation membership is surfaced on the
+  // organisation dashboard. Staff roles keep their label.
+  const roleLabel = userType === 'student' ? '' : (orgRoleLabels?.[userType] || getRoleLabel(orgType, userType));
   const displayName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
 
   return (
@@ -231,7 +234,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
     <div className="flex flex-col h-full">
       {/* Logo + School Switcher */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-sidebar-border">
-        <SchoolSwitcher onClose={onClose} />
+        <BrandMark />
         {onClose && (
           <button onClick={onClose} className="p-1.5 hover:bg-hover rounded-md lg:hidden" aria-label="Close menu">
             <X className="h-4 w-4 text-muted-foreground" />
@@ -282,7 +285,7 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
               <InitialsAvatar name={displayName} src={profile?.avatar_url} size="sm" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
-                <p className="text-xs text-tertiary truncate">{roleLabel}</p>
+                {roleLabel ? <p className="text-xs text-tertiary truncate">{roleLabel}</p> : null}
               </div>
               <ChevronDown className="h-4 w-4 text-tertiary flex-shrink-0" />
             </button>

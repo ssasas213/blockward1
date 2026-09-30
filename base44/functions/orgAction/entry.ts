@@ -9,6 +9,7 @@ import { isTestModeEnabled, getTestSuperUserEmail } from '../../shared/testMode.
 import { getActorProfile, pushEvent, appBaseUrl } from '../../shared/verificationFlow.ts';
 import { sendTrackedEmail } from '../../shared/emailDelivery.ts';
 import { verifierInviteEmail } from '../../shared/orgEmails.ts';
+import { issueCredential } from '../../shared/credentialIssuance.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -187,6 +188,32 @@ export default async function (req: Request): Promise<Response> {
       if (!['verified', 'rejected', 'suspended', 'pending'].includes(status)) return Response.json({ error: 'Invalid status' }, { status: 400 });
       await svc.entities.IssuerOrganisation.update(org.id, { status, verified_at: status === 'verified' ? nowIso : org.verified_at, verified_by: email });
       await orgEvent(svc, org, status, email);
+
+      // ── On verification: resume achievements that were held while this org
+      // was pending. Each had reached the verifier signature threshold, but
+      // the credential was deliberately NOT minted until Blockward verified
+      // the organisation. Now the full issuance pipeline runs for each —
+      // credential → BW-HASH-V1 → Polygon Amoy anchor → integrity —
+      // idempotently (issueCredential + anchorCredential already guard
+      // against double-anchoring). ──
+      if (status === 'verified') {
+        try {
+          const held = await svc.entities.VerificationRequest.filter({ org_id: org.id, status: 'approved' }).catch(() => []);
+          for (const vr of held || []) {
+            const achRows = await svc.entities.Achievement.filter({ id: vr.achievement_id, status: 'issuer_confirmed' }).catch(() => []);
+            const ach = achRows?.[0];
+            // Only resume truly-held achievements (no credential yet). A
+            // credential that already exists is left to its own anchor state.
+            if (!ach || ach.credential_id) continue;
+            const sigRecords = await svc.entities.VerificationSignature.filter({ request_id: vr.id }).catch(() => []);
+            const verifiers = (sigRecords || [])
+              .sort((a: any, b: any) => new Date(a.signed_at).getTime() - new Date(b.signed_at).getTime())
+              .map((s: any) => ({ name: s.verifier_name, title: s.verifier_title, signed_at: s.signed_at }));
+            await issueCredential(svc, { ach, vr, method: vr.decision_method || 'reviewed_evidence', verifiers, actorEmail: email }).catch(() => {});
+          }
+        } catch { /* best-effort: the org is verified regardless */ }
+      }
+
       return Response.json({ ok: true, status });
     }
 

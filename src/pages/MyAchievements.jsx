@@ -25,7 +25,7 @@ const STATUS_META = {
   unverified: { label: 'Unverified', cls: 'bg-secondary text-muted-foreground border-border' },
   verification_requested: { label: 'Awaiting issuer', cls: 'bg-warning/10 text-warning border-warning/30' },
   issuer_confirmed: { label: 'Issuer confirmed', cls: 'bg-info/10 text-info border-info/30' },
-  blockchain_processing: { label: 'Securing on Polygon', cls: 'bg-warning/10 text-warning border-warning/30' },
+  blockchain_processing: { label: 'Securing on Polygon Amoy', cls: 'bg-warning/10 text-warning border-warning/30' },
   verified: { label: 'Blockward Verified', cls: 'bg-success/10 text-success border-success/30' },
   rejected: { label: 'Could not verify', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
   revoked: { label: 'Revoked', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
@@ -57,6 +57,7 @@ export default function MyAchievements() {
   const [requestFor, setRequestFor] = useState(null); // achievement
   const [requestEmail, setRequestEmail] = useState('');
   const [requesting, setRequesting] = useState(false);
+  const [retryingId, setRetryingId] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -188,6 +189,18 @@ export default function MyAchievements() {
     } finally { setRequesting(false); }
   };
 
+  const retryAnchor = async (a) => {
+    if (!a.credential?.id) return;
+    setRetryingId(a.id);
+    try {
+      const res = await base44.functions.invoke('retryAnchor', { credential_id: a.credential.id });
+      if (res.data?.ok) { toast.success('Retrying blockchain confirmation…'); load(); }
+      else { toast.error(res.data?.error || 'Could not retry — please try again shortly'); }
+    } catch (e) {
+      toast.error(e?.response?.data?.error || 'Could not retry — please try again shortly');
+    } finally { setRetryingId(null); }
+  };
+
   if (items === null) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -271,8 +284,23 @@ export default function MyAchievements() {
                       {(r.required_signatures || 1) > 1 && (
                         <span className="font-medium text-foreground">{r.signature_count || 0} of {r.required_signatures} signatures</span>
                       )}
-                      {r.status === 'approved' && a.status === 'issuer_confirmed' && (
-                        <span className="text-info">Securing on Polygon…</span>
+                      {r.status === 'approved' && a.status === 'issuer_confirmed' && !a.credential && (
+                        <span className="text-info">Issuer verified — awaiting Blockward organisation approval</span>
+                      )}
+                      {r.status === 'approved' && ['pending', 'processing'].includes(a.credential?.anchor_status) && (
+                        <span className="text-warning">Securing on Polygon Amoy…</span>
+                      )}
+                      {r.status === 'approved' && a.credential?.anchor_status === 'confirmed' && (
+                        <span className="text-success">Blockchain secured — confirming integrity…</span>
+                      )}
+                      {r.status === 'approved' && a.credential?.anchor_status === 'failed' && (
+                        <>
+                          <span className="text-destructive">Blockchain confirmation delayed</span>
+                          <Button size="sm" variant="outline" onClick={() => retryAnchor(a)} disabled={retryingId === a.id}>
+                            {retryingId === a.id ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                            Retry
+                          </Button>
+                        </>
                       )}
                     </div>
                   )}
