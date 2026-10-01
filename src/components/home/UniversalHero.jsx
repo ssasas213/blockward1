@@ -2,7 +2,6 @@ import React from 'react';
 import { ArrowRight, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import HeroBackground from '@/components/home/HeroBackground';
-import HeroProduct from '@/components/home/HeroProduct';
 
 export default function UniversalHero() {
   return (
@@ -49,8 +48,6 @@ export default function UniversalHero() {
             Register your organisation →
           </a>
         </p>
-
-        <HeroProduct />
       </div>
     </section>
   );

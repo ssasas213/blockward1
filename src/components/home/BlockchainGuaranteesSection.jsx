@@ -5,7 +5,7 @@ const guarantees = [
   {
     icon: Lock,
     title: 'Cryptographically anchored',
-    desc: 'Every approved credential is anchored on a public ledger (Sepolia testnet during beta) via an on-chain transaction. Its hash, network and timestamp are independently verifiable — the anchor cannot be quietly altered by anyone, including BlockWard.',
+    desc: 'Every approved credential is anchored on a public ledger (Sepolia testnet in its preview phase) via an on-chain transaction. Its hash, network and timestamp are independently verifiable — the anchor cannot be quietly altered by anyone, including BlockWard.',
   },
   {
     icon: ShieldCheck,

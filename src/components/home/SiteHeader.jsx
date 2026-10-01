@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Menu, X } from 'lucide-react';
-import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import { Button } from '@/components/ui/button';
+
+const BLOCKWARD_LOGO_URL =
+  'https://media.base44.com/images/public/6936b840baa53bb465f68d09/baebdd78c_download.png';
 import { cn } from '@/lib/utils';
 
 export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get Started', onSignIn, onGetStarted, onDashboard }) {
@@ -27,12 +29,16 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
     )}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <a href="#top" className="flex items-center gap-2">
-          <BlockwardMark className="h-5 w-5" />
+          <img
+            src={BLOCKWARD_LOGO_URL}
+            alt="Blockward"
+            className="h-7 w-auto"
+            draggable={false}
+          />
           <span className={cn(
             "font-semibold text-base tracking-tight transition-colors",
             scrolled || menuOpen ? "text-foreground" : "text-white"
           )}>BlockWard</span>
-          <span className="ml-1.5 px-1.5 py-0.5 rounded-md border border-primary/30 bg-primary/15 text-[10px] font-semibold uppercase tracking-wide text-primary">Beta</span>
         </a>
 
         <nav className="hidden md:flex items-center gap-6">
