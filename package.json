@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test:polygon": "node --test tests/polygon-hardening.test.cjs",
+    "test:mainnet-broadcaster": "node --test tests/mainnet-broadcaster.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint . --quiet",

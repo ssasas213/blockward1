@@ -26,6 +26,7 @@ import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
 import { requireInternalAdmin } from '../../shared/internalAdmin.ts';
 import { resolvePolygonTarget } from '../../shared/chainPolygon.ts';
 import { sha256Hex } from '../../shared/credentialHash.ts';
+import { INTEGRATION_ID as TEST_PREIMAGE, DEFAULT_MAX_FEE_POL, feeCeilingWei, formatPol } from '../../shared/mainnetIntegrationPolicy.ts';
 
 const polygonMainnet = defineChain({
   id: 137,
@@ -34,23 +35,6 @@ const polygonMainnet = defineChain({
   rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
   blockExplorers: { default: { name: 'PolygonScan', url: 'https://polygonscan.com' } },
 });
-
-const TEST_PREIMAGE = 'blockward:polygon-mainnet-integration-test:v1:synthetic-only';
-const DEFAULT_MAX_FEE_POL = '0.001';
-const HARD_MAX_FEE_WEI = 10000000000000000n; // 0.01 POL; config can only lower this.
-
-// Strict decimal parsing, no floating point or silent rounding of a fee cap.
-function feeCeilingWei(raw: string): bigint | null {
-  if (!/^(0|[1-9]\d*)(\.\d{1,18})?$/.test(raw)) return null;
-  const [whole, fraction = ''] = raw.split('.');
-  const wei = BigInt(whole) * 10n ** 18n + BigInt(fraction.padEnd(18, '0'));
-  return wei > 0n && wei <= HARD_MAX_FEE_WEI ? wei : null;
-}
-
-function formatPol(wei: bigint): string {
-  const fraction = (wei % 10n ** 18n).toString().padStart(18, '0').replace(/0+$/, '');
-  return `${wei / 10n ** 18n}${fraction ? `.${fraction}` : ''}`;
-}
 
 function addressesMatch(a: string | null, b: string | null): boolean {
   if (!a || !b) return false;
