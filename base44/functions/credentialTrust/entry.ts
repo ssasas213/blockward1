@@ -5,7 +5,9 @@
 // and the public verification page should consume (§34).
 //
 // It performs NO live RPC: integrity is derived from the persisted
-// chain_check / anchor_status on the credential record (§42). For the freshest
+// versioned chain_check bound to current content/anchor and younger than ten
+// minutes. Legacy, stale or mismatched caches return non-confirmed trust.
+// For the freshest
 // integrity, callers use publicVerifyData which runs verifyCredentialAnchor and
 // passes the result into the same calculateCredentialTrust.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';

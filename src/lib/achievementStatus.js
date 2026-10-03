@@ -4,6 +4,8 @@
 // verified/valid; blue = active/in-progress; amber = pending/attention;
 // red = revoked/failed.
 
+import { hasVerifiedIntegrity } from './credentialIntegrity.js';
+
 export const STATUS_META = {
   draft: { label: 'Draft', cls: 'bg-secondary text-muted-foreground border-border', tone: 'neutral' },
   verification_requested: { label: 'Verification requested', cls: 'bg-info/10 text-info border-info/30', tone: 'blue' },
@@ -28,9 +30,10 @@ export function resolveStatus(item) {
   if (a.status === 'rejected') return { key: 'could_not_verify', ...STATUS_META.could_not_verify };
 
   // Fully verified — issuer confirmed + anchor confirmed + integrity confirmed + active.
-  const integrityOk = c?.chain_check?.status === 'confirmed' || c?.anchor_status === 'confirmed';
+  const integrityOk = hasVerifiedIntegrity(c);
   if (a.status === 'verified' || (c?.anchor_status === 'confirmed' && c?.status === 'active')) {
-    return { key: 'blockward_verified', ...STATUS_META.blockward_verified, detail: integrityOk ? 'Integrity confirmed' : 'Anchor confirmed' };
+    if (integrityOk) return { key: 'blockward_verified', ...STATUS_META.blockward_verified, detail: 'Integrity confirmed' };
+    return { key: 'integrity_pending', ...STATUS_META.integrity_pending, detail: 'Integrity verification required' };
   }
 
   // Expired.

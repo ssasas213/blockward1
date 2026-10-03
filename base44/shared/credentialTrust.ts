@@ -25,6 +25,9 @@
 // level and integrity level are independent.
 // ============================================================================
 
+import { computeCredentialHash } from './credentialHash.ts';
+import { isTrustedChainCheck, polygonCredentialHashFields } from './chainVerification.ts';
+
 export const TRUST_LEVELS = {
   ADDED_TO_BLOCKWARD: 'added_to_blockward',
   PERSON_VERIFIED: 'person_verified',
@@ -77,9 +80,14 @@ export function lifecycleFrom(cred: any): string {
 
 // Integrity level from a fresh verifyCredentialAnchor result (preferred) or the
 // persisted chain_check / anchor_status. NEVER upgrades an unavailable check.
-export function integrityFrom(cred: any, integrity?: any | null): string {
+export async function integrityFrom(cred: any, integrity?: any | null): Promise<string> {
   const i = integrity || cred?.chain_check || null;
-  if (i?.status === 'confirmed') return INTEGRITY_STATUS.CONFIRMED;
+  if (i?.status === 'confirmed') {
+    try {
+      const hash = await computeCredentialHash(polygonCredentialHashFields(cred));
+      if (isTrustedChainCheck(cred, i, hash)) return INTEGRITY_STATUS.CONFIRMED;
+    } catch { /* hashing failure is never confirmation */ }
+  }
   if (i?.status === 'hash_mismatch' || i?.status === 'anchor_invalid') return INTEGRITY_STATUS.FAILED;
   // chain_unavailable / pending / unknown → fall through to the anchor lock state.
   const anchor = cred?.anchor_status || cred?.blockchain?.status;
@@ -148,7 +156,7 @@ export async function calculateCredentialTrust(svc: any, cred: any, opts: { inte
     complete: completedSignatures >= requiredSignatures,
   };
 
-  const integrityStatus = integrityFrom(cred, opts.integrity);
+  const integrityStatus = await integrityFrom(cred, opts.integrity);
 
   const lifecycle = lifecycleFrom(cred);
 

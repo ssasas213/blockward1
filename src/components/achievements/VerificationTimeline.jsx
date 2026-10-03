@@ -2,6 +2,7 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { Check, Dot } from 'lucide-react';
 import { formatDateTime } from '@/lib/achievementStatus';
+import { hasVerifiedIntegrity } from '@/lib/credentialIntegrity';
 
 const EVENT_LABELS = {
   created: 'Achievement created',
@@ -50,7 +51,7 @@ export default function VerificationTimeline({ item }) {
   collect(a.credential?.event_log);
 
   // Integrity confirmed as the terminal step when chain_check is confirmed.
-  if (a.credential?.chain_check?.status === 'confirmed') {
+  if (hasVerifiedIntegrity(a.credential)) {
     add('Integrity confirmed', a.credential.chain_check.checked_at);
   }
   if (a.credential?.anchor_status === 'confirmed' && a.credential?.blockchain?.block_timestamp) {

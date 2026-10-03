@@ -38,6 +38,7 @@
 import { createPublicClient, createWalletClient, http, stringToHex, parseAbi, defineChain } from 'npm:viem@2.7.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
+import { CHAIN_VERIFICATION_VERSION, verificationBindings } from './chainVerification.ts';
 
 // Polygon PoS mainnet and Amoy testnet, defined explicitly (no reliance on
 // the viem chains bundle).
@@ -64,8 +65,6 @@ const CONTRACT_ABI = parseAbi([
 ]);
 
 const CLAIM_STALE_MS = 10 * 60 * 1000;
-const CONFIRM_TTL_MS = 10 * 60 * 1000;
-const FAIL_TTL_MS = 2 * 60 * 1000;
 
 export type TargetNetwork = 'polygon_amoy' | 'polygon_mainnet';
 
@@ -368,17 +367,8 @@ export async function verifyCredentialAnchor(svc, cred: any) {
     return { status: anchorState === 'processing' || anchorState === 'confirmed' ? 'pending' : (anchorState || 'pending'), network: pendingCfg.networkName, testnet: pendingCfg.isTestnet };
   }
 
-  // TTL cache — confirmed/mismatch 10 min, everything else 2 min. Cache is
-  // per-credential, and each credential is anchored on exactly one network,
-  // so there is no cross-network contamination.
-  const cached = cred.chain_check || null;
-  // Calldata must pass fresh checks, including receipts and current content.
-  // Never accept a cached confirmation produced by the old hash-only verifier.
-  if (bc.anchor_mode === 'contract' && bc.contract_address && cached && cached.checked_at) {
-    const age = Date.now() - new Date(cached.checked_at).getTime();
-    const ttl = ['confirmed', 'hash_mismatch'].includes(cached.status) ? CONFIRM_TTL_MS : FAIL_TTL_MS;
-    if (age >= 0 && age < ttl) return cached;
-  }
+  // This explicit verification path always performs fresh checks. Cached-only
+  // consumers use the versioned, content-bound policy in chainVerification.
 
   // ── NETWORK-PINNED resolution (the §1 fix) ──
   const target = resolveVerificationTarget(cred);
@@ -476,6 +466,8 @@ export async function verifyCredentialAnchor(svc, cred: any) {
         result.status = 'hash_mismatch';
       } else {
         result.status = 'confirmed';
+        // Only this fully checked calldata path can issue a hardened cache.
+        Object.assign(result, verificationBindings(cred), { verification_version: CHAIN_VERIFICATION_VERSION });
       }
     }
   } catch {

@@ -47,7 +47,7 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
   const bc = c?.blockchain || {};
   const verifiers = c?.verifiers || [];
   const explorerUrl = bc.transaction_hash ? `https://amoy.polygonscan.com/tx/${bc.transaction_hash}` : null;
-  const integrity = c?.chain_check || {};
+  const integrityConfirmed = verified;
 
   return (
     <>
@@ -151,7 +151,7 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
           {c && (
             <Section title="Blockchain integrity" right={<span className="text-xs text-tertiary">Polygon Amoy — Testnet</span>}>
               <div className="surface-card rounded-xl px-4 divide-y divide-border/60">
-                <Field label="Status" value={integrity.status === 'confirmed' ? 'Integrity confirmed' : bc.transaction_hash ? 'Anchor confirmed' : 'Pending'} />
+                <Field label="Status" value={integrityConfirmed ? 'Integrity confirmed' : bc.transaction_hash ? 'Anchor recorded — integrity verification required' : 'Pending'} />
                 <Field label="Credential commitment" value={c.credential_hash} mono />
                 {bc.transaction_hash && <Field label="Transaction" value={bc.transaction_hash} mono />}
                 {bc.block_number && <Field label="Block" value={String(bc.block_number)} mono />}

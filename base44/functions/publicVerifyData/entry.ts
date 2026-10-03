@@ -65,7 +65,7 @@ export default async function (req: Request): Promise<Response> {
         validity,
       },
       blockchain: {
-        secured: integrity.status === 'confirmed',
+        secured: trust.integrity_status === 'confirmed',
         status: cred.blockchain?.status || 'pending',
         network: integrity.network,
         testnet: integrity.testnet !== false,
@@ -79,7 +79,7 @@ export default async function (req: Request): Promise<Response> {
           : null,
       },
       integrity: {
-        status: integrity.status,
+        status: trust.integrity_status === 'confirmed' ? 'confirmed' : (integrity.status === 'confirmed' ? 'pending' : integrity.status),
         checked_at: integrity.checked_at || null,
         committed_hash: integrity.committed_hash || null,
       },

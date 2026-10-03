@@ -7,6 +7,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { webcrypto, createHash } = require('node:crypto');
 const ts = require('typescript');
+const ethers = require('ethers'); // Load outside the per-module VM execution timeout.
 
 const ROOT = path.resolve(__dirname, '..');
 const POLYGON = 'base44/shared/chainPolygon.ts';
@@ -86,7 +87,9 @@ function harness(options = {}) {
           if (key === 'MAINNET_TEST_STUB') return { address: B };
           throw new Error('Invalid synthetic key');
         } };
-        if (id.startsWith('npm:@base44/sdk')) return { createClientFromRequest: () => ({}) };
+        if (id.startsWith('npm:@base44/sdk')) return { createClientFromRequest: () => options.sdk || ({}) };
+        if (id === 'ethers') return ethers; // real browser-side SHA-256 implementation
+        if (id.endsWith('/verificationFlow.ts') && options.trustEndpoint) return { rateLimit: () => true };
         if (id.endsWith('/internalAdmin.ts')) return { requireInternalAdmin: async () => ({
           error: options.denied ? Response.json({ error: 'denied' }, { status: 403 }) : null,
         }) };
@@ -269,5 +272,108 @@ test('GET is also preflight-only', async () => {
 test('normal issuance defaults and explicit selector behavior remain unchanged', () => {
   for (const [value, target] of [['', 'polygon_amoy'], ['amoy', 'polygon_amoy'], ['polygon_amoy', 'polygon_amoy'], ['mainnet', 'polygon_mainnet']]) {
     assert.equal(harness({ env: { POLYGON_NETWORK: value } }).load(POLYGON).resolvePolygonTarget().target, target);
+  }
+});
+
+// Exercise the trust consumers, not merely the RPC verifier. All organisation
+// gates deliberately pass so a cache mistake would produce blockward_verified.
+function trustService(cred) {
+  return { entities: {
+    Credential: { filter: async () => [cred] },
+    Achievement: { filter: async () => [{ holder_email: 'holder@example.invalid' }] },
+    VerificationRequest: { filter: async () => [{ required_signatures: 1 }] },
+    VerificationSignature: { filter: async () => [{ verifier_email: 'verifier@example.invalid' }] },
+    IssuerOrganisation: { filter: async () => [{ status: 'verified' }] },
+  } };
+}
+async function trustedFixture() {
+  const cred = { ...credential(), status: 'active', org_id: 'synthetic-org',
+    achievement_id: 'synthetic-achievement', verification_request_id: 'synthetic-request' };
+  cred.chain_check = (await verify({}, cred)).result;
+  assert.equal(cred.chain_check.verification_version, 2);
+  return cred;
+}
+async function trustResult(cred, integrity) {
+  const h = harness();
+  const result = await h.load('base44/shared/credentialTrust.ts').calculateCredentialTrust(trustService(cred), cred, { integrity });
+  assert.equal(h.calls.length, 0, 'cached trust must not invoke RPC');
+  return result;
+}
+test('fresh hardened verification and valid bound cache both produce blockward_verified', async () => {
+  const cred = await trustedFixture();
+  for (const integrity of [undefined, cred.chain_check]) {
+    assert.equal((await trustResult(cred, integrity)).trust_level, 'blockward_verified');
+  }
+  assert.equal(harness().load('src/lib/credentialIntegrity.js').hasVerifiedIntegrity(cred), true);
+});
+
+for (const [name, change] of [
+  ['unversioned old hash-only confirmation', c => { c.chain_check = { status: 'confirmed', checked_at: new Date().toISOString() }; }],
+  ['wrong verification version', c => { c.chain_check.verification_version = 1; }],
+  ['future verification version', c => { c.chain_check.verification_version = 3; }],
+  ['missing cache', c => { delete c.chain_check; }],
+  ['changed title', c => { c.title += ' changed'; }],
+  ['changed description', c => { c.description += ' changed'; }],
+  ['changed category', c => { c.category = 'changed'; }],
+  ['changed date', c => { c.date_achieved = '2001-01-01'; }],
+  ['changed transaction', c => { c.blockchain.transaction_hash = BLOCK; }],
+  ['changed network', c => { c.blockchain.network = 'polygon'; }],
+  ['changed chain ID', c => { c.blockchain.chain_id = 137; }],
+  ['changed credential ID', c => { c.bw_id = 'OTHER'; }],
+  ['changed credential revision', c => { c.version = 2; }],
+  ['changed hash version', c => { c.hash_version = 2; }],
+  ['changed mode', c => { c.blockchain.anchor_mode = 'contract'; }],
+  ['changed contract address', c => { c.blockchain.contract_address = A; }],
+  ['changed anchor state', c => { c.anchor_status = 'failed'; }],
+  ['stale cache', c => { c.chain_check.checked_at = new Date(Date.now() - 600000).toISOString(); }],
+  ['future cache', c => { c.chain_check.checked_at = new Date(Date.now() + 600000).toISOString(); }],
+  ['invalid timestamp', c => { c.chain_check.checked_at = 'invalid'; }],
+  ['missing timestamp', c => { delete c.chain_check.checked_at; }],
+  ['missing binding', c => { delete c.chain_check.credential_id; }],
+  ['wrong resolved network', c => { c.chain_check.network = 'polygon'; }],
+  ['wrong resolved chain', c => { c.chain_check.chain_id = 137; }],
+  ['wrong cached digest', c => { c.chain_check.recomputed_hash = '0'.repeat(64); }],
+  ['wrong committed digest', c => { c.chain_check.committed_hash = '0'.repeat(64); }],
+]) test('trust and UI fail closed for ' + name, async () => {
+  const cred = await trustedFixture(); change(cred);
+  const trust = await trustResult(cred);
+  assert.notEqual(trust.integrity_status, 'confirmed');
+  assert.notEqual(trust.trust_level, 'blockward_verified');
+  const h = harness();
+  assert.equal(h.load('src/lib/credentialIntegrity.js').hasVerifiedIntegrity(cred), false);
+  assert.notEqual(h.load('src/lib/achievementStatus.js').resolveStatus({ status: 'verified', credential: cred }).key, 'blockward_verified');
+});
+test('fresh unavailable or rejected result overrides a valid cache', async () => {
+  const cred = await trustedFixture();
+  for (const status of ['chain_unavailable', 'anchor_invalid', 'pending']) {
+    assert.notEqual((await trustResult(cred, { status })).trust_level, 'blockward_verified');
+  }
+});
+test('an explicitly supplied legacy result cannot bypass version checks', async () => {
+  const cred = await trustedFixture();
+  assert.notEqual((await trustResult(cred, { status: 'confirmed' })).trust_level, 'blockward_verified');
+});
+test('stored credential_hash is not a substitute for recomputing current content', async () => {
+  const cred = await trustedFixture(); cred.credential_hash = HASH; cred.title = 'Tampered';
+  assert.notEqual((await trustResult(cred)).integrity_status, 'confirmed');
+});
+test('late cache write from an old content snapshot cannot restore trust', async () => {
+  const cred = await trustedFixture();
+  const oldCheck = cred.chain_check; cred.title = 'New content'; cred.chain_check = oldCheck;
+  assert.notEqual((await trustResult(cred)).trust_level, 'blockward_verified');
+});
+test('public credentialTrust endpoint rejects legacy and accepts correctly bound hardened cache', async () => {
+  const cred = await trustedFixture();
+  const good = cred.chain_check;
+  for (const check of [{ status: 'confirmed' }, good]) {
+    cred.chain_check = check;
+    const h = harness({ sdk: { asServiceRole: trustService(cred) }, trustEndpoint: true });
+    const response = await h.load('base44/functions/credentialTrust/entry.ts').default(new Request('https://test.invalid', {
+      method: 'POST', body: JSON.stringify({ bw_id: cred.bw_id }),
+    }));
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.trust.trust_level === 'blockward_verified', check === good);
+    assert.equal(h.calls.length, 0);
   }
 });
