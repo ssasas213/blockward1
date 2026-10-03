@@ -50,12 +50,18 @@ const CLAIM_STALE_MS = 10 * 60 * 1000;
 const CONFIRM_TTL_MS = 10 * 60 * 1000;
 const FAIL_TTL_MS = 2 * 60 * 1000;
 
+// chainAnchor is a DEDICATED SEPOLIA adapter for the legacy registry pipeline
+// (historical verification + still-active registry anchoring). It is fully
+// decoupled from the Polygon issuance selector (POLYGON_NETWORK) and from the
+// legacy NETWORK variable: it always resolves to Sepolia, so historical
+// Sepolia credentials continue to verify regardless of what the Polygon
+// issuance environment is set to.
 export function getChainConfig() {
   return {
     rpc: Deno.env.get('SEPOLIA_RPC_URL') || null,
     contract: Deno.env.get('CONTRACT_ADDRESS') || null,
     pk: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
-    network: Deno.env.get('NETWORK') || 'sepolia',
+    network: 'sepolia',
   };
 }
 

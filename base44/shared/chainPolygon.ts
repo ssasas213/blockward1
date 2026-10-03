@@ -16,16 +16,24 @@
 // NETWORK-PINNED VERIFICATION (§1): a credential is ALWAYS verified against
 // the network it was anchored on, resolved from its persisted
 // blockchain.chain_id / blockchain.network — NEVER from the application's
-// current issuance NETWORK env. Switching issuance to mainnet can never break
+// current issuance selector. Switching issuance to mainnet can never break
 // historical Amoy verification.
 //
-// CANONICAL SELECTOR (§4): `NETWORK` is the single issuance selector
-// ('polygon_amoy' | 'polygon_mainnet'). `BLOCKCHAIN_ENV` is NOT read here.
+// POLYGON SELECTOR (§4): `POLYGON_NETWORK` ('polygon_amoy' | 'polygon_mainnet')
+// is the dedicated Polygon issuance selector — deliberately separate from the
+// legacy `NETWORK` variable that still drives the historical Sepolia registry
+// pipeline (chainAnchor.ts). `NETWORK` and `BLOCKCHAIN_ENV` are NOT read here.
+// An unsupported explicit value fails CLOSED (unsupported_network) — this
+// module never silently reinterprets an unknown value as another chain. While
+// POLYGON_NETWORK is unset, the documented current-stage default
+// `polygon_amoy` is used so the running app is not broken before the operator
+// adds the secret.
 //
 // REQUIRED SECRETS:
 //   AMOY:    ISSUER_PRIVATE_KEY (+ optional POLYGON_RPC_URL, BLOCKWARD_CONTRACT_ADDRESS)
 //   MAINNET: POLYGON_MAINNET_ISSUER_PRIVATE_KEY, POLYGON_MAINNET_ANCHOR_ADDRESS,
 //            POLYGON_MAINNET_RPC_URL  (all three REQUIRED — missing any ⇒ fail closed)
+//   SELECTOR: POLYGON_NETWORK (polygon_amoy | polygon_mainnet). Unset ⇒ polygon_amoy default.
 // ============================================================================
 import { createPublicClient, createWalletClient, http, stringToHex, parseAbi, defineChain } from 'npm:viem@2.7.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
@@ -61,13 +69,25 @@ const FAIL_TTL_MS = 2 * 60 * 1000;
 
 export type TargetNetwork = 'polygon_amoy' | 'polygon_mainnet';
 
-// The single canonical issuance selector. `polygon`/`polygon_mainnet` →
-// mainnet; everything else (including unset) → Amoy. Conservative: never
-// silently reinterpret an unknown value as mainnet.
-export function normalizeNetwork(raw: string | undefined | null): TargetNetwork {
-  const n = String(raw || '').trim().toLowerCase();
-  if (n === 'polygon' || n === 'polygon_mainnet') return 'polygon_mainnet';
-  return 'polygon_amoy';
+export type PolygonTargetResolution =
+  | { target: TargetNetwork }
+  | { unsupported: true; value: string };
+
+// ── Polygon issuance selector (§4) ──────────────────────────────────────────
+// Reads POLYGON_NETWORK (a dedicated Polygon selector, separate from the
+// legacy NETWORK that drives the Sepolia registry pipeline in chainAnchor).
+//
+// Fail-closed: an unsupported EXPLICIT value yields { unsupported } — the
+// caller refuses to anchor and never silently selects another chain. When
+// POLYGON_NETWORK is unset, the documented current-stage default
+// `polygon_amoy` is used so the running app is not broken before the operator
+// adds the secret. Set POLYGON_NETWORK explicitly to remove the default.
+export function resolvePolygonTarget(): PolygonTargetResolution {
+  const raw = String(Deno.env.get('POLYGON_NETWORK') || '').trim().toLowerCase();
+  if (raw === '') return { target: 'polygon_amoy' };
+  if (raw === 'polygon_amoy' || raw === 'amoy') return { target: 'polygon_amoy' };
+  if (raw === 'polygon_mainnet' || raw === 'polygon' || raw === 'mainnet') return { target: 'polygon_mainnet' };
+  return { unsupported: true, value: raw };
 }
 
 // ── The ONE network configuration resolver (§2) ──────────────────────────────
@@ -137,9 +157,15 @@ export async function anchorCredential(svc, credentialId: string) {
     console.log(JSON.stringify({ fn: 'chainPolygon', step, ...extra }));
   let cred: any = null;
   try {
-    // Issuance network is the canonical selector (§4). NETWORK stays
-    // polygon_amoy in this phase — mainnet is wired but NOT activated.
-    const target = normalizeNetwork(Deno.env.get('NETWORK'));
+    // Issuance network comes from the dedicated POLYGON_NETWORK selector (§4),
+    // NOT from the legacy NETWORK variable. An unsupported explicit value
+    // fails CLOSED — no silent fallback, no broadcast.
+    const resolved = resolvePolygonTarget();
+    if ('unsupported' in resolved) {
+      log('unsupported_network', { value: resolved.value });
+      return { ok: false, error: 'unsupported_network', value: resolved.value };
+    }
+    const target = resolved.target;
     const cfg = resolvePolygonConfig(target);
 
     // ── MAINNET FAIL-CLOSED (§5): all production config required BEFORE signing ──
