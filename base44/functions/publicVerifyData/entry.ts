@@ -4,6 +4,7 @@
 // plus the live credential-integrity check against the Polygon PoS anchor.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { verifyCredentialAnchor } from '../../shared/chainPolygon.ts';
+import { calculateCredentialTrust } from '../../shared/credentialTrust.ts';
 import { rateLimit, methodLabel } from '../../shared/verificationFlow.ts';
 import { methodLabel as emailMethodLabel } from '../../shared/issuerEmails.ts';
 
@@ -32,6 +33,11 @@ export default async function (req: Request): Promise<Response> {
     // compare against the on-chain commitment.
     const integrity = await verifyCredentialAnchor(svc, cred);
 
+    // The canonical layered trust calculation (§34). Reuses the integrity
+    // result above so no second RPC is made (§42). Additive — all existing
+    // response fields are preserved, this attaches a `trust` object.
+    const trust = await calculateCredentialTrust(svc, cred, { integrity });
+
     // Expiry-derived validity — an expired credential is never "currently valid".
     const today = new Date().toISOString().slice(0, 10);
     let validity = 'valid';
@@ -41,6 +47,7 @@ export default async function (req: Request): Promise<Response> {
 
     return Response.json({
       found: true,
+      trust,
       credential: {
         bw_id: cred.bw_id,
         holder_display_name: cred.holder_display_name,

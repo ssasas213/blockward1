@@ -64,7 +64,7 @@
         "suspended"
       ],
       "default": "pending",
-      "description": "Blockward verification state. Only VERIFIED organisations hold full issuing authority \u2014 approval is manual by Blockward staff for the MVP."
+      "description": "Blockward verification state. Only VERIFIED organisations hold full issuing authority \u2014 approval is manual by Blockward Internal Admins via the service-role orgAction function. The status field is SERVICE-ROLE-ONLY: an organisation owner can never self-verify, suspend or reject their own organisation (trust-state loophole closure)."
     },
     "verified_at": {
       "type": "string",
@@ -131,14 +131,21 @@
       "data.name": "__service_role_only__"
     },
     "update": {
-      "$or": [
+      "$and": [
         {
-          "data.owner_email": "{{user.email}}"
+          "$or": [
+            {
+              "data.owner_email": "{{user.email}}"
+            },
+            {
+              "user_condition": {
+                "role": "admin"
+              }
+            }
+          ]
         },
         {
-          "user_condition": {
-            "role": "admin"
-          }
+          "data.status": "__service_role_only__"
         }
       ]
     },
