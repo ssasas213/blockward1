@@ -1,30 +1,31 @@
 // polygonMainnetIntegrationTest — FIRST Polygon PoS MAINNET integration test,
 // PRE-BROADCAST ONLY. This function performs NO signing, NO broadcast, NO
-// blockchain writes, NO credential/achievement changes, and NEVER reads or
-// touches POLYGON_NETWORK as an issuance selector.
+// blockchain writes, NO credential/achievement changes. Reads POLYGON_NETWORK
+// only to verify issuance remains on Amoy; never changes the selector.
 //
 // It builds a deterministic, PII-free test commitment and runs the SAME
 // calldata anchoring architecture as production (self-transaction, value=0,
 // calldata-only) ONLY as a gas estimate against that exact calldata — never
 // sent. A final pre-broadcast readiness report is returned.
 //
-// Deterministic test payload ( NOTHING ELSE ):
-//   { v:1, t:'blockward-mainnet-integration-test',
-//     label:'BLOCKWARD MAINNET INTEGRATION TEST', pii:false }
-// No hashes, no token ids, no credential references. It does NOT reuse
-// BW-HASH-V1 (unchanged) and does NOT call normal credential issuance.
+// Calldata is ONLY the raw 32-byte SHA-256 of the fixed, domain-separated
+// synthetic preimage below. No readable marker or credential references.
+// It does NOT reuse BW-HASH-V1 (unchanged) or call normal credential issuance.
 //
 // Admin-only. Returns ONLY public/safe fields:
 //   MAINNET_TEST_READY, chain_id, signer_matches, balance_sufficient,
 //   normal_issuance_network, estimated_gas, estimated_max_fee_POL,
-//   payload_contains_PII, transaction_broadcast (always false).
+//   payload_contains_PII, transaction_broadcast (always false), fee ceiling,
+//   and a public unsigned transaction proposal. Gas/fee quantities are exact
+//   decimal strings; estimated_max_fee_POL is the proposal's maximum cost.
 // Never returns: private key, partial key, key length, RPC API key, or
 // secret-bearing URL.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
-import { createPublicClient, http, defineChain, stringToHex, getAddress, isAddress } from 'npm:viem@2.7.0';
+import { createPublicClient, http, defineChain, getAddress, isAddress } from 'npm:viem@2.7.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
 import { requireInternalAdmin } from '../../shared/internalAdmin.ts';
 import { resolvePolygonTarget } from '../../shared/chainPolygon.ts';
+import { sha256Hex } from '../../shared/credentialHash.ts';
 
 const polygonMainnet = defineChain({
   id: 137,
@@ -34,21 +35,21 @@ const polygonMainnet = defineChain({
   blockExplorers: { default: { name: 'PolygonScan', url: 'https://polygonscan.com' } },
 });
 
-// The ONE deterministic test commitment. Nothing on-chain beyond this.
-const TEST_LABEL = 'BLOCKWARD MAINNET INTEGRATION TEST';
-const TEST_PAYLOAD = JSON.stringify({
-  v: 1,
-  t: 'blockward-mainnet-integration-test',
-  label: TEST_LABEL,
-  pii: false,
-});
-const TEST_CALLDATA = stringToHex(TEST_PAYLOAD);
+const TEST_PREIMAGE = 'blockward:polygon-mainnet-integration-test:v1:synthetic-only';
+const DEFAULT_MAX_FEE_POL = '0.001';
+const HARD_MAX_FEE_WEI = 10000000000000000n; // 0.01 POL; config can only lower this.
 
-// PII scan: the test payload is a fixed constant with no free text. We still
-// verify it contains no email/phone/name-ish tokens before any broadcast.
-const PII_PATTERNS = [/@/i, /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/, /\b(name|email|phone|address|dob|ssn)\b/i];
-function payloadContainsPii(s: string): boolean {
-  return PII_PATTERNS.some((re) => re.test(s));
+// Strict decimal parsing, no floating point or silent rounding of a fee cap.
+function feeCeilingWei(raw: string): bigint | null {
+  if (!/^(0|[1-9]\d*)(\.\d{1,18})?$/.test(raw)) return null;
+  const [whole, fraction = ''] = raw.split('.');
+  const wei = BigInt(whole) * 10n ** 18n + BigInt(fraction.padEnd(18, '0'));
+  return wei > 0n && wei <= HARD_MAX_FEE_WEI ? wei : null;
+}
+
+function formatPol(wei: bigint): string {
+  const fraction = (wei % 10n ** 18n).toString().padStart(18, '0').replace(/0+$/, '');
+  return `${wei / 10n ** 18n}${fraction ? `.${fraction}` : ''}`;
 }
 
 function addressesMatch(a: string | null, b: string | null): boolean {
@@ -71,6 +72,8 @@ export default async function (req: Request): Promise<Response> {
     const expectedAddress = expectedAddressRaw && isAddress(expectedAddressRaw) ? getAddress(expectedAddressRaw) : null;
     const signingKey = Deno.env.get('POLYGON_MAINNET_ISSUER_PRIVATE_KEY') || null;
     const configuredChainId = Number(Deno.env.get('POLYGON_MAINNET_CHAIN_ID') || 137);
+    const feeCap = feeCeilingWei(Deno.env.get('POLYGON_MAINNET_TEST_MAX_FEE_POL') ?? DEFAULT_MAX_FEE_POL);
+    const testCalldata = `0x${await sha256Hex(TEST_PREIMAGE)}` as `0x${string}`;
 
     // ── Gate 3 + 4: signing key valid + derived PUBLIC address matches anchor ──
     let signerKeyValid = false;
@@ -99,7 +102,10 @@ export default async function (req: Request): Promise<Response> {
       normal_issuance_network: null,
       estimated_gas: null,
       estimated_max_fee_POL: null,
-      payload_contains_PII: payloadContainsPii(TEST_PAYLOAD),
+      payload_contains_PII: false, // fixed synthetic preimage; calldata is its digest only
+      fee_within_ceiling: false,
+      maximum_fee_POL: feeCap == null ? null : formatPol(feeCap),
+      proposed_transaction: null,
       transaction_broadcast: false,
       config_error: configError,
     };
@@ -112,6 +118,11 @@ export default async function (req: Request): Promise<Response> {
     report.normal_issuance_network = normalIssuanceTarget;
 
     // Hard pre-conditions before any RPC work.
+    if (feeCap == null) {
+      report.config_error = 'invalid_test_fee_ceiling';
+      return Response.json(report);
+    }
+    if (normalIssuanceTarget !== 'polygon_amoy') return Response.json(report);
     if (configError) return Response.json(report);
     if (!rpc || !expectedAddress) return Response.json(report);
     if (!signerKeyValid || !signerMatches) return Response.json(report);
@@ -123,9 +134,9 @@ export default async function (req: Request): Promise<Response> {
       report.chain_id = liveChainId;
       if (liveChainId !== 137 || liveChainId !== configuredChainId) return Response.json(report);
 
-      // ── Gate 5: balance > estimated gas requirement ──
+      // ── Gate 5: balance covers the proposal's maximum gas cost ──
       // Exact calldata this test WOULD send (never sent here): self-transaction,
-      // value=0, data=TEST_CALLDATA. Gas estimate uses that same calldata.
+      // value=0, data=testCalldata. Gas estimate uses that same calldata.
       const signer = derivedAddress as `0x${string}`;
       let balanceWei: bigint | null = null;
       try { balanceWei = await pub.getBalance({ address: signer }); } catch { balanceWei = null; }
@@ -136,23 +147,37 @@ export default async function (req: Request): Promise<Response> {
           account: signer,
           to: signer,
           value: 0n,
-          data: TEST_CALLDATA,
+          data: testCalldata,
         });
       } catch {
         gasEstimate = null;
       }
 
-      const gasPrice = await pub.getGasPrice().catch(() => null);
+      const fees = await pub.estimateFeesPerGas({ type: 'eip1559' }).catch(() => null);
+      if (gasEstimate == null || gasEstimate <= 0n || !fees
+        || typeof fees.maxFeePerGas !== 'bigint' || fees.maxFeePerGas <= 0n
+        || typeof fees.maxPriorityFeePerGas !== 'bigint' || fees.maxPriorityFeePerGas < 0n
+        || fees.maxPriorityFeePerGas > fees.maxFeePerGas) return Response.json(report);
 
-      const estimatedGas = gasEstimate != null ? Number(gasEstimate) : null;
-      const maxFeeWei = gasEstimate != null && gasPrice != null ? gasEstimate * gasPrice : null;
-      const maxFeePol = maxFeeWei != null ? Number(maxFeeWei) / 1e18 : null;
+      // Explicit gas limit (20% margin) and EIP-1559 fee caps bound the entire
+      // proposed zero-value transaction, not merely its current expected fee.
+      const gasLimit = (gasEstimate * 120n + 99n) / 100n;
+      const maxFeeWei = gasLimit * fees.maxFeePerGas;
+      report.estimated_gas = gasEstimate.toString();
+      report.estimated_max_fee_POL = formatPol(maxFeeWei);
+      const feeWithinCeiling = maxFeeWei <= feeCap;
+      report.fee_within_ceiling = feeWithinCeiling;
+      if (!feeWithinCeiling) return Response.json(report);
 
-      report.estimated_gas = estimatedGas;
-      report.estimated_max_fee_POL = maxFeePol != null ? Number(maxFeePol.toFixed(8)) : null;
-
-      const balanceSufficient =
-        balanceWei != null && maxFeeWei != null && balanceWei > maxFeeWei;
+      // Public unsigned proposal only. A future broadcaster MUST re-run all
+      // gates and preserve these gas/fee limits; this function cannot send it.
+      report.proposed_transaction = {
+        chainId: 137, type: 'eip1559', from: signer, to: signer,
+        value: '0', data: testCalldata, gas: gasLimit.toString(),
+        maxFeePerGas: fees.maxFeePerGas.toString(),
+        maxPriorityFeePerGas: fees.maxPriorityFeePerGas.toString(),
+      };
+      const balanceSufficient = balanceWei != null && balanceWei >= maxFeeWei;
       report.balance_sufficient = balanceSufficient;
 
       // ── Gate 7: payload contains no PII (already computed) ──
@@ -163,6 +188,7 @@ export default async function (req: Request): Promise<Response> {
         liveChainId === 137 &&
         signerMatches &&
         balanceSufficient &&
+        feeWithinCeiling &&
         normalIssuanceTarget === 'polygon_amoy' &&
         piiOk &&
         report.transaction_broadcast === false;

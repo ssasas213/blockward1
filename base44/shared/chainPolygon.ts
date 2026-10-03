@@ -92,8 +92,9 @@ export function resolvePolygonTarget(): PolygonTargetResolution {
 
 // ── The ONE network configuration resolver (§2) ──────────────────────────────
 // Returns per-network chain/rpc/signer metadata. signingKey/expectedSignerAddress
-// are null when the corresponding secret is absent (verification never needs them;
-// anchoring validates them separately and fails closed for mainnet).
+// are null when the corresponding secret is absent. Calldata verification uses
+// the mainnet public anchor address, or derives Amoy's address from its existing
+// issuer key. Verification never signs anything.
 export function resolvePolygonConfig(target: TargetNetwork) {
   if (target === 'polygon_mainnet') {
     return {
@@ -140,10 +141,21 @@ function buildCommitmentPayload(bwId: string, hash: string): string {
   return JSON.stringify({ v: 1, t: 'blockward-anchor', id: bwId, hv: CREDENTIAL_HASH_VERSION, h: hash });
 }
 
-function commitmentFromPayload(input: string): string | null {
+function commitmentFromPayload(input: string, cred: any): string | null {
   try {
     const meta = JSON.parse(input);
-    return meta?.t === 'blockward-anchor' && typeof meta?.h === 'string' ? meta.h : null;
+    // v is the payload format version; hv is the credential hash format.
+    // Production V1 has no separate credential revision field. If a payload
+    // includes one, it must agree with the persisted credential revision.
+    const hashVersion = cred.hash_version ?? CREDENTIAL_HASH_VERSION;
+    if (meta?.v !== 1 || meta?.t !== 'blockward-anchor'
+      || typeof cred.bw_id !== 'string' || !cred.bw_id
+      || meta.id !== cred.bw_id
+      || hashVersion !== CREDENTIAL_HASH_VERSION || meta.hv !== hashVersion
+      || ('ver' in meta && meta.ver !== (cred.version ?? 1))
+      || ('version' in meta && meta.version !== (cred.version ?? 1))
+      || typeof meta.h !== 'string' || !/^[0-9a-f]{64}$/.test(meta.h)) return null;
+    return meta.h;
   } catch {
     return null;
   }
@@ -353,14 +365,16 @@ export async function verifyCredentialAnchor(svc, cred: any) {
   if (anchorState !== 'confirmed' || !bc.transaction_hash) {
     const pendingTarget = resolveVerificationTarget(cred);
     const pendingCfg = resolvePolygonConfig(pendingTarget);
-    return { status: anchorState === 'processing' ? 'pending' : (anchorState || 'pending'), network: pendingCfg.networkName, testnet: pendingCfg.isTestnet };
+    return { status: anchorState === 'processing' || anchorState === 'confirmed' ? 'pending' : (anchorState || 'pending'), network: pendingCfg.networkName, testnet: pendingCfg.isTestnet };
   }
 
   // TTL cache — confirmed/mismatch 10 min, everything else 2 min. Cache is
   // per-credential, and each credential is anchored on exactly one network,
   // so there is no cross-network contamination.
   const cached = cred.chain_check || null;
-  if (cached && cached.checked_at) {
+  // Calldata must pass fresh checks, including receipts and current content.
+  // Never accept a cached confirmation produced by the old hash-only verifier.
+  if (bc.anchor_mode === 'contract' && bc.contract_address && cached && cached.checked_at) {
     const age = Date.now() - new Date(cached.checked_at).getTime();
     const ttl = ['confirmed', 'hash_mismatch'].includes(cached.status) ? CONFIRM_TTL_MS : FAIL_TTL_MS;
     if (age >= 0 && age < ttl) return cached;
@@ -378,6 +392,16 @@ export async function verifyCredentialAnchor(svc, cred: any) {
     checked_at: new Date().toISOString(),
     transaction_hash: bc.transaction_hash,
     contract_address: bc.contract_address || null,
+  };
+  // Persist failures too: an old confirmation must not survive a fresh check
+  // that rejects its sender, receipt, chain or configuration.
+  const finish = async (checked: any) => {
+    if (svc && cred.id) {
+      try {
+        await svc.entities.Credential.update(cred.id, { chain_check: checked });
+      } catch { /* best-effort */ }
+    }
+    return checked;
   };
 
   const recomputed = await computeCredentialHash({
@@ -406,39 +430,65 @@ export async function verifyCredentialAnchor(svc, cred: any) {
       result.committed_hash = committed;
       result.status = committed && committed.toLowerCase() === recomputed.toLowerCase() ? 'confirmed' : (committed ? 'hash_mismatch' : 'anchor_invalid');
     } else {
-      // Calldata mode — the transaction's input data is decoded ONCE and the
-      // embedded hash compared with the recomputed BW-HASH-V1 hash. No
-      // double-encoding (§13). Verified against the PINNED network's RPC.
+      const invalid = (reason: string) => finish({ ...result, status: 'anchor_invalid', reason });
+      // Do not reinterpret an explicitly unknown chain as the fallback network.
+      if (bc.chain_id != null && bc.chain_id !== cfg.chainId) return invalid('unsupported_pinned_chain');
+      if (!cfg.rpc) return finish({ ...result, reason: 'missing_rpc_config' });
+      let expectedSigner: string;
+      try {
+        expectedSigner = target === 'polygon_mainnet'
+          ? String(cfg.expectedSignerAddress || '')
+          : privateKeyToAccount(cfg.signingKey as `0x${string}`).address;
+      } catch {
+        return finish({ ...result, reason: 'missing_or_invalid_anchor_config' });
+      }
+      if (!/^0x[0-9a-fA-F]{40}$/.test(expectedSigner)) {
+        return finish({ ...result, reason: 'missing_or_invalid_anchor_config' });
+      }
+      const sameAddress = (value: unknown) => typeof value === 'string'
+        && value.toLowerCase() === expectedSigner.toLowerCase();
+      if (await pub.getChainId() !== cfg.chainId) return invalid('wrong_chain');
+
       const tx = await pub.getTransaction({ hash: bc.transaction_hash as `0x${string}` });
-      const input = typeof tx?.input === 'string' ? tx.input : String(tx?.input || '');
-      const committedBytes = commitmentFromPayload(new TextDecoder().decode(hexToBytes(input)));
+      if (!tx) return invalid('transaction_not_found');
+      const receipt = await pub.getTransactionReceipt({ hash: bc.transaction_hash as `0x${string}` });
+      if (!receipt || receipt.status !== 'success') return invalid('receipt_not_successful');
+      const sameHash = (a: unknown, b: unknown) => typeof a === 'string' && typeof b === 'string'
+        && /^0x[0-9a-fA-F]{64}$/.test(a) && a.toLowerCase() === b.toLowerCase();
+      if (!sameHash(tx.hash, bc.transaction_hash) || !sameHash(receipt.transactionHash, bc.transaction_hash)
+        || tx.blockNumber == null || receipt.blockNumber == null || tx.blockNumber !== receipt.blockNumber
+        || !sameHash(tx.blockHash, receipt.blockHash)) return invalid('transaction_receipt_mismatch');
+      if (tx.chainId != null && tx.chainId !== cfg.chainId) return invalid('wrong_transaction_chain');
+      if (!sameAddress(tx.from) || !sameAddress(receipt.from)) return invalid('wrong_sender');
+      if (!sameAddress(tx.to) || !sameAddress(receipt.to)) return invalid('wrong_recipient');
+      if (tx.value !== 0n) return invalid('nonzero_anchor_value');
+
+      let committedBytes: string | null = null;
+      try {
+        committedBytes = commitmentFromPayload(
+          new TextDecoder('utf-8', { fatal: true }).decode(hexToBytes(tx.input)), cred);
+      } catch { /* malformed hex/UTF-8 is never a commitment */ }
       result.committed_hash = committedBytes;
       if (!committedBytes) {
         result.status = 'anchor_invalid';
         result.reason = 'commitment_not_found_in_tx';
-      } else if (committedBytes.toLowerCase() !== recomputed.toLowerCase()) {
+      } else if (committedBytes !== recomputed) {
         result.status = 'hash_mismatch';
       } else {
         result.status = 'confirmed';
       }
     }
   } catch {
-    return { ...result, status: 'chain_unavailable', reason: 'rpc_error' };
+    return finish({ ...result, status: 'chain_unavailable', reason: 'rpc_error' });
   }
 
-  // Cache on the credential (best-effort).
-  if (svc && cred.id) {
-    try {
-      await svc.entities.Credential.update(cred.id, { chain_check: result });
-    } catch { /* best-effort */ }
-  }
-  return result;
+  return finish(result);
 }
 
 function hexToBytes(hex: string): Uint8Array {
-  const h = String(hex || '').replace(/^0x/i, '');
-  if (h === '') return new Uint8Array(0);
-  const out = new Uint8Array(Math.floor(h.length / 2));
+  if (typeof hex !== 'string' || !/^0x(?:[0-9a-fA-F]{2})+$/.test(hex)) throw new Error('Invalid calldata hex');
+  const h = hex.slice(2);
+  const out = new Uint8Array(h.length / 2);
   for (let i = 0; i < out.length; i++) out[i] = parseInt(h.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
