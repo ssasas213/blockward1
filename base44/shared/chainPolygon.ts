@@ -1,32 +1,35 @@
 // ============================================================================
 // chainPolygon — Polygon PoS anchoring + integrity verification for Blockward
-// verified credentials.
+// verified credentials. DUAL-NETWORK (Amoy testnet + Polygon mainnet) via one
+// canonical resolver. No code path ever falls back from mainnet to the test
+// key, or vice-versa.
 //
-// WHAT GOES ON-CHAIN: the BW-HASH-V1 content commitment (SHA-256), the public
-// Blockward Credential ID and the hash format version — nothing else. No
-// names, emails, images or documents ever touch the chain.
+// WHAT GOES ON-CHAIN (UNCHANGED): the BW-HASH-V1 content commitment (SHA-256),
+// the public Blockward Credential ID and the hash format version — nothing
+// else. No names, emails, images or documents ever touch the chain.
 //
-// TWO ANCHOR MODES:
-//   contract — when BLOCKWARD_CONTRACT_ADDRESS is configured, the commitment
-//              is recorded through the BlockwardRegistry contract
-//              (anchor(bytes32 credentialHash, string bwId) + Anchored event).
-//   calldata — otherwise the commitment is written as the data payload of a
-//              0-value self-transaction from the Blockward backend wallet.
-//              The payload lives permanently on-chain in the transaction's
-//              input data and is verified by recomputing and comparing.
+// ANCHOR MODE (UNCHANGED): calldata — a 0-value self-transaction from the
+// Blockward backend wallet whose input data permanently records the
+// commitment. (Amoy additionally supports BlockwardRegistry contract mode when
+// BLOCKWARD_CONTRACT_ADDRESS is set; mainnet is calldata-only.)
 //
-// NO NFTs. Achievements are blockchain-backed verified credentials, never
-// tradable assets.
+// NETWORK-PINNED VERIFICATION (§1): a credential is ALWAYS verified against
+// the network it was anchored on, resolved from its persisted
+// blockchain.chain_id / blockchain.network — NEVER from the application's
+// current issuance NETWORK env. Switching issuance to mainnet can never break
+// historical Amoy verification.
+//
+// CANONICAL SELECTOR (§4): `NETWORK` is the single issuance selector
+// ('polygon_amoy' | 'polygon_mainnet'). `BLOCKCHAIN_ENV` is NOT read here.
 //
 // REQUIRED SECRETS:
-//   ISSUER_PRIVATE_KEY  — backend wallet that pays gas (users NEVER need a
-//                         wallet, POL or any cryptocurrency)
-//   NETWORK             — 'polygon_amoy' (testnet, default) | 'polygon' (mainnet)
-//   POLYGON_RPC_URL     — optional RPC override; public Amoy RPC otherwise
-//   BLOCKWARD_CONTRACT_ADDRESS — optional; enables contract anchor mode
+//   AMOY:    ISSUER_PRIVATE_KEY (+ optional POLYGON_RPC_URL, BLOCKWARD_CONTRACT_ADDRESS)
+//   MAINNET: POLYGON_MAINNET_ISSUER_PRIVATE_KEY, POLYGON_MAINNET_ANCHOR_ADDRESS,
+//            POLYGON_MAINNET_RPC_URL  (all three REQUIRED — missing any ⇒ fail closed)
 // ============================================================================
-import { createPublicClient, createWalletClient, http, stringToHex, toHex, parseAbi, defineChain } from 'npm:viem@2.7.0';
+import { createPublicClient, createWalletClient, http, stringToHex, parseAbi, defineChain } from 'npm:viem@2.7.0';
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
+import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
 
 // Polygon PoS mainnet and Amoy testnet, defined explicitly (no reliance on
 // the viem chains bundle).
@@ -45,7 +48,6 @@ const polygonMainnet = defineChain({
   rpcUrls: { default: { http: ['https://polygon-rpc.com'] } },
   blockExplorers: { default: { name: 'PolygonScan', url: 'https://polygonscan.com' } },
 });
-import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
 
 const CONTRACT_ABI = parseAbi([
   'function anchor(bytes32 credentialHash, string bwId)',
@@ -57,22 +59,63 @@ const CLAIM_STALE_MS = 10 * 60 * 1000;
 const CONFIRM_TTL_MS = 10 * 60 * 1000;
 const FAIL_TTL_MS = 2 * 60 * 1000;
 
-export function getPolygonConfig() {
-  const network = Deno.env.get('NETWORK') || 'polygon_amoy';
-  const isMainnet = String(network).startsWith('polygon');
-  const chain = network === 'polygon' || network === 'polygon_mainnet' ? polygonMainnet : polygonAmoy;
+export type TargetNetwork = 'polygon_amoy' | 'polygon_mainnet';
+
+// The single canonical issuance selector. `polygon`/`polygon_mainnet` →
+// mainnet; everything else (including unset) → Amoy. Conservative: never
+// silently reinterpret an unknown value as mainnet.
+export function normalizeNetwork(raw: string | undefined | null): TargetNetwork {
+  const n = String(raw || '').trim().toLowerCase();
+  if (n === 'polygon' || n === 'polygon_mainnet') return 'polygon_mainnet';
+  return 'polygon_amoy';
+}
+
+// ── The ONE network configuration resolver (§2) ──────────────────────────────
+// Returns per-network chain/rpc/signer metadata. signingKey/expectedSignerAddress
+// are null when the corresponding secret is absent (verification never needs them;
+// anchoring validates them separately and fails closed for mainnet).
+export function resolvePolygonConfig(target: TargetNetwork) {
+  if (target === 'polygon_mainnet') {
+    return {
+      target,
+      chain: polygonMainnet,
+      chainId: 137,
+      networkName: 'polygon',
+      isTestnet: false,
+      rpc: Deno.env.get('POLYGON_MAINNET_RPC_URL') || null,                 // NO fallback (§5)
+      expectedSignerAddress: Deno.env.get('POLYGON_MAINNET_ANCHOR_ADDRESS') || null,
+      signingKey: Deno.env.get('POLYGON_MAINNET_ISSUER_PRIVATE_KEY') || null,
+      contract: null,                                                        // mainnet = calldata only (§8)
+    };
+  }
   return {
-    network: chain.id === polygonMainnet.id ? 'polygon' : 'polygon_amoy',
-    chain,
-    testnet: chain.id !== polygonMainnet.id,
-    rpc: Deno.env.get('POLYGON_RPC_URL') || (chain.id === polygonMainnet.id ? 'https://polygon-bor-rpc.publicnode.com' : 'https://polygon-amoy-bor-rpc.publicnode.com'),
-    contract: Deno.env.get('BLOCKWARD_CONTRACT_ADDRESS') || null,
-    pk: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
+    target: 'polygon_amoy' as const,
+    chain: polygonAmoy,
+    chainId: 80002,
+    networkName: 'polygon_amoy',
+    isTestnet: true,
+    rpc: Deno.env.get('POLYGON_RPC_URL') || 'https://polygon-amoy-bor-rpc.publicnode.com', // preserved fallback
+    expectedSignerAddress: null,
+    signingKey: Deno.env.get('ISSUER_PRIVATE_KEY') || null,
+    contract: Deno.env.get('BLOCKWARD_CONTRACT_ADDRESS') || null,            // amoy contract mode (optional)
   };
+}
+
+// Resolve the verification network from the credential's PERSISTED anchor
+// metadata — never from the live issuance env (§1). chain_id is authoritative;
+// network string is the fallback; Amoy is the conservative default.
+function resolveVerificationTarget(cred: any): TargetNetwork {
+  const bc = cred?.blockchain || {};
+  if (bc.chain_id === 137) return 'polygon_mainnet';
+  if (bc.chain_id === 80002) return 'polygon_amoy';
+  const net = String(bc.network || '').toLowerCase();
+  if (net === 'polygon' || net === 'polygon_mainnet') return 'polygon_mainnet';
+  return 'polygon_amoy'; // conservative — never reinterpret as mainnet
 }
 
 // The on-chain commitment payload — public references and the content hash
 // ONLY. This exact string is what integrity verification compares against.
+// UNCHANGED (§8).
 function buildCommitmentPayload(bwId: string, hash: string): string {
   return JSON.stringify({ v: 1, t: 'blockward-anchor', id: bwId, hv: CREDENTIAL_HASH_VERSION, h: hash });
 }
@@ -94,8 +137,24 @@ export async function anchorCredential(svc, credentialId: string) {
     console.log(JSON.stringify({ fn: 'chainPolygon', step, ...extra }));
   let cred: any = null;
   try {
-    const cfg = getPolygonConfig();
-    if (!cfg.pk) {
+    // Issuance network is the canonical selector (§4). NETWORK stays
+    // polygon_amoy in this phase — mainnet is wired but NOT activated.
+    const target = normalizeNetwork(Deno.env.get('NETWORK'));
+    const cfg = resolvePolygonConfig(target);
+
+    // ── MAINNET FAIL-CLOSED (§5): all production config required BEFORE signing ──
+    if (target === 'polygon_mainnet') {
+      const missing: string[] = [];
+      if (!cfg.rpc) missing.push('POLYGON_MAINNET_RPC_URL');
+      if (!cfg.expectedSignerAddress) missing.push('POLYGON_MAINNET_ANCHOR_ADDRESS');
+      if (!cfg.signingKey) missing.push('POLYGON_MAINNET_ISSUER_PRIVATE_KEY');
+      if (missing.length) {
+        log('mainnet_config_missing', { missing });
+        // Never expose secret values; never broadcast.
+        return { ok: false, error: 'mainnet_config_missing', missing };
+      }
+    } else if (!cfg.signingKey) {
+      // Amoy missing key — preserved skip behaviour (no broadcast).
       log('skip', { reason: 'missing_issuer_key' });
       return { ok: false, skipped: true, reason: 'missing_issuer_key' };
     }
@@ -104,7 +163,7 @@ export async function anchorCredential(svc, credentialId: string) {
     cred = rows?.[0] || null;
     if (!cred) return { ok: false, error: 'credential_not_found' };
 
-    // Idempotent — already anchored, never re-anchor.
+    // Idempotent — already anchored, never re-anchor (§14/§9).
     if (cred.anchor_status === 'confirmed' && cred.blockchain?.transaction_hash) {
       log('idempotent', { transaction_hash: cred.blockchain.transaction_hash });
       return { ok: true, idempotent: true, transaction_hash: cred.blockchain.transaction_hash };
@@ -147,7 +206,7 @@ export async function anchorCredential(svc, credentialId: string) {
       } catch { /* best-effort */ }
     };
 
-    // ── The commitment: BW-HASH-V1 hash of the CURRENT credential content ──
+    // ── The commitment: BW-HASH-V1 hash of the CURRENT credential content (UNCHANGED) ──
     const hash = await computeCredentialHash({
       verification_id: cred.bw_id,
       version: cred.hash_version === 2 ? 2 : 1,
@@ -157,20 +216,30 @@ export async function anchorCredential(svc, credentialId: string) {
       date_achieved: cred.date_achieved,
     });
     const payload = buildCommitmentPayload(cred.bw_id, hash);
-    const account = privateKeyToAccount(cfg.pk);
-    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc) });
-    const wal = createWalletClient({ account, chain: cfg.chain, transport: http(cfg.rpc) });
+    const account = privateKeyToAccount(cfg.signingKey as `0x${string}`);
 
-    // Live network guard — the RPC must actually be the configured Polygon PoS chain.
+    // ── SIGNER ADDRESS GUARD (§6) — mainnet only, BEFORE any broadcast ──
+    if (target === 'polygon_mainnet' && cfg.expectedSignerAddress) {
+      if (account.address.toLowerCase() !== String(cfg.expectedSignerAddress).toLowerCase()) {
+        log('signer_address_mismatch', {});
+        await markFailed('signer_address_mismatch');
+        return { ok: false, error: 'signer_address_mismatch' };
+      }
+    }
+
+    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc as string) });
+    const wal = createWalletClient({ account, chain: cfg.chain, transport: http(cfg.rpc as string) });
+
+    // ── CHAIN-ID GUARD (§7) — live RPC must equal the configured target ──
     const chainId = await pub.getChainId().catch(() => null);
-    if (chainId !== cfg.chain.id) {
-      await markFailed('wrong_chain', `chainId ${chainId}`);
-      return { ok: false, error: 'wrong_chain', chainId };
+    if (chainId !== cfg.chainId) {
+      await markFailed('wrong_chain', `chainId ${chainId} expected ${cfg.chainId}`);
+      return { ok: false, error: 'wrong_chain', chainId, expected: cfg.chainId };
     }
 
     let txHash: string;
     if (cfg.contract) {
-      // Contract anchor mode — BlockwardRegistry.anchor(bytes32, string)
+      // Amoy contract anchor mode — BlockwardRegistry.anchor(bytes32, string)
       const sim = await pub.simulateContract({
         account, address: cfg.contract as `0x${string}`, abi: CONTRACT_ABI,
         functionName: 'anchor',
@@ -178,15 +247,15 @@ export async function anchorCredential(svc, credentialId: string) {
       });
       txHash = await wal.writeContract(sim.request);
     } else {
-      // Calldata anchor mode — a 0-value self-transaction whose input data
-      // permanently records the commitment on Polygon PoS.
+      // Calldata anchor mode (UNCHANGED §8) — a 0-value self-transaction
+      // whose input data permanently records the commitment on Polygon PoS.
       txHash = await wal.sendTransaction({
         to: account.address,
         value: 0n,
         data: stringToHex(payload),
       });
     }
-    log('sent', { txHash, mode: cfg.contract ? 'contract' : 'calldata' });
+    log('sent', { txHash, mode: cfg.contract ? 'contract' : 'calldata', network: cfg.networkName });
 
     const receipt = await pub.waitForTransactionReceipt({ hash: txHash });
     if (receipt.status !== 'success') {
@@ -196,12 +265,12 @@ export async function anchorCredential(svc, credentialId: string) {
     const blockTimestamp = receipt.blockTimestamp
       ? new Date(Number(receipt.blockTimestamp)).toISOString()
       : new Date().toISOString();
-    log('anchored', { txHash, block: String(receipt.blockNumber) });
+    log('anchored', { txHash, block: String(receipt.blockNumber), network: cfg.networkName });
 
     const blockchain = {
       status: 'confirmed',
-      network: cfg.network,
-      chain_id: cfg.chain.id,
+      network: cfg.networkName,          // 'polygon_amoy' | 'polygon' — pins verification
+      chain_id: cfg.chainId,             // 80002 | 137 — pins verification (§1)
       anchor_mode: cfg.contract ? 'contract' : 'calldata',
       contract_address: cfg.contract || null,
       transaction_hash: receipt.transactionHash,
@@ -222,12 +291,12 @@ export async function anchorCredential(svc, credentialId: string) {
       event_log: (cred.event_log || []).concat([{
         event: 'blockchain_confirmed',
         actor: 'system',
-        note: `Polygon PoS anchor confirmed (${cfg.network}, tx ${String(receipt.transactionHash).slice(0, 18)}…)`,
+        note: `Polygon PoS anchor confirmed (${cfg.networkName}, tx ${String(receipt.transactionHash).slice(0, 18)}…)`,
         timestamp: new Date().toISOString(),
       }]),
     }).catch(() => {});
 
-    return { ok: true, transaction_hash: receipt.transactionHash, credential_hash: hash, network: cfg.network, testnet: cfg.testnet };
+    return { ok: true, transaction_hash: receipt.transactionHash, credential_hash: hash, network: cfg.networkName, testnet: cfg.isTestnet };
   } catch (e) {
     log('error', { err: String(e?.message || e).slice(0, 300) });
     if (cred) {
@@ -245,21 +314,25 @@ export async function anchorCredential(svc, credentialId: string) {
 }
 
 // ═════════════════════ INTEGRITY (recompute & compare) ═════════════════════
+//
+// NETWORK-PINNED (§1): the verification network is resolved from the
+// credential's persisted blockchain.chain_id/network, NOT from the live
+// issuance env. An Amoy credential stays verifiable on Amoy forever, even
+// after issuance switches to mainnet.
 
-// Recomputes the BW-HASH-V1 hash from the credential's CURRENT content and
-// compares it with the commitment recorded on-chain. A mismatch means the
-// credential content was altered after verification — never display
-// "Blockward Verified" on a mismatch.
 export async function verifyCredentialAnchor(svc, cred: any) {
   const bc = cred.blockchain || {};
-  const network = bc.network || 'polygon_amoy';
   const anchorState = cred.anchor_status || bc.status;
 
   if (anchorState !== 'confirmed' || !bc.transaction_hash) {
-    return { status: anchorState === 'processing' ? 'pending' : (anchorState || 'pending'), network, testnet: true };
+    const pendingTarget = resolveVerificationTarget(cred);
+    const pendingCfg = resolvePolygonConfig(pendingTarget);
+    return { status: anchorState === 'processing' ? 'pending' : (anchorState || 'pending'), network: pendingCfg.networkName, testnet: pendingCfg.isTestnet };
   }
 
-  // TTL cache — confirmed/mismatch 10 min, everything else 2 min.
+  // TTL cache — confirmed/mismatch 10 min, everything else 2 min. Cache is
+  // per-credential, and each credential is anchored on exactly one network,
+  // so there is no cross-network contamination.
   const cached = cred.chain_check || null;
   if (cached && cached.checked_at) {
     const age = Date.now() - new Date(cached.checked_at).getTime();
@@ -267,11 +340,15 @@ export async function verifyCredentialAnchor(svc, cred: any) {
     if (age >= 0 && age < ttl) return cached;
   }
 
-  const cfg = getPolygonConfig();
+  // ── NETWORK-PINNED resolution (the §1 fix) ──
+  const target = resolveVerificationTarget(cred);
+  const cfg = resolvePolygonConfig(target);
+
   const result: any = {
     status: 'chain_unavailable',
-    network,
-    testnet: network !== 'polygon',
+    network: cfg.networkName,
+    testnet: cfg.isTestnet,
+    chain_id: cfg.chainId,
     checked_at: new Date().toISOString(),
     transaction_hash: bc.transaction_hash,
     contract_address: bc.contract_address || null,
@@ -288,7 +365,7 @@ export async function verifyCredentialAnchor(svc, cred: any) {
   result.recomputed_hash = recomputed;
 
   try {
-    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc) });
+    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc as string) });
 
     if (bc.anchor_mode === 'contract' && bc.contract_address) {
       // Contract mode — the Anchored event must carry the recomputed hash.
@@ -303,11 +380,11 @@ export async function verifyCredentialAnchor(svc, cred: any) {
       result.committed_hash = committed;
       result.status = committed && committed.toLowerCase() === recomputed.toLowerCase() ? 'confirmed' : (committed ? 'hash_mismatch' : 'anchor_invalid');
     } else {
-      // Calldata mode — the transaction's input data must equal the exact
-      // commitment payload recomputed from the CURRENT content.
+      // Calldata mode — the transaction's input data is decoded ONCE and the
+      // embedded hash compared with the recomputed BW-HASH-V1 hash. No
+      // double-encoding (§13). Verified against the PINNED network's RPC.
       const tx = await pub.getTransaction({ hash: bc.transaction_hash as `0x${string}` });
       const input = typeof tx?.input === 'string' ? tx.input : String(tx?.input || '');
-      const expected = stringToHex(buildCommitmentPayload(cred.bw_id, recomputed));
       const committedBytes = commitmentFromPayload(new TextDecoder().decode(hexToBytes(input)));
       result.committed_hash = committedBytes;
       if (!committedBytes) {
