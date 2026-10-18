@@ -3,7 +3,6 @@ import { base44 } from '@/api/base44Client';
 import { toLogin } from '@/lib/authRedirectGuard';
 import SiteHeader from '@/components/home/SiteHeader';
 import Hero from '@/components/home2/Hero';
-import Film from '@/components/home2/Film';
 import IssueOwnVerify from '@/components/home2/IssueOwnVerify';
 import VaultSection from '@/components/home2/VaultSection';
 import TrustSection from '@/components/home2/TrustSection';
@@ -16,7 +15,7 @@ import SiteFooter from '@/components/home/SiteFooter';
 // → Vault → trust → verify → close. Fixed dark cinematic treatment; all
 // example content is fictional and clearly marked.
 const NAV_LINKS = [
-  { label: 'How it works', href: '#journey' },
+  { label: 'How it works', href: '#own' },
   { label: 'For individuals', href: '#own' },
   { label: 'For organisations', href: '/ForOrganisations' },
   { label: 'Verify a credential', href: '#verify' },
@@ -62,7 +61,6 @@ export default function Home() {
         ctaLabel="Get Started"
       />
       <Hero />
-      <Film />
       <IssueOwnVerify />
       <VaultSection />
       <TrustSection />
