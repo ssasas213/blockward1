@@ -1,4 +1,25 @@
-/* Fonts load from index.html (single preconnected <link> with display=swap). */
+/* Display face — Recoleta (workspace font). Body remains Inter (index.html). */
+@font-face {
+  font-family: 'Recoleta';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://media.base44.com/files/public/builder-assets/wix-fonts/recoleta-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Recoleta';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://media.base44.com/files/public/builder-assets/wix-fonts/recoleta-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Recoleta';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('https://media.base44.com/files/public/builder-assets/wix-fonts/recoleta-900-normal.woff2') format('woff2');
+}
 
 @tailwind base;
 @tailwind components;
@@ -8,6 +29,7 @@
   :root {
     /* Typography */
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-display: 'Recoleta', Georgia, serif;
 
     /* ===== Blockward blue identity — deep slate-navy, not flat black ===== */
     --background: 222 44% 7%;            /* #0A0F1A */

@@ -33,13 +33,13 @@ export default function VerifyWidget() {
     <section id="verify" className="relative py-20 sm:py-28 px-4 sm:px-6 lg:px-8 border-t border-border overflow-hidden scroll-mt-16">
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, hsl(258 90% 66% / 0.09), transparent 65%)' }}
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, hsl(217 84% 53% / 0.08), transparent 65%)' }}
       />
       <div className="relative z-10 max-w-2xl mx-auto">
         <Reveal>
           <div className="text-center mb-10">
-            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white uppercase leading-[1.1]">
-              Don't take their word for it. <span className="text-brand-gradient">Verify it.</span>
+            <h2 className="font-display text-3xl sm:text-5xl tracking-tight text-white leading-[1.15]">
+              Don't take their word for it.
             </h2>
             <p className="text-base text-muted-foreground mt-5 leading-relaxed">
               Enter a Blockward Credential ID to independently check its issuer, verification and
@@ -61,7 +61,7 @@ export default function VerifyWidget() {
             <button
               type="submit"
               disabled={status === 'checking' || !value.trim()}
-              className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-lg bg-brand-gradient text-white font-semibold text-sm transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none"
+              className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-lg bg-primary text-white font-semibold text-sm transition-all hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
             >
               {status === 'checking'
                 ? <Loader2 className="h-4 w-4 animate-spin" />

@@ -6,6 +6,7 @@ module.exports = {
   	extend: {
   		fontFamily: {
   			sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+  			display: ['var(--font-display)'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

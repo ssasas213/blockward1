@@ -2,24 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toLogin } from '@/lib/authRedirectGuard';
 import SiteHeader from '@/components/home/SiteHeader';
-import UniversalHero from '@/components/home/UniversalHero';
-import CertificateTransformation from '@/components/evidence/CertificateTransformation';
-import ProblemSection from '@/components/home/ProblemSection';
-import WhyBlockward from '@/components/home/WhyBlockward';
-import StatementSection from '@/components/home/StatementSection';
-import HowItWorksTimeline from '@/components/home/HowItWorksTimeline';
-import VerifiedMeaning from '@/components/home/VerifiedMeaning';
-import ProfileShowcase from '@/components/home/ProfileShowcase';
-import UseCases from '@/components/home/UseCases';
-import AudienceProof from '@/components/home/AudienceProof';
+import Hero from '@/components/home2/Hero';
+import Journey from '@/components/home2/Journey';
+import IssueOwnVerify from '@/components/home2/IssueOwnVerify';
+import VaultSection from '@/components/home2/VaultSection';
+import TrustSection from '@/components/home2/TrustSection';
 import VerifyWidget from '@/components/home/VerifyWidget';
-import OrgCta from '@/components/home/OrgCta';
-import FinalCta from '@/components/home/FinalCta';
+import FinalCta from '@/components/home2/FinalCta';
 import SiteFooter from '@/components/home/SiteFooter';
 
+// Direction B — "One Continuous Proof". The homepage is a single directed
+// narrative: hero artifact → scroll-choreographed journey → Issue/Own/Verify
+// → Vault → trust → verify → close. Fixed dark cinematic treatment; all
+// example content is fictional and clearly marked.
 const NAV_LINKS = [
-  { label: 'How it works', href: '#how-it-works' },
-  { label: 'For individuals', href: '#why-blockward' },
+  { label: 'How it works', href: '#journey' },
+  { label: 'For individuals', href: '#own' },
   { label: 'For organisations', href: '/ForOrganisations' },
   { label: 'Verify a credential', href: '#verify' },
 ];
@@ -53,7 +51,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen font-sans antialiased">
+    <div className="min-h-screen font-sans antialiased bg-[#0A0F1A]">
       <SiteHeader
         user={user}
         profile={profile}
@@ -61,20 +59,14 @@ export default function Home() {
         onSignIn={toLogin}
         onGetStarted={() => (window.location.href = '/Signup')}
         onDashboard={handleGoToDashboard}
-        ctaLabel="Create Profile"
+        ctaLabel="Get Started"
       />
-      <UniversalHero />
-      <CertificateTransformation />
-      <ProblemSection />
-      <WhyBlockward />
-      <StatementSection />
-      <HowItWorksTimeline />
-      <VerifiedMeaning />
-      <ProfileShowcase />
-      <UseCases />
-      <AudienceProof />
+      <Hero />
+      <Journey />
+      <IssueOwnVerify />
+      <VaultSection />
+      <TrustSection />
       <VerifyWidget />
-      <OrgCta />
       <FinalCta />
       <SiteFooter />
     </div>
