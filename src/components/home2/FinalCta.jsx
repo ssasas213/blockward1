@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 
 export default function FinalCta() {
   return (
@@ -14,9 +15,13 @@ export default function FinalCta() {
           make it verifiable.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button size="lg" className="h-12 px-8 text-base" onClick={() => (window.location.href = '/Signup')}>
-            Get Started <ArrowRight className="h-4 w-4" />
-          </Button>
+          <GlowActionButton
+            size="lg"
+            icon={UserRound}
+            label="Get Started"
+            subtitle="Create your account"
+            onClick={() => (window.location.href = '/Signup')}
+          />
           <Button
             size="lg"
             variant="outline"

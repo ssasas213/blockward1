@@ -6,6 +6,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useSchool } from '@/lib/SchoolContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Badge } from "@/components/ui/badge";
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
@@ -126,12 +127,7 @@ function TeacherDashboardContent() {
           </Link>
         </Button>
         {userProfile?.can_issue_blockwards && (
-          <Button asChild>
-            <Link to={createPageUrl('IssueBlockWard')}>
-              <PenLine className="h-4 w-4 mr-2" />
-              Create Achievement
-            </Link>
-          </Button>
+          <GlowActionButton size="md" icon={PenLine} label="Create Achievement" to={createPageUrl('IssueBlockWard')} />
         )}
       </PageHeader>
 

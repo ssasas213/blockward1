@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Plus, Share2, AtSign, Search } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
@@ -266,13 +267,14 @@ function StudentBlockWardsContent() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <PortfolioActions records={verified || []} profile={profile} user={user} />
-          <Button
+          <GlowActionButton
+            size="md"
+            icon={Plus}
+            label="Request an achievement"
             onClick={() => { setEditing(null); setFormOpen(true); }}
             disabled={caps && !caps.can_submit}
             title={caps && !caps.can_submit ? 'You have hit your request limits' : undefined}
-          >
-            <Plus className="h-4 w-4 mr-2" /> Request an achievement
-          </Button>
+          />
         </div>
       </div>
 

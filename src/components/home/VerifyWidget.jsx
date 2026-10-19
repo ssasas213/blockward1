@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, Search, ShieldCheck } from 'lucide-react';
+import { Search, ShieldCheck } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import Reveal from '@/components/home/Reveal';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 
 export default function VerifyWidget() {
   const navigate = useNavigate();
@@ -58,16 +59,15 @@ export default function VerifyWidget() {
               aria-label="Blockward Credential ID"
               className="flex-1 h-12 px-4 rounded-lg bg-secondary/60 border border-border text-white placeholder:text-tertiary font-mono tracking-wide focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-colors"
             />
-            <button
+            <GlowActionButton
               type="submit"
-              disabled={status === 'checking' || !value.trim()}
-              className="inline-flex items-center justify-center gap-2 h-12 px-7 rounded-lg bg-primary text-white font-semibold text-sm transition-all hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              {status === 'checking'
-                ? <Loader2 className="h-4 w-4 animate-spin" />
-                : <Search className="h-4 w-4" />}
-              Verify Credential
-            </button>
+              size="md"
+              icon={Search}
+              label="Verify Credential"
+              loading={status === 'checking'}
+              disabled={!value.trim()}
+              className="shrink-0"
+            />
           </form>
 
           {status === 'notfound' && (

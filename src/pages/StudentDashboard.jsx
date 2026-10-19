@@ -7,6 +7,7 @@ import { useSchool } from '@/lib/SchoolContext';
 import { loadEarnedAchievements } from '@/lib/achievementLifecycle';
 import { resolveStatus, formatDate } from '@/lib/achievementStatus';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import EmptyState from '@/components/ui/empty-state';
 import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import { StatusIndicator, StatusDot } from '@/components/ui/status';
@@ -110,11 +111,7 @@ function HolderOverviewContent() {
           <p className="text-sm text-muted-foreground mt-1 mb-4 max-w-md">
             Add an achievement to begin building your verified profile. You can request issuer verification once it's recorded.
           </p>
-          <Button asChild>
-            <Link to={createPageUrl('Achievements')}>
-              <Plus className="h-4 w-4 mr-2" /> Add achievement
-            </Link>
-          </Button>
+          <GlowActionButton size="md" icon={Plus} label="Add achievement" to={createPageUrl('Achievements')} />
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

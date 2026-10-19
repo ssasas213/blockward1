@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -208,9 +209,7 @@ export default function MyAchievements() {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">My achievements</h1>
           <p className="text-sm text-muted-foreground mt-1">Add achievements, connect the issuer, and get them Blockward Verified.</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-1.5" /> Add achievement
-        </Button>
+        <GlowActionButton size="md" icon={Plus} label="Add achievement" onClick={() => setAddOpen(true)} />
       </div>
 
       {items.length === 0 ? (
@@ -224,9 +223,7 @@ export default function MyAchievements() {
               Add your first achievement — certificates, competition results, courses, awards. The issuing
               organisation's verifiers confirm it, then Blockward secures it on Polygon.
             </p>
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4 mr-1.5" /> Add achievement
-            </Button>
+            <GlowActionButton size="md" icon={Plus} label="Add achievement" onClick={() => setAddOpen(true)} />
           </CardContent>
         </Card>
       ) : (

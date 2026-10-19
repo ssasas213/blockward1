@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building2, ArrowRight, Loader2, AlertCircle, Mail, KeyRound, AtSign, UserRound } from 'lucide-react';
 import { BlockwardMark } from '@/components/brand/BlockwardLogo';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { consumePostAuthRedirect, guardedRedirect, setPostAuthRedirect } from '@/lib/authRedirectGuard';
@@ -557,10 +558,14 @@ export default function Signup() {
                         Signed in as <strong className="text-foreground">{authedUser.email}</strong> — add your details to finish your account.
                       </span>
                     </div>
-                    <Button onClick={handleCompleteProfile} disabled={loading} className="w-full">
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Create My Account <ArrowRight className="h-4 w-4 ml-2" />
-                    </Button>
+                    <GlowActionButton
+                      size="md"
+                      icon={UserRound}
+                      label="Create My Account"
+                      onClick={handleCompleteProfile}
+                      loading={loading}
+                      className="w-full"
+                    />
                   </>
                 ) : (
                   <>
@@ -601,10 +606,14 @@ export default function Signup() {
                           disabled={loading}
                         />
                       </div>
-                      <Button type="submit" disabled={loading} className="w-full">
-                        {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        Create Account <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
+                      <GlowActionButton
+                        type="submit"
+                        size="md"
+                        icon={UserRound}
+                        label="Create Account"
+                        loading={loading}
+                        className="w-full"
+                      />
                     </form>
                   </>
                 )}
@@ -643,10 +652,14 @@ export default function Signup() {
                       disabled={loading}
                     />
                   </div>
-                  <Button type="submit" disabled={loading} className="w-full">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    Verify & Continue <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  <GlowActionButton
+                    type="submit"
+                    size="md"
+                    icon={Mail}
+                    label="Verify & Continue"
+                    loading={loading}
+                    className="w-full"
+                  />
                 </form>
 
                 <div className="flex items-center justify-between text-sm">

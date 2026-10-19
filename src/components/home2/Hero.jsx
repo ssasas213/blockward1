@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight } from 'lucide-react';
+import { UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import HeroFilm from '@/components/home2/HeroFilm';
 
 // Full-screen cinematic hero: the BlockWard story film plays edge-to-edge
@@ -48,9 +49,13 @@ export default function Hero() {
             employer in seconds.
           </motion.p>
           <motion.div {...rise(0.24)} className="mb-8 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg" className="h-12 px-8 text-base" onClick={() => (window.location.href = '/Signup')}>
-              Get Started <ArrowRight className="h-4 w-4" />
-            </Button>
+            <GlowActionButton
+              size="lg"
+              icon={UserRound}
+              label="Get Started"
+              subtitle="Create your account"
+              onClick={() => (window.location.href = '/Signup')}
+            />
             <Button
               size="lg"
               variant="outline"

@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useSchool } from '@/lib/SchoolContext';
 import { Button } from "@/components/ui/button";
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
@@ -86,12 +87,7 @@ function AdminDashboardContent() {
           <Button onClick={() => setInviteOpen(true)}>
             <Send className="h-4 w-4 mr-2" /> Invite People
           </Button>
-          <Button asChild>
-            <Link to={createPageUrl('Records')}>
-              <PenLine className="h-4 w-4 mr-2" />
-              Open Records
-            </Link>
-          </Button>
+          <GlowActionButton size="md" icon={PenLine} label="Open Records" to={createPageUrl('Records')} />
         </div>
       </PageHeader>
 

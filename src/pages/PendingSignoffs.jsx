@@ -4,6 +4,7 @@ import PageHeader from '@/components/ui/page-header';
 import EmptyState from '@/components/ui/empty-state';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
@@ -259,14 +260,11 @@ export default function PendingSignoffs() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     {needsAdminApproval ? (
-                      <Button size="sm" onClick={() => setApproveTarget(r)} disabled={busy}>
-                        <ShieldCheck className="h-4 w-4 mr-1.5" />
+                      <GlowActionButton size="sm" icon={ShieldCheck} onClick={() => setApproveTarget(r)} disabled={busy}>
                         {r.verification_tier === 3 ? 'Approve & send external link' : 'Approve & publish'}
-                      </Button>
+                      </GlowActionButton>
                     ) : (
-                      <Button size="sm" onClick={() => setSignTarget(r)} disabled={busy}>
-                        <PenLine className="h-4 w-4 mr-1.5" /> Sign off
-                      </Button>
+                      <GlowActionButton size="sm" icon={PenLine} label="Sign off" onClick={() => setSignTarget(r)} disabled={busy} />
                     )}
                     <Button size="sm" variant="outline" onClick={() => { setChangesTarget(r); setComment(''); }} disabled={busy}>
                       <Undo2 className="h-4 w-4 mr-1.5" /> Request changes
