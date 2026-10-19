@@ -9,7 +9,7 @@ import { resolveEffectiveActor, isTestModeEnabled, getTestSuperUserEmail } from 
 import {
   HISTORICAL_CATEGORIES, OPEN_STATUSES, MAX_OPEN_PER_STUDENT,
   genRequestRef, pushHEvent, notifyStudentEvent, sendTemplateEmail,
-  superAdminRecipients, validateLinkedIn, validateHttpUrl, lower,
+  superAdminRecipients, validateLinkedIn, validateHttpUrl, lower, appUrl,
 } from '../../shared/historicalVerification.ts';
 
 const bad = (msg: string, status = 400) => Response.json({ ok: false, error: msg }, { status });
