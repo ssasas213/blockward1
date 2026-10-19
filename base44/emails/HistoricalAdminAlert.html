@@ -1,0 +1,46 @@
+<mjml>
+  <mj-head>
+    <mj-title>New historical verification request {{request_ref}}</mj-title>
+    <mj-preview>{{student_name}} submitted a past achievement for verifier review</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-section background-color="#f8fafc" padding="0 36px" />
+      <mj-text color="#000000" font-size="15px" line-height="1.6" padding="0" />
+      <mj-button background-color="#2270ec" border-radius="0px" font-weight="700" inner-padding="14px 28px" align="left" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f8fafc">
+    <mj-section background-color="#2270ec" padding="20px 36px">
+      <mj-column>
+        <mj-image src="https://media.base44.com/images/public/6936b840baa53bb465f68d09/d0902e28f_logo.png" alt="Blockward" align="left" width="120px" />
+      </mj-column>
+    </mj-section>
+    <mj-section padding="36px 36px 8px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="700" color="#000000" line-height="1.25">New historical verification request</mj-text>
+        <mj-text color="#6b7280" font-size="14px">A student has submitted a past achievement and nominated a verifier for your authority review.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="8px 36px">
+      <mj-column>
+        <mj-table>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;width:160px;">Request</td><td style="padding:6px 0;color:#000000;font-size:13px;font-weight:600;">{{request_ref}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Student</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{student_name}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Achievement</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{achievement_title}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Issuing organisation</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{issuing_org}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Proposed verifier</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{verifier_name}}, {{verifier_role}}</td></tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="16px 36px 12px">
+      <mj-column>
+        <mj-button href="{{dashboard_url}}">Review in the Super Admin dashboard</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="8px 36px 24px">
+      <mj-column>
+        <mj-text color="#6b7280" font-size="12px">This is a notification only. Receiving it does not grant Super Admin access, which is assigned separately through an audited administrative process.</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

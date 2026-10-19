@@ -1,0 +1,375 @@
+{
+  "name": "HistoricalAchievementRequest",
+  "type": "object",
+  "properties": {
+    "request_ref": {
+      "type": "string",
+      "description": "Public request identifier (format HAR-XXXXXX) shown on emails and the review dashboard. Unique."
+    },
+    "student_email": {
+      "type": "string",
+      "description": "Holder email - RLS anchor. NEVER public."
+    },
+    "student_id": {
+      "type": "string",
+      "description": "UserProfile.id of the submitting student"
+    },
+    "student_name": {
+      "type": "string",
+      "description": "Student display name at submission time"
+    },
+    "title": {
+      "type": "string",
+      "description": "Achievement title - ATTESTED content"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "academic",
+        "sports",
+        "volunteering",
+        "competition",
+        "leadership",
+        "certification",
+        "extracurricular",
+        "professional_development",
+        "other"
+      ],
+      "default": "other",
+      "description": "Achievement category"
+    },
+    "description": {
+      "type": "string",
+      "description": "What the achievement is - ATTESTED content"
+    },
+    "original_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Original achievement date. NEVER rewritten - the credential records it alongside the later verification and issuance dates."
+    },
+    "issuing_org": {
+      "type": "string",
+      "description": "Original issuing organisation"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country of the issuing organisation"
+    },
+    "certificate_ref": {
+      "type": "string",
+      "description": "Optional certificate or award reference number"
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "description": "PRIVATE storage file_uri for uploads, or an official https verification URL"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "file",
+              "link"
+            ]
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "default": [],
+      "description": "Private evidence: PDFs, certificate photos, award letters, confirmation emails, official URLs. Accessed only through permission-checked signed URLs."
+    },
+    "profile_full_name": {
+      "type": "string",
+      "description": "Full legal/professional name from the student's Professional Profile section"
+    },
+    "linkedin_url": {
+      "type": "string",
+      "description": "Student LinkedIn URL - context for the review team ONLY. Never establishes authority and never appears on any credential or public page."
+    },
+    "personal_website": {
+      "type": "string",
+      "description": "Optional personal website or portfolio (https)"
+    },
+    "verifier_name": {
+      "type": "string",
+      "description": "Proposed verifier full name"
+    },
+    "verifier_email": {
+      "type": "string",
+      "description": "Proposed verifier email - receives the verification link AFTER Super Admin authorisation"
+    },
+    "verifier_role": {
+      "type": "string",
+      "description": "Verifier professional role (e.g. School administrator, Competition organiser)"
+    },
+    "verifier_org": {
+      "type": "string",
+      "description": "Verifier's organisation"
+    },
+    "verifier_linkedin": {
+      "type": "string",
+      "description": "Verifier LinkedIn URL if available - context only"
+    },
+    "verifier_relationship": {
+      "type": "string",
+      "description": "Relationship to the student (e.g. taught by, organised the competition)"
+    },
+    "verifier_authority_claim": {
+      "type": "string",
+      "description": "Why this person is authorised to verify the achievement - reviewed by the Super Admin, never taken at face value"
+    },
+    "verifier_proposals": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times a verifier has been nominated on this request - caps re-proposals (invitation-abuse prevention)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_review",
+        "info_requested",
+        "verifier_authorized",
+        "verifier_confirmed",
+        "verifier_declined",
+        "verifier_rejected",
+        "rejected",
+        "issued",
+        "withdrawn"
+      ],
+      "default": "pending_review",
+      "description": "pending_review = awaiting Super Admin authority review. info_requested = more information asked. verifier_authorized = Super Admin approved the verifier, awaiting their confirmation. verifier_confirmed = verifier confirmed (demo mode stops here). verifier_declined = verifier could not confirm. verifier_rejected = Super Admin rejected the proposed verifier. rejected = Super Admin rejected the request. issued = Blockward Verified credential issued. withdrawn = student cancelled."
+    },
+    "info_request": {
+      "type": "string",
+      "description": "Message when more information was requested"
+    },
+    "info_requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "info_requested_by": {
+      "type": "string",
+      "description": "Who requested more info (admin email or verifier)"
+    },
+    "student_updates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "evidence_added": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "message",
+          "added_at"
+        ]
+      },
+      "default": [],
+      "description": "Additional information the student supplied after a request for more info"
+    },
+    "authority_review": {
+      "type": "object",
+      "description": "Super Admin authority-review record - required before a verifier can be authorised. A LinkedIn profile or a professional-looking email alone is NEVER sufficient.",
+      "properties": {
+        "reviewed_by": {
+          "type": "string",
+          "description": "Super Admin email"
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checks": {
+          "type": "string",
+          "description": "The independent checks performed: organisation website, organisation-controlled records, independently obtained contact details, documented appointment, org administrator confirmation"
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Security flags: possible personal relationship, shared surname with student, conflict of interest, duplicate requests"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "checks"
+      ]
+    },
+    "review_rejected_reason": {
+      "type": "string",
+      "description": "Recorded reason when the Super Admin rejects the proposed verifier or the request"
+    },
+    "review_rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verifier_token": {
+      "type": "string",
+      "description": "Secure random single-use verification token - the ONLY way to act on the request as the verifier. Generated only on Super Admin approval. Service-role only."
+    },
+    "verifier_token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the verifier link expires (72h)"
+    },
+    "verifier_token_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the verifier submits a final decision - replay protection"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "cannot_verify"
+      ],
+      "description": "The approved verifier's final decision"
+    },
+    "decision_method": {
+      "type": "string",
+      "enum": [
+        "witnessed_in_person",
+        "reviewed_evidence",
+        "official_records",
+        "third_party",
+        "other"
+      ],
+      "description": "How the verifier verified - recorded on the credential and public page"
+    },
+    "decision_note": {
+      "type": "string",
+      "description": "Optional note from the verifier"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision_ip": {
+      "type": "string",
+      "description": "IP the decision was submitted from (audit trail)"
+    },
+    "credential_id": {
+      "type": "string",
+      "description": "Credential.id once issued (real mode)"
+    },
+    "credential_bw_id": {
+      "type": "string",
+      "description": "Public Blockward Credential ID (BW-XXXXXXXX) once issued"
+    },
+    "demo": {
+      "type": "boolean",
+      "default": false,
+      "description": "TRUE ONLY for TEST MODE records: never emails external addresses, never issues real credentials, never touches Polygon. Enforced server-side."
+    },
+    "demo_credential": {
+      "type": "object",
+      "description": "Synthetic credential display for demo records only - never a real Blockward Verified credential.",
+      "properties": {
+        "bw_id": {
+          "type": "string"
+        },
+        "issued_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "issued_by": {
+          "type": "string"
+        }
+      }
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "created | admin_review_started | verifier_approved | verifier_rejected | info_requested | student_info_added | verifier_reproposed | withdrawn | verifier_opened | confirmed | declined | credential_issued | demo_credential_issued | request_rejected"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Complete audited trail of every state transition"
+    }
+  },
+  "required": [
+    "request_ref",
+    "student_email",
+    "title"
+  ],
+  "rls": {
+    "create": {
+      "data.request_ref": "__service_role_only__"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.student_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "data.request_ref": "__service_role_only__"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+<mjml>
+  <mj-head>
+    <mj-title>Confirm a past achievement for Blockward ({{request_ref}})</mj-title>
+    <mj-preview>Blockward's review team has authorised this verification request</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-section background-color="#f8fafc" padding="0 36px" />
+      <mj-text color="#000000" font-size="15px" line-height="1.6" padding="0" />
+      <mj-button background-color="#2270ec" border-radius="0px" font-weight="700" inner-padding="14px 28px" align="left" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f8fafc">
+    <mj-section background-color="#2270ec" padding="20px 36px">
+      <mj-column>
+        <mj-image src="https://media.base44.com/images/public/6936b840baa53bb465f68d09/d0902e28f_logo.png" alt="Blockward" align="left" width="120px" />
+      </mj-column>
+    </mj-section>
+    <mj-section padding="36px 36px 8px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="700" color="#000000" line-height="1.25">Hello {{verifier_name}},</mj-text>
+        <mj-text color="#000000">{{student_first_name}} has submitted the achievement below to Blockward and nominated you as the person who can confirm it. Blockward's review team has checked the request and authorised you to review it.</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="8px 36px">
+      <mj-column>
+        <mj-table>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;width:160px;">Achievement</td><td style="padding:6px 0;color:#000000;font-size:13px;font-weight:600;">{{achievement_title}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Awarded by</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{issuing_org}}</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280;font-size:13px;">Date achieved</td><td style="padding:6px 0;color:#000000;font-size:13px;">{{original_date}}</td></tr>
+        </mj-table>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="16px 36px 12px">
+      <mj-column>
+        <mj-button href="{{verify_url}}">Review and confirm the claim</mj-button>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="8px 36px 24px">
+      <mj-column>
+        <mj-text color="#6b7280" font-size="13px">The link is single-use and expires on {{expires_date}}. You do not need a Blockward account to respond. You will confirm your identity and your authority to verify this achievement before submitting a decision.</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>
