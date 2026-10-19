@@ -1,11 +1,14 @@
 // ============================================================================
 // historicalVerifierData — public, token-authorised read for the APPROVED
 // verifier's confirmation page. No account needed: the single-use expiring
-// token IS the authorisation. Returns only what the verifier needs to review
-// — the claim plus evidence via short-lived signed URLs. Never exposes the
+// token IS the authorisation. The token is resolved ONLY through its
+// server-only hashed capability record — never through the student-readable
+// request record (P0/A02). Returns only what the verifier needs to review —
+// the claim plus evidence via short-lived signed URLs. Never exposes the
 // student's email, LinkedIn URL or any other private identity data.
 // ============================================================================
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import { findVerifierCapabilityByToken } from '../../shared/historicalVerification.ts';
 
 const bad = (msg: string, status = 400) => Response.json({ ok: false, error: msg }, { status });
 
@@ -17,18 +20,21 @@ export default async function (req: Request): Promise<Response> {
     const body = await req.json().catch(() => ({})) || {};
     const token = String(body.token || '').trim();
     // Deliberately public lookup: the long random token is the check, matched
-    // exactly (never as a regex). A blank token is rejected before the query.
+    // exactly through its hash (never as a regex). A blank token is rejected
+    // before the query.
     if (!token || token.length < 20) return bad('This verification link is not valid', 404);
     const svc = base44.asServiceRole;
 
-    const rows = await svc.entities.HistoricalAchievementRequest.filter({ verifier_token: token });
+    const cap = await findVerifierCapabilityByToken(svc, token);
+    if (!cap) return bad('This verification link is not valid', 404);
+    const rows = await svc.entities.HistoricalAchievementRequest.filter({ request_ref: cap.request_ref });
     const r = rows?.[0];
     if (!r) return bad('This verification link is not valid', 404);
 
-    if (r.verifier_token_used_at || !['verifier_authorized'].includes(r.status)) {
+    if (cap.token_used_at || !['verifier_authorized'].includes(r.status)) {
       return Response.json({ ok: false, error: 'This verification link has already been used or is no longer active', reason: 'used' }, { status: 410 });
     }
-    if (r.verifier_token_expires_at && new Date(r.verifier_token_expires_at) <= new Date()) {
+    if (cap.token_expires_at && new Date(cap.token_expires_at) <= new Date()) {
       return Response.json({ ok: false, error: 'This verification link has expired', reason: 'expired' }, { status: 410 });
     }
 
@@ -59,7 +65,7 @@ export default async function (req: Request): Promise<Response> {
         expected_name: r.verifier_name,
         authority_review_note: r.authority_review?.checks || null,
         evidence,
-        expires_at: r.verifier_token_expires_at,
+        expires_at: cap.token_expires_at,
       },
     });
   } catch (error) {

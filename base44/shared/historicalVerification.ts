@@ -10,7 +10,10 @@
 //   - The Super Admin approval authorises the PERSON, never the achievement.
 //   - A LinkedIn profile or professional-looking email alone NEVER establishes
 //     authority — the Super Admin must record independent checks.
-//   - The verifier token is single-use, expiring, and replay-protected.
+//   - The verifier token is single-use, expiring, replay-protected, and NEVER
+//     stored on the student-readable request record (capability record only).
+//   - A durable claim makes concurrent confirmations single-winner — a real
+//     credential can never be issued twice for one request.
 //   - Demo records (TEST MODE) never email external addresses, never issue
 //     real credentials and never touch Polygon — enforced server-side.
 //   - The notification recipients (BLOCKWARD_SUPER_ADMIN_NOTIFICATION_EMAILS)
@@ -120,3 +123,47 @@ export async function sendTemplateEmail(svc, opts) {
 }
 
 export function appUrl() { return appBaseUrl(); }
+
+// ── Verifier token capability (P0/A02 hardening) ────────────────────────────
+// The raw verifier token is NEVER stored on the student-readable request
+// record. It lives only in the server-only HistoricalVerifierToken capability
+// record (every RLS operation there is service-role only) and is looked up by
+// its SHA-256 hash. Consumers link the capability to its request by request_ref.
+export async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export async function storeVerifierCapability(svc, requestRef, token, expiresIso, demo) {
+  return svc.entities.HistoricalVerifierToken.create({
+    request_ref: requestRef, token_hash: await sha256Hex(token),
+    token_expires_at: expiresIso, token_used_at: null, demo: !!demo,
+    // raw_token is stored ONLY for demo simulation records so the test Super
+    // Admin console can rebuild the demo link — never for real records.
+    ...(demo ? { raw_token: token } : {}),
+  });
+}
+
+export async function findVerifierCapabilityByToken(svc, token) {
+  try {
+    const rows = await svc.entities.HistoricalVerifierToken.filter({ token_hash: await sha256Hex(token) });
+    return rows?.[0] || null;
+  } catch { return null; }
+}
+
+export async function findVerifierCapabilityByRef(svc, requestRef) {
+  try {
+    const rows = await svc.entities.HistoricalVerifierToken.filter({ request_ref: requestRef });
+    return rows?.[0] || null;
+  } catch { return null; }
+}
+
+export async function markVerifierCapabilityUsed(svc, capabilityId) {
+  try {
+    await svc.entities.HistoricalVerifierToken.update(capabilityId, { token_used_at: new Date().toISOString() });
+  } catch { /* best-effort — the status gates already prevent reuse */ }
+}
+
+export async function deleteVerifierCapability(svc, requestRef) {
+  try { await svc.entities.HistoricalVerifierToken.deleteMany({ request_ref: requestRef }); } catch { /* best-effort */ }
+}

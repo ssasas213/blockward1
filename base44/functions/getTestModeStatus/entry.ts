@@ -200,6 +200,17 @@ export default async function(req) {
       console.error('[getTestModeStatus] controller normalisation failed (non-fatal):', controllerError?.message || controllerError);
     }
 
+    // super_admin has NO separate account — it is the controller acting as the
+    // platform-level administrator. Internal authority stays independently
+    // server-checked (the internal-admin allowlist); this entry only gives the
+    // persona selection a stable name and role wherever it is resolved.
+    personas.super_admin = {
+      id: controller?.id || null, email: user.email,
+      name: 'BlockWard Super Admin (TEST MODE)',
+      first_name: 'BlockWard', last_name: 'Super Admin (TEST MODE)',
+      role: 'admin', super_admin: true,
+    };
+
     return Response.json({
       test_mode_enabled: true,
       is_test_super_user: true,

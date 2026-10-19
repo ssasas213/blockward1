@@ -30,7 +30,7 @@ export default function HistoricalReviewQueue({ data, loading, onOpen, onSeedDem
     { id: 'pending', label: 'Pending review', icon: Clock, hint: 'Proposed verifiers awaiting the authority review',
       statuses: ['pending_review', 'info_requested'] },
     { id: 'awaiting', label: 'Awaiting verifier confirmation', icon: Eye, hint: 'Approved verifiers that have not confirmed yet',
-      statuses: ['verifier_authorized'] },
+      statuses: ['verifier_authorized', 'decision_processing'] },
     { id: 'completed', label: 'Completed verifications', icon: CheckCircle2, hint: 'Confirmed and issued credentials',
       statuses: ['verifier_confirmed', 'issued'] },
     { id: 'rejected', label: 'Rejected requests', icon: XCircle, hint: 'Rejected verifiers, declined confirmations and withdrawn requests',

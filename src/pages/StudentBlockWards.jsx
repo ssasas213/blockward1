@@ -366,7 +366,7 @@ function StudentBlockWardsContent() {
           {historical && historical.length > 0 && (
             <div className="mt-8 space-y-3">
               <h3 className="section-heading">Past achievement verifications</h3>
-              {historical.map((h) => <HistoricalVaultCard key={h.id} req={h} />)}
+              {historical.map((h) => <HistoricalVaultCard key={h.id} req={h} onUpdated={load} />)}
             </div>
           )}
         </TabsContent>

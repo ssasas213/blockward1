@@ -137,6 +137,7 @@
         "pending_review",
         "info_requested",
         "verifier_authorized",
+        "decision_processing",
         "verifier_confirmed",
         "verifier_declined",
         "verifier_rejected",
@@ -145,11 +146,11 @@
         "withdrawn"
       ],
       "default": "pending_review",
-      "description": "pending_review = awaiting Super Admin authority review. info_requested = more information asked. verifier_authorized = Super Admin approved the verifier, awaiting their confirmation. verifier_confirmed = verifier confirmed (demo mode stops here). verifier_declined = verifier could not confirm. verifier_rejected = Super Admin rejected the proposed verifier. rejected = Super Admin rejected the request. issued = Blockward Verified credential issued. withdrawn = student cancelled."
+      "description": "pending_review = awaiting Super Admin authority review. info_requested = more information asked. verifier_authorized = Super Admin approved the verifier, awaiting their confirmation. decision_processing = a verifier decision is being issued (durable single-winner claim; transient). verifier_confirmed = verifier confirmed (demo mode stops here). verifier_declined = verifier could not confirm. verifier_rejected = Super Admin rejected the proposed verifier. rejected = Super Admin rejected the request. issued = Blockward Verified credential issued. withdrawn = student cancelled."
     },
     "info_request": {
       "type": "string",
-      "description": "Message when more information was requested"
+      "description": "Internal-review message when more information was requested"
     },
     "info_requested_at": {
       "type": "string",
@@ -158,6 +159,19 @@
     "info_requested_by": {
       "type": "string",
       "description": "Who requested more info (admin email or verifier)"
+    },
+    "verifier_info_request": {
+      "type": "object",
+      "description": "The APPROVED verifier's own request for more information. Deliberately separate from an internal-review info request: the status stays verifier_authorized so the token remains valid and the student can answer. Cleared when the student responds.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
     },
     "student_updates": {
       "type": "array",
@@ -239,19 +253,18 @@
       "type": "string",
       "format": "date-time"
     },
-    "verifier_token": {
+    "decision_claimed_by": {
       "type": "string",
-      "description": "Secure random single-use verification token - the ONLY way to act on the request as the verifier. Generated only on Super Admin approval. Service-role only."
+      "description": "Transient durable claim id while a verifier decision is being issued (single-winner concurrency guard). Stale claims (>10 min) are taken over automatically. Service-role only."
     },
-    "verifier_token_expires_at": {
+    "decision_claimed_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When the verifier link expires (72h)"
+      "description": "When the durable decision claim was taken. Service-role only."
     },
-    "verifier_token_used_at": {
+    "decision_achievement_id": {
       "type": "string",
-      "format": "date-time",
-      "description": "Set when the verifier submits a final decision - replay protection"
+      "description": "Achievement.id created during confirmation, persisted BEFORE credential issuance \u2014 the idempotency link that makes a retry resume instead of duplicating. Service-role only."
     },
     "decision": {
       "type": "string",
@@ -295,7 +308,7 @@
     "demo": {
       "type": "boolean",
       "default": false,
-      "description": "TRUE ONLY for TEST MODE records: never emails external addresses, never issues real credentials, never touches Polygon. Enforced server-side."
+      "description": "TRUE ONLY for TEST MODE records: never emails external addresses, never issues real credentials, never touches Polygon. Enforced server-side \u2014 derived from the server-resolved test context, never from client input."
     },
     "demo_credential": {
       "type": "object",
@@ -364,9 +377,7 @@
       ]
     },
     "update": {
-      "user_condition": {
-        "role": "admin"
-      }
+      "data.request_ref": "__service_role_only__"
     },
     "delete": {
       "data.request_ref": "__service_role_only__"

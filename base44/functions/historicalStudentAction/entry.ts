@@ -9,6 +9,7 @@ import { resolveEffectiveActor } from '../../shared/testMode.ts';
 import {
   OPEN_STATUSES, MAX_VERIFIER_PROPOSALS, pushHEvent, notifyStudentEvent,
   sendTemplateEmail, superAdminRecipients, validateLinkedIn, validateHttpUrl, lower,
+  appUrl, findVerifierCapabilityByRef, deleteVerifierCapability,
 } from '../../shared/historicalVerification.ts';
 
 const bad = (msg: string, status = 400) => Response.json({ ok: false, error: msg }, { status });
@@ -35,7 +36,15 @@ export default async function (req: Request): Promise<Response> {
     if (lower(r.student_email) !== lower(actor.actor_email)) return bad('This request belongs to another student', 403);
 
     if (action === 'provide_info') {
-      if (r.status !== 'info_requested') return bad('More information is not currently requested on this verification');
+      // Two distinct information requests (P1/A06):
+      //  - status info_requested → the internal Super Admin review (the
+      //    response returns the request to pending_review and notifies them)
+      //  - status verifier_authorized + verifier_info_request → the approved
+      //    verifier's question: the request STAYS verifier_authorized and the
+      //    token stays valid — the verifier simply decides next
+      const internalInfo = r.status === 'info_requested';
+      const verifierInfo = r.status === 'verifier_authorized' && !!r.verifier_info_request?.message;
+      if (!internalInfo && !verifierInfo) return bad('More information is not currently requested on this verification');
       const message = clean(body.message, 2000);
       if (!message) return bad('Write your response');
       const extra = [];
@@ -45,8 +54,32 @@ export default async function (req: Request): Promise<Response> {
         if (isLink && !validateHttpUrl(e.url)) return bad('Evidence links must be https URLs');
         extra.push({ name: clean(e.name, 160) || 'Additional evidence', url: String(e.url).slice(0, 1000), kind: isLink ? 'link' : 'file' });
       }
-      const updates = [...(r.student_updates || []), { kind: 'info', message, evidence_added: extra, added_at: new Date().toISOString() }];
+      const updates = [...(r.student_updates || []), { kind: verifierInfo ? 'verifier_info' : 'info', message, evidence_added: extra, added_at: new Date().toISOString() }];
       const evidence = [...(r.evidence || []), ...extra];
+
+      if (verifierInfo) {
+        await svc.entities.HistoricalAchievementRequest.update(r.id, {
+          student_updates: updates, evidence, verifier_info_request: null,
+          event_log: pushHEvent(r.event_log, 'student_info_added', actor.actor_email, `Response to the verifier: ${message.slice(0, 200)}`),
+        });
+        if (!r.demo) {
+          // The verifier's original single-use link stays valid — point them
+          // back to it rather than embedding a fresh token.
+          const cap = await findVerifierCapabilityByRef(svc, r.request_ref);
+          await sendTemplateEmail(svc, {
+            to: r.verifier_email, template_name: 'HistoricalVerifierFollowup', event_type: 'historical_verifier_followup', related_id: r.id,
+            subject: 'The student responded to your verification request',
+            variables: {
+              verifier_name: r.verifier_name,
+              student_first_name: String(r.student_name || 'The student').split(' ')[0],
+              achievement_title: r.title, student_message: message,
+              expires_date: cap?.token_expires_at ? String(cap.token_expires_at).slice(0, 10) : '',
+            },
+          });
+        }
+        return Response.json({ ok: true, status: 'verifier_authorized' });
+      }
+
       await svc.entities.HistoricalAchievementRequest.update(r.id, {
         status: 'pending_review', student_updates: updates, evidence,
         event_log: pushHEvent(r.event_log, 'student_info_added', actor.actor_email, message.slice(0, 200)),
@@ -80,12 +113,12 @@ export default async function (req: Request): Promise<Response> {
       }
       if (v.linkedin && !validateLinkedIn(v.linkedin)) return bad('The verifier LinkedIn URL is not valid');
       if (v.email === lower(r.student_email)) return bad('The verifier cannot be you');
+      await deleteVerifierCapability(svc, r.request_ref);
       await svc.entities.HistoricalAchievementRequest.update(r.id, {
         status: 'pending_review',
         verifier_name: v.name, verifier_email: v.email, verifier_role: v.role, verifier_org: v.org,
         verifier_linkedin: v.linkedin, verifier_relationship: v.relationship, verifier_authority_claim: v.authority,
-        verifier_proposals: proposals, verifier_token: null, verifier_token_expires_at: null, verifier_token_used_at: null,
-        authority_review: null, review_rejected_reason: null,
+        verifier_proposals: proposals, authority_review: null, review_rejected_reason: null, verifier_info_request: null,
         event_log: pushHEvent(r.event_log, 'verifier_reproposed', actor.actor_email, `New verifier proposed: ${v.name} (${v.email})`),
       });
       if (!r.demo) {
@@ -104,8 +137,9 @@ export default async function (req: Request): Promise<Response> {
 
     if (action === 'withdraw') {
       if (!OPEN_STATUSES.includes(r.status)) return bad('This verification can no longer be withdrawn');
+      await deleteVerifierCapability(svc, r.request_ref);
       await svc.entities.HistoricalAchievementRequest.update(r.id, {
-        status: 'withdrawn', verifier_token: null, verifier_token_expires_at: null,
+        status: 'withdrawn',
         event_log: pushHEvent(r.event_log, 'withdrawn', actor.actor_email, 'Student withdrew the request'),
       });
       return Response.json({ ok: true, status: 'withdrawn' });

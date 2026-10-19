@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useSchool } from '@/lib/SchoolContext';
 import AppLoadingGate from '@/components/auth/AppLoadingGate';
 import { guardedRedirect } from '@/lib/authRedirectGuard';
+import { base44 } from '@/api/base44Client';
 
 const DASHBOARD_MAP = {
   student: '/StudentDashboard',
@@ -20,9 +21,27 @@ export default function RoleDashboardRedirect() {
 
   useEffect(() => {
     if (loading) return;
-    // Through the redirect guard: counted for loop detection, and a
-    // same-path target is a no-op instead of an endless self-reload.
-    guardedRedirect(DASHBOARD_MAP[effectiveRole] || (user ? '/Login' : '/'));
+    let cancelled = false;
+    (async () => {
+      // Platform-level Super Admin lands in the internal console —
+      // server-authorised, never inferred from user_type (P0/A01). A failed
+      // probe grants nothing and ordinary routing continues.
+      if (effectiveRole === 'admin') {
+        try {
+          const res = await base44.functions.invoke('getInternalAdminStatus');
+          if (res?.data?.is_internal_admin && !cancelled) {
+            guardedRedirect('/internal/admin');
+            return;
+          }
+        } catch { /* probe failed — ordinary routing, no privilege assumed */ }
+      }
+      if (!cancelled) {
+        // Through the redirect guard: counted for loop detection, and a
+        // same-path target is a no-op instead of an endless self-reload.
+        guardedRedirect(DASHBOARD_MAP[effectiveRole] || (user ? '/Login' : '/'));
+      }
+    })();
+    return () => { cancelled = true; };
   }, [loading, effectiveRole, user]);
 
   return <AppLoadingGate message="Taking you to your dashboard…" />;

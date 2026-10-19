@@ -1,0 +1,51 @@
+{
+  "name": "HistoricalVerifierToken",
+  "type": "object",
+  "properties": {
+    "request_ref": {
+      "type": "string",
+      "description": "HistoricalAchievementRequest.request_ref this capability acts on (HAR-XXXXXX). Unique per active capability."
+    },
+    "token_hash": {
+      "type": "string",
+      "description": "SHA-256 hex of the raw verifier token \u2014 the lookup index. The raw token is NEVER stored here except for demo simulation records (raw_token)."
+    },
+    "token_expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the verification link expires (72h from Super Admin approval)."
+    },
+    "token_used_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the verifier submits a final decision \u2014 replay protection."
+    },
+    "raw_token": {
+      "type": "string",
+      "description": "DEMO RECORDS ONLY \u2014 the raw token, kept solely so the test Super Admin console can build the demo simulation link. Never set for real records."
+    },
+    "demo": {
+      "type": "boolean",
+      "default": false,
+      "description": "True for TEST MODE capability records."
+    }
+  },
+  "required": [
+    "request_ref",
+    "token_hash"
+  ],
+  "rls": {
+    "create": {
+      "data.request_ref": "__service_role_only__"
+    },
+    "read": {
+      "data.request_ref": "__service_role_only__"
+    },
+    "update": {
+      "data.request_ref": "__service_role_only__"
+    },
+    "delete": {
+      "data.request_ref": "__service_role_only__"
+    }
+  }
+}

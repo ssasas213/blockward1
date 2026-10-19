@@ -1,0 +1,41 @@
+<mjml>
+  <mj-head>
+    <mj-title>The student responded to your verification request</mj-title>
+    <mj-preview>{{student_first_name}} replied about "{{achievement_title}}"</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-section background-color="#f8fafc" padding="0" />
+      <mj-text color="#000000" font-size="15px" line-height="1.6" padding="0" />
+      <mj-button background-color="#2270ec" border-radius="0px" font-weight="700" inner-padding="14px 28px" align="left" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#f8fafc">
+    <mj-section background-color="#2270ec" padding="24px 36px">
+      <mj-column>
+        <mj-image src="https://media.base44.com/images/public/6936b840baa53bb465f68d09/d0902e28f_logo.png" alt="BlockWard" width="130px" align="left" />
+      </mj-column>
+    </mj-section>
+    <mj-section padding="36px 36px 10px"><mj-column>
+      <mj-text font-size="22px" font-weight="700" line-height="1.3">The student responded to your request</mj-text>
+      <mj-text color="#6b7280">{{student_first_name}} replied to your question about "{{achievement_title}}".</mj-text>
+    </mj-column></mj-section>
+    <mj-section padding="10px 36px"><mj-column>
+      <mj-section background-color="#ffffff" border="1px solid #e5e7eb" padding="18px 22px">
+        <mj-column>
+          <mj-text font-style="italic">&ldquo;{{student_message}}&rdquo;</mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-column></mj-section>
+    <mj-section padding="16px 36px 8px"><mj-column>
+      <mj-text color="#6b7280" font-size="13px">Use the verification link from your original invitation email to continue — it remains active until {{expires_date}}. If you cannot find that email, contact the student and ask them to nominate you again.</mj-text>
+    </mj-column></mj-section>
+    <mj-section padding="20px 36px"><mj-column>
+      <mj-button href="https://blockward.me">BlockWard</mj-button>
+    </mj-column></mj-section>
+    <mj-section background-color="#2270ec" padding="18px 36px">
+      <mj-column>
+        <mj-text color="#ffffff" font-size="12px" align="center">This message was sent by BlockWard on behalf of the student who nominated you as their verifier.</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

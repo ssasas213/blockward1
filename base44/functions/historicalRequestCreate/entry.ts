@@ -33,7 +33,15 @@ export default async function (req: Request): Promise<Response> {
     // for the test super user or an active test persona. Production data is
     // never touched and no external email is ever sent for a demo record.
     const isTestSuper = isTestModeEnabled() && lower(actor.controller_email) === lower(getTestSuperUserEmail());
-    const demo = body.demo === true && isTestModeEnabled() && (actor.is_test_mode === true || isTestSuper);
+    // Demo isolation is SERVER-DERIVED (P1/A07): an active test persona or the
+    // test super user is ALWAYS in simulation. The client flag can no longer
+    // opt a test persona into the real branch (external emails / real
+    // issuance); a contradictory client flag is rejected, not honoured.
+    const testContext = isTestModeEnabled() && (actor.is_test_mode === true || isTestSuper);
+    if (testContext && body.demo === false) {
+      return bad('Test mode is active — clear the active test persona in Test Mode before submitting a real verification request');
+    }
+    const demo = testContext;
 
     // ── Validation ──
     const title = clean(form.title, 140);

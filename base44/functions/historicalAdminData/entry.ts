@@ -8,7 +8,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { requireInternalAdmin } from '../../shared/internalAdmin.ts';
 import { isTestModeEnabled, getTestSuperUserEmail } from '../../shared/testMode.ts';
-import { OPEN_STATUSES, lower, appUrl } from '../../shared/historicalVerification.ts';
+import { OPEN_STATUSES, lower, appUrl, findVerifierCapabilityByRef } from '../../shared/historicalVerification.ts';
 
 const bad = (msg: string, status = 400) => Response.json({ ok: false, error: msg }, { status });
 const stripToken = (r: any) => {
@@ -81,18 +81,22 @@ export default async function (req: Request): Promise<Response> {
     const testSuper = isTestModeEnabled() && lower(me?.email) === lower(getTestSuperUserEmail());
     // Demo records NEVER leave the server outside test mode, and only to the
     // test super user — enforced here, not in the UI.
-    const demoRequests = testSuper
-      ? (all || []).filter((x: any) => x.demo).map((x: any) => {
-          const cleanRec = stripToken(x);
-          if (x.status === 'verifier_authorized' && x.verifier_token) {
-            cleanRec.demo_verifier_url = `${appUrl()}/historical-verify/${x.verifier_token}`;
-          }
-          return cleanRec;
-        })
-      : [];
+    const demoRequests: any[] = [];
+    if (testSuper) {
+      for (const x of (all || []).filter((y: any) => y.demo)) {
+        const cleanRec: any = { ...x };
+        if (x.status === 'verifier_authorized') {
+          // Demo simulation link — rebuilt from the raw token kept only on the
+          // server-only capability record (demo records only).
+          const cap = await findVerifierCapabilityByRef(svc, x.request_ref);
+          if (cap?.raw_token) cleanRec.demo_verifier_url = `${appUrl()}/historical-verify/${cap.raw_token}`;
+        }
+        demoRequests.push(cleanRec);
+      }
+    }
     const stats = {
       pending: real.filter((x: any) => ['pending_review', 'info_requested'].includes(x.status)).length,
-      with_verifier: real.filter((x: any) => ['verifier_authorized', 'verifier_confirmed'].includes(x.status)).length,
+      with_verifier: real.filter((x: any) => ['verifier_authorized', 'decision_processing', 'verifier_confirmed'].includes(x.status)).length,
       issued: real.filter((x: any) => x.status === 'issued').length,
       declined: real.filter((x: any) => ['verifier_rejected', 'verifier_declined', 'rejected'].includes(x.status)).length,
     };

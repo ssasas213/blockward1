@@ -56,6 +56,13 @@ export async function handlePostLoginRedirect() {
         // every demo persona and dumped the test student on the admin
         // dashboard, which bounced them back into the guard.
         const persona = testRes.data.active_persona || 'admin';
+        // Platform-level Super Admin persona — the internal console, never an
+        // ordinary dashboard. Internal authority is re-checked server-side by
+        // the console and every privileged function.
+        if (persona === 'super_admin') {
+          guardedRedirect('/internal/admin');
+          return null;
+        }
         const info = (testRes.data.personas || {})[persona] || {};
         const role = info.role
           || (['student', 'teacher', 'admin'].includes(persona) ? persona : 'admin');
@@ -129,6 +136,20 @@ export async function handlePostLoginRedirect() {
   if (postAuthIntent) {
     guardedRedirect(postAuthIntent);
     return null;
+  }
+
+  // ===== Platform-level Super Admin — resolved SERVER-SIDE before ordinary
+  // organisation routing (P0/A01). The internal-admin allowlist secret is the
+  // only grant; user_type, admin_level and notification recipients never are.
+  // A failed probe grants nothing — ordinary routing continues below.
+  if (role === 'admin') {
+    try {
+      const adminRes = await base44.functions.invoke('getInternalAdminStatus');
+      if (adminRes?.data?.is_internal_admin) {
+        guardedRedirect('/internal/admin');
+        return null;
+      }
+    } catch { /* probe failed — ordinary routing, no privilege assumed */ }
   }
 
   // No school linked yet. Teachers and admins genuinely cannot function
