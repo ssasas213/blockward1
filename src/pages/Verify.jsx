@@ -500,7 +500,14 @@ export default function Verify() {
                 {record.achievement_description && <p className="text-muted-foreground text-sm leading-relaxed">{record.achievement_description}</p>}
                 {achievedDate && (
                   <p className="text-xs text-tertiary flex items-center gap-1.5 mt-3">
-                    <Calendar className="h-3.5 w-3.5" /> Achieved {achievedDate}
+                    <Calendar className="h-3.5 w-3.5" /> Achievement earned {achievedDate}
+                  </p>
+                )}
+                {achievedDate && approvedDate && (
+                  <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 mt-1.5">
+                    <History className="h-3 w-3" /> Historical credential — earned {achievedDate}, verified by the
+                    issuing organisation {approvedDate}. The blockchain anchor proves when this record was committed,
+                    not when the achievement took place.
                   </p>
                 )}
                 {record.team_slug && (

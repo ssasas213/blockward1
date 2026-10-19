@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import GlowActionButton from '@/components/ui/GlowActionButton';
-import { Plus, Share2, AtSign, Search } from 'lucide-react';
+import { Plus, Share2, AtSign, Search, Archive } from 'lucide-react';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -268,6 +269,13 @@ function StudentBlockWardsContent() {
         <div className="flex flex-wrap items-center gap-2">
           <PortfolioActions records={verified || []} profile={profile} user={user} />
           <GlowActionButton
+            variant="secondary"
+            size="md"
+            icon={Archive}
+            label="Add past achievement"
+            to={createPageUrl('PastAchievements')}
+          />
+          <GlowActionButton
             size="md"
             icon={Plus}
             label="Request an achievement"
@@ -308,7 +316,7 @@ function StudentBlockWardsContent() {
           <TabsTrigger value="all">All ({totalCount === null ? '…' : totalCount})</TabsTrigger>
           <TabsTrigger value="verified">Verified ({verified === null ? '…' : verified.length})</TabsTrigger>
           <TabsTrigger value="pending">Requests ({requests === null ? '…' : openRequestCount})</TabsTrigger>
-          <TabsTrigger value="unverified">Unverified ({selfReported === null ? '…' : unverifiedCount})</TabsTrigger>
+          <TabsTrigger value="unverified">Archive ({selfReported === null ? '…' : unverifiedCount})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all" className="mt-6">

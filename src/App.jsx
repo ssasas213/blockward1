@@ -65,6 +65,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
 import StudentBlockWards from './pages/StudentBlockWards';
 import MyAchievements from './pages/MyAchievements';
+import PastAchievements from './pages/PastAchievements';
 import AdminConsole from './pages/internal/AdminConsole';
 import RouteSeo from '@/components/RouteSeo';
 
@@ -156,6 +157,7 @@ const AuthenticatedApp = () => {
       <Route path="/Profile" element={<LayoutWrapper currentPageName="Profile"><ProtectedRoute><Profile /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/PastAchievements" element={<LayoutWrapper currentPageName="PastAchievements"><ProtectedRoute><PastAchievements /></ProtectedRoute></LayoutWrapper>} />
       {/* Blockward staff internal tools — role re-checked server-side */}
       <Route path="/internal" element={<Navigate to="/internal/admin" replace />} />
       <Route path="/internal/admin" element={<AdminConsole />} />
