@@ -656,6 +656,14 @@ img, video { max-width: 100%; height: auto; }
 }
 .gbtn-secondary:hover:not(:disabled) .gbtn-arrow { background: hsl(217 84% 53% / 0.22); }
 
+/* Label/subtitle colors are variant-aware — the secondary pill sits on a
+   light card surface, so its label must follow the theme foreground
+   (fixes the invisible white-on-white label in light mode). */
+.gbtn-label { color: #fff; }
+.gbtn-sub { color: rgb(191 219 254 / 0.6); }
+.gbtn-secondary .gbtn-label { color: hsl(var(--foreground)); }
+.gbtn-secondary .gbtn-sub { color: hsl(var(--muted-foreground)); }
+
 /* ===== Design system — typography scale (dashboards) ===== */
 .page-title { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
 .page-subtitle { font-size: 0.875rem; line-height: 1.5; color: hsl(var(--muted-foreground)); }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Badge } from '@/components/ui/badge';
+import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import OrgVerificationQueue from '@/components/organisations/OrgVerificationQueue';
@@ -97,9 +98,7 @@ export default function OrgDashboard() {
               ))}
             </div>
           ) : (
-            <Button asChild>
-              <Link to="/organisations/signup">Register your organisation</Link>
-            </Button>
+            <GlowActionButton icon={Building2} label="Register your organisation" href="/organisations/signup" />
           )}
         </CardContent>
       </Card>
@@ -170,11 +169,7 @@ export default function OrgDashboard() {
             </p>
           </div>
           {org.handle && (
-            <Button size="sm" variant="outline" asChild>
-              <Link to={`/org/${org.handle}`} target="_blank">
-                <Globe className="h-4 w-4" /> Public issuer page <ExternalLink className="h-3 w-3" />
-              </Link>
-            </Button>
+            <GlowActionButton variant="secondary" size="sm" icon={Globe} label="Public issuer page" href={`/org/${org.handle}`} target="_blank" />
           )}
         </div>
       </Card>

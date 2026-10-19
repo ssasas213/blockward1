@@ -30,6 +30,7 @@ export default function GlowActionButton({
   disabled = false,
   arrow = true,
   title,
+  target,
   className = '',
   children,
 }) {
@@ -52,8 +53,8 @@ export default function GlowActionButton({
       )}
       {Icon && <span className={cn('gbtn-divider', s.divider)} />}
       <span className="flex flex-1 flex-col min-w-0 items-center justify-center px-2 text-center leading-tight">
-        <span className={cn('block font-semibold text-white whitespace-nowrap', s.label)}>{children || label}</span>
-        {subtitle && s.sub && <span className={cn('block text-blue-100/55', s.sub)}>{subtitle}</span>}
+        <span className={cn('gbtn-label block font-semibold whitespace-nowrap', s.label)}>{children || label}</span>
+        {subtitle && s.sub && <span className={cn('gbtn-sub block', s.sub)}>{subtitle}</span>}
       </span>
       {loading ? (
         <span className={cn('gbtn-arrow', s.arrowBox)}><Loader2 className={cn(s.arrowInner, 'animate-spin')} /></span>
@@ -66,7 +67,7 @@ export default function GlowActionButton({
   const classes = cn('gbtn', variant === 'secondary' && 'gbtn-secondary', s.pill, className);
 
   if (href) {
-    return <a href={href} onClick={handleClick} title={title} aria-disabled={isDisabled || undefined} className={classes}>{content}</a>;
+    return <a href={href} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined} onClick={handleClick} title={title} aria-disabled={isDisabled || undefined} className={classes}>{content}</a>;
   }
   return (
     <button type={type} onClick={handleClick} disabled={isDisabled} title={title} className={classes}>

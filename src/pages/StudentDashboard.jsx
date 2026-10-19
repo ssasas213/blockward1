@@ -89,8 +89,8 @@ function HolderOverviewContent() {
     <div className="space-y-7 max-w-5xl">
       {/* Greeting + summary line */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">{greeting()}, {firstName}</h1>
-        <p className="text-sm text-muted-foreground mt-1">Your credentials and verification activity.</p>
+        <h1 className="page-title">{greeting()}, {firstName}</h1>
+        <p className="page-subtitle mt-1">Your credentials and verification activity.</p>
         {!loading && (
           <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <span className="text-foreground"><span className="font-semibold tabular-nums">{achievements.length}</span> <span className="text-tertiary">achievements</span></span>

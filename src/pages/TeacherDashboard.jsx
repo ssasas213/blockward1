@@ -100,9 +100,7 @@ function TeacherDashboardContent() {
           title="You have not joined a school yet"
           description="Your dashboard fills in as soon as you're part of a school. Join with the staff code from your school administrator, or ask them to invite you by email."
         >
-          <Button asChild>
-            <Link to={createPageUrl('JoinSchool')}>Join a school</Link>
-          </Button>
+          <GlowActionButton icon={Building2} label="Join a school" to={createPageUrl('JoinSchool')} />
         </EmptyState>
       </div>
     );
@@ -114,18 +112,8 @@ function TeacherDashboardContent() {
         title={`${userProfile?.first_name || 'Teacher'}'s Dashboard`}
         description="Your teaching overview"
       >
-        <Button variant="outline" asChild>
-          <Link to={createPageUrl('PendingSignoffs')}>
-            <ClipboardCheck className="h-4 w-4 mr-2" />
-            Pending Sign-offs
-          </Link>
-        </Button>
-        <Button variant="outline" asChild>
-          <Link to={createPageUrl('IssuePoints')}>
-            <Award className="h-4 w-4 mr-2" />
-            Issue Points
-          </Link>
-        </Button>
+        <GlowActionButton variant="secondary" size="md" icon={ClipboardCheck} label="Pending Sign-offs" to={createPageUrl('PendingSignoffs')} />
+        <GlowActionButton variant="secondary" size="md" icon={Award} label="Issue Points" to={createPageUrl('IssuePoints')} />
         {userProfile?.can_issue_blockwards && (
           <GlowActionButton size="md" icon={PenLine} label="Create Achievement" to={createPageUrl('IssueBlockWard')} />
         )}
