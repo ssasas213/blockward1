@@ -156,6 +156,46 @@ export default async function(req: Request): Promise<Response> {
         } catch (e) { /* alerts are best-effort — never break the dashboard */ }
       }
 
+      // ── Credential-platform metrics (accurate server-side counts; zero
+      // when the product has not collected them — never fabricated) ──
+      let credentialMetrics = { recipients: 0, revoked: 0, verified_30d: 0, pending_approvals: 0, active_verifiers: 0 };
+      let pendingApprovalRows = [];
+      if (schoolId) {
+        // Each metric settles independently — one rate-limited or failing
+        // call never zeroes out the others.
+        const sinceIso = new Date(Date.now() - 30 * 86400000).toISOString();
+        // Backend SDK 0.8.40: no .count() — counts come from filtered reads
+        // (arrays), scoped to the school. Each metric settles independently:
+        // one rate-limited or failing call never zeroes out the others.
+        const safeCount = async (run: () => Promise<any>): Promise<any[]> => {
+          try { const v = await run(); return Array.isArray(v) ? v : (v?.items || []); }
+          catch { return []; }
+        };
+        const [approvedRows, revokedRows, recentRows, pendingRows, verifierRows] = await Promise.all([
+          safeCount(() => svc.entities.BlockWardVerificationRegistry.filter({ school_id: schoolId, approval_status: 'approved' }, '-created_date', 2000)),
+          safeCount(() => svc.entities.BlockWardVerificationRegistry.filter({ school_id: schoolId, approval_status: 'revoked' }, '-created_date', 2000)),
+          safeCount(() => svc.entities.BlockWardVerificationRegistry.filter({ school_id: schoolId, date_approved: { $gte: sinceIso } }, '-created_date', 2000)),
+          safeCount(() => svc.entities.StudentRecord.filter({ school_id: schoolId, status: 'awaiting_admin_signature' }, '-submitted_at', 50)),
+          safeCount(() => svc.entities.StaffMembership.filter({ school_id: schoolId, status: 'active' }, '-created_date', 1000)),
+        ]);
+        credentialMetrics = {
+          recipients: new Set(approvedRows.map((r: any) => r.student_id).filter(Boolean)).size,
+          revoked: revokedRows.length,
+          verified_30d: recentRows.length,
+          pending_approvals: pendingRows.length,
+          active_verifiers: verifierRows.length,
+        };
+        if (pendingRows.length) {
+          pendingApprovalRows = pendingRows.slice(0, 5).map((r: any) => ({
+            id: r.id,
+            student_name: r.student_name || r.student_email,
+            title: r.title,
+            category: r.award_type_title || r.category || null,
+            submitted_at: r.submitted_at || null,
+          }));
+        }
+      }
+
       return Response.json({
         ok: true,
         role,
@@ -169,6 +209,8 @@ export default async function(req: Request): Promise<Response> {
           drive_connected: driveConnected,
           records_pending_archive: pendingArchive.length,
         },
+        credential_metrics: credentialMetrics,
+        pending_approvals: pendingApprovalRows,
         alerts,
       });
     }

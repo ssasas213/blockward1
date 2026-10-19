@@ -629,3 +629,37 @@ img, video { max-width: 100%; height: auto; }
   transition: transform 0.18s ease;
 }
 .gbtn:hover:not(:disabled) .gbtn-arrow { transform: translateX(2px); }
+
+/* Secondary action — same design language, restrained: soft blue border,
+   minimal glow, card surface, blue icon/arrow. */
+.gbtn-secondary {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(217 84% 53% / 0.28);
+  box-shadow: 0 0 8px rgb(37 99 235 / 0.10);
+}
+.gbtn-secondary:hover:not(:disabled) {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  border-color: hsl(217 84% 53% / 0.5);
+  box-shadow: 0 0 12px rgb(37 99 235 / 0.16);
+}
+.gbtn-secondary .gbtn-icon {
+  color: hsl(var(--primary));
+  background: hsl(217 84% 53% / 0.08);
+  border-color: hsl(217 84% 53% / 0.3);
+}
+.gbtn-secondary .gbtn-arrow {
+  background: hsl(217 84% 53% / 0.14);
+  box-shadow: none;
+  color: hsl(var(--primary));
+}
+.gbtn-secondary:hover:not(:disabled) .gbtn-arrow { background: hsl(217 84% 53% / 0.22); }
+
+/* ===== Design system — typography scale (dashboards) ===== */
+.page-title { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
+.page-subtitle { font-size: 0.875rem; line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.section-heading { font-size: 1rem; line-height: 1.4; font-weight: 600; color: hsl(var(--foreground)); }
+.card-title { font-size: 0.875rem; line-height: 1.4; font-weight: 600; color: hsl(var(--foreground)); }
+.caption { font-size: 0.75rem; line-height: 1.4; color: hsl(var(--muted-foreground)); }
+.stat-value { font-size: 1.5rem; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; }

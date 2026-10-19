@@ -1,41 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { base44 } from '@/api/base44Client';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useSchool } from '@/lib/SchoolContext';
-import { Button } from "@/components/ui/button";
 import GlowActionButton from '@/components/ui/GlowActionButton';
 import PageHeader from '@/components/ui/page-header';
 import StatCard from '@/components/ui/stat-card';
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton';
+import AdminApprovalQueue from '@/components/admin/AdminApprovalQueue';
 import PendingSignaturesWidget from '@/components/dashboard/PendingSignaturesWidget';
-import AdminAcademicWidget from '@/components/dashboard/AdminAcademicWidget';
-import AdminAssignmentsWidget from '@/components/dashboard/AdminAssignmentsWidget';
-import AdminAssembliesWidget from '@/components/dashboard/AdminAssembliesWidget';
 import StaffApprovalsCard from '@/components/people/StaffApprovalsCard';
 import InvitePeopleModal from '@/components/invitations/InvitePeopleModal';
-import EndorsementAdminPanel from '@/components/endorsements/EndorsementAdminPanel';
-import OrgMembershipRequestsWidget from '@/components/dashboard/OrgMembershipRequestsWidget';
 import AdminAlertsWidget from '@/components/admin/AdminAlertsWidget';
 import RecentCredentialsCard from '@/components/admin/RecentCredentialsCard';
 import RecentActivityCard from '@/components/dashboard/RecentActivityCard';
-import { Send, Info, PenLine, Users, BookOpen, Shield, HardDrive, AlertCircle } from 'lucide-react';
+import { Send, PenLine, Award, ClipboardCheck, Users, UserCheck, Ban, ShieldCheck } from 'lucide-react';
 
+// Organisation Admin dashboard — credential-platform first. Metrics and
+// sections reflect BlockWard's verified-credential product; legacy
+// school-management widgets are out of the primary view (their routes and
+// data are untouched). Every number is a real server-side count — no
+// fabricated analytics; empty states when nothing has been collected yet.
 function AdminDashboardContent() {
-  // Identity comes from SchoolContext — the effective persona in Test Mode.
   const { profile: userProfile } = useSchool();
   const [school, setSchool] = useState(null);
   const [loading, setLoading] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [stats, setStats] = useState({
-    totalStudents: 0,
-    totalTeachers: 0,
-    totalClasses: 0,
-    totalBlockWards: 0,
-    driveConnected: 0,
-    recordsPendingArchive: 0,
-  });
+  const [stats, setStats] = useState({ totalBlockWards: 0, totalStudents: 0, totalTeachers: 0 });
+  const [metrics, setMetrics] = useState({ recipients: 0, revoked: 0, verified_30d: 0, pending_approvals: 0, active_verifiers: 0 });
+  const [pendingApprovals, setPendingApprovals] = useState([]);
   const [notifications, setNotifications] = useState(null);
 
   useEffect(() => {
@@ -44,10 +37,6 @@ function AdminDashboardContent() {
 
   const loadDashboardData = async () => {
     try {
-      // Persona-aware data — the backend resolves the effective actor
-      // (test persona in Test Mode) and reads through the service role, so
-      // the stats follow the persona's school instead of the controller's.
-      // Parallel: persona-aware org stats + persona-aware notifications.
       const [res, notifRes] = await Promise.all([
         base44.functions.invoke('getDashboardData', {}),
         base44.functions.invoke('getNotifications', {}).catch(() => null),
@@ -58,13 +47,12 @@ function AdminDashboardContent() {
       setSchool(d.school || null);
       const s = d.stats || {};
       setStats({
+        totalBlockWards: s.total_blockwards || 0,
         totalStudents: s.total_students || 0,
         totalTeachers: s.total_teachers || 0,
-        totalClasses: s.total_classes || 0,
-        totalBlockWards: s.total_blockwards || 0,
-        driveConnected: s.drive_connected || 0,
-        recordsPendingArchive: s.records_pending_archive || 0,
       });
+      setMetrics(d.credential_metrics || { recipients: 0, revoked: 0, verified_30d: 0, pending_approvals: 0, active_verifiers: 0 });
+      setPendingApprovals(d.pending_approvals || []);
     } catch (error) {
       console.error('Error loading dashboard:', error);
       setNotifications([]);
@@ -75,86 +63,66 @@ function AdminDashboardContent() {
 
   if (loading) return <DashboardSkeleton />;
 
-  const isEmpty = stats.totalStudents === 0 && stats.totalTeachers === 0 && stats.totalClasses === 0;
+  const isEmpty = stats.totalStudents === 0 && stats.totalTeachers === 0 && stats.totalBlockWards === 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Admin Dashboard"
-        description={school?.name || 'Administration overview'}
+        title="Organisation overview"
+        description={school?.name || 'Credential issuing overview'}
       >
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => setInviteOpen(true)}>
-            <Send className="h-4 w-4 mr-2" /> Invite People
-          </Button>
+          <GlowActionButton variant="secondary" size="md" icon={Send} label="Invite People" onClick={() => setInviteOpen(true)} />
           <GlowActionButton size="md" icon={PenLine} label="Open Records" to={createPageUrl('Records')} />
         </div>
       </PageHeader>
 
       <InvitePeopleModal open={inviteOpen} onOpenChange={setInviteOpen} defaultRole="teacher" schoolId={userProfile?.school_id} />
 
-      {/* Info banner */}
-      <div className="flex items-start gap-3 p-3 bg-info/5 border border-info/20 rounded-lg max-w-2xl">
-        <Info className="h-4 w-4 text-info mt-0.5 flex-shrink-0" />
-        <p className="text-sm text-foreground">
-          Admins review, approve, and sign achievement records. Only teachers can create and submit achievement records.
-        </p>
-      </div>
-
-      {/* Cross-org membership requests awaiting this organisation's approval */}
-      <OrgMembershipRequestsWidget />
-
       {isEmpty ? (
-        /* Empty school — the Setup Checklist is the hero; it encodes the correct onboarding order. */
         <div className="space-y-6">
-          <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-            No activity yet. Achievements awaiting verification will appear here.
+          <div className="rounded-xl border border-border bg-card p-6">
+            <p className="text-sm font-medium text-foreground">No credentials yet</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Achievements awaiting verification will appear here once your organisation starts issuing credentials.
+            </p>
           </div>
           <StaffApprovalsCard hideWhenEmpty />
         </div>
       ) : (
         <>
-          {/* Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard label="Total Students" value={stats.totalStudents} icon={Users} />
-            <StatCard label="Total Teachers" value={stats.totalTeachers} icon={Users} />
-            <StatCard label="Active Classes" value={stats.totalClasses} icon={BookOpen} />
-            <StatCard label="BlockWards Issued" value={stats.totalBlockWards} icon={Shield} />
-            <StatCard label="Drive Connected" value={stats.driveConnected} icon={HardDrive} />
-            <StatCard label="Pending Archive" value={stats.recordsPendingArchive} icon={AlertCircle} />
+          {/* Key metrics — all real counts from the server */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            <StatCard label="Credentials Issued" value={stats.totalBlockWards} icon={Award} />
+            <StatCard label="Pending Approvals" value={metrics.pending_approvals} icon={ClipboardCheck} />
+            <StatCard label="Active Issuers" value={metrics.active_verifiers} icon={Users} />
+            <StatCard label="Recipients" value={metrics.recipients} icon={UserCheck} />
+            <StatCard label="Verified (30d)" value={metrics.verified_30d} icon={ShieldCheck} />
+            <StatCard label="Revoked" value={metrics.revoked} icon={Ban} />
           </div>
+
+          {/* Primary action area */}
+          <AdminApprovalQueue items={pendingApprovals} />
 
           {/* Operational alerts: missing registers, failed invites, staff approvals, anchors */}
           <AdminAlertsWidget />
 
-          {/* Recently issued credentials · Recent notifications */}
+          {/* Recent credential issuance · Recent activity */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <RecentCredentialsCard />
             <RecentActivityCard notifications={notifications} loading={notifications === null} />
           </div>
 
-          {/* Academic + Assignments + Assemblies */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <AdminAcademicWidget />
-            <AdminAssignmentsWidget />
-            <AdminAssembliesWidget />
-          </div>
-
-          {/* Setup Checklist + Pending Teacher Requests */}
+          {/* Issuer management + outstanding signatures */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <StaffApprovalsCard hideWhenEmpty />
+            <PendingSignaturesWidget
+              userEmail={userProfile?.user_email}
+              schoolId={userProfile?.school_id}
+              role="admin"
+              targetPage="Records"
+            />
           </div>
-
-          {/* Pending Signatures */}
-          <PendingSignaturesWidget
-            userEmail={userProfile?.user_email}
-            schoolId={userProfile?.school_id}
-            role="admin"
-            targetPage="Records"
-          />
-
-          {/* Peer endorsement programme: invite funnel + scarcity settings */}
-          <EndorsementAdminPanel />
         </>
       )}
     </div>

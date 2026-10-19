@@ -21,6 +21,7 @@ export default function GlowActionButton({
   label,
   subtitle,
   size = 'md',
+  variant = 'primary', // 'primary' = signature glow · 'secondary' = restrained blue outline
   onClick,
   to,
   href,
@@ -62,7 +63,7 @@ export default function GlowActionButton({
     </>
   );
 
-  const classes = cn('gbtn', s.pill, className);
+  const classes = cn('gbtn', variant === 'secondary' && 'gbtn-secondary', s.pill, className);
 
   if (href) {
     return <a href={href} onClick={handleClick} title={title} aria-disabled={isDisabled || undefined} className={classes}>{content}</a>;
