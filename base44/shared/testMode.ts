@@ -15,7 +15,7 @@ export function getTestSuperUserEmail(): string {
 export const DEMO_PERSONA_KEYS = ['demo_student', 'demo_teacher', 'demo_admin'];
 
 export function isValidPersona(p: string): boolean {
-  return p === 'student' || p === 'teacher' || p === 'admin' || DEMO_PERSONA_KEYS.includes(p);
+  return p === 'student' || p === 'teacher' || p === 'admin' || p === 'super_admin' || DEMO_PERSONA_KEYS.includes(p);
 }
 
 /**

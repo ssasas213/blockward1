@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlaskConical, GraduationCap, Users, Shield, RotateCcw, Sprout, Trash2, Camera } from 'lucide-react';
+import { FlaskConical, GraduationCap, Users, Shield, Crown, RotateCcw, Sprout, Trash2, Camera } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -17,13 +17,14 @@ const PERSONA_DASHBOARDS = {
   student: 'StudentDashboard', demo_student: 'StudentDashboard',
   teacher: 'TeacherDashboard', demo_teacher: 'TeacherDashboard',
   admin: 'AdminDashboard', demo_admin: 'AdminDashboard',
+  super_admin: 'internal/admin',
 };
 const PERSONA_ICONS = {
-  student: GraduationCap, teacher: Users, admin: Shield,
+  student: GraduationCap, teacher: Users, admin: Shield, super_admin: Crown,
   demo_student: GraduationCap, demo_teacher: Users, demo_admin: Shield,
 };
 const PERSONA_LABELS = {
-  student: 'Student', teacher: 'Teacher', admin: 'Administrator',
+  student: 'Student', teacher: 'Teacher', admin: 'Administrator', super_admin: 'Super Admin (Demo)',
   demo_student: 'Demo Student', demo_teacher: 'Demo Teacher', demo_admin: 'Demo Admin',
 };
 const DEMO_KEYS = ['demo_student', 'demo_teacher', 'demo_admin'];
@@ -127,7 +128,7 @@ export function TestModeBanner() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="text-xs text-muted-foreground">Acting as</DropdownMenuLabel>
-        {['student', 'teacher', 'admin'].map((p) => {
+        {['student', 'teacher', 'admin', 'super_admin'].map((p) => {
           const PIcon = PERSONA_ICONS[p];
           return (
             <DropdownMenuItem key={p} onClick={() => switchTo(p)} className={cn(active === p && 'bg-primary/10')}>

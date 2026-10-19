@@ -78,7 +78,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'More', items: [
         { name: 'People', icon: Users, page: 'People', path: '/People', badge: 'pendingTeachers' },
-        ...(isStaffRole ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/admin/organisations' }] : []),
+        ...(isStaffRole || isTestSuperUser ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' }] : []),
       ]},
     ],
     teacher: [
@@ -106,7 +106,9 @@ export default function Layout({ children, currentPageName }) {
   // terminology. A school is one possible Issuer Organisation, not an account
   // type, so the label reflects the person's role in the verification product.
   const ROLE_LABELS = { student: 'Holder', teacher: 'Verifier', admin: 'Organisation Owner' };
-  const roleLabel = ROLE_LABELS[userType] || 'Holder';
+  // Super Admin (Demo) — the test super user simulating platform-level administration.
+  const isSuperAdminPersona = isTestSuperUser && testMode?.activePersona === 'super_admin';
+  const roleLabel = isSuperAdminPersona ? 'Super Admin (Demo)' : (ROLE_LABELS[userType] || 'Holder');
   const displayName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
 
   return (

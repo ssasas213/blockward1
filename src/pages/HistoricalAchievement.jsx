@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import PageHeader from '@/components/ui/page-header';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const LINKEDIN_RE = /^https:\/\/(www\.)?linkedin\.com\/(in|company)\/[A-Za-z0-9_
 
 function Wizard() {
   const navigate = useNavigate();
+  const { testMode } = useSchool();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null); // { request_ref }
@@ -61,6 +63,10 @@ function Wizard() {
     setSubmitting(true);
     try {
       const res = await base44.functions.invoke('historicalRequestCreate', {
+        // TEST MODE only — demo submissions never email external addresses and
+        // never issue real credentials. The server re-checks the flag; the
+        // demo value is only honoured for the test super user.
+        demo: !!testMode?.isTestSuperUser,
         form: {
           title: draft.title, category: draft.category, description: draft.description,
           original_date: draft.original_date, issuing_org: draft.issuing_org, country: draft.country,

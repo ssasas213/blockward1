@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollText, FlaskConical, ExternalLink } from 'lucide-react';
+import { ScrollText, FlaskConical, ExternalLink, ShieldCheck, Clock, CheckCircle2, XCircle, Eye, ListChecks } from 'lucide-react';
 
 const STATUS_CLS = {
   pending_review: 'bg-amber-500/10 text-amber-600 border-amber-500/25',
@@ -17,12 +17,40 @@ const STATUS_CLS = {
 
 /** Super Admin — Historical Verification Requests queue. Separate from
  *  ordinary organisation-administrator permissions: the data only loads
- *  through the server-side internal-admin check. */
+ *  through the server-side internal-admin check. Requests are grouped by
+ *  pipeline stage: pending authority review, approved verifiers awaiting
+ *  confirmation, completed verifications, and rejected / declined. */
 export default function HistoricalReviewQueue({ data, loading, onOpen, onSeedDemo }) {
   const requests = data?.requests || [];
   const demo = data?.demo_requests || [];
   const stats = data?.stats || {};
   if (loading) return <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto mt-16" />;
+
+  const GROUPS = [
+    { id: 'pending', label: 'Pending review', icon: Clock, hint: 'Proposed verifiers awaiting the authority review',
+      statuses: ['pending_review', 'info_requested'] },
+    { id: 'awaiting', label: 'Awaiting verifier confirmation', icon: Eye, hint: 'Approved verifiers that have not confirmed yet',
+      statuses: ['verifier_authorized'] },
+    { id: 'completed', label: 'Completed verifications', icon: CheckCircle2, hint: 'Confirmed and issued credentials',
+      statuses: ['verifier_confirmed', 'issued'] },
+    { id: 'rejected', label: 'Rejected requests', icon: XCircle, hint: 'Rejected verifiers, declined confirmations and withdrawn requests',
+      statuses: ['verifier_rejected', 'verifier_declined', 'rejected', 'withdrawn'] },
+  ];
+  const grouped = GROUPS.map((g) => ({ ...g, rows: requests.filter((r) => g.statuses.includes(r.status)) }));
+  const hasAny = requests.length > 0 || demo.length > 0;
+
+  const renderRow = (r) => (
+    <button key={r.id} onClick={() => onOpen(r)}
+      className="w-full flex items-center gap-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-left hover:border-primary/30 hover:bg-card transition-colors">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-foreground truncate">{r.title}</p>
+        <p className="text-xs text-muted-foreground truncate">{r.request_ref} · {r.student_name} · {r.issuing_org} · achieved {r.original_date}</p>
+      </div>
+      <span className="hidden md:block text-xs text-muted-foreground truncate max-w-52">Verifier: {r.verifier_name}</span>
+      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CLS[r.status] || ''}`}>{String(r.status).replace(/_/g, ' ')}</span>
+    </button>
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -39,25 +67,32 @@ export default function HistoricalReviewQueue({ data, loading, onOpen, onSeedDem
         ))}
       </div>
 
-      {requests.length === 0 ? (
+      {!hasAny ? (
         <div className="rounded-xl border border-border bg-card/40 p-10 text-center">
           <ScrollText className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
           <p className="text-sm font-medium text-foreground">No historical verification requests yet</p>
           <p className="text-xs text-muted-foreground mt-1">Student submissions appear here for authority review.</p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {requests.map((r) => (
-            <button key={r.id} onClick={() => onOpen(r)}
-              className="w-full flex items-center gap-3 rounded-xl border border-border bg-card/40 px-4 py-3 text-left hover:border-primary/30 hover:bg-card transition-colors">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground truncate">{r.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{r.request_ref} · {r.student_name} · {r.issuing_org} · achieved {r.original_date}</p>
+        <div className="space-y-5">
+          {grouped.map((g) => {
+            const GIcon = g.icon;
+            return (
+              <div key={g.id}>
+                <div className="flex items-center gap-2 mb-2">
+                  <GIcon className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-semibold text-foreground">{g.label}</p>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">{g.rows.length}</span>
+                  <span className="hidden md:block text-xs text-tertiary truncate">{g.hint}</span>
+                </div>
+                {g.rows.length === 0 ? (
+                  <p className="text-xs text-tertiary px-1">None right now.</p>
+                ) : (
+                  <div className="space-y-2">{g.rows.map(renderRow)}</div>
+                )}
               </div>
-              <span className="hidden md:block text-xs text-muted-foreground truncate max-w-52">Verifier: {r.verifier_name}</span>
-              <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${STATUS_CLS[r.status] || ''}`}>{String(r.status).replace(/_/g, ' ')}</span>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -69,7 +104,9 @@ export default function HistoricalReviewQueue({ data, loading, onOpen, onSeedDem
             <p className="text-sm font-semibold text-foreground">Demo Super Admin (TEST MODE)</p>
           </div>
           <p className="text-xs text-muted-foreground">Synthetic requests below never email external addresses, never issue real credentials and never touch Polygon.</p>
-          <Button size="sm" variant="outline" onClick={onSeedDemo}>Create demo verification request</Button>
+          <Button size="sm" variant="outline" onClick={onSeedDemo}>
+            <ListChecks className="h-4 w-4 mr-1.5" /> Create demo verification request
+          </Button>
           <div className="space-y-2">
             {demo.length === 0 ? <p className="text-xs text-tertiary">No demo requests yet.</p> : demo.map((r) => (
               <div key={r.id} className="flex items-center gap-3 rounded-lg border border-border bg-card/60 px-3 py-2">

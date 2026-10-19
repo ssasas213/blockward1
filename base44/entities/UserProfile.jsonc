@@ -633,11 +633,12 @@
         "student",
         "teacher",
         "admin",
+        "super_admin",
         "demo_student",
         "demo_teacher",
         "demo_admin"
       ],
-      "description": "For the test super user only \u2014 which persona's experience is currently active. Classic personas (student/teacher/admin) are the dedicated @blockward.test accounts. demo_student/demo_teacher/demo_admin are the SEEDED investor-demo cast (hero student, her teacher, the school admin), resolved from the demo-run manifest \u2014 they exist only while the demo world is seeded and are never provisioned by Test Mode itself."
+      "description": "For the test super user only \u2014 which persona's experience is currently active. Classic personas (student/teacher/admin) are the dedicated @blockward.test accounts. 'super_admin' simulates platform-level administration (the internal Blockward console) and acts as the controller's own admin identity, never a separate account. demo_student/demo_teacher/demo_admin are the SEEDED investor-demo cast (hero student, her teacher, the school admin), resolved from the demo-run manifest \u2014 they exist only while the demo world is seeded and are never provisioned by Test Mode itself."
     },
     "test_persona_ids": {
       "type": "object",

@@ -17,11 +17,30 @@
 // test super user is also treated as internal admin so the console can be
 // exercised end-to-end. This never affects production.
 
-export const INTERNAL_ADMIN_EMAILS: string[] = ['mazen@blockward.me', 'arya@blockward.me'];
+import { secrets } from 'base44:runtime';
+
+const DEFAULT_INTERNAL_ADMIN_EMAILS: string[] = ['mazen@blockward.me', 'arya@blockward.me'];
+
+/**
+ * The grant mechanism: the comma-separated BLOCKWARD_INTERNAL_ADMIN_EMAILS
+ * secret when set, falling back to the initial authorised accounts. Changing
+ * the allowlist never touches client code — set the secret, access changes on
+ * the next backend call. Notification recipients (a separate secret) are
+ * NEVER consulted here: being emailed about requests grants nothing.
+ */
+function configuredInternalAdminEmails(): string[] {
+  const raw = (secrets.get('BLOCKWARD_INTERNAL_ADMIN_EMAILS') || '').trim();
+  const list = raw.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  return list.length ? list : DEFAULT_INTERNAL_ADMIN_EMAILS;
+}
+
+// Kept for legacy importers (historicalVerification falls back to these when
+// no BLOCKWARD_INTERNAL_ADMIN_EMAILS secret is configured).
+export const INTERNAL_ADMIN_EMAILS: string[] = DEFAULT_INTERNAL_ADMIN_EMAILS;
 
 export function isInternalAdmin(email: string | null | undefined): boolean {
   if (!email) return false;
-  return INTERNAL_ADMIN_EMAILS.includes(String(email).trim().toLowerCase());
+  return configuredInternalAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
 // Resolves the authenticated user via the SDK and returns a 403 Response error
