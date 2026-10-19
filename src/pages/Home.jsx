@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { toLogin } from '@/lib/authRedirectGuard';
 import SiteHeader from '@/components/home/SiteHeader';
 import Hero from '@/components/home2/Hero';
+import StoryAnimation from '@/components/home2/story/StoryAnimation';
 import IssueOwnVerify from '@/components/home2/IssueOwnVerify';
 import VaultSection from '@/components/home2/VaultSection';
 import TrustSection from '@/components/home2/TrustSection';
@@ -61,6 +62,7 @@ export default function Home() {
         ctaLabel="Get Started"
       />
       <Hero />
+      <StoryAnimation />
       <IssueOwnVerify />
       <VaultSection />
       <TrustSection />
