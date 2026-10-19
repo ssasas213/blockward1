@@ -10,6 +10,8 @@ import OrgReviewQueue from '@/components/admin/OrgReviewQueue';
 import OrgReviewDrawer from '@/components/admin/OrgReviewDrawer';
 import CredentialOversight from '@/components/admin/CredentialOversight';
 import ConsoleAuditLog from '@/components/admin/ConsoleAuditLog';
+import HistoricalReviewQueue from '@/components/admin/HistoricalReviewQueue';
+import HistoricalReviewDrawer from '@/components/admin/HistoricalReviewDrawer';
 
 /** Blockward internal admin console. Auth + backend authorisation enforced
  *  server-side; this page only renders what the backend returns. */
@@ -21,6 +23,11 @@ export default function AdminConsole() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
+  // Historical verification requests — loaded on demand, server-checked.
+  const [histData, setHistData] = useState(null);
+  const [histLoading, setHistLoading] = useState(false);
+  const [histDetail, setHistDetail] = useState(null);
+  const [histDetailLoading, setHistDetailLoading] = useState(false);
 
   useEffect(() => { init(); }, []);
 
@@ -65,6 +72,51 @@ export default function AdminConsole() {
     finally { setActionBusy(false); }
   };
 
+  useEffect(() => { if (tab === 'historical' && !histData) loadHistorical(); }, [tab]);
+
+  const loadHistorical = async () => {
+    setHistLoading(true);
+    try {
+      const res = await base44.functions.invoke('historicalAdminData', {});
+      setHistData(res.data?.ok ? res.data : { requests: [], demo_requests: [], stats: {} });
+    } catch { toast.error('Could not load historical requests'); }
+    finally { setHistLoading(false); }
+  };
+
+  const openHistorical = async (r) => {
+    setHistDetail({ request: r });
+    setHistDetailLoading(true);
+    try {
+      const res = await base44.functions.invoke('historicalAdminData', { action: 'detail', request_id: r.id });
+      setHistDetail(res.data?.ok ? res.data : { request: r });
+    } catch { toast.error('Could not load the request detail'); }
+    finally { setHistDetailLoading(false); }
+  };
+
+  const onHistoricalAction = async (payload, resetForms) => {
+    setActionBusy(true);
+    try {
+      const res = await base44.functions.invoke('historicalAdminAction', payload);
+      if (res.data?.ok) {
+        toast.success(`${String(payload.action).replace(/_/g, ' ')} recorded`);
+        resetForms?.();
+        setHistDetail(null);
+        await loadHistorical();
+      } else { toast.error(res.data?.error || 'Action failed'); }
+    } catch (e) { toast.error(e?.response?.data?.error || 'Action failed'); }
+    finally { setActionBusy(false); }
+  };
+
+  const seedDemoHistorical = async () => {
+    setActionBusy(true);
+    try {
+      const res = await base44.functions.invoke('historicalAdminAction', { action: 'seed_demo', request_id: 'seed' });
+      if (res.data?.ok) { toast.success('Demo request created'); await loadHistorical(); }
+      else toast.error(res.data?.error || 'Could not create demo request');
+    } catch (e) { toast.error(e?.response?.data?.error || 'Could not create demo request'); }
+    finally { setActionBusy(false); }
+  };
+
   if (gate === 'checking') {
     return <div className="min-h-screen flex items-center justify-center bg-background"><div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>;
   }
@@ -90,12 +142,25 @@ export default function AdminConsole() {
       {tab === 'organisations' && <OrgReviewQueue orgs={data?.organisations || []} onOpenOrg={openOrg} />}
       {tab === 'credentials' && <CredentialOversight />}
       {tab === 'audit' && <ConsoleAuditLog entries={data?.overview?.recent_audit || []} />}
+      {tab === 'historical' && (
+        <HistoricalReviewQueue
+          data={histData} loading={histLoading}
+          onOpen={openHistorical} onSeedDemo={seedDemoHistorical}
+        />
+      )}
 
       <OrgReviewDrawer
         org={selectedOrg} detail={detail} loading={detailLoading}
         onAction={onAction} busy={actionBusy}
         onClose={() => { setSelectedOrg(null); setDetail(null); }}
       />
+
+      {tab === 'historical' && histDetail && (
+        <HistoricalReviewDrawer
+          detail={histDetail} loading={histDetailLoading} busy={actionBusy}
+          onClose={() => setHistDetail(null)} onAction={onHistoricalAction}
+        />
+      )}
     </ConsoleShell>
   );
 }

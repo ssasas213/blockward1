@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Building2, FileText, ScrollText, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, ScrollText, History, ArrowLeft } from 'lucide-react';
 import BlockwardLogo from '@/components/brand/BlockwardLogo';
 
 const TABS = [
@@ -9,6 +9,7 @@ const TABS = [
   { id: 'organisations', label: 'Organisations', icon: Building2 },
   { id: 'credentials', label: 'Credentials', icon: FileText },
   { id: 'audit', label: 'Audit Log', icon: ScrollText },
+  { id: 'historical', label: 'Historical verification', icon: History },
 ];
 
 /** Internal operations shell — a separate control interface, not a holder dashboard. */

@@ -66,6 +66,8 @@ import Profile from './pages/Profile';
 import StudentBlockWards from './pages/StudentBlockWards';
 import MyAchievements from './pages/MyAchievements';
 import PastAchievements from './pages/PastAchievements';
+import HistoricalAchievement from './pages/HistoricalAchievement';
+import HistoricalVerifier from './pages/HistoricalVerifier';
 import AdminConsole from './pages/internal/AdminConsole';
 import RouteSeo from '@/components/RouteSeo';
 
@@ -158,6 +160,10 @@ const AuthenticatedApp = () => {
       <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PastAchievements" element={<LayoutWrapper currentPageName="PastAchievements"><ProtectedRoute><PastAchievements /></ProtectedRoute></LayoutWrapper>} />
+      {/* Historical achievement verification — two-stage: Super Admin authorises
+          the proposed verifier, the approved verifier confirms, then issuance. */}
+      <Route path="/HistoricalAchievement" element={<LayoutWrapper currentPageName="HistoricalAchievement"><ProtectedRoute><HistoricalAchievement /></ProtectedRoute></LayoutWrapper>} />
+      <Route path="/historical-verify/:token" element={<HistoricalVerifier />} />
       {/* Blockward staff internal tools — role re-checked server-side */}
       <Route path="/internal" element={<Navigate to="/internal/admin" replace />} />
       <Route path="/internal/admin" element={<AdminConsole />} />

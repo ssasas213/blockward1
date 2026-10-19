@@ -26,6 +26,7 @@ export default async function (req: Request): Promise<Response> {
     const svc = base44.asServiceRole;
 
     const actor = await resolveEffectiveActor(base44);
+    if (!/^[a-f0-9]{24}$/i.test(String(request_id))) return bad('Request not found', 404);
     if (!actor.authorized) return bad(actor.reason || 'Authentication required', actor.status || 401);
 
     const rows = await svc.entities.HistoricalAchievementRequest.filter({ id: request_id });

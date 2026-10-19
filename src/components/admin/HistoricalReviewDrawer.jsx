@@ -163,7 +163,7 @@ export default function HistoricalReviewDrawer({ detail, loading, busy, onClose,
                     placeholder="Recorded reason — kept in the audit trail" />
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" variant="outline" disabled={busy || !reason.trim()} onClick={() => doAction('reject_verifier')}>
-                      <ShieldX className={ACTION_STYLE.includes('x') ? '' : 'h-3.5 w-3.5'} /> Reject verifier
+                      <ShieldX className="h-3.5 w-3.5" /> Reject verifier
                     </Button>
                     <Button size="sm" variant="outline" disabled={busy || !reason.trim()} onClick={() => doAction('request_info')}>
                       <MessageSquare className="h-3.5 w-3.5" /> Request more information

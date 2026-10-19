@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import GlowActionButton from '@/components/ui/GlowActionButton';
-import { Plus, Share2, AtSign, Search, Archive } from 'lucide-react';
+import { Plus, Share2, AtSign, Search, Archive, History } from 'lucide-react';
+import HistoricalVaultCard from '@/components/historical/HistoricalVaultCard';
 import { useSchool } from '@/lib/SchoolContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import RoleGuard from '@/components/auth/RoleGuard';
@@ -52,6 +53,8 @@ function StudentBlockWardsContent() {
   const [meta, setMeta] = useState(null);
   const [caps, setCaps] = useState(null);
   const [selfReported, setSelfReported] = useState(null);
+  // Historical verification requests (two-stage Super Admin → approved verifier flow)
+  const [historical, setHistorical] = useState(null);
   // Deep-linkable tab (?tab=pending) — the dashboard's attention card and
   // other CTAs can land the student directly on the section they need.
   const [activeTab, setActiveTab] = useState(() => {
@@ -81,10 +84,11 @@ function StudentBlockWardsContent() {
     // All three loads are independent — one parallel batch. Achievements come
     // from the shared TTL cache (instant on repeat navigation, background
     // revalidate when stale).
-    const [earned, reqRes, selfRes] = await Promise.all([
+    const [earned, reqRes, selfRes, histRes] = await Promise.all([
       loadEarnedAchievements(),
       base44.functions.invoke('achievementRequestData', { mode: 'student' }).catch(() => null),
       base44.entities.SelfReportedAchievement.filter({ student_email: email }, '-created_date').catch(() => []),
+      base44.entities.HistoricalAchievementRequest.filter({ student_email: email }, { sort: '-created_date', limit: 20 }).catch(() => ({ items: [] })),
     ]);
     setVerified(earned.achievements || []);
     if (reqRes?.data?.ok) {
@@ -95,6 +99,7 @@ function StudentBlockWardsContent() {
       setRequests([]);
     }
     setSelfReported(selfRes || []);
+    setHistorical(histRes.items || []);
   }, [user, testMode?.isTestSuperUser, testMode?.effectiveEmail, testMode?.activePersona]);
 
   useEffect(() => { load(); }, [load]);
@@ -271,9 +276,9 @@ function StudentBlockWardsContent() {
           <GlowActionButton
             variant="secondary"
             size="md"
-            icon={Archive}
+            icon={History}
             label="Add past achievement"
-            to={createPageUrl('PastAchievements')}
+            to={createPageUrl('HistoricalAchievement')}
           />
           <GlowActionButton
             size="md"
@@ -356,6 +361,14 @@ function StudentBlockWardsContent() {
             onRetry={handleRetryPublish}
             loading={requests === null}
           />
+          {/* Past achievement verifications — the two-stage Super Admin →
+              approved verifier flow, with its own progress timeline. */}
+          {historical && historical.length > 0 && (
+            <div className="mt-8 space-y-3">
+              <h3 className="section-heading">Past achievement verifications</h3>
+              {historical.map((h) => <HistoricalVaultCard key={h.id} req={h} />)}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="unverified" className="mt-6">

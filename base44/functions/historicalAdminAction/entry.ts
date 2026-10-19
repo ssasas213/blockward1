@@ -27,9 +27,10 @@ export default async function (req: Request): Promise<Response> {
     const body = await req.json().catch(() => ({})) || {};
     const { action, request_id } = body;
     if (!action || !request_id) return bad('action and request_id are required');
+    if (action !== 'seed_demo' && !/^[a-f0-9]{24}$/i.test(String(request_id))) return bad('Request not found', 404);
     const svc = base44.asServiceRole;
 
-    const rows = await svc.entities.HistoricalAchievementRequest.filter({ id: request_id });
+    const rows = action === 'seed_demo' ? [] : await svc.entities.HistoricalAchievementRequest.filter({ id: request_id });
     const r = rows?.[0];
     if (!r) return bad('Request not found', 404);
 

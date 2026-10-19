@@ -28,7 +28,7 @@ export default async function (req: Request): Promise<Response> {
 
     // ── Single-request detail (review page) ──
     if (body.action === 'detail') {
-      if (!body.request_id) return bad('request_id is required');
+      if (!body.request_id || !/^[a-f0-9]{24}$/i.test(String(body.request_id))) return bad('Request not found', 404);
       const rows = await svc.entities.HistoricalAchievementRequest.filter({ id: body.request_id });
       const r = rows?.[0];
       if (!r) return bad('Request not found', 404);
