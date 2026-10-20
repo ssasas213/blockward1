@@ -88,7 +88,26 @@ All ten activation checks verified against the **deployed runtime** — no trans
 - Rollback: flip the kill-switch to `false` first, then the selector to `polygon_amoy`.
 - Monitor: internal dashboard alerts (fee holds, escalation/critical, permanent failures) and POL/USD fallback pricing (currently `fallback_estimate` at $0.30).
 
-## 9. Launch sequence status
+## 9. Polygon mainnet operational preflight — 2026-10-20 (read-only)
+
+All probes read-only: no transactions, no settings or secret changes, no POL spent.
+
+1. **Anchor wallet balance** — `0x2Af916c4dd18D07080ab4E674F3f05f06a442D7e` holds **243.940543 POL** (live `eth_getBalance`, block 9,584,759). At the worst-case ~0.007 POL/batch (275 gwei), that is runway for ~34,000 batches (~17M credentials at full 500-batches). Closes the balance-confirmation item from the activation audit. ✅
+2. **Live gas** — `eth_gasPrice` = **275.4 gwei**; recent base fee ≈ 242 gwei (5-block fee history). Polygon is currently in a fee spike. ⚠️
+3. **Policy comparison (live)** — 275.4 gwei market price **exceeds the 200 gwei ceiling**; USD-wise the batch estimate is ~$0.0021 (far inside the $3.00 normal cap and $5.00 absolute cap). The gwei ceiling is the only binding gate. ⚠️
+4. **Eligibility right now** — a batch of **1** and a batch of **10** would BOTH be held as `ANCHOR_PENDING_FEE` (`fee_ceiling_gwei`) under current market gas. Both would pass instantly on USD grounds; per-credential cost ~$0.0021 / ~$0.00021 respectively. Holds are self-healing: the 5-minute worker retries automatically once fees fall below the ceiling. ⚠️
+5. **Worker / queue / retries / monitoring** — workflow **active**, last 10 runs all `ok` (latest 06:10 UTC); live queue: 0 pending / 0 fee-held / 0 processing / 0 submitted / 0 failed, 1 confirmed Amoy batch; permanent failures 0. ✅
+6. **No cross-network contamination** — zero mainnet batches, zero mainnet-pinned credentials; the only queued-batch history is Amoy `ANCHOR_CONFIRMED`. Batches carry their own `network` pin; the worker resolves chain config per batch, so no testnet job can ever be broadcast on mainnet. ✅
+7. **Fee-policy sustainability (recommendation, separate approval — NOT applied)** — the 200 gwei ceiling sits below current market (242–275 gwei), so it could hold normal production anchoring for extended periods even though every hold costs fractions of a cent. Recommendation: raise `ANCHOR_MAX_FEE_GWEI` 200 → **500**, leaving both USD caps unchanged — the USD caps then become the primary financial guard (the $3.00 cap itself only binds above ~392 gwei at the $0.30 fallback price, and a 500 gwei batch costs ~$0.0038, ~0.13% of the cap). Until changed, the fee-hold + automatic retry path remains fully safe.
+8. **Verdict: GO for operator handoff.** Infrastructure, wallet funding, queue, worker and safety rails are all verified live. Non-blockers/notes: (a) fee-ceiling recommendation above awaits separate approval — with it, activation can anchor immediately; without it, batches simply wait for sub-200 gwei windows; (b) POL/USD price source is `fallback_estimate` ($0.30) — a conservative floor, safe for decisions.
+
+### Requirements for the responsible production operator (unchanged from §8, plus preflight)
+- Decide on the `ANCHOR_MAX_FEE_GWEI` 200→500 recommendation (separate approval) or accept fee-window anchoring.
+- Activation order: `POLYGON_NETWORK=polygon_mainnet` → `MAINNET_BROADCAST_ENABLED=true` → monitor the 5-minute worker and internal dashboard.
+- Smoke test with fictional credentials only; verify on the public page and PolygonScan.
+- Rollback: kill-switch `false` first, then selector to `polygon_amoy`.
+
+## 10. Launch sequence status
 - ✅ Finish development — anchoring, verification, queue, monitoring complete
 - ✅ Pass security checks — 190/190 regression tests green; public API audited; access gating verified
 - ⬜ Obtain authorised mainnet activation — kill-switch flip (operator action)
