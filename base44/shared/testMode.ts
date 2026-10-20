@@ -80,7 +80,10 @@ export async function verifyTestSuperUser(base44): Promise<{ authorized: boolean
  * variables, so no state-machine logic needs to change.
  */
 export async function resolveEffectiveActor(base44): Promise<any> {
-  const user = await base44.auth.me();
+  // An unauthenticated call throws inside the SDK — catch it and deny with a
+  // proper 401 instead of leaking a 500 through the caller's outer handler.
+  let user: any = null;
+  try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { authorized: false, status: 401, reason: 'Not authenticated' };
 
   const svc = base44.asServiceRole;
@@ -145,7 +148,8 @@ export async function resolveEffectiveActor(base44): Promise<any> {
  * yet) — never a persona profile.
  */
 export async function requireRealIdentity(base44): Promise<{ authorized: boolean; status?: number; user?: any; profile?: any; reason?: string }> {
-  const user = await base44.auth.me();
+  let user: any = null;
+  try { user = await base44.auth.me(); } catch { user = null; }
   if (!user) return { authorized: false, status: 401, reason: 'Not authenticated' };
   // Deliberately NOT resolveEffectiveActor — privileged authorisation never
   // follows the persona. user.email here is always the real signed-in account.

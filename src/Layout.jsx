@@ -35,6 +35,19 @@ export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, activeSchool: school, managedSchools, switchSchool, loading, testMode } = useSchool();
 
+  // Internal-admin link is granted SERVER-SIDE (allowlist secret), never from
+  // user_type — an internal admin whose platform role is 'user'/'student' still
+  // gets the console link. A failed probe grants nothing.
+  const [internalAdmin, setInternalAdmin] = useState(false);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    base44.functions.invoke('getInternalAdminStatus')
+      .then((res) => { if (!cancelled && res?.data?.is_internal_admin) setInternalAdmin(true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [user]);
+
   const publicPages = ['Home', 'Login', 'Signup', 'SchoolSetup'];
   const isPublicPage = publicPages.includes(currentPageName);
 
@@ -78,7 +91,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'More', items: [
         { name: 'People', icon: Users, page: 'People', path: '/People', badge: 'pendingTeachers' },
-        ...(isStaffRole || isTestSuperUser ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' }] : []),
+        ...(isStaffRole || isTestSuperUser || internalAdmin ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' }] : []),
       ]},
     ],
     teacher: [
