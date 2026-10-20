@@ -133,7 +133,7 @@ All probes read-only: no transactions, no settings or secret changes, no POL spe
 
 ## 12. Production-operator approval checklist (sign-off before activation)
 
-1. **Fee-policy decision (separate approval)** — approve or decline `ANCHOR_MAX_FEE_GWEI` 200 → 500 (USD caps $3.00/$5.00 unchanged). Declining is safe: batches anchor automatically in sub-200 gwei windows.
+1. **Fee-policy decision — DECIDED 2026-10-20:** `ANCHOR_MAX_FEE_GWEI` stays 200 (the 500 gwei proposal was declined by the authorised approver). Nothing to set at activation.
 2. **Mainnet activation (authorised operator only)** — in order: `POLYGON_NETWORK=polygon_mainnet` → `MAINNET_BROADCAST_ENABLED=true` → confirm the 5-minute worker begins claiming mainnet batches → watch the internal dashboard and admin alert emails.
 3. **Fictional-credential smoke test** — issue 1–2 fictional (clearly-labelled) verified credentials; let them enter the Merkle batch queue; confirm the batch anchors within the batching window and fee policy.
 4. **Independent on-chain proof verification** — for each smoke credential: open the public /verify page (BLOCKWARD VERIFIED), confirm the BATCH-PROOF-V1 Merkle proof recomputes to the committed root, and cross-check the transaction root, block, network and chain ID (137) on PolygonScan directly — independent of Blockward's own API.
@@ -156,8 +156,8 @@ All probes read-only: no transactions, no settings or secret changes, no POL spe
 - **Queue safety:** zero open batches (0 pending / fee-held / processing / submitted), zero retryable or permanent failures; the single confirmed batch `AB-E2ETST` is pinned `polygon_amoy` (chain 80002) and is never reassigned — network pinning resolves every credential's verification from its persisted `chain_id`. Historical Sepolia records likewise verify on their pinned chain. Nothing existing can be broadcast to mainnet by the activation.
 - **Worker:** scheduled workflow running every ~5 minutes, last 10+ runs all `ok`.
 - **All regression suites re-run green** (queue, hardening, broadcaster).
-- **Fee policy — SEPARATE APPROVAL REQUIRED (not applied):** `ANCHOR_MAX_FEE_GWEI` 200 → 500. Approving allows anchoring up to ~400 gwei market gas; declining is safe (sub-200 gwei windows anchor automatically). USD caps $3.00/$5.00 unchanged either way.
-- **Operator activation sequence (authorised production-wallet operator ONLY — no one else may sign or spend):** ① `POLYGON_NETWORK=polygon_mainnet` → ② `MAINNET_BROADCAST_ENABLED=true` → ③ (if approved) `ANCHOR_MAX_FEE_GWEI=500` → ④ confirm the worker claims a mainnet batch → ⑤ run the fictional-credential smoke test (§12 checklist).
+- **Fee policy — DECIDED 2026-10-20 (authorised approval):** the proposed `ANCHOR_MAX_FEE_GWEI` 200 → 500 change is **DECLINED — the ceiling stays 200 gwei**. USD caps $3.00/$5.00 unchanged. Batches anchor automatically whenever market gas is below 200 gwei; fee-held batches are preserved and retry — never dropped. No spending-limit increase is authorised or planned.
+- **Operator activation sequence (authorised production-wallet operator ONLY — no one else may sign or spend):** ① `POLYGON_NETWORK=polygon_mainnet` → ② `MAINNET_BROADCAST_ENABLED=true` → ③ confirm the worker claims a mainnet batch → ④ run the fictional-credential smoke test (§12 checklist). `ANCHOR_MAX_FEE_GWEI` is NOT changed at activation — 200 gwei stands.
 - **Rollback (rehearsed, always available):** `MAINNET_BROADCAST_ENABLED=false` halts all mainnet broadcasting instantly; queued credentials are preserved, never dropped. `POLYGON_NETWORK=polygon_amoy` restores normal testnet issuance.
 - **Monitoring:** internal blockchain dashboard + `anchor_*` admin alert emails (escalation 60 min, critical 24 h, fee-hold dedupe) all active.
 
