@@ -205,7 +205,10 @@ export async function anchorBatchRoot(opts: { rootHex: string; memberCount: numb
   const log = (step: string, extra: Record<string, unknown> = {}) =>
     console.log(JSON.stringify({ fn: 'chainPolygon.batch', step, ...extra }));
   try {
-    if (!/^0x[0-9a-f]{64}$/.test(opts.rootHex)) return { ok: false, error: 'invalid_root' };
+    // Normalize the root: the Merkle module produces bare 64-hex, on-chain
+    // payloads embed bare 64-hex (parseBatchPayload format). Accept either.
+    const rootHex = String(opts.rootHex || '').trim().toLowerCase().replace(/^0x/, '');
+    if (!/^[0-9a-f]{64}$/.test(rootHex)) return { ok: false, error: 'invalid_root' };
     if (!Number.isInteger(opts.memberCount) || opts.memberCount < 1) return { ok: false, error: 'invalid_member_count' };
 
     const resolved = resolvePolygonTarget();
@@ -242,7 +245,7 @@ export async function anchorBatchRoot(opts: { rootHex: string; memberCount: numb
       return { ok: false, error: 'wrong_chain', chainId, expected: cfg.chainId };
     }
 
-    const payload = buildBatchPayload(opts.rootHex, opts.memberCount);
+    const payload = buildBatchPayload(rootHex, opts.memberCount);
     const txHash = await wal.sendTransaction({
       to: account.address,
       value: 0n,
@@ -317,7 +320,11 @@ export async function verifyBatchAnchor(svc: any, cred: any) {
   result.recomputed_hash = leaf;
 
   try {
-    if (!/^0x[0-9a-f]{64}$/.test(bc.batch_root || '')) return invalid('missing_batch_root');
+    // The Merkle root is stored and committed as bare 64-hex everywhere
+    // (anchorMerkle / parseBatchPayload / isTrustedBatchCheck) — accept an
+    // optional 0x prefix on read, never require it.
+    const storedRoot = String(bc.batch_root || '').trim().toLowerCase().replace(/^0x/, '');
+    if (!/^[0-9a-f]{64}$/.test(storedRoot)) return invalid('missing_batch_root');
     if (!Array.isArray(bc.merkle_proof) || bc.merkle_leaf_index == null) return invalid('missing_merkle_proof');
     if (bc.chain_id != null && bc.chain_id !== cfg.chainId) return invalid('unsupported_pinned_chain');
     if (!cfg.rpc) return finish({ ...result, reason: 'missing_rpc_config' });
@@ -354,10 +361,10 @@ export async function verifyBatchAnchor(svc: any, cred: any) {
     result.committed_hash = onChain?.root || null;
     result.batch_member_count = onChain?.memberCount ?? null;
     if (!onChain) return invalid('batch_commitment_not_found_in_tx');
-    if (onChain.root.toLowerCase() !== bc.batch_root.toLowerCase()) return invalid('batch_root_mismatch');
+    if (onChain.root.toLowerCase() !== storedRoot) return invalid('batch_root_mismatch');
 
     // Merkle inclusion — the recomputed leaf must prove into the root.
-    const proofOk = await verifyMerkleProof(leaf, bc.merkle_proof, bc.batch_root);
+    const proofOk = await verifyMerkleProof(leaf, bc.merkle_proof, storedRoot);
     if (!proofOk) return finish({ ...result, status: 'hash_mismatch' });
 
     result.status = 'confirmed';

@@ -517,8 +517,11 @@ async function finalizeBatch(svc: any, batch: any, tx: any, leaves: string[], le
   if (credUpdates.length > 0) await svc.entities.Credential.bulkUpdate(credUpdates);
 
   // Achievements → VERIFIED + holder delivery (same path as direct anchoring).
-  if (achievementIds.size > 0) {
-    const achRows = await svc.entities.Achievement.filter({ id: { $in: [...achievementIds] } }, { limit: 1000 });
+  // Only real record ids are queried — synthetic/test members (or any member
+  // whose achievement row no longer resolves) must not break reconciliation.
+  const realAchIds = [...achievementIds].filter((id) => /^[0-9a-f]{24}$/i.test(id));
+  if (realAchIds.length > 0) {
+    const achRows = await svc.entities.Achievement.filter({ id: { $in: realAchIds } }, { limit: 1000 });
     for (const ach of ((achRows?.items || achRows || []) as any[])) {
       if (ach.status === 'verified') continue;
       await svc.entities.Achievement.update(ach.id, {

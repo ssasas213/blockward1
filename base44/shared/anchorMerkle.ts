@@ -67,9 +67,11 @@ export async function merkleProof(leaves: string[], index: number): Promise<{ po
   let i = index;
   for (let level = 0; level < levels.length - 1; level++) {
     const nodes = levels[level];
-    const isRight = i % 2 === 1;
-    const siblingIndex = isRight ? i - 1 : (i + 1 < nodes.length ? i + 1 : i); // odd tail pairs with itself
-    proof.push({ position: isRight ? 'right' : 'left', hash: nodes[siblingIndex] });
+    // position = which side the SIBLING sits on relative to this node in the
+    // tree (left||right pairing) — matches verifyMerkleProof's convention.
+    const isOdd = i % 2 === 1;
+    const siblingIndex = isOdd ? i - 1 : (i + 1 < nodes.length ? i + 1 : i); // odd tail pairs with itself
+    proof.push({ position: isOdd ? 'left' : 'right', hash: nodes[siblingIndex] });
     i = Math.floor(i / 2);
   }
   return proof;
