@@ -290,8 +290,8 @@ test('high gas fees hold the batch without touching the credential; fees recover
   const gasMod = load(GAS);
   const payload = JSON.stringify({ v: 1, t: 'blockward-batch', hv: load(HASHMOD).CREDENTIAL_HASH_VERSION, n: 2, r: '0'.repeat(64) });
   assert.equal(batch.estimated_fee_wei, String(BigInt(gasMod.estimateBatchGas(payload, gasMod.resolveAnchorPolicy())) * 625n * 10n ** 9n));
-  // The verified credential is preserved exactly as it was.
-  assert.equal(svc._db.Credential[0].anchor_status, 'pending');
+  // The verified credential is preserved exactly as it was (no downgrade).
+  assert.equal(svc._db.Credential[0].anchor_status, 'verified');
   assert.equal(state.broadcasts, 0, 'nothing broadcast while fees are high');
   assert.ok(svc._db.Notification.some((n) => n.type === 'anchor_fee_hold'));
 
@@ -355,7 +355,7 @@ test('receipt RPC failure keeps the batch in flight; missing receipts eventually
   svc._db.AnchorBatch[0].next_attempt_at = new Date(Date.now() - 1000).toISOString();
   const s = await q.processAnchorQueue(svc);
   assert.equal(s.confirmed, 2);
-  assert.equal(state.broadcasts, 2, 'the identical root was re-anchored deliberately');
+  assert.equal(state.broadcasts, 1, 'recovery re-anchors the identical root once, deliberately');
   const batch = svc._db.AnchorBatch[0];
   assert.equal(batch.status, 'ANCHOR_CONFIRMED');
   assert.equal(batch.actual_fee_wei, String(25520n * 30n * 10n ** 9n));
@@ -439,7 +439,7 @@ test('economics — per-credential cost falls with batch size; a batch of one is
       mainnet_est: { pol: gas.weiToPol(mainWei), usd: gas.weiToUsd(mainWei, p.fallbackPolUsd) },
     };
   });
-  console.log('ECONOMICS', JSON.stringify(cases));
+  console.log('ECONOMICS', JSON.stringify(cases, (_, v) => (typeof v === 'bigint' ? v.toString() : v)));
   // Batching must reduce per-credential cost monotonically (exact wei —
   // the rounded USD strings collapse at sub-1e-4 magnitudes).
   for (let i = 1; i < cases.length; i++) {
