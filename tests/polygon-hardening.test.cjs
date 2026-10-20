@@ -270,9 +270,18 @@ test('GET is also preflight-only', async () => {
   assert.equal((await preflight({}, 'GET')).result.transaction_broadcast, false);
 });
 test('normal issuance defaults and explicit selector behavior remain unchanged', () => {
-  for (const [value, target] of [['', 'polygon_amoy'], ['amoy', 'polygon_amoy'], ['polygon_amoy', 'polygon_amoy'], ['mainnet', 'polygon_mainnet']]) {
+  for (const [value, target] of [['', 'polygon_amoy'], ['amoy', 'polygon_amoy'], ['polygon_amoy', 'polygon_amoy']]) {
     assert.equal(harness({ env: { POLYGON_NETWORK: value } }).load(POLYGON).resolvePolygonTarget().target, target);
   }
+  // Kill-switch (§P1): mainnet resolution is refused unless
+  // MAINNET_BROADCAST_ENABLED is literally 'true' — even with the selector set.
+  const noFlag = harness({ env: { POLYGON_NETWORK: 'mainnet' } }).load(POLYGON).resolvePolygonTarget();
+  assert.equal(noFlag.target, undefined);
+  assert.equal(noFlag.unsupported, true);
+  assert.equal(noFlag.value, 'mainnet_broadcast_disabled');
+  // With the flag deliberately enabled, an explicit mainnet selector resolves.
+  const flagged = harness({ env: { POLYGON_NETWORK: 'polygon_mainnet', MAINNET_BROADCAST_ENABLED: 'true' } }).load(POLYGON).resolvePolygonTarget();
+  assert.equal(flagged.target, 'polygon_mainnet');
 });
 
 // Exercise the trust consumers, not merely the RPC verifier. All organisation
