@@ -148,7 +148,22 @@ All probes read-only: no transactions, no settings or secret changes, no POL spe
 - The smoke test (checklist item 3–4) has passed and the rollback drill (item 5) has been rehearsed.
 - External organisations may be onboarded only after these conditions are met.
 
-## 14. Launch sequence status
+## 15. Phase-1 operator handoff — 2026-10-20 06:22 UTC (live, read-only)
+
+- **Live activation state (new read-only `activationSafetyState` probe, internal-admin only):**
+  `kill_switch_enabled: false` · `selector: polygon_amoy` · `effective_issuance_network: polygon_amoy` · `mainnet_broadcast_possible: false` · state `TESTNET_MODE`. **No mainnet transaction is possible until the operator's authorised activation.**
+- **Production signer/infra re-verified live:** RPC reachable, chain ID 137, latest block readable, signer key derives the address matching `POLYGON_MAINNET_ANCHOR_ADDRESS` (0x2Af9…2D7e), `ready_to_sign: true`. Signing stays exclusively on the secure backend; keys never leave it.
+- **Queue safety:** zero open batches (0 pending / fee-held / processing / submitted), zero retryable or permanent failures; the single confirmed batch `AB-E2ETST` is pinned `polygon_amoy` (chain 80002) and is never reassigned — network pinning resolves every credential's verification from its persisted `chain_id`. Historical Sepolia records likewise verify on their pinned chain. Nothing existing can be broadcast to mainnet by the activation.
+- **Worker:** scheduled workflow running every ~5 minutes, last 10+ runs all `ok`.
+- **All regression suites re-run green** (queue, hardening, broadcaster).
+- **Fee policy — SEPARATE APPROVAL REQUIRED (not applied):** `ANCHOR_MAX_FEE_GWEI` 200 → 500. Approving allows anchoring up to ~400 gwei market gas; declining is safe (sub-200 gwei windows anchor automatically). USD caps $3.00/$5.00 unchanged either way.
+- **Operator activation sequence (authorised production-wallet operator ONLY — no one else may sign or spend):** ① `POLYGON_NETWORK=polygon_mainnet` → ② `MAINNET_BROADCAST_ENABLED=true` → ③ (if approved) `ANCHOR_MAX_FEE_GWEI=500` → ④ confirm the worker claims a mainnet batch → ⑤ run the fictional-credential smoke test (§12 checklist).
+- **Rollback (rehearsed, always available):** `MAINNET_BROADCAST_ENABLED=false` halts all mainnet broadcasting instantly; queued credentials are preserved, never dropped. `POLYGON_NETWORK=polygon_amoy` restores normal testnet issuance.
+- **Monitoring:** internal blockchain dashboard + `anchor_*` admin alert emails (escalation 60 min, critical 24 h, fee-hold dedupe) all active.
+
+**Status at handoff: NOT ACTIVATED — awaiting (1) fee-policy approval and (2) the authorised operator's activation sequence.**
+
+## 16. Launch sequence status
 - ✅ Finish development — anchoring, verification, queue, monitoring complete
 - ✅ Pass security checks — 190/190 regression tests green; public API audited; access gating verified
 - ⬜ Obtain authorised mainnet activation — kill-switch flip (operator action)
