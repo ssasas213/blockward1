@@ -82,11 +82,23 @@ export type PolygonTargetResolution =
 // POLYGON_NETWORK is unset, the documented current-stage default
 // `polygon_amoy` is used so the running app is not broken before the operator
 // adds the secret. Set POLYGON_NETWORK explicitly to remove the default.
+// MASTER KILL-SWITCH (§P1): mainnet broadcasting additionally requires an
+// explicit activation flag. Absent or anything but the literal 'true' ⇒ every
+// mainnet resolution is refused (enqueue, anchor, scheduled worker). Even a
+// correctly set POLYGON_NETWORK selector cannot broadcast until this flag is
+// deliberately enabled — no accidental mainnet transaction is possible.
+export function mainnetBroadcastEnabled(): boolean {
+  return String(Deno.env.get('MAINNET_BROADCAST_ENABLED') || '').trim().toLowerCase() === 'true';
+}
+
 export function resolvePolygonTarget(): PolygonTargetResolution {
   const raw = String(Deno.env.get('POLYGON_NETWORK') || '').trim().toLowerCase();
   if (raw === '') return { target: 'polygon_amoy' };
   if (raw === 'polygon_amoy' || raw === 'amoy') return { target: 'polygon_amoy' };
-  if (raw === 'polygon_mainnet' || raw === 'polygon' || raw === 'mainnet') return { target: 'polygon_mainnet' };
+  if (raw === 'polygon_mainnet' || raw === 'polygon' || raw === 'mainnet') {
+    if (!mainnetBroadcastEnabled()) return { unsupported: true, value: 'mainnet_broadcast_disabled' };
+    return { target: 'polygon_mainnet' };
+  }
   return { unsupported: true, value: raw };
 }
 
