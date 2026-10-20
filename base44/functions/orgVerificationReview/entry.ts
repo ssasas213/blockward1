@@ -212,9 +212,13 @@ export default async function (req: Request): Promise<Response> {
       ok: true,
       outcome: 'complete',
       credential: { bw_id: issuance.bwId },
-      blockchain: anchor.ok
-        ? { confirmed: true, transaction_hash: anchor.transaction_hash, network: anchor.network, testnet: anchor.testnet }
-        : { confirmed: false, error: anchor.error || anchor.reason || 'pending' },
+      // Batch queue: issuance enqueues the credential — the anchor confirms
+      // within the service target (≤15 min), reconciled by the queue worker.
+      blockchain: anchor.queued
+        ? { confirmed: false, queued: true, batch_ref: anchor.batch_ref, network: anchor.network, target_minutes: anchor.target_minutes }
+        : anchor.ok
+          ? { confirmed: true, transaction_hash: anchor.transaction_hash, network: anchor.network, testnet: anchor.testnet }
+          : { confirmed: false, error: anchor.error || anchor.reason || 'pending' },
     });
   } catch (error) {
     return Response.json({ error: error?.message || 'Failed to record decision' }, { status: 500 });

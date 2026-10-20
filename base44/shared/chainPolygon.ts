@@ -39,6 +39,7 @@ import { createPublicClient, createWalletClient, http, stringToHex, parseAbi, de
 import { privateKeyToAccount } from 'npm:viem@2.7.0/accounts';
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
 import { CHAIN_VERIFICATION_VERSION, verificationBindings } from './chainVerification.ts';
+import { verifyMerkleProof } from './anchorMerkle.ts';
 
 // Polygon PoS mainnet and Amoy testnet, defined explicitly (no reliance on
 // the viem chains bundle).
@@ -157,6 +158,201 @@ function commitmentFromPayload(input: string, cred: any): string | null {
     return meta.h;
   } catch {
     return null;
+  }
+}
+
+// ═════════════════════ BATCH ANCHORING (BATCH-PROOF-V1) ═════════════════════
+// Same calldata mode as single anchors; the payload records the BATCH Merkle
+// root instead of one credential hash. Public references ONLY — the payload
+// carries no personal data and no credential content, just the root (§PII).
+// Each member credential keeps its BW-HASH-V1 leaf and gains an inclusion
+// proof — batch-proof support is ADDITIVE to BW-HASH-V1, never a replacement.
+export const BATCH_ANCHOR_VERSION = 1;
+
+function buildBatchPayload(rootHex: string, memberCount: number): string {
+  return JSON.stringify({ v: 1, t: 'blockward-batch', hv: CREDENTIAL_HASH_VERSION, n: memberCount, r: rootHex });
+}
+
+function parseBatchPayload(input: string): { root: string; memberCount: number } | null {
+  try {
+    const meta = JSON.parse(input);
+    if (meta?.v !== 1 || meta?.t !== 'blockward-batch' || meta?.hv !== CREDENTIAL_HASH_VERSION
+      || !Number.isInteger(meta?.n) || meta.n < 1
+      || typeof meta.r !== 'string' || !/^[0-9a-f]{64}$/.test(meta.r)) return null;
+    return { root: meta.r, memberCount: meta.n };
+  } catch { return null; }
+}
+
+// Sign and broadcast ONE batch transaction (root commitment). All mainnet
+// fail-closed guards apply exactly as for single anchors: full production
+// config, signer-address match, live chain-id match, zero POL self-tx,
+// commitment-only calldata. No entity writes here — the queue engine owns
+// state. A receipt that cannot be fetched is NOT an error: the transaction
+// hash is returned with receipt=null and the queue reconciles it later.
+export async function anchorBatchRoot(opts: { rootHex: string; memberCount: number }) {
+  const log = (step: string, extra: Record<string, unknown> = {}) =>
+    console.log(JSON.stringify({ fn: 'chainPolygon.batch', step, ...extra }));
+  try {
+    if (!/^0x[0-9a-f]{64}$/.test(opts.rootHex)) return { ok: false, error: 'invalid_root' };
+    if (!Number.isInteger(opts.memberCount) || opts.memberCount < 1) return { ok: false, error: 'invalid_member_count' };
+
+    const resolved = resolvePolygonTarget();
+    if ('unsupported' in resolved) return { ok: false, error: 'unsupported_network', value: resolved.value };
+    const target = resolved.target;
+    const cfg = resolvePolygonConfig(target);
+
+    if (target === 'polygon_mainnet') {
+      const missing: string[] = [];
+      if (!cfg.rpc) missing.push('POLYGON_MAINNET_RPC_URL');
+      if (!cfg.expectedSignerAddress) missing.push('POLYGON_MAINNET_ANCHOR_ADDRESS');
+      if (!cfg.signingKey) missing.push('POLYGON_MAINNET_ISSUER_PRIVATE_KEY');
+      if (missing.length) {
+        log('mainnet_config_missing', { missing });
+        return { ok: false, error: 'mainnet_config_missing', missing };
+      }
+    } else if (!cfg.signingKey) {
+      log('skip', { reason: 'missing_issuer_key' });
+      return { ok: false, error: 'missing_issuer_key' };
+    }
+
+    const account = privateKeyToAccount(cfg.signingKey as `0x${string}`);
+    if (target === 'polygon_mainnet' && cfg.expectedSignerAddress
+      && account.address.toLowerCase() !== String(cfg.expectedSignerAddress).toLowerCase()) {
+      log('signer_address_mismatch', {});
+      return { ok: false, error: 'signer_address_mismatch' };
+    }
+
+    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc as string) });
+    const wal = createWalletClient({ account, chain: cfg.chain, transport: http(cfg.rpc as string) });
+
+    const chainId = await pub.getChainId().catch(() => null);
+    if (chainId !== cfg.chainId) {
+      return { ok: false, error: 'wrong_chain', chainId, expected: cfg.chainId };
+    }
+
+    const payload = buildBatchPayload(opts.rootHex, opts.memberCount);
+    const txHash = await wal.sendTransaction({
+      to: account.address,
+      value: 0n,
+      data: stringToHex(payload),
+    });
+    log('sent', { txHash, network: cfg.networkName, members: opts.memberCount });
+
+    let receipt: any = null;
+    try {
+      receipt = await pub.waitForTransactionReceipt({ hash: txHash });
+      if (receipt.status !== 'success') return { ok: false, error: 'tx_reverted', transaction_hash: txHash };
+    } catch {
+      // Broadcast succeeded; receipt unconfirmed (timeout/outage) — reconciled later.
+      return { ok: true, submitted: true, receipt_pending: true, transaction_hash: txHash, network: cfg.networkName, chain_id: cfg.chainId, testnet: cfg.isTestnet };
+    }
+
+    return {
+      ok: true,
+      transaction_hash: receipt.transactionHash,
+      block_number: Number(receipt.blockNumber || 0),
+      block_timestamp: receipt.blockTimestamp ? new Date(Number(receipt.blockTimestamp)).toISOString() : new Date().toISOString(),
+      gas_used: receipt.gasUsed != null ? Number(receipt.gasUsed) : null,
+      effective_gas_price_wei: receipt.effectiveGasPrice != null ? String(receipt.effectiveGasPrice) : null,
+      network: cfg.networkName,
+      chain_id: cfg.chainId,
+      testnet: cfg.isTestnet,
+    };
+  } catch (e) {
+    log('error', { err: String(e?.message || e).slice(0, 300) });
+    return { ok: false, error: String(e?.message || e).slice(0, 300) };
+  }
+}
+
+// Independent post-verification for a BATCH-anchored credential (batch_calldata):
+// tx exists, receipt success, correct chain/sender/recipient, zero value,
+// calldata parses as a batch payload, on-chain root equals the stored root,
+// and the stored Merkle proof verifies the RECOMPUTED BW-HASH-V1 leaf against
+// that root. Returns the hardened chain_check shape (verification_version 1).
+export async function verifyBatchAnchor(svc: any, cred: any) {
+  const bc = cred.blockchain || {};
+  const target = resolveVerificationTarget(cred);
+  const cfg = resolvePolygonConfig(target);
+  const result: any = {
+    status: 'chain_unavailable',
+    network: cfg.networkName,
+    testnet: cfg.isTestnet,
+    chain_id: cfg.chainId,
+    anchor_mode: 'batch_calldata',
+    checked_at: new Date().toISOString(),
+    transaction_hash: bc.transaction_hash,
+    batch_root: bc.batch_root || null,
+    merkle_leaf_index: bc.merkle_leaf_index ?? null,
+  };
+  const finish = async (checked: any) => {
+    if (svc && cred.id) {
+      try { await svc.entities.Credential.update(cred.id, { chain_check: checked }); } catch { /* best-effort */ }
+    }
+    return checked;
+  };
+  const invalid = (reason: string) => finish({ ...result, status: 'anchor_invalid', reason });
+
+  // The recomputed BW-HASH-V1 leaf — from CURRENT content, always.
+  const leaf = await computeCredentialHash({
+    verification_id: cred.bw_id,
+    version: cred.hash_version === 2 ? 2 : 1,
+    achievement_title: cred.title,
+    achievement_category: cred.category,
+    achievement_description: cred.description || '',
+    date_achieved: cred.date_achieved,
+  });
+  result.merkle_leaf = leaf;
+  result.recomputed_hash = leaf;
+
+  try {
+    if (!/^0x[0-9a-f]{64}$/.test(bc.batch_root || '')) return invalid('missing_batch_root');
+    if (!Array.isArray(bc.merkle_proof) || bc.merkle_leaf_index == null) return invalid('missing_merkle_proof');
+    if (bc.chain_id != null && bc.chain_id !== cfg.chainId) return invalid('unsupported_pinned_chain');
+    if (!cfg.rpc) return finish({ ...result, reason: 'missing_rpc_config' });
+    let expectedSigner: string;
+    try {
+      expectedSigner = target === 'polygon_mainnet'
+        ? String(cfg.expectedSignerAddress || '')
+        : privateKeyToAccount(cfg.signingKey as `0x${string}`).address;
+    } catch { return finish({ ...result, reason: 'missing_or_invalid_anchor_config' }); }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(expectedSigner)) return finish({ ...result, reason: 'missing_or_invalid_anchor_config' });
+    const sameAddress = (v: unknown) => typeof v === 'string' && v.toLowerCase() === expectedSigner.toLowerCase();
+
+    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc as string) });
+    if (await pub.getChainId() !== cfg.chainId) return invalid('wrong_chain');
+    const tx = await pub.getTransaction({ hash: bc.transaction_hash as `0x${string}` }).catch(() => null);
+    if (!tx) return invalid('transaction_not_found');
+    const receipt = await pub.getTransactionReceipt({ hash: bc.transaction_hash as `0x${string}` }).catch(() => null);
+    if (!receipt || receipt.status !== 'success') return invalid('receipt_not_successful');
+    const sameHash = (a: unknown, b: unknown) => typeof a === 'string' && typeof b === 'string'
+      && /^0x[0-9a-fA-F]{64}$/.test(a) && a.toLowerCase() === b.toLowerCase();
+    if (!sameHash(tx.hash, bc.transaction_hash) || !sameHash(receipt.transactionHash, bc.transaction_hash)
+      || tx.blockNumber == null || receipt.blockNumber == null || tx.blockNumber !== receipt.blockNumber
+      || !sameHash(tx.blockHash, receipt.blockHash)) return invalid('transaction_receipt_mismatch');
+    if (tx.chainId != null && tx.chainId !== cfg.chainId) return invalid('wrong_transaction_chain');
+    if (!sameAddress(tx.from) || !sameAddress(receipt.from)) return invalid('wrong_sender');
+    if (!sameAddress(tx.to) || !sameAddress(receipt.to)) return invalid('wrong_recipient');
+    if (tx.value !== 0n) return invalid('nonzero_anchor_value');
+
+    // The on-chain commitment must BE the stored batch root.
+    let onChain: { root: string; memberCount: number } | null = null;
+    try {
+      onChain = parseBatchPayload(new TextDecoder('utf-8', { fatal: true }).decode(hexToBytes(tx.input)));
+    } catch { /* malformed hex/UTF-8 is never a commitment */ }
+    result.committed_hash = onChain?.root || null;
+    result.batch_member_count = onChain?.memberCount ?? null;
+    if (!onChain) return invalid('batch_commitment_not_found_in_tx');
+    if (onChain.root.toLowerCase() !== bc.batch_root.toLowerCase()) return invalid('batch_root_mismatch');
+
+    // Merkle inclusion — the recomputed leaf must prove into the root.
+    const proofOk = await verifyMerkleProof(leaf, bc.merkle_proof, bc.batch_root);
+    if (!proofOk) return finish({ ...result, status: 'hash_mismatch' });
+
+    result.status = 'confirmed';
+    Object.assign(result, verificationBindings(cred), { verification_version: BATCH_ANCHOR_VERSION });
+    return finish(result);
+  } catch {
+    return finish({ ...result, status: 'chain_unavailable', reason: 'rpc_error' });
   }
 }
 
@@ -360,6 +556,12 @@ export async function anchorCredential(svc, credentialId: string) {
 export async function verifyCredentialAnchor(svc, cred: any) {
   const bc = cred.blockchain || {};
   const anchorState = cred.anchor_status || bc.status;
+
+  // BATCH-PROOF-V1 dispatch — batch-anchored credentials verify through the
+  // Merkle-inclusion path; the per-credential calldata path is UNCHANGED below.
+  if (bc.anchor_mode === 'batch_calldata' && anchorState === 'confirmed' && bc.transaction_hash) {
+    return verifyBatchAnchor(svc, cred);
+  }
 
   if (anchorState !== 'confirmed' || !bc.transaction_hash) {
     const pendingTarget = resolveVerificationTarget(cred);

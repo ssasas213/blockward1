@@ -51,3 +51,34 @@ export function isTrustedChainCheck(cred: any, check: any, recomputedHash: strin
   return /^[0-9a-f]{64}$/.test(recomputedHash)
     && check.recomputed_hash === recomputedHash && check.committed_hash === recomputedHash;
 }
+
+// ── BATCH-PROOF-V1 trust (additive — the per-credential V2 path is untouched) ──
+// A batch-anchored credential is trusted only when the fresh check verified
+// the full chain: tx receipt, chain/sender/recipient bindings, on-chain root
+// match, AND a Merkle proof over the RECOMPUTED BW-HASH-V1 leaf.
+export const BATCH_VERIFICATION_VERSION = 1;
+
+export function isTrustedBatchCheck(cred: any, check: any, recomputedHash: string, now = Date.now()): boolean {
+  if (!check || check.status !== 'confirmed' || check.verification_version !== BATCH_VERIFICATION_VERSION) return false;
+  if ((cred?.anchor_status || cred?.blockchain?.status) !== 'confirmed') return false;
+  const bc = cred?.blockchain || {};
+  if ((bc.anchor_mode || '') !== 'batch_calldata') return false;
+  if (bc.contract_address != null) return false;
+  if (!/^0x[0-9a-fA-F]{64}$/.test(bc.transaction_hash || '')) return false;
+  if (!/^[0-9a-f]{64}$/.test(bc.batch_root || '')) return false;
+  if (check.batch_root !== bc.batch_root) return false;
+  if (check.merkle_leaf_index !== bc.merkle_leaf_index) return false;
+  if (check.transaction_hash !== bc.transaction_hash) return false;
+  // Preserve the network/chain priority of the per-credential resolver.
+  const net = String(bc.network || '').toLowerCase();
+  const chain = bc.chain_id ?? (net === 'polygon' || net === 'polygon_mainnet' ? 137 : 80002);
+  if (chain !== 137 && chain !== 80002) return false;
+  if (check.chain_id !== chain || check.network !== (chain === 137 ? 'polygon' : 'polygon_amoy')) return false;
+  if (typeof check.checked_at !== 'string') return false;
+  const age = now - Date.parse(check.checked_at);
+  if (!Number.isFinite(age) || age < 0 || age >= CHAIN_VERIFICATION_TTL_MS) return false;
+  return /^[0-9a-f]{64}$/.test(recomputedHash)
+    && check.merkle_leaf === recomputedHash
+    && check.committed_hash === check.batch_root
+    && check.batch_member_count >= 1;
+}

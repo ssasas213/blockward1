@@ -1,0 +1,45 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 5,
+      "interval_unit": "minutes",
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "name": "Blockchain Anchor Queue",
+  "description": "Drives the durable Polygon anchoring queue every 5 minutes: reconciles submitted batch transactions, recovers stale locks, escalates overdue batches, releases fee holds and anchors due Merkle batches on Polygon PoS.",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "blockchain_anchor_queue",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_queue_tick": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processAnchorQueue",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Run anchoring queue tick",
+            "description": "Reconcile, recover, escalate, anchor"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -6,10 +6,9 @@
 // (chainPolygon), BW-HASH-V1, idempotency locking and retry behavior are
 // untouched — this module only orchestrates them.
 // ============================================================================
-import { anchorCredential } from './chainPolygon.ts';
-import { ensureUniqueBwId, pushEvent, notifyHolder, appBaseUrl } from './verificationFlow.ts';
-import { sendTrackedEmail } from './emailDelivery.ts';
-import { holderVerifiedEmail, methodLabel } from './issuerEmails.ts';
+import { enqueueCredentialForAnchoring } from './anchorQueue.ts';
+import { ensureUniqueBwId, pushEvent, notifyHolder } from './verificationFlow.ts';
+import { methodLabel } from './issuerEmails.ts';
 
 export interface IssuanceOptions {
   ach: any;            // Achievement record
@@ -65,22 +64,21 @@ export async function issueCredential(svc: any, opts: IssuanceOptions) {
     event_log: pushEvent(ach.event_log, 'issuer_confirmed', opts.actorEmail || 'system', `Issuer verification complete — creating blockchain proof`),
   });
 
-  // The blockchain stage — Blockward pays the gas in the background; the
-  // caller's response is not blocked on the chain being fast.
-  const anchor = await anchorCredential(svc, cred.id);
+  // The blockchain stage — the credential enters the durable Merkle batching
+  // queue (one transaction per batch, target ≤15 min, fee-policy gated). The
+  // queue worker completes the chain stage: on batch confirmation the
+  // achievement becomes VERIFIED, the holder is emailed and notified.
+  const anchor = await enqueueCredentialForAnchoring(svc, cred);
   if (anchor.ok) {
     await svc.entities.Achievement.update(ach.id, {
-      status: 'verified',
-      event_log: pushEvent(ach.event_log, 'verified', 'system', `Blockward Verified — Polygon PoS anchor confirmed (tx ${String(anchor.transaction_hash || '').slice(0, 18)}…)`),
+      status: 'blockchain_processing',
+      event_log: pushEvent(ach.event_log, 'blockchain_started', 'system', `Blockchain anchoring queued — batch ${anchor.batch_ref || 'pending'} on Polygon PoS`),
     });
-    const verifyUrl = `${appBaseUrl()}/verify/${bwId}`;
-    const mail = holderVerifiedEmail({ achievementTitle: ach.title, bwId, verifyUrl });
-    await sendTrackedEmail(svc, { to: ach.holder_email, subject: mail.subject, html: mail.html, event_type: 'record_delivered_to_vault', related_id: cred.id, retryable: true });
-    await notifyHolder(svc, ach.holder_email, 'Achievement is Blockward Verified', `"${ach.title}" is confirmed and secured on the blockchain. Credential ID: ${bwId}.`, 'achievement_verified', ach.id);
+    await notifyHolder(svc, ach.holder_email, 'Issuer verified — blockchain processing', `All required verifiers have signed "${ach.title}". The blockchain proof is being processed.`, 'issuer_confirmed', ach.id);
   } else {
     await svc.entities.Achievement.update(ach.id, {
       status: 'issuer_confirmed',
-      event_log: pushEvent(ach.event_log, 'blockchain_failed', 'system', `Blockchain anchor failed: ${anchor.error || anchor.reason || 'unknown'} — retryable`),
+      event_log: pushEvent(ach.event_log, 'blockchain_failed', 'system', `Blockchain queue error: ${anchor.error || 'unknown'} — retryable`),
     });
     await notifyHolder(svc, ach.holder_email, 'Issuer verified — blockchain processing', `All required verifiers have signed "${ach.title}". The blockchain proof is being processed.`, 'issuer_confirmed', ach.id);
   }

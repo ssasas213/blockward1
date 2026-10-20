@@ -26,7 +26,7 @@
 // ============================================================================
 
 import { computeCredentialHash } from './credentialHash.ts';
-import { isTrustedChainCheck, polygonCredentialHashFields } from './chainVerification.ts';
+import { isTrustedChainCheck, isTrustedBatchCheck, polygonCredentialHashFields } from './chainVerification.ts';
 
 export const TRUST_LEVELS = {
   ADDED_TO_BLOCKWARD: 'added_to_blockward',
@@ -85,7 +85,11 @@ export async function integrityFrom(cred: any, integrity?: any | null): Promise<
   if (i?.status === 'confirmed') {
     try {
       const hash = await computeCredentialHash(polygonCredentialHashFields(cred));
-      if (isTrustedChainCheck(cred, i, hash)) return INTEGRITY_STATUS.CONFIRMED;
+      // BATCH-PROOF-V1 credentials trust through the Merkle-inclusion path;
+      // per-credential calldata credentials keep the V2 path unchanged.
+      const batchMode = (cred?.blockchain?.anchor_mode || '') === 'batch_calldata';
+      const trusted = batchMode ? isTrustedBatchCheck(cred, i, hash) : isTrustedChainCheck(cred, i, hash);
+      if (trusted) return INTEGRITY_STATUS.CONFIRMED;
     } catch { /* hashing failure is never confirmation */ }
   }
   if (i?.status === 'hash_mismatch' || i?.status === 'anchor_invalid') return INTEGRITY_STATUS.FAILED;

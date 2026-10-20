@@ -1,0 +1,186 @@
+{
+  "name": "AnchorBatch",
+  "type": "object",
+  "properties": {
+    "batch_ref": {
+      "type": "string",
+      "description": "Public batch identifier (format AB-XXXXXX). Unique."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ANCHOR_PENDING",
+        "ANCHOR_PENDING_FEE",
+        "ANCHOR_PROCESSING",
+        "ANCHOR_SUBMITTED",
+        "ANCHOR_CONFIRMED",
+        "ANCHOR_FAILED_RETRYABLE",
+        "ANCHOR_FAILED_PERMANENT"
+      ],
+      "default": "ANCHOR_PENDING",
+      "description": "Queue lifecycle. PENDING = collecting members / due. PENDING_FEE = gas policy blocked the attempt (credential preserved, retried when fees allow). PROCESSING = claimed. SUBMITTED = tx broadcast, receipt being reconciled. CONFIRMED = receipt verified, proofs distributed. FAILED_RETRYABLE = will retry with backoff. FAILED_PERMANENT = administrators must intervene."
+    },
+    "network": {
+      "type": "string",
+      "enum": [
+        "polygon_amoy",
+        "polygon_mainnet"
+      ],
+      "description": "Target network, resolved at enqueue time from POLYGON_NETWORK."
+    },
+    "member_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Credential.id members of this batch, in leaf order. Leaf index = position in this array."
+    },
+    "member_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of credentials in the batch."
+    },
+    "max_size": {
+      "type": "number",
+      "description": "Configured max batch size at creation time (ANCHOR_BATCH_MAX_SIZE)."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the batch was opened (also the batch window start)."
+    },
+    "close_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Batching-window deadline \u2014 the batch is due when this passes even if not full. Small batches are never delayed beyond this."
+    },
+    "escalated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the batch exceeded the escalation window (60 min) \u2014 admins notified, batch is force-attempted regardless of fee policy."
+    },
+    "critical_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the batch exceeded the critical window (24 h) \u2014 critical incident notification."
+    },
+    "fee_hold_notified_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time administrators were notified about a fee hold \u2014 dedupes alerting."
+    },
+    "anchor_claimed_by": {
+      "type": "string",
+      "description": "Transient worker claim id. Stale claims (>10 min) are recovered automatically. Service-role only."
+    },
+    "anchor_claimed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the current worker claim was taken. Service-role only."
+    },
+    "attempts": {
+      "type": "number",
+      "default": 0,
+      "description": "Anchor attempts so far \u2014 drives exponential backoff and the permanent-failure ceiling."
+    },
+    "next_attempt_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Earliest time the next attempt may run (exponential backoff)."
+    },
+    "last_error": {
+      "type": "string",
+      "description": "Reason for the most recent failure (retryable or permanent)."
+    },
+    "merkle_root": {
+      "type": "string",
+      "description": "64-hex SHA-256 Merkle root committed on-chain for this batch."
+    },
+    "transaction_hash": {
+      "type": "string",
+      "description": "Polygon transaction that anchored the Merkle root."
+    },
+    "block_number": {
+      "type": "number",
+      "description": "Block number of the anchoring transaction."
+    },
+    "block_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Block timestamp of the anchoring transaction."
+    },
+    "estimated_fee_wei": {
+      "type": "string",
+      "description": "Estimated maximum fee at attempt time (wei, string-encoded bigint)."
+    },
+    "actual_fee_wei": {
+      "type": "string",
+      "description": "Actual fee paid (effectiveGasPrice \u00d7 gasUsed, wei, string-encoded bigint)."
+    },
+    "actual_fee_pol": {
+      "type": "string",
+      "description": "Actual fee paid in POL (decimal string)."
+    },
+    "actual_cost_usd": {
+      "type": "number",
+      "description": "Actual fee converted to USD at the price captured at confirmation."
+    },
+    "price_source": {
+      "type": "string",
+      "description": "POL/USD price source used for the USD figure (e.g. coingecko | fallback_estimate)."
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the receipt was verified and proofs distributed."
+    },
+    "event_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "opened | member_added | full | fee_hold | fee_released | escalated | critical | claimed | submitted | confirmed | retry_scheduled | failed_permanent | reconciled"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "event",
+          "timestamp"
+        ]
+      },
+      "default": [],
+      "description": "Audit trail of every queue transition for this batch."
+    }
+  },
+  "required": [
+    "batch_ref",
+    "status",
+    "network"
+  ],
+  "rls": {
+    "create": {
+      "data.batch_ref": "__service_role_only__"
+    },
+    "read": {
+      "data.batch_ref": "__service_role_only__"
+    },
+    "update": {
+      "data.batch_ref": "__service_role_only__"
+    },
+    "delete": {
+      "data.batch_ref": "__service_role_only__"
+    }
+  }
+}

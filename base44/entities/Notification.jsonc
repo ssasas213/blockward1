@@ -48,9 +48,12 @@
         "verifier_invited",
         "org_member_joined",
         "org_verified",
-        "org_rejected"
+        "org_rejected",
+        "anchor_escalation",
+        "anchor_fee_hold",
+        "anchor_critical"
       ],
-      "description": "Notification type"
+      "description": "Notification type. The anchor_* values are Blockward internal operations alerts (queue escalation, gas-policy fee hold, critical anchoring incident) delivered to internal administrators."
     },
     "priority": {
       "type": "string",
