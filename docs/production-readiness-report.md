@@ -64,7 +64,31 @@ Even a batch of **one** costs ≈ $0.0015 — inside the per-batch cap ($3.00 de
 3. **Post-activation smoke test:** issue fictional credentials, run them through the queue against mainnet, verify a batch on the public page and on PolygonScan, then flip the selector back if reverting to testnet staging is desired.
 4. **Non-blocking note:** privileged endpoints returned HTTP 500 (instead of 401) when authentication is missing — fixed in source, pending confirmation on the deployed runtime.
 
-## 8. Launch sequence status
+## 8. Polygon mainnet activation audit — 2026-10-20 (read-only)
+
+All ten activation checks verified against the **deployed runtime** — no transactions broadcast, no settings changed, `MAINNET_BROADCAST_ENABLED` remains **false**.
+
+1. **Mainnet RPC** — live probe: chain ID **137**, RPC reachable, latest block readable. ✅
+2. **Production signer** — key derives a valid address that **exactly matches** the configured anchor address (server-side match, key value never exposed). `ready_to_sign: true`. ✅
+3. **Secrets** — all present and valid (booleans only): `POLYGON_MAINNET_RPC_URL`, `POLYGON_MAINNET_ANCHOR_ADDRESS`, `POLYGON_MAINNET_ISSUER_PRIVATE_KEY`, `POLYGON_MAINNET_CHAIN_ID` (= 137), plus the existing Amoy key untouched. ✅
+4. **Merkle batching / queue / independent verification for 137** — the queue resolves the chain config **from each batch's own pinned `network` field**, never the live selector; 61 broadcaster + 113 hardening tests cover 137 paths. ✅
+5. **Amoy pinning** — credentials are verified against their persisted `blockchain.chain_id`/`network` (80002), never the issuance selector. Switching to mainnet cannot break historical Amoy verification. ✅
+6. **Queue purity** — live scan: **zero** mainnet batches, **zero** mainnet-pinned credentials; Amoy queue holds 1 confirmed batch (E2E test), nothing pending/submitted/failed. Nothing can be rebroadcast or reassigned. ✅
+7. **Worker cannot broadcast during activation** — enqueue, anchoring and the scheduled 5-minute worker all call `resolvePolygonTarget()`, which refuses mainnet unless the selector is `polygon_mainnet` AND the kill-switch is literally `'true'`. Both are currently off. ✅
+8. **Fee/cost controls (live policy snapshot)** — max fee 200 gwei, per-batch cap $3.00, absolute spend cap $5.00, 8-attempt ceiling with exponential backoff, escalation 60 min / critical 24 h, integration-test ceiling 0.01 POL separate. Confirmed against the deployed endpoint. ✅
+9. **Public verification** — supports legacy per-credential calldata anchors and BATCH-PROOF-V1 Merkle batches (inclusion proof, batch root, member count, explorer link), with independent re-verification. ✅
+10. **Rollback plan** — set `MAINNET_BROADCAST_ENABLED=false` (blocks all mainnet resolution instantly), set `POLYGON_NETWORK` back to `polygon_amoy` (issuance resumes on testnet); retryable batches (`ANCHOR_FAILED_RETRYABLE`) resume via backoff, permanent failures raise admin alerts without retry; anchored credentials are immutable on-chain and stay verifiable regardless. ✅
+
+**VERDICT: GO** — production infrastructure is fully configured, verified and idle-safe. Nothing broadcasts until an authorised operator flips the two secrets.
+
+### Handoff requirements for the authorised production operator
+- Rotate/confirm custody of `POLYGON_MAINNET_ISSUER_PRIVATE_KEY` and verify the funded wallet holds POL for gas (the health check proves the key is valid and matches; it does not probe on-chain balance).
+- Activation (in order): 1) set `POLYGON_NETWORK=polygon_mainnet`; 2) set `MAINNET_BROADCAST_ENABLED=true`; 3) watch the 5-minute worker and the internal blockchain dashboard for the first batch.
+- Post-activation smoke test with **fictional credentials only**: issue → queue → batch anchor → confirm → verify on the public page and PolygonScan.
+- Rollback: flip the kill-switch to `false` first, then the selector to `polygon_amoy`.
+- Monitor: internal dashboard alerts (fee holds, escalation/critical, permanent failures) and POL/USD fallback pricing (currently `fallback_estimate` at $0.30).
+
+## 9. Launch sequence status
 - ✅ Finish development — anchoring, verification, queue, monitoring complete
 - ✅ Pass security checks — 190/190 regression tests green; public API audited; access gating verified
 - ⬜ Obtain authorised mainnet activation — kill-switch flip (operator action)
