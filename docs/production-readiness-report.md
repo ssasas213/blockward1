@@ -107,7 +107,29 @@ All probes read-only: no transactions, no settings or secret changes, no POL spe
 - Smoke test with fictional credentials only; verify on the public page and PolygonScan.
 - Rollback: kill-switch `false` first, then selector to `polygon_amoy`.
 
-## 10. Launch sequence status
+## 10. Final pre-activation check — 2026-10-20 06:15 UTC (read-only)
+
+1. **Block discrepancy resolved** — the live RPC now returns block **95,847,711** (hex `0x5b6851f`), timestamp **06:15:35 UTC**. The earlier preflight figure of 9,584,759 was a **decimal transcription error in the report itself** (95,847,711 ÷ 10); the ~94.9M figure from the first audit is consistent with chain height ~1.7 days earlier. **The RPC was never stale — the earlier report misstated the number.** Growth of ~152 blocks in 4 min (≈2.05 s/block) matches Polygon PoS cadence; synchronized.
+2. **RPC & chain ID** — `eth_chainId` = `0x89` (**137**), latest block header readable and fresh. ✅
+3. **Wallet** — **243.940543 POL** at `0x2Af9…2D7e`; signer key valid, derived address **matches** the configured anchor (`ready_to_sign: true`). Secrets never exposed. ✅
+4. **Gas conditions** — gas price **287.2 gwei**; base fee ≈ 260 gwei, priority fee p50 ≈ 32 gwei (one 138.6 gwei outlier). Elevated but stable. Fee gate = market gasPrice × 1.25 headroom, so the effective gate at the 200 gwei ceiling is ~360 gwei — currently holding.
+5. **EIP-1559 handling — correct.** Type-2 transactions with `maxFeePerGas` + `maxPriorityFeePerGas ≤ maxFeePerGas`, plan validation enforces the relationship, and the post-broadcast receipt check verifies actual paid fee ≤ plan ceiling (hardening tests cover ceiling rejection, invalid fee relationship, zero-fee cases).
+6. **Cost table** (26,450 gas units conservative worst case; fallback $0.30 POL):
+
+| Ceiling | Fee (POL) | Fee (USD) | /1 cred | /10 | /100 | /1,000 (2 batches) |
+|---|---|---|---|---|---|---|
+| 200 gwei | 0.00529 | $0.00159 | $0.00159 | $0.000159 | $0.0000159 | $0.0000032 |
+| 300 gwei | 0.00794 | $0.00238 | $0.00238 | $0.000238 | $0.0000238 | $0.0000048 |
+| 400 gwei | 0.01058 | $0.00317 | $0.00317 | $0.000317 | $0.0000317 | $0.0000063 |
+| 500 gwei | 0.01323 | $0.00397 | $0.00397 | $0.000397 | $0.0000397 | $0.0000079 |
+
+   **USD caps are adequate** — at $0.30/POL the $3.00 cap binds at ~378 gwei, $5.00 at ~630 gwei; the absolute worst automatic attempt (60,000 gas limit × 500 gwei) = 0.03 POL = **$0.009**, 0.3% of the normal cap.
+7. **Recommended production fee policy (separate approval, not applied)** — `ANCHOR_MAX_FEE_GWEI` **200 → 500**, USD caps unchanged. With the ×1.25 gate headroom this allows anchoring at market gas up to 400 gwei (today: 287 × 1.25 = 359 gwei passes) while the USD caps remain the binding financial guard above ~378 gwei. Maximum automatic spend per attempt stays ≤ $0.009; fee-held batches stay preserved and retry automatically, never dropped.
+8. **Automated processing verified** — worker active, last 10 runs all `ok` (≈5-min cadence); 0 pending/fee-held/processing/submitted/failed jobs, 0 permanent failures; small (2-member) batch confirmed end-to-end on Amoy with independent inclusion proofs; unfilled batches process at the 15-minute target; fee-held batches retry every 5 min; idempotent claims/backoff proven by the 190-test suite; confirmation requires receipt verification + Merkle proof distribution; Amoy/Sepolia history verifies against each credential's pinned network/chain ID.
+9. **Safety state (flags checked, values not exposed)** — `MAINNET_BROADCAST_ENABLED` is **false**; `POLYGON_NETWORK` is **not** mainnet (issuance on Amoy); **no mainnet batches or transactions exist**; integration-test ceiling **0.01 POL unchanged**; no duplicate/misassigned queue jobs.
+10. **Verdict: GO for authorised mainnet activation.** Blockers: none. Awaiting the separate fee-policy approval (recommended) and the operator's activation sequence.
+
+## 11. Launch sequence status
 - ✅ Finish development — anchoring, verification, queue, monitoring complete
 - ✅ Pass security checks — 190/190 regression tests green; public API audited; access gating verified
 - ⬜ Obtain authorised mainnet activation — kill-switch flip (operator action)
