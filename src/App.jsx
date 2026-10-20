@@ -26,6 +26,7 @@ import People from './pages/People';
 import TeacherRecords from './pages/TeacherRecords';
 import PendingSignoffs from './pages/PendingSignoffs';
 import Verify from './pages/Verify';
+import CredentialVerify from './pages/CredentialVerify';
 import PublicPortfolio from './pages/PublicPortfolio';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
@@ -137,7 +138,10 @@ const AuthenticatedApp = () => {
       <Route path="/Verify" element={<LayoutWrapper currentPageName="Verify"><Verify /></LayoutWrapper>} />
       {/* Sample verification page for the example profile — clearly labelled, never a real credential */}
       <Route path="/verify/demo" element={<SampleVerification />} />
-      <Route path="/verify/:verification_id" element={<Verify />} />
+      {/* New credential registry (issuer-verified + batched Polygon anchors)
+          verifies through the publicVerifyData pipeline; legacy registry
+          credentials fall through to the original page inside CredentialVerify. */}
+      <Route path="/verify/:verification_id" element={<CredentialVerify />} />
       <Route path="/portfolio/:studentId" element={<PublicPortfolio />} />
       <Route path="/invite/:token" element={<Signup />} />
       <Route path="/Invitations" element={<LayoutWrapper currentPageName="Invitations"><ProtectedRoute><Invitations /></ProtectedRoute></LayoutWrapper>} />

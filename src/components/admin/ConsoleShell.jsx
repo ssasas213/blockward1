@@ -1,13 +1,14 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Building2, FileText, ScrollText, History, ArrowLeft } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, ScrollText, History, ArrowLeft, Boxes } from 'lucide-react';
 import BlockwardLogo from '@/components/brand/BlockwardLogo';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'organisations', label: 'Organisations', icon: Building2 },
   { id: 'credentials', label: 'Credentials', icon: FileText },
+  { id: 'blockchain', label: 'Blockchain queue', icon: Boxes },
   { id: 'audit', label: 'Audit Log', icon: ScrollText },
   { id: 'historical', label: 'Historical verification', icon: History },
 ];

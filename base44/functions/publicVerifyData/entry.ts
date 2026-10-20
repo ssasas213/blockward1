@@ -77,6 +77,16 @@ export default async function (req: Request): Promise<Response> {
         explorer_url: cred.blockchain?.transaction_hash
           ? `https://${integrity.network === 'polygon' ? '' : 'amoy.'}polygonscan.com/tx/${cred.blockchain.transaction_hash}`
           : null,
+        // BATCH-PROOF-V1 — the credential's inclusion proof into the anchored
+        // Merkle root. All fields are public by design: they let any viewer
+        // re-run the inclusion check independently of Blockward.
+        batch: cred.blockchain?.anchor_mode === 'batch_calldata' ? {
+          batch_ref: cred.blockchain?.batch_ref || null,
+          batch_root: cred.blockchain?.batch_root || null,
+          batch_member_count: cred.chain_check?.batch_member_count ?? null,
+          merkle_leaf_index: cred.blockchain?.merkle_leaf_index ?? null,
+          merkle_proof: Array.isArray(cred.blockchain?.merkle_proof) ? cred.blockchain.merkle_proof : null,
+        } : null,
       },
       integrity: {
         status: trust.integrity_status === 'confirmed' ? 'confirmed' : (integrity.status === 'confirmed' ? 'pending' : integrity.status),

@@ -10,6 +10,7 @@ import OrgReviewQueue from '@/components/admin/OrgReviewQueue';
 import OrgReviewDrawer from '@/components/admin/OrgReviewDrawer';
 import CredentialOversight from '@/components/admin/CredentialOversight';
 import ConsoleAuditLog from '@/components/admin/ConsoleAuditLog';
+import ConsoleBlockchain from '@/components/admin/ConsoleBlockchain';
 import HistoricalReviewQueue from '@/components/admin/HistoricalReviewQueue';
 import HistoricalReviewDrawer from '@/components/admin/HistoricalReviewDrawer';
 
@@ -141,6 +142,7 @@ export default function AdminConsole() {
       {tab === 'overview' && <ConsoleOverview data={data} onOpenOrg={openOrg} setTab={setTab} />}
       {tab === 'organisations' && <OrgReviewQueue orgs={data?.organisations || []} onOpenOrg={openOrg} />}
       {tab === 'credentials' && <CredentialOversight />}
+      {tab === 'blockchain' && <ConsoleBlockchain />}
       {tab === 'audit' && <ConsoleAuditLog entries={data?.overview?.recent_audit || []} />}
       {tab === 'historical' && (
         <HistoricalReviewQueue
