@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, Building2, FileText, ScrollText, History, ArrowLeft, Boxes } from 'lucide-react';
+import { LayoutDashboard, Building2, FileText, ScrollText, History, ArrowLeft, Boxes, UserCircle } from 'lucide-react';
 import BlockwardLogo from '@/components/brand/BlockwardLogo';
 
 const TABS = [
@@ -25,6 +25,9 @@ export default function ConsoleShell({ admin, tab, setTab, children }) {
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden sm:block text-xs text-tertiary">{admin?.email}</span>
+            <Link to="/StudentDashboard" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+              <UserCircle className="h-4 w-4" /> My dashboard
+            </Link>
             <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> Back to Blockward
             </Link>

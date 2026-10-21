@@ -26,15 +26,16 @@ export default function RoleDashboardRedirect() {
       // Platform-level Super Admin lands in the internal console —
       // server-authorised, never inferred from user_type (P0/A01). A failed
       // probe grants nothing and ordinary routing continues.
-      if (effectiveRole === 'admin') {
-        try {
-          const res = await base44.functions.invoke('getInternalAdminStatus');
-          if (res?.data?.is_internal_admin && !cancelled) {
-            guardedRedirect('/internal/admin');
-            return;
-          }
-        } catch { /* probe failed — ordinary routing, no privilege assumed */ }
-      }
+      // Probed for EVERY role — a platform administrator's personal account
+      // may be a holder (user_type 'student'). Server-authorised; a failed
+      // probe grants nothing and ordinary routing continues.
+      try {
+        const res = await base44.functions.invoke('getInternalAdminStatus');
+        if (res?.data?.is_internal_admin && !cancelled) {
+          guardedRedirect('/internal/admin');
+          return;
+        }
+      } catch { /* probe failed — ordinary routing, no privilege assumed */ }
       if (!cancelled) {
         // Through the redirect guard: counted for loop detection, and a
         // same-path target is a no-op instead of an endless self-reload.

@@ -112,6 +112,14 @@ export default function Layout({ children, currentPageName }) {
   };
 
   let groups = navigationGroups[userType] || navigationGroups.student;
+  // Platform Admin is granted SERVER-SIDE (internal allowlist probe above) and
+  // must appear for the admin whatever their personal account type is — a
+  // platform administrator whose profile is a holder account still gets it.
+  if (internalAdmin && !groups.some(g => g.items.some(i => i.page === 'admin/organisations'))) {
+    groups = [...groups, { label: 'Platform', items: [
+      { name: 'Platform Admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' },
+    ]}];
+  }
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 

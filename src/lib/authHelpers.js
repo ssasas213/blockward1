@@ -138,19 +138,20 @@ export async function handlePostLoginRedirect() {
     return null;
   }
 
-  // ===== Platform-level Super Admin — resolved SERVER-SIDE before ordinary
-  // organisation routing (P0/A01). The internal-admin allowlist secret is the
-  // only grant; user_type, admin_level and notification recipients never are.
-  // A failed probe grants nothing — ordinary routing continues below.
-  if (role === 'admin') {
-    try {
-      const adminRes = await base44.functions.invoke('getInternalAdminStatus');
-      if (adminRes?.data?.is_internal_admin) {
-        guardedRedirect('/internal/admin');
-        return null;
-      }
-    } catch { /* probe failed — ordinary routing, no privilege assumed */ }
-  }
+  // ===== Platform-level admin — resolved SERVER-SIDE before ordinary routing.
+  // Probed for EVERY role: a platform administrator's personal account is
+  // often an ordinary holder (user_type 'student'), so keying the probe to
+  // user_type missed it and dropped them on the holder dashboard. The
+  // internal-admin allowlist (code defaults + secret) is the only grant;
+  // user_type, admin_level and notification recipients never are. A failed
+  // probe grants nothing — ordinary routing continues below.
+  try {
+    const adminRes = await base44.functions.invoke('getInternalAdminStatus');
+    if (adminRes?.data?.is_internal_admin) {
+      guardedRedirect('/internal/admin');
+      return null;
+    }
+  } catch { /* probe failed — ordinary routing, no privilege assumed */ }
 
   // No school linked yet. Teachers and admins genuinely cannot function
   // without an organisation, so they go to setup. A school-less student is a

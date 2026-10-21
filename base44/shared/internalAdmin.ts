@@ -40,7 +40,13 @@ export const INTERNAL_ADMIN_EMAILS: string[] = DEFAULT_INTERNAL_ADMIN_EMAILS;
 
 export function isInternalAdmin(email: string | null | undefined): boolean {
   if (!email) return false;
-  return configuredInternalAdminEmails().includes(String(email).trim().toLowerCase());
+  const candidate = String(email).trim().toLowerCase();
+  // UNION grant: the initial authorised platform administrators are permanent
+  // grants in code, and the secret may ADD further admins. Either source
+  // authorises — neither is client-writable, so self-service elevation via
+  // signup, profile editing or email-domain matching remains impossible.
+  return DEFAULT_INTERNAL_ADMIN_EMAILS.includes(candidate)
+    || configuredInternalAdminEmails().includes(candidate);
 }
 
 /**
