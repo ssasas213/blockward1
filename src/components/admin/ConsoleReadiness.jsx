@@ -25,7 +25,7 @@ export default function ConsoleReadiness() {
     setLoading(true);
     try {
       const [s, p] = await Promise.all([
-        base44.functions.invoke('anchorQueueStatus', {}),
+        base44.functions.invoke('anchorQueueStatus', { action: 'latency_report' }),
         base44.functions.invoke('remediateAnchorIncident', { approved: false }),
       ]);
       setStatus(s.data);
@@ -84,6 +84,11 @@ export default function ConsoleReadiness() {
 
   const remaining = approvals.filter((a) => a.status === 'pending').length;
 
+  const polUsd = status?.pol_price?.usd || 0.30;
+  const gasUnits = policy.gas_limit || 60000;
+  const maxTxCostPol = (PROPOSED_FEE_GWEI * 1e-9 * gasUnits).toFixed(4);
+  const maxTxCostUsd = (PROPOSED_FEE_GWEI * 1e-9 * gasUnits * polUsd).toFixed(4);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -118,6 +123,42 @@ export default function ConsoleReadiness() {
           </Card>
         ))}
       </div>
+
+      {/* Effective configuration */}
+      <Card className="surface-card">
+        <CardContent className="p-5">
+          <h2 className="text-sm font-semibold text-tertiary uppercase tracking-wider mb-3">Effective configuration</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <Cfg label="Flush debounce" value={`${policy.flush_debounce_seconds ?? 0}s`} ok={flushApproved} />
+            <Cfg label="Fee ceiling" value={`${policy.max_fee_gwei || 200} Gwei`} ok={feeApproved} />
+            <Cfg label="Batch window" value={`${policy.batch_window_minutes || 10} min`} ok={true} />
+            <Cfg label="Batch max size" value={policy.batch_max_size || 500} ok={true} />
+            <Cfg label="Per-batch cap" value={`$${policy.max_batch_cost_usd ?? 3}`} ok={true} />
+            <Cfg label="Absolute cap" value={`$${policy.absolute_max_cost_usd ?? 5}`} ok={true} />
+            <Cfg label="Max attempts" value={policy.max_attempts ?? 8} ok={true} />
+            <Cfg label="Integration-test ceiling" value="0.01 POL" ok={true} />
+          </div>
+          <p className="text-xs text-tertiary mt-3">
+            Flush debounce <span className="font-mono text-foreground">{policy.flush_debounce_seconds ?? 0}s</span> = {flushApproved ? 'event-driven path active' : 'legacy 10-min window'}. Fee ceiling <span className="font-mono text-foreground">{policy.max_fee_gwei || 200} Gwei</span> gates every broadcast.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Proposed fee policy */}
+      <Card className="surface-card border-primary/30">
+        <CardContent className="p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">Proposed fee policy (operator approval required)</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <Cfg label="Proposed ceiling" value={`${PROPOSED_FEE_GWEI} Gwei`} ok={!feeApproved} />
+            <Cfg label="Effective raw-gas threshold" value={`~${Math.round(PROPOSED_FEE_GWEI / HEADROOM_MULTIPLIER)} Gwei`} ok={!feeApproved} />
+            <Cfg label="Max tx cost" value={`~${maxTxCostPol} POL`} ok={!feeApproved} />
+            <Cfg label="Max tx cost (USD)" value={`~$${maxTxCostUsd}`} ok={!feeApproved} />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            At {PROPOSED_FEE_GWEI} Gwei × {gasUnits} gas units, the maximum single-batch transaction cost is ~{maxTxCostPol} POL (~${maxTxCostUsd} at ${polUsd.toFixed(2)}/POL). This is well within the unchanged ${policy.max_batch_cost_usd ?? 3}/batch and ${policy.absolute_max_cost_usd ?? 5} absolute caps. Spend permissions, the broadcast flag and the integration-test ceiling (0.01 POL) are unchanged.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Latency readiness */}
       <Card className="surface-card">
