@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
 import OrgVerificationQueue from '@/components/organisations/OrgVerificationQueue';
 import OrgSignatureCard from '@/components/organisations/OrgSignatureCard';
 import OrgMembersPanel from '@/components/organisations/OrgMembersPanel';
@@ -12,7 +14,7 @@ import OrgPoliciesPanel from '@/components/organisations/OrgPoliciesPanel';
 import OrgCredentialsCard from '@/components/organisations/OrgCredentialsCard';
 import {
   ShieldCheck, ShieldAlert, ClipboardCheck, PenTool, Users,
-  Award, Building2, Globe, ExternalLink,
+  Award, Building2, Globe, ExternalLink, MessageSquare, Loader2,
 } from 'lucide-react';
 
 const ORG_TYPE_LABELS = {
@@ -33,6 +35,10 @@ export default function OrgDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedOrgId, setSelectedOrgId] = useState('');
+  // Outstanding information request — owner response flow.
+  const [respondOpen, setRespondOpen] = useState(false);
+  const [respondText, setRespondText] = useState('');
+  const [respondBusy, setRespondBusy] = useState(false);
 
   const load = useCallback(async (orgId = '') => {
     setLoading(true);
@@ -109,6 +115,19 @@ export default function OrgDashboard() {
   const verified = org.status === 'verified';
   const queueCount = data.queue?.length || 0;
 
+  const respondInfo = async () => {
+    setRespondBusy(true);
+    try {
+      const res = await base44.functions.invoke('orgAction', { action: 'respond_info', org_id: org.id, message: respondText.trim() });
+      if (res.data?.ok) {
+        toast.success('Response sent for review');
+        setRespondOpen(false); setRespondText('');
+        refresh();
+      } else { toast.error(res.data?.error || 'Could not send response'); }
+    } catch (e) { toast.error(e?.response?.data?.error || 'Could not send response'); }
+    finally { setRespondBusy(false); }
+  };
+
   const statCards = [
     { icon: ClipboardCheck, label: 'Awaiting first review', value: stats?.pending_requests ?? 0 },
     { icon: PenTool, label: 'Awaiting signatures', value: stats?.awaiting_signatures ?? 0 },
@@ -152,6 +171,10 @@ export default function OrgDashboard() {
                 <Badge className="gap-1 bg-success/15 text-success border border-success/30">
                   <ShieldCheck className="h-3.5 w-3.5" /> Blockward Verified
                 </Badge>
+              ) : org.status === 'info_requested' ? (
+                <Badge variant="warning" className="gap-1">
+                  <MessageSquare className="h-3.5 w-3.5" /> More information requested
+                </Badge>
               ) : org.status === 'pending' ? (
                 <Badge variant="warning" className="gap-1">
                   <ShieldAlert className="h-3.5 w-3.5" /> Awaiting Blockward verification
@@ -173,6 +196,32 @@ export default function OrgDashboard() {
           )}
         </div>
       </Card>
+
+      {/* Outstanding information request from Blockward — owner responds */}
+      {org.status === 'info_requested' && org.info_request && (
+        <div className="rounded-xl border border-info/40 bg-info/10 p-4">
+          <div className="flex items-start gap-3">
+            <MessageSquare className="h-5 w-5 text-info flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">Blockward asked for more information</p>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">&ldquo;{org.info_request.message}&rdquo;</p>
+              {respondOpen ? (
+                <div className="mt-3 space-y-2">
+                  <Textarea value={respondText} onChange={(e) => setRespondText(e.target.value)} rows={3} placeholder="Provide the requested information and evidence…" />
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={respondInfo} disabled={respondBusy || respondText.trim().length < 4}>
+                      {respondBusy && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />} Send response
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setRespondOpen(false); setRespondText(''); }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : isOwner ? (
+                <Button size="sm" variant="outline" className="mt-3" onClick={() => setRespondOpen(true)}>Respond</Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Verification authority banner */}
       {!verified && (

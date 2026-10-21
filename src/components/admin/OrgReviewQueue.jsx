@@ -17,10 +17,10 @@ const TYPE_LABELS = {
 export default function OrgReviewQueue({ orgs, onOpenOrg }) {
   const [tab, setTab] = useState('pending');
   const [q, setQ] = useState('');
-  const counts = { pending: 0, verified: 0, rejected: 0, suspended: 0 };
+  const counts = { pending: 0, verified: 0, rejected: 0, suspended: 0, info_requested: 0 };
   for (const o of orgs) counts[o.status] = (counts[o.status] || 0) + 1;
 
-  const shown = orgs.filter((o) => o.status === tab).filter((o) => {
+  const shown = orgs.filter((o) => tab === 'all' || o.status === tab).filter((o) => {
     if (!q) return true;
     const s = q.toLowerCase();
     return (o.name || '').toLowerCase().includes(s) || (o.owner_email || '').toLowerCase().includes(s) || (o.email_domain || '').toLowerCase().includes(s);
@@ -34,10 +34,10 @@ export default function OrgReviewQueue({ orgs, onOpenOrg }) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries(STATUS_META).map(([key, m]) => (
+        {[...Object.entries(STATUS_META), ['all', { label: 'All organisations' }]].map(([key, m]) => (
           <button key={key} onClick={() => setTab(key)}
             className={cn('rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors', tab === key ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:bg-hover')}>
-            {m.label} {counts[key] ? `(${counts[key]})` : ''}
+            {m.label} {(key === 'all' ? orgs.length : counts[key]) ? `(${key === 'all' ? orgs.length : counts[key]})` : ''}
           </button>
         ))}
       </div>
@@ -48,7 +48,7 @@ export default function OrgReviewQueue({ orgs, onOpenOrg }) {
       </div>
 
       {shown.length === 0 ? (
-        <Card className="surface-card"><CardContent className="py-10 text-center text-sm text-muted-foreground">No {tab} organisations.</CardContent></Card>
+        <Card className="surface-card"><CardContent className="py-10 text-center text-sm text-muted-foreground">No {tab === 'all' ? 'registered' : tab} organisations.</CardContent></Card>
       ) : (
         <div className="space-y-2">
           {shown.map((o) => {

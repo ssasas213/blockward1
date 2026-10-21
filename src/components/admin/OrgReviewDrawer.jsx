@@ -83,6 +83,13 @@ export default function OrgReviewDrawer({ org, detail, loading, onAction, busy, 
                   {org?.verified_at && <Field label="Verified on" value={format(new Date(org.verified_at), 'd MMM yyyy')} />}
                 </dl>
                 {org?.description && <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{org.description}</p>}
+                {org?.info_request && (
+                  <div className="rounded-lg border border-info/40 bg-info/10 p-3 mt-3">
+                    <p className="text-xs font-semibold text-info uppercase tracking-wide">Information requested</p>
+                    <p className="text-sm text-foreground mt-1 leading-relaxed">&ldquo;{org.info_request.message}&rdquo;</p>
+                    <p className="text-xs text-tertiary mt-1">by {org.info_request.requested_by} · {format(new Date(org.info_request.requested_at), 'd MMM yyyy, HH:mm')}</p>
+                  </div>
+                )}
                 {org?.claim_source === 'holder_suggestion' && (
                   <p className="text-xs text-warning mt-2">Suggested by a holder {org.suggested_by_email || ''} — awaiting a representative to claim it.</p>
                 )}
@@ -114,6 +121,22 @@ export default function OrgReviewDrawer({ org, detail, loading, onAction, busy, 
                       <div key={c.id} className="px-3 py-2 flex items-center justify-between text-sm">
                         <span className="min-w-0"><span className="font-medium text-foreground">{c.bw_id}</span> <span className="text-tertiary">· {c.title}</span></span>
                         <span className="text-xs text-tertiary flex-shrink-0">{c.anchor_status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Organisation event history (registration, responses, changes) */}
+              {d.org?.event_log?.length > 0 && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-tertiary mb-1.5">Organisation history</p>
+                  <div className="surface-card rounded-lg divide-y divide-border/60">
+                    {[...d.org.event_log].reverse().map((e, i) => (
+                      <div key={i} className="px-3 py-2 text-xs">
+                        <span className="font-medium text-foreground capitalize">{String(e.event).replace(/_/g, ' ')}</span>
+                        <span className="text-tertiary"> · {e.actor || 'system'} · {format(new Date(e.timestamp), 'd MMM yyyy, HH:mm')}</span>
+                        {e.note && <p className="text-tertiary mt-0.5">{e.note}</p>}
                       </div>
                     ))}
                   </div>

@@ -59,12 +59,30 @@
       "type": "string",
       "enum": [
         "pending",
+        "info_requested",
         "verified",
         "rejected",
         "suspended"
       ],
       "default": "pending",
-      "description": "Blockward verification state. Only VERIFIED organisations hold full issuing authority \u2014 approval is manual by Blockward Internal Admins via the service-role orgAction function. The status field is SERVICE-ROLE-ONLY: an organisation owner can never self-verify, suspend or reject their own organisation (trust-state loophole closure)."
+      "description": "Blockward verification state. pending = awaiting review; info_requested = an internal admin asked for more information (owner can respond, returning it to pending); only VERIFIED organisations hold full issuing authority \u2014 approval is manual by Blockward Internal Admins via the service-role orgAction function. The status field is SERVICE-ROLE-ONLY: an organisation owner can never self-verify, suspend or reject their own organisation (trust-state loophole closure)."
+    },
+    "info_request": {
+      "type": "object",
+      "description": "The outstanding information request set by a Blockward internal admin \u2014 shown on the owner's dashboard, cleared when the owner responds (status returns to pending). Service-role only.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "requested_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requested_by": {
+          "type": "string",
+          "description": "Internal admin email who requested the information"
+        }
+      }
     },
     "verified_at": {
       "type": "string",
@@ -99,7 +117,7 @@
         "properties": {
           "event": {
             "type": "string",
-            "description": "registered | verified | rejected | suspended | verifier_invited | verifier_joined | verifier_removed | profile_updated | policy_changed"
+            "description": "registered | verified | rejected | suspended | verifier_invited | verifier_joined | verifier_removed | profile_updated | policy_changed | info_provided"
           },
           "actor": {
             "type": "string"

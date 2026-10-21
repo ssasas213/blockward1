@@ -78,7 +78,8 @@ export default async function (req: Request): Promise<Response> {
     const failedList: any[] = norm(failedCreds).sort((a: any, b: any) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime()).slice(0, 20);
     const auditList: any[] = norm(audit).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 25);
 
-    const counts = { pending: 0, verified: 0, rejected: 0, suspended: 0 };
+    const counts: Record<string, number> = { total: 0, pending: 0, verified: 0, rejected: 0, suspended: 0, info_requested: 0 };
+    counts.total = orgList.length;
     for (const o of orgList) counts[o.status as string] = (counts[o.status as string] || 0) + 1;
 
     return Response.json({

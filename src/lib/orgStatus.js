@@ -1,6 +1,7 @@
 // Shared organisation status labels for the internal admin UI.
 export const STATUS_META = {
   pending: { label: 'Pending review', cls: 'bg-warning/10 text-warning border-warning/30' },
+  info_requested: { label: 'Needs more info', cls: 'bg-info/10 text-info border-info/30' },
   verified: { label: 'Verified', cls: 'bg-success/10 text-success border-success/30' },
   rejected: { label: 'Rejected', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
   suspended: { label: 'Suspended', cls: 'bg-secondary text-muted-foreground border-border' },

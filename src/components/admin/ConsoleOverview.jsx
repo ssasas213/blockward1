@@ -1,17 +1,20 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
-import { Building2, CheckCircle2, Clock, AlertTriangle, FileText, ShieldCheck } from 'lucide-react';
+import { Building2, CheckCircle2, Clock, AlertTriangle, FileText, ShieldCheck, XCircle, MessageSquare } from 'lucide-react';
 import { formatDateTime } from '@/lib/achievementStatus';
 
 const STAT = [
-  { key: 'pending', label: 'Awaiting review', icon: Clock, tone: 'amber' },
-  { key: 'verified', label: 'Verified issuers', icon: CheckCircle2, tone: 'green' },
+  { key: 'total', label: 'Total organisations', icon: Building2, cls: 'text-primary' },
+  { key: 'pending', label: 'Pending review', icon: Clock, cls: 'text-warning' },
+  { key: 'verified', label: 'Approved', icon: CheckCircle2, cls: 'text-success' },
+  { key: 'rejected', label: 'Declined', icon: XCircle, cls: 'text-destructive' },
+  { key: 'info_requested', label: 'Needs more info', icon: MessageSquare, cls: 'text-info' },
 ];
 
 export default function ConsoleOverview({ data, onOpenOrg, setTab }) {
   const o = data?.overview || {};
-  const counts = o.org_counts || { pending: 0, verified: 0, rejected: 0, suspended: 0 };
+  const counts = o.org_counts || { total: 0, pending: 0, verified: 0, rejected: 0, suspended: 0, info_requested: 0 };
   return (
     <div className="space-y-6">
       <div>
@@ -24,7 +27,7 @@ export default function ConsoleOverview({ data, onOpenOrg, setTab }) {
           <Card key={s.key} className="surface-card">
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-1">
-                <s.icon className={cn('h-4 w-4', s.tone === 'amber' ? 'text-warning' : 'text-success')} />
+                <s.icon className={cn('h-4 w-4', s.cls)} />
                 <span className="text-xs text-tertiary">{s.label}</span>
               </div>
               <p className="text-2xl font-bold text-foreground">{counts[s.key] || 0}</p>

@@ -79,16 +79,30 @@ export default async function (req: Request): Promise<Response> {
         auditAction = status === 'verified' ? 'approve' : status === 'rejected' ? 'reject' : status === 'suspended' ? 'suspend' : 'restore';
         newStatus = status;
       } else {
-        // request_info — org stays pending; the reason IS the information request.
+        // request_info — the application moves to 'info_requested' so the
+        // platform-admin dashboard tracks it; the reason IS the request.
         if (reason.length < 4) return Response.json({ error: 'Describe the information you need from the organisation' }, { status: 400 });
-        newStatus = 'pending';
+        newStatus = 'info_requested';
       }
 
-      await svc.entities.IssuerOrganisation.update(org.id, {
+      // Simultaneous-admin guard: re-approving / re-rejecting an unchanged
+      // state is a no-op — no duplicate update, audit entry or notification.
+      if (action === 'set_org_status' && prev === newStatus) {
+        return Response.json({ ok: true, status: prev, already: true });
+      }
+
+      const orgUpdate: Record<string, unknown> = {
         status: newStatus,
         verified_at: newStatus === 'verified' ? nowIso : org.verified_at,
         verified_by: me.email,
-      });
+      };
+      if (action === 'request_info') {
+        orgUpdate.info_request = { message: reason, requested_at: nowIso, requested_by: me.email };
+      } else {
+        // Any explicit decision clears an outstanding information request.
+        orgUpdate.info_request = null;
+      }
+      await svc.entities.IssuerOrganisation.update(org.id, orgUpdate);
       await orgEvent(svc, org, newStatus, me.email, reason ? `Reason: ${reason}` : undefined);
 
       // Append-only internal admin audit trail.
@@ -201,6 +215,20 @@ export default async function (req: Request): Promise<Response> {
       await svc.entities.OrganisationMember.update(m.id, { status });
       await orgEvent(svc, org, 'verifier_removed', email, `${m.full_name || m.user_email} set to ${status}`);
       return Response.json({ ok: true });
+    }
+
+    if (action === 'respond_info') {
+      // The owner answers an internal admin's information request: the
+      // response lands in the org's audited event log and the application
+      // returns to the pending review queue.
+      const message = String(body.message || '').trim().slice(0, 2000);
+      if (message.length < 4) return Response.json({ error: 'Describe the additional information you are providing' }, { status: 400 });
+      if (org.status !== 'info_requested' && !org.info_request) {
+        return Response.json({ error: 'There is no outstanding information request for this organisation' }, { status: 409 });
+      }
+      await svc.entities.IssuerOrganisation.update(org.id, { status: 'pending', info_request: null });
+      await orgEvent(svc, org, 'info_provided', email, message);
+      return Response.json({ ok: true, status: 'pending' });
     }
 
     if (action === 'update_org') {

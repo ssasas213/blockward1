@@ -36,7 +36,7 @@ export default async function (req: Request): Promise<Response> {
     // enters their queue and verifiers may sign, but Blockward Verified is
     // NEVER minted until Blockward itself verifies the organisation (gated in
     // orgVerificationReview).
-    if (!['verified', 'pending'].includes(org.status)) {
+    if (!['verified', 'pending', 'info_requested'].includes(org.status)) {
       return Response.json({ error: `"${org.name}" is not accepting verification requests on Blockward` }, { status: 409 });
     }
 

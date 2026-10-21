@@ -91,7 +91,7 @@ export default function Layout({ children, currentPageName }) {
       ]},
       { label: 'More', items: [
         { name: 'People', icon: Users, page: 'People', path: '/People', badge: 'pendingTeachers' },
-        ...(isStaffRole || isTestSuperUser || internalAdmin ? [{ name: 'Blockward admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' }] : []),
+        ...(isStaffRole || isTestSuperUser || internalAdmin ? [{ name: 'Platform Admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' }] : []),
       ]},
     ],
     teacher: [

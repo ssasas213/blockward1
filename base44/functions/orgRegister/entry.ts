@@ -5,6 +5,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { authActor, ORG_TYPES, slugifyHandle } from '../../shared/orgVerification.ts';
 import { getActorProfile, pushEvent } from '../../shared/verificationFlow.ts';
+import { internalAdminRecipients } from '../../shared/internalAdmin.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -77,6 +78,22 @@ export default async function (req: Request): Promise<Response> {
       joined_at: nowIso,
       last_active_at: nowIso,
     });
+
+    // Notify every platform administrator — a new application is awaiting
+    // review. Notification receipt grants nothing; recipients are
+    // server-configured only.
+    try {
+      await Promise.allSettled(internalAdminRecipients().map((adminEmail) =>
+        svc.entities.Notification.create({
+          user_email: adminEmail,
+          title: 'New organisation application',
+          body: `${name} applied for Blockward verification. Review it in Platform Admin.`,
+          type: 'org_verification_requested',
+          priority: 'important',
+          related_id: org.id,
+        })
+      ));
+    } catch { /* best-effort */ }
 
     return Response.json({ ok: true, org: { id: org.id, name: org.name, handle: org.handle, status: org.status } });
   } catch (error) {

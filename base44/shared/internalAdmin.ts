@@ -43,6 +43,15 @@ export function isInternalAdmin(email: string | null | undefined): boolean {
   return configuredInternalAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
+/**
+ * Notification recipients for platform events (new organisation applications,
+ * ops alerts). Receiving a notification grants NOTHING — this is never a
+ * permission check.
+ */
+export function internalAdminRecipients(): string[] {
+  return configuredInternalAdminEmails();
+}
+
 // Resolves the authenticated user via the SDK and returns a 403 Response error
 // when the caller is not an internal admin. Callers check `error` and return it
 // directly. Mirrors the {value, error} pattern used across the codebase.
