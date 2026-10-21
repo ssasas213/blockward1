@@ -114,12 +114,22 @@ function writeEnvFile(path: string, values: Record<string, string>): void {
 
 // ── Masked input ─────────────────────────────────────────────────────────────
 
+// Shared readline for non-TTY (pipe) mode — a single interface survives
+// across prompts so sequential lines are read correctly. Closed at end of setup.
+let _rl: readline.Interface | null = null;
+function getRl(): readline.Interface {
+  if (!_rl) _rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return _rl;
+}
+function closeRl(): void {
+  if (_rl) { _rl.close(); _rl = null; }
+}
+
 async function promptMasked(label: string): Promise<string> {
   if (!process.stdin.isTTY) {
     console.log('  \u26a0 stdin is not a terminal — input will not be masked');
-    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     return new Promise((r) => {
-      rl.question(`  ${label}: `, (answer) => { rl.close(); r(answer.trim()); });
+      getRl().question(`  ${label}: `, (answer) => { r(answer.trim()); });
     });
   }
 
@@ -207,6 +217,7 @@ async function setup(): Promise<void> {
     console.log('');
   }
 
+  closeRl();
   writeEnvFile(ENV_PATH, values);
   console.log('  .env written (mode 0600 — owner-only access)');
   console.log('  .env is in .gitignore — it will not be committed.');
