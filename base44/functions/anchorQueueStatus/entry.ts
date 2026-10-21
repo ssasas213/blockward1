@@ -18,7 +18,7 @@ export default async function (req: Request): Promise<Response> {
     const svc = base44.asServiceRole;
 
     const body = await req.json().catch(() => ({}));
-    const action = body?.action === 'batch_detail' ? 'batch_detail' : 'overview';
+    const action = body?.action === 'batch_detail' ? 'batch_detail' : body?.action === 'latency_report' ? 'latency_report' : 'overview';
 
     // ── Queue counters (one aggregate, no record loads) ──
     const statuses = ['ANCHOR_PENDING', 'ANCHOR_PENDING_FEE', 'ANCHOR_PROCESSING', 'ANCHOR_SUBMITTED', 'ANCHOR_CONFIRMED', 'ANCHOR_FAILED_RETRYABLE', 'ANCHOR_FAILED_PERMANENT'];
@@ -110,6 +110,7 @@ export default async function (req: Request): Promise<Response> {
     // ── Gas-fee monitoring (read-only) — observations, hypothetical ceiling
     //    comparison, fee-held batch age + next retry, confirmation latency. ──
     const gasMonitor = await buildGasMonitorData(svc, policy);
+    const latencyReport = action === 'latency_report' ? await buildLatencyReport(svc) : null;
 
     return Response.json({
       ok: true,
@@ -120,6 +121,7 @@ export default async function (req: Request): Promise<Response> {
       batches,
       batch_detail: batchDetail,
       cost_tracking,
+      latency_report: latencyReport,
       policy: {
         batch_max_size: policy.batchMaxSize,
         batch_window_minutes: policy.batchWindowMinutes,
@@ -148,6 +150,80 @@ function median(values: number[]): number | null {
   const s = [...v].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// ── Phase 4 latency report ──────────────────────────────────────────────────
+// Measures end-to-end verification latency from issuer approval to Blockward
+// Verified, using production timestamps and independently verified receipts.
+// Fee-held batches are EXCLUDED from the non-fee-held target and reported
+// separately. Returns median, max and 95th-percentile in SECONDS, plus the
+// sample size and a sufficiency flag (the 60-second target is only claimed
+// when enough non-fee-held measurements support it).
+async function buildLatencyReport(svc: any) {
+  try {
+    const rows = await svc.entities.AnchorBatch.filter({ status: 'ANCHOR_CONFIRMED' }, { sort: '-confirmed_at', limit: 200 });
+    const confirmed = (rows?.items || rows || []) as any[];
+    if (!confirmed.length) return { sample_size: 0, sufficient: false, note: 'No confirmed batches yet — latency cannot be measured until production remediation and fee-policy approval are complete.' };
+
+    const firstMemberIds = confirmed.map((b) => (b.member_ids || [])[0]).filter(Boolean);
+    const credMap = new Map<string, any>();
+    if (firstMemberIds.length) {
+      const cr = await svc.entities.Credential.filter({ id: { $in: firstMemberIds } }, { limit: 200, fields: ['id', 'verified_at', 'blockchain'] }).catch(() => null);
+      for (const c of ((cr?.items || cr || []) as any[])) credMap.set(c.id, c);
+    }
+
+    const nonFeeHeld: number[] = [];
+    const feeHeldLatency: number[] = [];
+    for (const b of confirmed) {
+      const events = Array.isArray(b.event_log) ? b.event_log : [];
+      const submittedAt = events.find((e: any) => e.event === 'submitted')?.timestamp || null;
+      const confirmedAt = b.confirmed_at || events.find((e: any) => e.event === 'confirmed')?.timestamp || null;
+      const cred = credMap.get((b.member_ids || [])[0]);
+      const verifiedAt = cred?.verified_at || null;
+      if (!verifiedAt || !confirmedAt) continue;
+      const totalMs = Math.max(0, new Date(confirmedAt).getTime() - new Date(verifiedAt).getTime());
+      const wasFeeHeld = events.some((e: any) => e.event === 'fee_hold');
+      if (wasFeeHeld) feeHeldLatency.push(totalMs);
+      else nonFeeHeld.push(totalMs);
+    }
+
+    const pct = (arr: number[], p: number): number | null => {
+      const v = arr.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      if (!v.length) return null;
+      const idx = Math.min(v.length - 1, Math.floor((p / 100) * v.length));
+      return v[idx];
+    };
+    const med = (arr: number[]) => {
+      const v = arr.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
+      if (!v.length) return null;
+      const mid = Math.floor(v.length / 2);
+      return v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
+    };
+    const toSec = (ms: number | null) => (ms == null ? null : Math.round(ms / 10) / 100);
+    const sufficient = nonFeeHeld.length >= 20;
+
+    return {
+      non_fee_held: {
+        sample_size: nonFeeHeld.length,
+        median_seconds: toSec(med(nonFeeHeld)),
+        max_seconds: toSec(nonFeeHeld.length ? Math.max(...nonFeeHeld) : null),
+        p95_seconds: toSec(pct(nonFeeHeld, 95)),
+      },
+      fee_held: {
+        sample_size: feeHeldLatency.length,
+        median_seconds: toSec(med(feeHeldLatency)),
+        max_seconds: toSec(feeHeldLatency.length ? Math.max(...feeHeldLatency) : null),
+      },
+      sufficient,
+      target_seconds: 60,
+      target_met: sufficient && (toSec(med(nonFeeHeld)) ?? Infinity) < 60 && (toSec(pct(nonFeeHeld, 95)) ?? Infinity) < 60,
+      note: sufficient
+        ? 'Sufficient non-fee-held production measurements exist.'
+        : `Only ${nonFeeHeld.length} non-fee-held measurement(s) — the 60-second target is NOT YET PROVEN until at least 20 exist.`,
+    };
+  } catch (e) {
+    return { error: String(e?.message || e).slice(0, 200) };
+  }
 }
 
 // Read-only gas-fee monitoring aggregation for the admin dashboard. Pulls
