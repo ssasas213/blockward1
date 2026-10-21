@@ -44,7 +44,7 @@ function log(step: string, extra: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ fn: 'amoyStagingTest', step, ...extra }));
 }
 
-export async function POST(req: Request) {
+export default async function (req: Request): Promise<Response> {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const body = await req.json().catch(() => ({}));
 
