@@ -37,6 +37,20 @@ import { runGasFeeMonitoring } from './gasFeeMonitor.ts';
 const CLAIM_STALE_MS = 10 * 60 * 1000;
 const SUBMIT_RECONCILE_MAX_MINUTES = 30;
 
+// Resolve a batch's close_at. Event-driven mode (flushDebounceSeconds > 0)
+// makes a new batch due in seconds so the "Anchor Batch Flush" workflow can
+// force-flush it promptly; legacy mode keeps the configured batching window.
+// Either way the 5-min scheduled worker remains the recovery path.
+function batchCloseAt(policy: any, fromMs: number = Date.now()): string {
+  const debounce = Number(policy?.flushDebounceSeconds || 0);
+  const ms = debounce > 0 ? debounce * 1000 : policy.batchWindowMinutes * 60000;
+  return new Date(fromMs + ms).toISOString();
+}
+function batchWindowLabel(policy: any): string {
+  const debounce = Number(policy?.flushDebounceSeconds || 0);
+  return debounce > 0 ? `flush ${debounce}s (event-driven)` : `window ${policy.batchWindowMinutes} min`;
+}
+
 function nowIso(): string { return new Date().toISOString(); }
 function log(step: string, extra: Record<string, unknown> = {}) {
   console.log(JSON.stringify({ fn: 'anchorQueue', step, ...extra }));
@@ -87,9 +101,9 @@ export async function enqueueCredentialForAnchoring(svc: any, cred: any) {
         member_count: 0,
         max_size: policy.batchMaxSize,
         created_at: nowIsoStr,
-        close_at: new Date(Date.now() + policy.batchWindowMinutes * 60000).toISOString(),
+        close_at: batchCloseAt(policy),
         attempts: 0,
-        event_log: pushBatchEvent(null, 'opened', `network ${target}, window ${policy.batchWindowMinutes} min, max ${policy.batchMaxSize}`),
+        event_log: pushBatchEvent(null, 'opened', `network ${target}, ${batchWindowLabel(policy)}, max ${policy.batchMaxSize}`),
       });
     }
 
@@ -114,11 +128,12 @@ export async function enqueueCredentialForAnchoring(svc: any, cred: any) {
       }]),
     });
 
-    log('enqueued', { bw_id: cred.bw_id, batch_ref: batch.batch_ref, members: memberIds.length });
+    log('enqueued', { bw_id: cred.bw_id, batch_ref: batch.batch_ref, members: memberIds.length, flush: policy.flushDebounceSeconds > 0 });
     return {
       ok: true, queued: true, batch_ref: batch.batch_ref,
       close_at: batch.close_at, network: target,
       target_minutes: policy.targetMinutes,
+      event_driven: policy.flushDebounceSeconds > 0,
     };
   } catch (e) {
     log('enqueue_error', { err: String(e?.message || e).slice(0, 200) });
@@ -375,9 +390,9 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any) {
       member_count: remainder.length,
       max_size: policy.batchMaxSize,
       created_at: nowIso(),
-      close_at: new Date(Date.now() + policy.batchWindowMinutes * 60000).toISOString(),
+      close_at: batchCloseAt(policy),
       attempts: 0,
-      event_log: pushBatchEvent(null, 'opened', `overflow from ${batch.batch_ref}`),
+      event_log: pushBatchEvent(null, 'opened', `overflow from ${batch.batch_ref} (${batchWindowLabel(policy)})`),
     });
   }
 

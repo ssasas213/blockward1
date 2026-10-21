@@ -30,6 +30,13 @@ export const ANCHOR_POLICY_DEFAULTS = {
   maxFeeGwei: 200,
   gasLimit: 60000,
   fallbackPolUsd: 0.30,
+  // Event-driven flush debounce (seconds). 0 = LEGACY batching window
+  // (batchWindowMinutes, unchanged production behaviour). >0 = event-driven:
+  // a new batch becomes due in `flushDebounceSeconds`, and the "Anchor Batch
+  // Flush" workflow force-flushes it after a short coalescing wait so eligible
+  // achievements anchor in seconds instead of waiting for the 5-min worker.
+  // The debounce does NOT change any ceiling, budget, secret or broadcast flag.
+  flushDebounceSeconds: 0,
 };
 
 function num(raw: string | null | undefined, fallback: number, min: number, max: number): number {
@@ -54,6 +61,7 @@ export function resolveAnchorPolicy(envFn: (n: string) => string | null | undefi
     maxFeeGwei: num(envFn('ANCHOR_MAX_FEE_GWEI'), d.maxFeeGwei, 1, 2000),
     gasLimit: Math.round(num(envFn('ANCHOR_GAS_LIMIT'), d.gasLimit, 21000, 500000)),
     fallbackPolUsd: num(envFn('ANCHOR_FALLBACK_POL_USD'), d.fallbackPolUsd, 0.001, 100),
+    flushDebounceSeconds: num(envFn('ANCHOR_FLUSH_DEBOUNCE_SECONDS'), d.flushDebounceSeconds, 0, 30),
   };
   // The absolute cap must never sit below the per-batch budget.
   if (policy.absoluteMaxCostUsd < policy.maxBatchCostUsd) policy.absoluteMaxCostUsd = policy.maxBatchCostUsd;

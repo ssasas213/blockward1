@@ -1,0 +1,50 @@
+{
+  "name": "Anchor Batch Flush",
+  "description": "Event-driven flush of the Polygon anchoring queue: when a new AnchorBatch is opened (a verified credential was just enqueued), wait a short coalescing window so co-arriving credentials join the same Merkle batch, then force-flush that batch through processAnchorQueue. This is the sub-60-second path; the 5-minute scheduled 'Blockchain Anchor Queue' workflow remains the recovery mechanism. Production gas ceilings, budgets, secrets and the broadcast flag are unchanged \u2014 this only changes WHEN an eligible batch is attempted, not WHETHER it broadcasts.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "AnchorBatch",
+      "events": [
+        "create"
+      ]
+    },
+    "condition": "${ .trigger.data.status == \"ANCHOR_PENDING\" and (((.trigger.data.event_log // [{}])[0].note // \"\") | startswith(\"overflow\") | not) }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "anchor_batch_flush",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "coalesce": {
+          "wait": "PT3S",
+          "then": "flush_batch",
+          "x-base44": {
+            "title": "Coalesce window",
+            "description": "3s for co-arriving credentials to join the batch"
+          }
+        }
+      },
+      {
+        "flush_batch": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processAnchorQueue",
+            "args": {
+              "batch_ref": "${ .trigger.data.batch_ref }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Flush batch",
+            "description": "Force-attempt this batch now (claim-locked, idempotent)"
+          }
+        }
+      }
+    ]
+  }
+}
