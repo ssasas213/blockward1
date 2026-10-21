@@ -30,7 +30,12 @@ const DEFAULT_INTERNAL_ADMIN_EMAILS: string[] = ['mazen@blockward.me', 'arya@blo
  */
 function configuredInternalAdminEmails(): string[] {
   const raw = (secrets.get('BLOCKWARD_INTERNAL_ADMIN_EMAILS') || '').trim();
-  const list = raw.split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  // Split on commas AND whitespace, and drop stray separator words ("or",
+  // "and") — so "a@x.me or b@x.me" and "a@x.me, b@x.me" both parse correctly.
+  const list = raw
+    .split(/[\s,]+/)
+    .map((x) => x.trim().toLowerCase())
+    .filter((x) => x && x !== 'or' && x !== 'and');
   return list.length ? list : DEFAULT_INTERNAL_ADMIN_EMAILS;
 }
 
