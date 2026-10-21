@@ -18,13 +18,14 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Deterministic purple/pink gradient variant so the same person always gets the same gradient.
+// Deterministic blue-family gradient variant so the same person always gets
+// the same gradient — all hues from the Blockward blue identity.
 const GRADIENTS = [
-  "from-[#8B5CF6] to-[#EC4899]",
-  "from-[#7C3AED] to-[#8B5CF6]",
-  "from-[#9333EA] to-[#EC4899]",
-  "from-[#6366F1] to-[#A855F7]",
-  "from-[#A855F7] to-[#F472B6]",
+  "from-[#2563EB] to-[#3B82F6]",
+  "from-[#1D4ED8] to-[#60A5FA]",
+  "from-[#3B82F6] to-[#1E40AF]",
+  "from-[#0EA5E9] to-[#2563EB]",
+  "from-[#1E40AF] to-[#38BDF8]",
 ];
 
 function gradientFor(name) {

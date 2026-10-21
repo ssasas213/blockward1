@@ -5,17 +5,17 @@ import { OPEN_TO_OPTIONS } from '@/lib/profileThemes';
 // The "open to" status banner under the bio — what this student is looking
 // for. Also feeds the Opportunities matcher server-side. tone 'scrim' sits
 // on the fixed white identity card, so it uses fixed AA-verified colours
-// (#6D28D9 on white ≈ 5.9:1) instead of the theme accent, which can be a
+// (#1D4ED8 on white ≈ 6.3:1) instead of the theme accent, which can be a
 // light palette colour that fails AA on white.
 export default function OpenToChips({ openTo, tone = 'token' }) {
   const opts = (openTo || []).map((id) => OPEN_TO_OPTIONS.find((o) => o.id === id)).filter(Boolean);
   if (!opts.length) return null;
   const cls = tone === 'scrim'
     ? {
-        box: 'border-[#6D28D9]/25 bg-[#6D28D9]/8',
-        icon: 'text-[#6D28D9]',
-        label: 'text-[#6D28D9]',
-        chip: 'border-[#6D28D9]/30 bg-[#6D28D9]/8 text-[#6D28D9]',
+        box: 'border-[#1D4ED8]/25 bg-[#1D4ED8]/8',
+        icon: 'text-[#1D4ED8]',
+        label: 'text-[#1D4ED8]',
+        chip: 'border-[#1D4ED8]/30 bg-[#1D4ED8]/8 text-[#1D4ED8]',
       }
     : {
         box: 'border-primary/25 bg-primary/10',

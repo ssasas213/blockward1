@@ -21,7 +21,7 @@ export default function CertificateTransformation() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Headline */}
         <div className="max-w-2xl mb-12">
-          <p className="text-xs font-semibold tracking-[0.2em] uppercase text-primary mb-3">
+          <p className="text-xs font-semibold tracking-[0.15em] uppercase text-primary mb-3">
             From certificate to verified credential
           </p>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight leading-tight">
@@ -40,7 +40,7 @@ export default function CertificateTransformation() {
           {/* Evidence — always visible, dims when verified */}
           <div className={cn('transition-all duration-500', verified && 'opacity-40 grayscale')}>
             <div className="text-center mb-3">
-              <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-tertiary">Original evidence</p>
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-tertiary">Original evidence</p>
               <p className="text-xs text-muted-foreground">What the holder uploads</p>
             </div>
             <DemoCertificate variant="original" />
@@ -66,7 +66,7 @@ export default function CertificateTransformation() {
           {/* Verified credential */}
           <div className={cn('transition-all duration-500', !verified && 'opacity-30 grayscale')}>
             <div className="text-center mb-3">
-              <p className="text-[10px] font-semibold tracking-[0.2em] uppercase text-primary flex items-center justify-center gap-1.5">
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-primary flex items-center justify-center gap-1.5">
                 <BadgeCheck className="h-3.5 w-3.5" /> Blockward verified
               </p>
               <p className="text-xs text-muted-foreground">The verifiable credential</p>

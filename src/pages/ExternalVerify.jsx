@@ -130,7 +130,7 @@ export default function ExternalVerify() {
           <div className="mx-auto h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Shield className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Verify an achievement</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Verify an achievement</h1>
           <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto leading-relaxed">
             BlockWard gives students achievements that schools, clubs and independent verifiers like you
             stand behind — each verified credential carries a permanent public link anyone can check.

@@ -119,7 +119,7 @@ export default function AdminApprovalPage() {
             <div className={`h-16 w-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${cfg.color}`}>
               <Icon className={`h-8 w-8 ${cfg.iconColor}`} />
             </div>
-            <h1 className="text-xl font-bold text-foreground mb-2">{cfg.title}</h1>
+            <h1 className="text-xl font-semibold text-foreground mb-2">{cfg.title}</h1>
             <p className="text-muted-foreground mb-6">{cfg.message}</p>
             <div className="flex gap-3 justify-center">
               {cfg.action && (

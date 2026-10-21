@@ -19,13 +19,13 @@ import GeneratedCover from '@/components/publicProfile/GeneratedCover';
  */
 
 export const CATEGORY_STYLE = {
-  academic: { label: 'Academic', Icon: Medal, grad: 'linear-gradient(135deg, #8B5CF6, #6366F1)', chip: 'border-violet-400/40 bg-violet-400/15 text-violet-200' },
+  academic: { label: 'Academic', Icon: Medal, grad: 'linear-gradient(135deg, #2563EB, #3B82F6)', chip: 'border-blue-400/40 bg-blue-400/15 text-blue-200' },
   sports: { label: 'Sports', Icon: Trophy, grad: 'linear-gradient(135deg, #10B981, #059669)', chip: 'border-emerald-400/40 bg-emerald-400/15 text-emerald-200' },
   arts: { label: 'Arts', Icon: Star, grad: 'linear-gradient(135deg, #EC4899, #F472B6)', chip: 'border-pink-400/40 bg-pink-400/15 text-pink-200' },
-  leadership: { label: 'Leadership', Icon: Sparkles, grad: 'linear-gradient(135deg, #8B5CF6, #EC4899)', chip: 'border-fuchsia-400/40 bg-fuchsia-400/15 text-fuchsia-200' },
+  leadership: { label: 'Leadership', Icon: Sparkles, grad: 'linear-gradient(135deg, #3B82F6, #0EA5E9)', chip: 'border-sky-400/40 bg-sky-400/15 text-sky-200' },
   community: { label: 'Community', Icon: Heart, grad: 'linear-gradient(135deg, #F59E0B, #F97316)', chip: 'border-amber-400/40 bg-amber-400/15 text-amber-200' },
   behaviour: { label: 'Behaviour', Icon: Users, grad: 'linear-gradient(135deg, #64748B, #475569)', chip: 'border-slate-400/40 bg-slate-400/15 text-slate-200' },
-  special: { label: 'Special', Icon: BadgeCheck, grad: 'linear-gradient(135deg, #6366F1, #8B5CF6)', chip: 'border-indigo-400/40 bg-indigo-400/15 text-indigo-200' },
+  special: { label: 'Special', Icon: BadgeCheck, grad: 'linear-gradient(135deg, #1D4ED8, #2563EB)', chip: 'border-indigo-400/40 bg-indigo-400/15 text-indigo-200' },
 };
 
 export const STATUS_BADGE = {

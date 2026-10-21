@@ -124,7 +124,7 @@ export default function Register() {
             <div className="mx-auto h-14 w-14 rounded-2xl bg-success/10 border border-success/25 flex items-center justify-center">
               <Check className="h-7 w-7 text-success" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground">{created.name} is registered</h1>
+            <h1 className="text-2xl font-semibold text-foreground tracking-tight">{created.name} is registered</h1>
             <p className="text-sm text-muted-foreground leading-relaxed">
               You are the Organisation Owner. The organisation is saved permanently and is now
               searchable on Blockward — its status is <span className="text-warning font-medium">Pending Review</span>.
@@ -152,7 +152,7 @@ export default function Register() {
           <div className="mx-auto h-14 w-14 rounded-2xl bg-primary flex items-center justify-center mb-4">
             <Building2 className="h-7 w-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Register your organisation</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">Register your organisation</h1>
           <p className="text-sm text-muted-foreground mt-2">
             You'll become the Organisation Owner. Verifiers join later by invitation.
           </p>

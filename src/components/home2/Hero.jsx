@@ -31,7 +31,7 @@ export default function Hero() {
 
       <div className="relative mx-auto w-full max-w-7xl px-4 pb-24 pt-32 sm:px-6 lg:px-8 lg:pb-32 lg:pt-40">
         <div className="max-w-2xl">
-          <motion.p {...rise(0)} className="mb-7 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+          <motion.p {...rise(0)} className="mb-7 text-xs font-semibold uppercase tracking-[0.15em] text-primary">
             Blockchain-anchored digital credentials
           </motion.p>
           <motion.h1

@@ -166,7 +166,7 @@ export default function OrgDashboard() {
           )}
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">{org.name}</h1>
+              <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight truncate">{org.name}</h1>
               {verified ? (
                 <Badge className="gap-1 bg-success/15 text-success border border-success/30">
                   <ShieldCheck className="h-3.5 w-3.5" /> Blockward Verified

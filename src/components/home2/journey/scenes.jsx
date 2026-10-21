@@ -17,15 +17,15 @@ export function TrophyScene() {
         <defs>
           <linearGradient id="bw-trophy" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#7db0ff" />
-            <stop offset="100%" stopColor="#2270ec" />
+            <stop offset="100%" stopColor="#2563EB" />
           </linearGradient>
         </defs>
         <path d="M45 20 h60 v34 a30 30 0 0 1 -60 0 z" fill="url(#bw-trophy)" />
-        <path d="M45 26 h-16 a4 4 0 0 0 -4 4 v6 a18 18 0 0 0 18 18" stroke="#2270ec" strokeWidth="5" fill="none" />
-        <path d="M105 26 h16 a4 4 0 0 1 4 4 v6 a18 18 0 0 1 -18 18" stroke="#2270ec" strokeWidth="5" fill="none" />
-        <path d="M70 86 h10 v24 h-10 z" fill="#2270ec" />
-        <rect x="50" y="112" width="50" height="10" rx="3" fill="#2270ec" />
-        <rect x="42" y="126" width="66" height="10" rx="3" fill="#2270ec" opacity="0.55" />
+        <path d="M45 26 h-16 a4 4 0 0 0 -4 4 v6 a18 18 0 0 0 18 18" stroke="#2563EB" strokeWidth="5" fill="none" />
+        <path d="M105 26 h16 a4 4 0 0 1 4 4 v6 a18 18 0 0 1 -18 18" stroke="#2563EB" strokeWidth="5" fill="none" />
+        <path d="M70 86 h10 v24 h-10 z" fill="#2563EB" />
+        <rect x="50" y="112" width="50" height="10" rx="3" fill="#2563EB" />
+        <rect x="42" y="126" width="66" height="10" rx="3" fill="#2563EB" opacity="0.55" />
       </svg>
       <p className="mt-6 font-mono text-[11px] text-white/40 tracking-[0.25em] uppercase">Achievement</p>
     </div>
@@ -57,8 +57,8 @@ export function AnchorScene() {
       <svg width="130" height="130" viewBox="0 0 130 130" fill="none" aria-hidden="true">
         <defs>
           <radialGradient id="bw-fp-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#2270ec" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#2270ec" stopOpacity="0" />
+            <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
           </radialGradient>
         </defs>
         <circle cx="65" cy="65" r="64" fill="url(#bw-fp-glow)" />
@@ -100,7 +100,7 @@ export function AnchorScene() {
           </React.Fragment>
         ))}
       </div>
-      <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-white/40">Content commitment · Polygon PoS</p>
+      <p className="mt-3 text-[10px] uppercase tracking-[0.15em] text-white/40">Content commitment · Polygon PoS</p>
     </div>
   );
 }

@@ -111,7 +111,7 @@ export default function HistoricalVerifier() {
             )}
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-tertiary">Blockward historical verification · {req.request_ref}</p>
-              <h1 className="text-2xl font-bold text-foreground mt-1">{req.achievement.title}</h1>
+              <h1 className="text-2xl font-semibold text-foreground tracking-tight mt-1">{req.achievement.title}</h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Awarded by <span className="text-foreground font-medium">{req.achievement.issuing_org}</span> on {req.achievement.original_date}.
                 Blockward's review team authorised you to verify this specific request.

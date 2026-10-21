@@ -253,7 +253,7 @@ function StudentBlockWardsContent() {
       {/* Header — renders immediately from the session identity */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">My Achievements</h1>
+          <h1 className="text-2xl font-semibold text-foreground tracking-tight">My Achievements</h1>
           <p className="text-muted-foreground mt-1">
             Every verified achievement is permanently recorded in your BlockWard Vault
           </p>

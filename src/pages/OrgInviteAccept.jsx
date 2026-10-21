@@ -62,14 +62,14 @@ export default function OrgInviteAccept() {
 
           {done ? (
             <>
-              <h1 className="text-xl font-bold text-foreground">You're in</h1>
+              <h1 className="text-xl font-semibold text-foreground">You're in</h1>
               <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" /> Taking you to the organisation dashboard…
               </p>
             </>
           ) : !authed ? (
             <>
-              <h1 className="text-xl font-bold text-foreground">Verifier invitation</h1>
+              <h1 className="text-xl font-semibold text-foreground">Verifier invitation</h1>
               <p className="text-sm text-muted-foreground">
                 Sign in with the email address the invitation was sent to, then accept it.
               </p>
@@ -82,7 +82,7 @@ export default function OrgInviteAccept() {
             </>
           ) : (
             <>
-              <h1 className="text-xl font-bold text-foreground">Verifier invitation</h1>
+              <h1 className="text-xl font-semibold text-foreground">Verifier invitation</h1>
               <p className="text-sm text-muted-foreground">
                 You've been invited to join an organisation on Blockward as a verifier — confirming achievements
                 and signing verifiable credentials.

@@ -54,7 +54,7 @@ export default function StoryAnimation() {
     <section ref={sectionRef} id="story" className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <style>{STORY_CSS}</style>
       <div className="mx-auto mb-10 max-w-3xl text-center">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">How BlockWard works</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-primary">How BlockWard works</p>
         <h2 className="font-display text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
           From achievement to opportunity
         </h2>
@@ -148,7 +148,7 @@ function StaticStory() {
   return (
     <section id="story" className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
       <div className="mx-auto mb-10 max-w-3xl text-center">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">How BlockWard works</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.15em] text-primary">How BlockWard works</p>
         <h2 className="font-display text-3xl font-black leading-tight tracking-tight text-white sm:text-4xl md:text-5xl">
           From achievement to opportunity
         </h2>

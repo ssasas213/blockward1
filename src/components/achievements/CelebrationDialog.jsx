@@ -24,7 +24,7 @@ export default function CelebrationDialog({ item, onDismiss, onShare }) {
       particleCount: 130,
       spread: 80,
       origin: { y: 0.6 },
-      colors: ['#8B5CF6', '#EC4899', '#10B981', '#F59E0B'],
+      colors: ['#2563EB', '#60A5FA', '#10B981', '#F59E0B'],
       disableForReducedMotion: true,
     });
     let cancelled = false;

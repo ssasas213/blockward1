@@ -48,7 +48,7 @@ export default function ProfileCardImage({ data, domRef }) {
       ) : (
         <div style={{
           width: 200, height: 200, borderRadius: 56,
-          background: 'linear-gradient(135deg, #8B5CF6, #EC4899)',
+          background: 'linear-gradient(135deg, #2563EB, #3B82F6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 72, fontWeight: 800, color: '#fff',
           boxShadow: '0 24px 60px rgba(139,92,246,0.35)',
