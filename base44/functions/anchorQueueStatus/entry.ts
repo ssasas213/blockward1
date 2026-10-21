@@ -131,6 +131,7 @@ export default async function (req: Request): Promise<Response> {
         max_batch_cost_usd: policy.maxBatchCostUsd,
         absolute_max_cost_usd: policy.absoluteMaxCostUsd,
         max_fee_gwei: policy.maxFeeGwei,
+        flush_debounce_seconds: policy.flushDebounceSeconds,
         max_attempts: policy.maxAttempts,
         integration_test_ceiling_pol: '0.01 (separate, unchanged)',
       },
