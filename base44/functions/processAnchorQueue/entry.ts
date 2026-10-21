@@ -24,8 +24,57 @@ export default async function (req: Request): Promise<Response> {
     const forceBatchRef = body && typeof body.batch_ref === 'string' && body.batch_ref.trim()
       ? String(body.batch_ref).trim().toUpperCase() : null;
 
-    const summary = await processAnchorQueue(base44.asServiceRole, { forceBatchRef });
-    return Response.json({ ok: true, summary, forced_batch: forceBatchRef });
+    const svc = base44.asServiceRole;
+    const t0 = Date.now();
+    const summary = await processAnchorQueue(svc, { forceBatchRef });
+    const tick_ms = Date.now() - t0;
+
+    // Forced-batch result + timing instrumentation: the workflow's
+    // reconciliation loop reads forced_batch_confirmed / forced_batch_status
+    // to decide whether to re-call immediately or end.
+    let forced_batch_result: any = null;
+    if (forceBatchRef) {
+      const rows = await svc.entities.AnchorBatch.filter({ batch_ref: forceBatchRef }, { limit: 1 });
+      const b = (rows?.items || rows || [])[0];
+      if (b) {
+        const events = Array.isArray(b.event_log) ? b.event_log : [];
+        const evt = (name: string) => events.find((e: any) => e.event === name);
+        const opened = evt('opened');
+        const memberAdded = evt('member_added');
+        const submitted = evt('submitted');
+        const confirmed = evt('confirmed');
+        const enqueueAt = b.created_at || opened?.timestamp || null;
+        const flushAt = b.anchor_claimed_at || null;
+        const broadcastAt = submitted?.timestamp || null;
+        const receiptAt = confirmed?.timestamp || b.confirmed_at || null;
+        forced_batch_result = {
+          batch_ref: forceBatchRef,
+          status: b.status,
+          confirmed: b.status === 'ANCHOR_CONFIRMED',
+          fee_held: b.status === 'ANCHOR_PENDING_FEE',
+          submitted: b.status === 'ANCHOR_SUBMITTED',
+          transaction_hash: b.transaction_hash || null,
+          member_count: b.member_count,
+          timing: {
+            enqueue_at: enqueueAt,
+            flush_at: flushAt,
+            broadcast_at: broadcastAt,
+            receipt_at: receiptAt,
+            tick_ms: tick_ms,
+            // End-to-end latency from enqueue to confirmed receipt (the
+            // 8-10s target). Null until the batch is confirmed.
+            total_ms: enqueueAt && receiptAt
+              ? Math.max(0, new Date(receiptAt).getTime() - new Date(enqueueAt).getTime())
+              : null,
+            broadcast_to_receipt_ms: broadcastAt && receiptAt
+              ? Math.max(0, new Date(receiptAt).getTime() - new Date(broadcastAt).getTime())
+              : null,
+          },
+        };
+      }
+    }
+
+    return Response.json({ ok: true, summary, forced_batch: forceBatchRef, forced_batch_result, tick_ms });
   } catch (error) {
     return Response.json({ ok: false, error: error?.message || 'Queue tick failed' }, { status: 500 });
   }

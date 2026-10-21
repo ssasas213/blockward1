@@ -1,6 +1,6 @@
 {
   "name": "Anchor Batch Flush",
-  "description": "Event-driven flush of the Polygon anchoring queue: when a new AnchorBatch is opened (a verified credential was just enqueued), wait a short coalescing window so co-arriving credentials join the same Merkle batch, then force-flush that batch through processAnchorQueue. This is the sub-60-second path; the 5-minute scheduled 'Blockchain Anchor Queue' workflow remains the recovery mechanism. Production gas ceilings, budgets, secrets and the broadcast flag are unchanged \u2014 this only changes WHEN an eligible batch is attempted, not WHETHER it broadcasts.",
+  "description": "Event-driven flush of the Polygon anchoring queue: when a new AnchorBatch is opened (a verified credential was just enqueued), wait a short coalescing window so co-arriving credentials join the same Merkle batch, then force-flush that batch through processAnchorQueue. If the transaction is broadcast but the receipt is not yet available, immediately reconcile (wait 4s, re-check) instead of waiting for the 5-minute recovery worker \u2014 this is the sub-60-second path. The 5-minute scheduled 'Blockchain Anchor Queue' workflow remains the recovery mechanism for missed triggers and stale claims. Production gas ceilings, budgets, secrets and the broadcast flag are unchanged \u2014 this only changes WHEN an eligible batch is attempted, not WHETHER it broadcasts.",
   "trigger": {
     "config": {
       "trigger_type": "entity",
@@ -38,10 +38,114 @@
               "batch_ref": "${ .trigger.data.batch_ref }"
             }
           },
-          "then": "end",
+          "then": "check_1",
           "x-base44": {
             "title": "Flush batch",
-            "description": "Force-attempt this batch now (claim-locked, idempotent)"
+            "description": "Broadcast + bounded 12s receipt wait (claim-locked, idempotent)"
+          }
+        }
+      },
+      {
+        "check_1": {
+          "switch": [
+            {
+              "when": "${ (.flush_batch.forced_batch_result // {}).confirmed == true }",
+              "then": "end"
+            },
+            {
+              "when": "${ (.flush_batch.forced_batch_result // {}).fee_held == true }",
+              "then": "end"
+            },
+            {
+              "when": "${ (.flush_batch.forced_batch_result // {}).status == \"ANCHOR_FAILED_PERMANENT\" }",
+              "then": "end"
+            },
+            {
+              "when": "${ true }",
+              "then": "wait_1"
+            }
+          ],
+          "x-base44": {
+            "title": "Check result",
+            "description": "Confirmed, fee-held or permanent failure ends; submitted/pending reconciles"
+          }
+        }
+      },
+      {
+        "wait_1": {
+          "wait": "PT4S",
+          "then": "reconcile_1",
+          "x-base44": {
+            "title": "Receipt wait",
+            "description": "4s for the Polygon block to be mined and receipt available"
+          }
+        }
+      },
+      {
+        "reconcile_1": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processAnchorQueue",
+            "args": {
+              "batch_ref": "${ .trigger.data.batch_ref }"
+            }
+          },
+          "then": "check_2",
+          "x-base44": {
+            "title": "Reconcile receipt",
+            "description": "Re-check receipt (non-blocking) and finalize if confirmed"
+          }
+        }
+      },
+      {
+        "check_2": {
+          "switch": [
+            {
+              "when": "${ (.reconcile_1.forced_batch_result // {}).confirmed == true }",
+              "then": "end"
+            },
+            {
+              "when": "${ (.reconcile_1.forced_batch_result // {}).fee_held == true }",
+              "then": "end"
+            },
+            {
+              "when": "${ (.reconcile_1.forced_batch_result // {}).status == \"ANCHOR_FAILED_PERMANENT\" }",
+              "then": "end"
+            },
+            {
+              "when": "${ true }",
+              "then": "wait_2"
+            }
+          ],
+          "x-base44": {
+            "title": "Check reconcile 1",
+            "description": "Second receipt check \u2014 confirm or wait once more"
+          }
+        }
+      },
+      {
+        "wait_2": {
+          "wait": "PT4S",
+          "then": "reconcile_2",
+          "x-base44": {
+            "title": "Final receipt wait",
+            "description": "Last 4s wait before the final reconciliation attempt"
+          }
+        }
+      },
+      {
+        "reconcile_2": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processAnchorQueue",
+            "args": {
+              "batch_ref": "${ .trigger.data.batch_ref }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Final reconcile",
+            "description": "Last reconciliation \u2014 if still submitted, the 5-min worker recovers it"
           }
         }
       }

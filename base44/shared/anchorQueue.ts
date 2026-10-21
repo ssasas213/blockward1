@@ -395,6 +395,7 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
     return;
   }
 
+  const broadcastAt = nowIso();
   await svc.entities.AnchorBatch.update(batch.id, {
     status: 'ANCHOR_SUBMITTED',
     transaction_hash: sent.transaction_hash,
@@ -403,9 +404,9 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
     last_error: null,
     anchor_claimed_by: null,
     anchor_claimed_at: null,
-    event_log: pushBatchEvent(batch.event_log, 'submitted', `tx ${String(sent.transaction_hash).slice(0, 18)}… (${batch.network})`),
+    event_log: pushBatchEvent(batch.event_log, 'submitted', `tx ${String(sent.transaction_hash).slice(0, 18)}… (${batch.network}) broadcast_at=${broadcastAt} receipt_pending=${!!sent.receipt_pending}`),
   });
-  log('submitted', { batch: batch.batch_ref, tx: sent.transaction_hash, members: leaves.length });
+  log('submitted', { batch: batch.batch_ref, tx: sent.transaction_hash, members: leaves.length, receipt_pending: !!sent.receipt_pending });
 
   // Remainder (an oversized batch) goes to a fresh batch — nothing is lost.
   if (remainder.length > 0) {
@@ -585,6 +586,13 @@ async function finalizeBatch(svc: any, batch: any, tx: any, leaves: string[], le
     }
   }
 
+  // Timing instrumentation — compute end-to-end latency from enqueue to receipt.
+  const openedAt = batch.created_at || batch.created_date;
+  const submittedEvt = (batch.event_log || []).find((e: any) => e.event === 'submitted');
+  const broadcastAt = submittedEvt?.timestamp || null;
+  const receiptAt = nowIsoStr;
+  const totalMs = openedAt ? Math.max(0, new Date(receiptAt).getTime() - new Date(openedAt).getTime()) : null;
+  const broadcastMs = broadcastAt ? Math.max(0, new Date(receiptAt).getTime() - new Date(broadcastAt).getTime()) : null;
   await svc.entities.AnchorBatch.update(batch.id, {
     status: 'ANCHOR_CONFIRMED',
     confirmed_at: nowIsoStr,
@@ -599,8 +607,8 @@ async function finalizeBatch(svc: any, batch: any, tx: any, leaves: string[], le
     anchor_claimed_by: null,
     anchor_claimed_at: null,
     last_error: null,
-    event_log: pushBatchEvent(batch.event_log, 'confirmed', `${leaves.length} credentials anchored — tx ${String(tx.transaction_hash).slice(0, 18)}…, fee ${actualFeeWei != null ? weiToPol(actualFeeWei) : 'n/a'} POL`),
+    event_log: pushBatchEvent(batch.event_log, 'confirmed', `${leaves.length} credentials anchored — tx ${String(tx.transaction_hash).slice(0, 18)}…, fee ${actualFeeWei != null ? weiToPol(actualFeeWei) : 'n/a'} POL, total=${totalMs}ms broadcast_to_receipt=${broadcastMs}ms`),
   });
   summary.confirmed += credUpdates.length;
-  log('confirmed', { batch: batch.batch_ref, members: leaves.length, tx: tx.transaction_hash });
+  log('confirmed', { batch: batch.batch_ref, members: leaves.length, tx: tx.transaction_hash, total_ms: totalMs, broadcast_to_receipt_ms: broadcastMs });
 }

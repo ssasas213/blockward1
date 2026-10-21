@@ -270,11 +270,18 @@ export async function anchorBatchRoot(opts: { rootHex: string; memberCount: numb
 
     let receipt: any = null;
     try {
-      receipt = await pub.waitForTransactionReceipt({ hash: txHash });
+      // Bounded receipt wait (12s) — long enough for 3-4 Polygon blocks (~2s each),
+      // short enough to return within the function runtime. If the receipt arrives
+      // in this window, finalizeBatch runs IMMEDIATELY in the same call (the
+      // 8-10s happy path). If it times out, the batch is ANCHOR_SUBMITTED and the
+      // Anchor Batch Flush workflow reconciles it within seconds (not 5 min).
+      receipt = await pub.waitForTransactionReceipt({ hash: txHash, timeout: 12000 });
       if (receipt.status !== 'success') return { ok: false, error: 'tx_reverted', transaction_hash: txHash };
-    } catch {
-      // Broadcast succeeded; receipt unconfirmed (timeout/outage) — reconciled later.
-      return { ok: true, submitted: true, receipt_pending: true, transaction_hash: txHash, network: cfg.networkName, chain_id: cfg.chainId, testnet: cfg.isTestnet };
+    } catch (e: any) {
+      const isTimeout = String(e?.name || e?.message || '').toLowerCase().includes('timeout');
+      // Broadcast succeeded; receipt unconfirmed (timeout/outage) — reconciled
+      // immediately by the workflow's reconciliation loop, not the 5-min worker.
+      return { ok: true, submitted: true, receipt_pending: true, receipt_timed_out: isTimeout, transaction_hash: txHash, network: cfg.networkName, chain_id: cfg.chainId, testnet: cfg.isTestnet };
     }
 
     return {
