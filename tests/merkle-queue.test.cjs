@@ -147,6 +147,7 @@ function harness(options = {}) {
             if (state.broadcast) return state.broadcast();
             return { ok: true, transaction_hash: TX, receipt_pending: false, block_number: 7, block_timestamp: new Date().toISOString(), gas_used: 25520, effective_gas_price_wei: String(BigInt(Math.round(state.gasGwei * 1e9))) };
           },
+          verifyBatchRootOnChain: async () => ({ block_number: 7, block_timestamp: new Date().toISOString(), gas_used: 25520, effective_gas_price_wei: String(BigInt(Math.round(state.gasGwei * 1e9))) }),
           BATCH_ANCHOR_VERSION: 2,
         };
         if (id.endsWith('/chainVerification.ts')) return { verificationBindings: () => ({}) };

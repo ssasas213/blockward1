@@ -22,7 +22,7 @@
 import { createPublicClient, http } from 'npm:viem@2.7.0';
 import { merkleRoot, merkleProof, verifyMerkleProof } from './anchorMerkle.ts';
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
-import { anchorBatchRoot, resolvePolygonTarget, resolvePolygonConfig, BATCH_ANCHOR_VERSION, type TargetNetwork } from './chainPolygon.ts';
+import { anchorBatchRoot, resolvePolygonTarget, resolvePolygonConfig, BATCH_ANCHOR_VERSION, verifyBatchRootOnChain, type TargetNetwork } from './chainPolygon.ts';
 
 // ── Broadcaster dependency injection (incident §4/§5) ─────────────────────────
 // Production uses the real anchorBatchRoot (network-pinned to the batch's own
@@ -342,6 +342,15 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
   // batch pinned to Amoy can NEVER broadcast on mainnet, regardless of the
   // global issuance selector.
   const batchTarget: TargetNetwork = batch.network === 'polygon_mainnet' ? 'polygon_mainnet' : 'polygon_amoy';
+  // SECURITY (incident: synthetic confirmation of AB-5FBCA1): an injected mock
+  // broadcaster must NEVER confirm a production Polygon mainnet batch. The mock
+  // is test-only; a real mainnet anchor requires the real broadcaster AND an
+  // independently verified on-chain receipt. Fail-closed before any broadcast.
+  if (broadcaster && batchTarget === 'polygon_mainnet') {
+    log('mock_broadcaster_blocked_on_mainnet', { batch: batch.batch_ref });
+    await fail(true, 'mock_broadcaster_blocked_on_mainnet');
+    return;
+  }
   // The broadcaster: production uses the real anchorBatchRoot (network-pinned).
   // A test-injected mock never signs — it is the permanent separation.
   const send: BatchBroadcaster = broadcaster || defaultBroadcaster;
@@ -426,8 +435,16 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
 
   if (sent.receipt_pending) return; // reconciled on a later tick
 
-  // Receipt already in hand — finalize immediately.
-  await finalizeBatch(svc, batch, sent, leaves, leafCreds, root, price, summary);
+  // Receipt already in hand — but VERIFY it independently on-chain before
+  // finalizing. A broadcaster's claim (real or mock) is never trusted: the
+  // transaction hash must resolve to a genuine, verified receipt.
+  const fin = await finalizeBatch(svc, batch, sent.transaction_hash, leaves, leafCreds, root, price, summary);
+  if (!fin.confirmed) {
+    // The broadcast reported success but the on-chain receipt could not be
+    // independently verified (RPC blip, reorg, or integrity failure). The batch
+    // stays ANCHOR_SUBMITTED so reconcileSubmitted retries it on the next tick.
+    log('finalize_skipped_after_broadcast', { batch: batch.batch_ref, reason: fin.reason });
+  }
 }
 
 // ── RECONCILIATION ───────────────────────────────────────────────────────────
@@ -452,16 +469,10 @@ async function reconcileSubmitted(svc: any, batch: any, policy: any, summary: an
       leafCreds.push(c);
     }
     const root = await merkleRoot(leaves);
-    await finalizeBatch(svc, batch, {
-      ok: true,
-      transaction_hash: receipt.transactionHash,
-      block_number: Number(receipt.blockNumber || 0),
-      block_timestamp: receipt.blockTimestamp ? new Date(Number(receipt.blockTimestamp)).toISOString() : nowIso(),
-      gas_used: receipt.gasUsed != null ? Number(receipt.gasUsed) : null,
-      effective_gas_price_wei: receipt.effectiveGasPrice != null ? String(receipt.effectiveGasPrice) : null,
-      network: cfg.networkName, chain_id: cfg.chainId, testnet: cfg.isTestnet,
-    }, leaves, leafCreds, root, price, summary);
-    return;
+    const fin = await finalizeBatch(svc, batch, batch.transaction_hash, leaves, leafCreds, root, price, summary);
+    if (fin.confirmed) return;
+    // finalizeBatch's independent on-chain verification failed even though a
+    // receipt was fetched — fall through to the retry logic below.
   }
 
   const submittedAt = batch.event_log?.find?.((e: any) => e.event === 'submitted')?.timestamp || batch.updated_date || batch.created_at;
@@ -493,9 +504,24 @@ async function reconcileSubmitted(svc: any, batch: any, policy: any, summary: an
 // ── FINALIZE ─────────────────────────────────────────────────────────────────
 // Receipt verified → proofs computed & verified → per-credential writes →
 // achievements VERIFIED → holders notified. Cost accounting recorded.
-async function finalizeBatch(svc: any, batch: any, tx: any, leaves: string[], leafCreds: any[], root: string, price: any, summary: any) {
-  const cfg = resolvePolygonConfig(batch.network === 'polygon_mainnet' ? 'polygon_mainnet' : 'polygon_amoy');
+async function finalizeBatch(svc: any, batch: any, txHash: string, leaves: string[], leafCreds: any[], root: string, price: any, summary: any): Promise<{ confirmed: boolean; reason: string | null }> {
+  const target: TargetNetwork = batch.network === 'polygon_mainnet' ? 'polygon_mainnet' : 'polygon_amoy';
+  const cfg = resolvePolygonConfig(target);
   const nowIsoStr = nowIso();
+
+  // ── INDEPENDENT ON-CHAIN RECEIPT VERIFICATION (security fix) ──
+  // Never trust a broadcaster's claim. Fetch the transaction + receipt from
+  // the live Polygon chain and verify chain ID, signer (from/to == expected),
+  // zero value, calldata parses as a batch payload whose root === the computed
+  // root and memberCount === leaves.length, and block/receipt consistency.
+  // A mock, synthetic, reverted or missing transaction returns null and MUST
+  // NOT result in ANCHOR_CONFIRMED. This is the gate that prevents AB-5FBCA1.
+  const verified = await verifyBatchRootOnChain(target, txHash, root, leaves.length);
+  if (!verified) {
+    log('finalize_verification_failed', { batch: batch.batch_ref, tx: String(txHash).slice(0, 18) });
+    return { confirmed: false, reason: 'receipt_verification_failed' };
+  }
+  const tx = { transaction_hash: txHash, ...verified };
   const actualFeeWei = tx.effective_gas_price_wei && tx.gas_used
     ? BigInt(tx.effective_gas_price_wei) * BigInt(tx.gas_used) : null;
 
@@ -611,4 +637,5 @@ async function finalizeBatch(svc: any, batch: any, tx: any, leaves: string[], le
   });
   summary.confirmed += credUpdates.length;
   log('confirmed', { batch: batch.batch_ref, members: leaves.length, tx: tx.transaction_hash, total_ms: totalMs, broadcast_to_receipt_ms: broadcastMs });
+  return { confirmed: true, reason: null };
 }

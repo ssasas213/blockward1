@@ -324,19 +324,18 @@ export default async function (req: Request): Promise<Response> {
         const b = (after?.items || after || [])[0];
         const credAfter = await svc.entities.Credential.filter({ id: cred.id }, { limit: 1 });
         const c = (credAfter?.items || credAfter || [])[0];
-        const proofOk = c?.blockchain?.merkle_proof ? await verifyMerkleProof(
-          await computeCredentialHash({
-            verification_id: c.bw_id, version: CREDENTIAL_HASH_VERSION,
-            achievement_title: c.title, achievement_category: c.category,
-            achievement_description: c.description || '', date_achieved: c.date_achieved,
-          }),
-          c.blockchain.merkle_proof, b?.merkle_root,
-        ) : false;
         const mockUsed = mockCalls.some((m) => m.target === 'polygon_amoy');
-        const pass = b?.status === 'ANCHOR_CONFIRMED' && proofOk && mockUsed && !b.transaction_hash?.startsWith('0x0000');
-        results.push(r('8a. mock broadcaster proves finalize + Merkle proof (no signing)',
+        // SECURITY (incident: synthetic confirmation of AB-5FBCA1): a mock
+        // broadcaster's synthetic tx hash can NEVER be verified against the live
+        // chain, so finalizeBatch MUST refuse to confirm. The batch stays
+        // ANCHOR_SUBMITTED (never CONFIRMED) and the credential is never marked
+        // confirmed — the property that prevents a mock from producing a false
+        // Blockward Verified.
+        const notConfirmed = b?.status !== 'ANCHOR_CONFIRMED' && c?.anchor_status !== 'confirmed';
+        const pass = mockUsed && notConfirmed;
+        results.push(r('8a. mock broadcaster cannot confirm without a real on-chain receipt',
           pass ? 'PASS' : 'FAIL', now() - t0,
-          `batch ${batch.batch_ref} CONFIRMED via mock; merkle proof verified=${proofOk}; mock called=${mockUsed}; mock tx=${b?.transaction_hash?.slice(0, 18) || 'none'}…`));
+          `batch ${batch.batch_ref} status=${b?.status} (not CONFIRMED); credential anchor_status=${c?.anchor_status}; mock called=${mockUsed}; mock tx=${b?.transaction_hash?.slice(0, 18) || 'none'}…`));
       }
 
       // ── Scenario 8b: live broadcast (EXPLICIT CONSENT + Amoy only) ──────────

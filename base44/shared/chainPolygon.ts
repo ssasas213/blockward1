@@ -397,6 +397,67 @@ export async function verifyBatchAnchor(svc: any, cred: any) {
   }
 }
 
+// ═════════════════════ INDEPENDENT RECEIPT VERIFICATION (production gate) ═════
+//
+// The production finalisation gate. NEVER trusts a broadcaster's claim — it
+// independently fetches the transaction + receipt from the live Polygon chain
+// and verifies every integrity binding before a batch may be marked
+// ANCHOR_CONFIRMED. This is the fix for the synthetic-confirmation incident
+// (AB-5FBCA1 / BW-H5CHBVHE): a mock, synthetic, reverted or missing transaction
+// returns null and MUST NOT result in Blockward Verified.
+//
+// Checks: live chain ID, transaction exists, receipt status === success,
+// transaction chain ID, signer (from AND to == expected anchor address), zero
+// value, block/receipt consistency, calldata parses as a batch payload whose
+// root === expectedRoot and memberCount === expectedMemberCount.
+export async function verifyBatchRootOnChain(
+  target: TargetNetwork,
+  txHash: string,
+  expectedRoot: string,
+  expectedMemberCount: number,
+): Promise<{ block_number: number; block_timestamp: string; gas_used: number | null; effective_gas_price_wei: string | null } | null> {
+  const root = String(expectedRoot || '').trim().toLowerCase().replace(/^0x/, '');
+  if (!/^[0-9a-f]{64}$/.test(root)) return null;
+  if (!Number.isInteger(expectedMemberCount) || expectedMemberCount < 1) return null;
+  const cfg = resolvePolygonConfig(target);
+  if (!cfg.rpc) return null;
+  let expectedSigner: string;
+  try {
+    expectedSigner = target === 'polygon_mainnet'
+      ? String(cfg.expectedSignerAddress || '')
+      : privateKeyToAccount(cfg.signingKey as `0x${string}`).address;
+  } catch { return null; }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(expectedSigner)) return null;
+  const sameAddr = (v: unknown) => typeof v === 'string' && v.toLowerCase() === expectedSigner.toLowerCase();
+  const sameHash = (a: unknown, b: unknown) => typeof a === 'string' && typeof b === 'string'
+    && /^0x[0-9a-fA-F]{64}$/.test(a) && a.toLowerCase() === b.toLowerCase();
+  try {
+    const pub = createPublicClient({ chain: cfg.chain, transport: http(cfg.rpc as string) });
+    if (await pub.getChainId() !== cfg.chainId) return null;
+    const tx = await pub.getTransaction({ hash: txHash as `0x${string}` }).catch(() => null);
+    if (!tx) return null;
+    const receipt = await pub.getTransactionReceipt({ hash: txHash as `0x${string}` }).catch(() => null);
+    if (!receipt || receipt.status !== 'success') return null;
+    if (tx.chainId != null && tx.chainId !== cfg.chainId) return null;
+    if (!sameAddr(tx.from) || !sameAddr(receipt.from)) return null;
+    if (!sameAddr(tx.to) || !sameAddr(receipt.to)) return null;
+    if (tx.value !== 0n) return null;
+    if (tx.blockNumber == null || receipt.blockNumber == null || tx.blockNumber !== receipt.blockNumber) return null;
+    if (!sameHash(tx.blockHash, receipt.blockHash)) return null;
+    let onChain: { root: string; memberCount: number } | null = null;
+    try { onChain = parseBatchPayload(new TextDecoder('utf-8', { fatal: true }).decode(hexToBytes(tx.input))); } catch { return null; }
+    if (!onChain) return null;
+    if (onChain.root.toLowerCase() !== root) return null;
+    if (onChain.memberCount !== expectedMemberCount) return null;
+    return {
+      block_number: Number(receipt.blockNumber || 0),
+      block_timestamp: receipt.blockTimestamp ? new Date(Number(receipt.blockTimestamp)).toISOString() : new Date().toISOString(),
+      gas_used: receipt.gasUsed != null ? Number(receipt.gasUsed) : null,
+      effective_gas_price_wei: receipt.effectiveGasPrice != null ? String(receipt.effectiveGasPrice) : null,
+    };
+  } catch { return null; }
+}
+
 // ═════════════════════ ANCHORING (idempotent, claim-locked) ═════════════════════
 //
 
