@@ -116,8 +116,8 @@ export async function previewRemediation(svc: any, opts: { batchRef: string; bwI
   const plan = {
     batch: {
       id: batch.id, batch_ref: batch.batch_ref, current_status: batch.status,
-      target_status: 'ANCHOR_FAILED_RETRYABLE',
-      fields: { status: 'ANCHOR_FAILED_RETRYABLE', anchor_claimed_by: null, anchor_claimed_at: null, last_error: 'synthetic confirmation detected — quarantined for re-anchor', next_attempt_at: null },
+      target_status: 'ANCHOR_FAILED_PERMANENT',
+      fields: { status: 'ANCHOR_FAILED_PERMANENT', anchor_claimed_by: null, anchor_claimed_at: null, last_error: 'synthetic confirmation detected — permanently quarantined for re-anchor', next_attempt_at: null },
       event: { event: 'synthetic_confirmation_detected', note: `Incident remediation: batch quarantined — transaction ${batch.transaction_hash} was not independently verified on-chain`, timestamp: nowIso() },
       already_quarantined: alreadyQuarantined,
     },
@@ -160,12 +160,16 @@ export async function executeRemediation(svc: any, opts: { batchRef: string; bwI
 
   const applied: any = { batch_quarantined: false, credential_reverted: false, achievement_reverted: false, reenqueue: null, notification_sent: false };
 
-  // 1. Quarantine the batch — never reprocessed.
+  // 1. Quarantine the batch PERMANENTLY — the due filter in processAnchorQueue
+  //    only selects ANCHOR_PENDING / ANCHOR_FAILED_RETRYABLE batches, so a
+  //    permanently-quarantined batch is NEVER claimed, attempted or rebroadcast.
+  //    This is the pre-broadcast duplicate prevention: the synthetic batch cannot
+  //    sign a second transaction because it never reaches the broadcaster.
   if (!alreadyQuarantined) {
     await svc.entities.AnchorBatch.update(batch.id, {
-      status: 'ANCHOR_FAILED_RETRYABLE',
+      status: 'ANCHOR_FAILED_PERMANENT',
       anchor_claimed_by: null, anchor_claimed_at: null,
-      last_error: 'synthetic confirmation detected — quarantined for re-anchor',
+      last_error: 'synthetic confirmation detected — permanently quarantined for re-anchor',
       next_attempt_at: null,
       event_log: pushEvent(batch.event_log, 'synthetic_confirmation_detected', `Incident remediation: batch quarantined — transaction ${batch.transaction_hash} was not independently verified on-chain`),
     });

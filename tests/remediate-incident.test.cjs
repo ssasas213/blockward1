@@ -87,7 +87,7 @@ test('previewRemediation returns the exact plan without writing any records', as
   assert.equal(r.ok, true);
   assert.equal(r.mode, 'preview');
   assert.equal(r.approved, false);
-  assert.equal(r.plan.batch.target_status, 'ANCHOR_FAILED_RETRYABLE');
+  assert.equal(r.plan.batch.target_status, 'ANCHOR_FAILED_PERMANENT');
   assert.equal(r.plan.credential.target_anchor_status, 'pending');
   assert.equal(r.plan.achievement.target_status, 'issuer_confirmed');
   assert.ok(r.plan.notification.subject.includes('Correction'));
@@ -114,7 +114,7 @@ test('executeRemediation quarantines batch, reverts credential + achievement, re
   assert.ok(emailed.subject.includes('Correction'));
   assert.ok(emailed.html.includes('#2270ec'));
   const batch = svc._db.AnchorBatch[0];
-  assert.equal(batch.status, 'ANCHOR_FAILED_RETRYABLE');
+  assert.equal(batch.status, 'ANCHOR_FAILED_PERMANENT');
   assert.ok(batch.event_log.some(e => e.event === 'synthetic_confirmation_detected'));
   const cred = svc._db.Credential[0];
   assert.equal(cred.anchor_status, 'pending');
