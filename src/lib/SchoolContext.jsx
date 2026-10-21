@@ -16,6 +16,13 @@ export const SchoolProvider = ({ children }) => {
   const [testMode, setTestMode] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // ── Organisation memberships (Issuer Organisation layer) ──
+  // Independent of user_type: a holder (user_type 'student') can be the owner
+  // of a verified organisation. Org ownership is an OrganisationMember record,
+  // not a UserProfile field, so it is resolved here for every signed-in user.
+  const [organisations, setOrganisations] = useState([]);
+  const [activeOrgId, setActiveOrgId] = useState(null);
+
   // ── Identity: fetched ONCE per session here ──
   // SchoolContext is the single source of truth for auth user + profile.
   // ProtectedRoute and every page consume this context — none of them should
@@ -108,6 +115,53 @@ export const SchoolProvider = ({ children }) => {
         setTestMode({ isTestSuperUser: false });
       }
 
+      // ── Organisation memberships (Issuer Organisation layer) ──
+      // Every signed-in user — org ownership is an OrganisationMember record,
+      // not a UserProfile field, so it is resolved independently of user_type.
+      // A holder (user_type 'student') who registered an organisation appears
+      // here as an active 'owner' membership. RLS allows reading one's own
+      // memberships; IssuerOrganisation read is open.
+      try {
+        const members = await base44.entities.OrganisationMember.filter({
+          user_email: currentUser.email,
+          status: 'active',
+        }).catch(() => []);
+        const orgIds = [...new Set((members || []).map((m) => m.org_id).filter(Boolean))];
+        const orgLists = await Promise.all(
+          orgIds.map((id) => base44.entities.IssuerOrganisation.filter({ id }).catch(() => []))
+        );
+        const orgsById = new Map();
+        orgLists.forEach((l) => { if (l?.[0]) orgsById.set(l[0].id, l[0]); });
+        const orgContexts = (members || [])
+          .map((m) => {
+            const o = orgsById.get(m.org_id);
+            if (!o) return null;
+            return {
+              id: o.id,
+              name: o.name,
+              handle: o.handle,
+              logo_url: o.logo_url,
+              status: o.status,
+              role: m.role, // 'owner' | 'verifier'
+            };
+          })
+          .filter(Boolean);
+        setOrganisations(orgContexts);
+
+        // Resolve the active org context from the persisted preference.
+        // 'personal' = explicit personal choice. An org id = that org. null =
+        // no preference yet → default to the single org (multi-org users pick
+        // on the dashboard, which has its own membership picker).
+        const pref = localStorage.getItem('bw_context_pref');
+        if (pref === 'personal') {
+          setActiveOrgId(null);
+        } else if (pref && orgContexts.some((o) => o.id === pref)) {
+          setActiveOrgId(pref);
+        } else {
+          setActiveOrgId(orgContexts.length === 1 ? orgContexts[0].id : null);
+        }
+      } catch { /* best-effort — org context stays empty */ }
+
       if (p.user_type === 'admin') {
         const [ownedSchools, memberships] = await Promise.all([
           base44.entities.School.filter({ admin_email: currentUser.email }),
@@ -191,6 +245,21 @@ export const SchoolProvider = ({ children }) => {
     window.location.reload();
   }, [profile]);
 
+  // Switch into an organisation context — persists the choice so refreshes and
+  // sign-ins return to the same workspace. The org dashboard enforces
+  // membership server-side; a stale id simply fails to load data.
+  const setActiveOrg = useCallback((orgId) => {
+    localStorage.setItem('bw_context_pref', orgId);
+    setActiveOrgId(orgId);
+  }, []);
+
+  // Switch to Personal context — persisted so the user is not bounced back to
+  // the org workspace on next sign-in.
+  const clearActiveOrg = useCallback(() => {
+    localStorage.setItem('bw_context_pref', 'personal');
+    setActiveOrgId(null);
+  }, []);
+
   const refresh = useCallback(() => {
     // Background refresh — don't set loading=true (that would show full-page spinner in Layout)
     loadSchoolData();
@@ -233,6 +302,10 @@ export const SchoolProvider = ({ children }) => {
     realProfile,
     activeSchool,
     managedSchools,
+    organisations,
+    activeOrgId,
+    setActiveOrg,
+    clearActiveOrg,
     loading,
     isAdmin,
     hasNoSchool,

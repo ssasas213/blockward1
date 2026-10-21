@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, profile, activeSchool: school, managedSchools, switchSchool, loading, testMode } = useSchool();
+  const { user, profile, activeSchool: school, managedSchools, switchSchool, loading, testMode, organisations, activeOrgId, setActiveOrg, clearActiveOrg } = useSchool();
 
   // Internal-admin link is granted SERVER-SIDE (allowlist secret), never from
   // user_type — an internal admin whose platform role is 'user'/'student' still
@@ -52,6 +52,9 @@ export default function Layout({ children, currentPageName }) {
   const isPublicPage = publicPages.includes(currentPageName);
 
   const logout = () => {
+    // Clear the persisted context preference so a different user signing in on
+    // this browser is not bounced into the previous user's organisation.
+    localStorage.removeItem('bw_context_pref');
     base44.auth.logout(createPageUrl('Home'));
   };
 
@@ -120,6 +123,22 @@ export default function Layout({ children, currentPageName }) {
       { name: 'Platform Admin', icon: Shield, page: 'admin/organisations', path: '/internal/admin' },
     ]}];
   }
+  // Organisation workspace — surfaced for any user with an active organisation
+  // membership, regardless of personal user_type (a holder can own an org).
+  if (organisations?.length) {
+    const orgNavName = organisations.length === 1 ? organisations[0].name : 'Organisations';
+    groups = [...groups, { label: 'Organisation', items: [
+      { name: orgNavName, icon: Building2, page: 'organisations/dashboard', path: '/organisations/dashboard' },
+    ]}];
+  }
+  // Context-switch handlers — Personal vs an organisation workspace. The
+  // choice is persisted (localStorage 'bw_context_pref') so refreshes and
+  // sign-ins return to the same context.
+  const personalPath = userType === 'admin' ? '/AdminDashboard'
+    : userType === 'teacher' ? '/TeacherDashboard'
+    : '/StudentDashboard';
+  const handleSelectPersonal = () => { clearActiveOrg(); window.location.href = personalPath; };
+  const handleSelectOrg = (orgId) => { setActiveOrg(orgId); window.location.href = '/organisations/dashboard'; };
   // Admin permission filtering now happens at the tab level inside the
   // grouped pages (ManageSchool / Insights / SchoolSettings), not per nav item.
 
@@ -197,6 +216,10 @@ export default function Layout({ children, currentPageName }) {
               onSwitchSchool={switchSchool}
               onClose={() => setSidebarOpen(false)}
               onLogout={logout}
+              organisations={organisations}
+              activeOrgId={activeOrgId}
+              onSelectPersonal={handleSelectPersonal}
+              onSelectOrg={handleSelectOrg}
             />
           </div>
         </div>
@@ -215,6 +238,10 @@ export default function Layout({ children, currentPageName }) {
           managedSchools={managedSchools}
           onSwitchSchool={switchSchool}
           onLogout={logout}
+          organisations={organisations}
+          activeOrgId={activeOrgId}
+          onSelectPersonal={handleSelectPersonal}
+          onSelectOrg={handleSelectOrg}
         />
       </aside>
 
@@ -255,7 +282,7 @@ export default function Layout({ children, currentPageName }) {
   );
 }
 
-function SidebarContent({ groups, currentPageName, profile, user, userType, roleLabel, school, managedSchools, onSwitchSchool, onClose, onLogout }) {
+function SidebarContent({ groups, currentPageName, profile, user, userType, roleLabel, school, managedSchools, onSwitchSchool, onClose, onLogout, organisations, activeOrgId, onSelectPersonal, onSelectOrg }) {
   const displayName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
   return (
     <div className="flex flex-col h-full">
@@ -271,9 +298,10 @@ function SidebarContent({ groups, currentPageName, profile, user, userType, role
       <div className="px-3 pt-3">
         <ContextSwitcher
           profile={profile}
-          activeSchool={school}
-          managedSchools={managedSchools}
-          onSwitchSchool={onSwitchSchool}
+          organisations={organisations}
+          activeOrgId={activeOrgId}
+          onSelectPersonal={onSelectPersonal}
+          onSelectOrg={onSelectOrg}
         />
       </div>
 

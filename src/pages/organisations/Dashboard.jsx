@@ -160,8 +160,8 @@ export default function OrgDashboard() {
           {org.logo_url ? (
             <img src={org.logo_url} alt={org.name} className="h-14 w-14 rounded-2xl object-cover border border-border" />
           ) : (
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-              <Building2 className="h-7 w-7 text-white" />
+            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center flex-shrink-0">
+              <Building2 className="h-7 w-7 text-primary-foreground" />
             </div>
           )}
           <div className="flex-1 min-w-0">
@@ -188,7 +188,7 @@ export default function OrgDashboard() {
               {org.country ? ` · ${org.country}` : ''}
               {me?.job_title ? ` · ${me.job_title}` : ''}
               <span className="mx-1.5 text-border">|</span>
-              <span className="capitalize">{me?.role || 'member'}</span>
+              <span className="capitalize">{me?.role || 'verifier'}</span>
             </p>
           </div>
           {org.handle && (

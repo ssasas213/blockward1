@@ -17,7 +17,7 @@ const DASHBOARD_MAP = {
  * by restoring its original route element.
  */
 export default function RoleDashboardRedirect() {
-  const { effectiveRole, loading, user } = useSchool();
+  const { effectiveRole, loading, user, organisations } = useSchool();
 
   useEffect(() => {
     if (loading) return;
@@ -36,6 +36,13 @@ export default function RoleDashboardRedirect() {
           return;
         }
       } catch { /* probe failed — ordinary routing, no privilege assumed */ }
+      // Organisation owner — default to the org workspace unless they explicitly
+      // chose Personal. Org ownership is an OrganisationMember record, so it is
+      // checked independently of user_type (a holder can own an organisation).
+      if (!cancelled && organisations?.length && localStorage.getItem('bw_context_pref') !== 'personal') {
+        guardedRedirect('/organisations/dashboard');
+        return;
+      }
       if (!cancelled) {
         // Through the redirect guard: counted for loop detection, and a
         // same-path target is a no-op instead of an endless self-reload.
@@ -43,7 +50,7 @@ export default function RoleDashboardRedirect() {
       }
     })();
     return () => { cancelled = true; };
-  }, [loading, effectiveRole, user]);
+  }, [loading, effectiveRole, user, organisations]);
 
   return <AppLoadingGate message="Taking you to your dashboard…" />;
 }

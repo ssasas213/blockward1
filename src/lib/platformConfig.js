@@ -125,9 +125,9 @@ export const PLATFORMS = {
     ],
     // Signup roles (maps to UserProfile.user_type internally, but displayed with org terminology)
     signupRoles: [
-      { key: 'student', label: 'Member / Athlete', icon: 'Trophy', color: 'from-amber-500 to-orange-500', active: 'border-amber-500 ring-2 ring-amber-200 bg-amber-50', text: 'text-amber-700' },
-      { key: 'teacher', label: 'Coach / Instructor', icon: 'Whistle', color: 'from-orange-500 to-red-500', active: 'border-orange-500 ring-2 ring-orange-200 bg-orange-50', text: 'text-orange-700' },
-      { key: 'admin', label: 'Organisation Admin', icon: 'Shield', color: 'from-rose-500 to-orange-500', active: 'border-rose-500 ring-2 ring-rose-200 bg-rose-50', text: 'text-rose-700' },
+      { key: 'student', label: 'Holder', icon: 'Trophy', color: 'from-amber-500 to-orange-500', active: 'border-amber-500 ring-2 ring-amber-200 bg-amber-50', text: 'text-amber-700' },
+      { key: 'teacher', label: 'Verifier', icon: 'Whistle', color: 'from-orange-500 to-red-500', active: 'border-orange-500 ring-2 ring-orange-200 bg-orange-50', text: 'text-orange-700' },
+      { key: 'admin', label: 'Organisation Owner', icon: 'Shield', color: 'from-rose-500 to-orange-500', active: 'border-rose-500 ring-2 ring-rose-200 bg-rose-50', text: 'text-rose-700' },
     ],
     // Navigation per role — org terminology only
     navigation: {

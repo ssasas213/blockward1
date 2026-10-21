@@ -32,7 +32,6 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { PlatformProvider } from '@/lib/PlatformContext';
 import { SchoolProvider } from '@/lib/SchoolContext';
 
-import OrgsLayout from '@/components/layouts/OrgsLayout';
 import OrgsSignup from './pages/organisations/Signup';
 import Register from './pages/organisations/Register';
 import About from './pages/marketing/About';
@@ -198,11 +197,12 @@ const AuthenticatedApp = () => {
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
 
-      {/* Organisations platform — scoped routes with org layout */}
-      <Route path="/organisations" element={<ProtectedRoute><OrgsLayout /></ProtectedRoute>}>
-        <Route index element={<Navigate to="/organisations/dashboard" replace />} />
-        <Route path="dashboard" element={<OrgDashboard />} />
-      </Route>
+      {/* Organisation workspace — rendered inside the main app layout so the
+          context switcher, sidebar and blue theme are available to org owners.
+          Membership is enforced server-side by orgDashboardData; a user with no
+          active membership sees the empty state, not privileged data. */}
+      <Route path="/organisations" element={<Navigate to="/organisations/dashboard" replace />} />
+      <Route path="/organisations/dashboard" element={<LayoutWrapper currentPageName="organisations/dashboard"><ProtectedRoute><OrgDashboard /></ProtectedRoute></LayoutWrapper>} />
 
       {/* Public /@handle profiles — a FULL-SEGMENT dynamic route (a literal
           "@" prefix inside a segment never matches in React Router v6).

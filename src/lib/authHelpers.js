@@ -153,6 +153,23 @@ export async function handlePostLoginRedirect() {
     }
   } catch { /* probe failed — ordinary routing, no privilege assumed */ }
 
+  // ===== Organisation membership (Issuer Organisation layer) =====
+  // An organisation owner's personal profile may be user_type 'student' (a
+  // holder). Org ownership is an OrganisationMember record, not a UserProfile
+  // field, so it must be checked independently — otherwise the owner is
+  // dropped on the holder dashboard. An explicit Personal preference
+  // (localStorage 'bw_context_pref' = 'personal') is respected.
+  try {
+    const memberships = await base44.entities.OrganisationMember.filter({
+      user_email: user.email,
+      status: 'active',
+    });
+    if (memberships?.length && localStorage.getItem('bw_context_pref') !== 'personal') {
+      guardedRedirect('/organisations/dashboard');
+      return null;
+    }
+  } catch { /* best-effort — fall through to ordinary routing */ }
+
   // No school linked yet. Teachers and admins genuinely cannot function
   // without an organisation, so they go to setup. A school-less student is a
   // complete account — straight to the dashboard.

@@ -79,7 +79,7 @@ export default function OrgsLayout() {
 
   const userType = profile?.user_type || 'student';
   const navItems = platform.navigation[userType] || platform.navigation.student;
-  const roleLabel = profile?.role_label || (userType === 'admin' ? 'Organisation Admin' : userType === 'teacher' ? 'Coach / Instructor' : 'Member / Athlete');
+  const roleLabel = profile?.role_label || (userType === 'admin' ? 'Organisation Owner' : userType === 'teacher' ? 'Verifier' : 'Holder');
 
   const currentPath = location.pathname;
 
