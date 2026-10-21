@@ -399,7 +399,7 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
     status: 'ANCHOR_SUBMITTED',
     transaction_hash: sent.transaction_hash,
     attempts: (batch.attempts || 0) + 1,
-    estimated_fee_wei: String(gate.estFeeWei),
+    estimated_fee_wei: estimatedFeeWei,
     last_error: null,
     anchor_claimed_by: null,
     anchor_claimed_at: null,
