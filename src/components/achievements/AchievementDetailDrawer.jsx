@@ -52,6 +52,13 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
     ? `https://${(bc.chain_id === 137 || bc.network === 'polygon') ? '' : 'amoy.'}polygonscan.com/tx/${bc.transaction_hash}`
     : null;
   const integrityConfirmed = verified;
+  // Network-aware blockchain section label — mainnet credentials must never
+  // be labelled "Amoy — Testnet".
+  const bcNetworkLabel = (bc.chain_id === 137 || bc.network === 'polygon' || bc.network === 'polygon_mainnet')
+    ? 'Polygon Mainnet'
+    : ((bc.network || '').includes('amoy') || bc.chain_id === 80002)
+      ? 'Polygon Amoy — Testnet'
+      : 'Polygon';
 
   return (
     <>
@@ -153,7 +160,7 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
 
           {/* Blockchain Integrity */}
           {c && (
-            <Section title="Blockchain integrity" right={<span className="text-xs text-tertiary">Polygon Amoy — Testnet</span>}>
+            <Section title="Blockchain integrity" right={<span className="text-xs text-tertiary">{bcNetworkLabel}</span>}>
               <div className="surface-card rounded-xl px-4 divide-y divide-border/60">
                 <Field label="Status" value={integrityConfirmed ? 'Integrity confirmed' : bc.transaction_hash ? 'Anchor recorded — integrity verification required' : 'Pending'} />
                 <Field label="Credential commitment" value={c.credential_hash} mono />

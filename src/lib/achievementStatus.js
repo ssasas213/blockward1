@@ -12,7 +12,7 @@ export const STATUS_META = {
   awaiting_issuer: { label: 'Awaiting issuer', cls: 'bg-warning/10 text-warning border-warning/30', tone: 'amber' },
   awaiting_signature: { label: 'Awaiting signature', cls: 'bg-warning/10 text-warning border-warning/30', tone: 'amber' },
   issuer_verified: { label: 'Issuer verified', cls: 'bg-info/10 text-info border-info/30', tone: 'blue' },
-  securing: { label: 'Securing on Polygon Amoy', cls: 'bg-warning/10 text-warning border-warning/30', tone: 'amber' },
+  securing: { label: 'Blockchain pending', cls: 'bg-warning/10 text-warning border-warning/30', tone: 'amber' },
   integrity_pending: { label: 'Blockchain secured', cls: 'bg-info/10 text-info border-info/30', tone: 'blue' },
   blockward_verified: { label: 'Blockward Verified', cls: 'bg-success/10 text-success border-success/30', tone: 'green' },
   anchor_failed: { label: 'Blockchain confirmation delayed', cls: 'bg-destructive/10 text-destructive border-destructive/30', tone: 'red' },
@@ -41,13 +41,23 @@ export function resolveStatus(item) {
     return { key: 'expired', ...STATUS_META.expired };
   }
 
-  // Issuer verified but not yet anchored.
-  if (r?.status === 'approved' && a.status === 'issuer_confirmed') {
+  // Issuer verified but not yet anchored — covers both the brief
+  // 'issuer_confirmed' window AND the persistent 'blockchain_processing'
+  // state (credential created + queued for Merkle-batch anchoring). Without
+  // this, a blockchain_processing achievement falls through to 'draft'.
+  if (r?.status === 'approved' && (a.status === 'issuer_confirmed' || a.status === 'blockchain_processing')) {
     if (!c) return { key: 'issuer_verified', ...STATUS_META.issuer_verified, detail: 'Awaiting Blockward organisation approval' };
     if (c.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed };
     if (c.anchor_status === 'processing') return { key: 'securing', ...STATUS_META.securing };
     if (c.anchor_status === 'pending') return { key: 'securing', ...STATUS_META.securing, detail: 'Awaiting anchor' };
     return { key: 'integrity_pending', ...STATUS_META.integrity_pending, detail: 'Confirming integrity' };
+  }
+
+  // Defensive: credential issued + queued but the VR link is missing — the
+  // achievement is clearly mid-issuance, never a draft.
+  if (a.status === 'blockchain_processing') {
+    if (c?.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed };
+    return { key: 'securing', ...STATUS_META.securing, detail: 'Blockchain pending' };
   }
 
   if (a.status === 'verification_requested') {

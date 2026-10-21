@@ -29,7 +29,7 @@ const STATUS_META = {
   unverified: { label: 'Unverified', cls: 'bg-secondary text-muted-foreground border-border' },
   verification_requested: { label: 'Awaiting issuer', cls: 'bg-warning/10 text-warning border-warning/30' },
   issuer_confirmed: { label: 'Issuer confirmed', cls: 'bg-info/10 text-info border-info/30' },
-  blockchain_processing: { label: 'Securing on Polygon Amoy', cls: 'bg-warning/10 text-warning border-warning/30' },
+  blockchain_processing: { label: 'Blockchain pending', cls: 'bg-warning/10 text-warning border-warning/30' },
   verified: { label: 'Blockward Verified', cls: 'bg-success/10 text-success border-success/30' },
   rejected: { label: 'Could not verify', cls: 'bg-destructive/10 text-destructive border-destructive/30' },
   revoked: { label: 'Revoked', cls: 'bg-destructive/10 text-destructive border-destructive/30' },

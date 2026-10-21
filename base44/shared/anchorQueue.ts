@@ -120,7 +120,11 @@ export async function enqueueCredentialForAnchoring(svc: any, cred: any) {
 
     await svc.entities.Credential.update(cred.id, {
       anchor_status: 'pending',
-      blockchain: { ...(cred.blockchain || {}), status: 'pending', batch_ref: batch.batch_ref, queued_at: nowIsoStr },
+      // Pin the target network at enqueue so a pending credential resolves to
+      // the correct chain on the public page (resolveVerificationTarget reads
+      // blockchain.network), not the conservative Amoy default. The batch's own
+      // network field is the source of truth; this mirrors it onto the member.
+      blockchain: { ...(cred.blockchain || {}), status: 'pending', network: target, batch_ref: batch.batch_ref, queued_at: nowIsoStr },
       event_log: (cred.event_log || []).concat([{
         event: 'blockchain_queued', actor: 'system',
         note: `Anchoring queued — batch ${batch.batch_ref} on ${target}`,
