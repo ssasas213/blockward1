@@ -119,6 +119,7 @@ export async function previewRemediation(svc: any, opts: { batchRef: string; bwI
       target_status: 'ANCHOR_FAILED_PERMANENT',
       fields: { status: 'ANCHOR_FAILED_PERMANENT', anchor_claimed_by: null, anchor_claimed_at: null, last_error: 'synthetic confirmation detected — permanently quarantined for re-anchor', next_attempt_at: null },
       event: { event: 'synthetic_confirmation_detected', note: `Incident remediation: batch quarantined — transaction ${batch.transaction_hash} was not independently verified on-chain`, timestamp: nowIso() },
+      event_log: (batch.event_log || []).slice(-12),
       already_quarantined: alreadyQuarantined,
     },
     credential: {
@@ -129,12 +130,14 @@ export async function previewRemediation(svc: any, opts: { batchRef: string; bwI
         chain_check: null, anchor_claimed_by: null, anchor_claimed_at: null,
       },
       event: { event: 'synthetic_confirmation_cleared', note: 'Incident remediation: false Blockward Verified status removed — credential reverted to pending for re-anchoring', timestamp: nowIso() },
+      event_log: (cred.event_log || []).slice(-12),
       already_reverted: alreadyReverted,
     },
     achievement: achievement ? {
       id: achievement.id, current_status: achievement.status, target_status: 'issuer_confirmed',
       fields: { status: 'issuer_confirmed' },
       event: { event: 'verification_reverted_pending_reanchor', note: 'Incident remediation: Blockward Verified status reverted — awaiting genuine on-chain re-anchor', timestamp: nowIso() },
+      event_log: (achievement.event_log || []).slice(-12),
       already_reverted: achAlreadyReverted,
     } : null,
     reenqueue: { description: 'Credential re-enqueued into a new Merkle batch for a genuine on-chain anchor (fee-gated, no automatic broadcast)' },

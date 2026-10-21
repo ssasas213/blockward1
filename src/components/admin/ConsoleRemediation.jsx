@@ -5,17 +5,25 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
   Loader2, RefreshCw, ShieldAlert, AlertTriangle, CheckCircle2,
-  ArrowRight, Lock, FileWarning, Send,
+  ArrowRight, Lock, FileWarning, Send, XCircle, History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const INCIDENT = { batch_ref: 'AB-5FBCA1', bw_id: 'BW-H5CHBVHE' };
 
+// The functions axios client has interceptResponses:false, so invoke returns
+// the raw Axios response: res.data IS the body. On non-2xx Axios throws; the
+// thrown error carries the body at e.response.data.
+function extractError(e) {
+  return e?.response?.data?.error || e?.response?.data?.message || e?.message || 'Remediation preview failed';
+}
+
 /** Internal-admin remediation screen for the synthetic-confirmation incident.
- *  Loads the dry-run preview (no writes) and requires an explicit, acknowledged
+ *  Loads the dry-run preview (no writes) and requires explicit, acknowledged
  *  confirmation before execution. Server-side requireInternalAdmin is the gate. */
 export default function ConsoleRemediation() {
   const [preview, setPreview] = useState(null);
+  const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -24,15 +32,21 @@ export default function ConsoleRemediation() {
 
   const load = async () => {
     setLoading(true);
+    setError(null);
+    setPreview(null);
     setResult(null);
     setConfirming(false);
     setAcknowledged(false);
     try {
       const res = await base44.functions.invoke('remediateAnchorIncident', { approved: false });
-      if (res.data?.ok) setPreview(res.data.plan);
-      else toast.error(res.data?.error || 'Could not load remediation preview');
+      const body = res?.data;
+      if (!body) throw new Error('Empty response from remediation endpoint');
+      if (!body.ok) throw new Error(body.error || 'Remediation preview returned an error');
+      const plan = body.plan;
+      if (!plan || !plan.batch || !plan.credential) throw new Error('Remediation plan is incomplete — batch or credential missing');
+      setPreview(plan);
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Could not load remediation preview');
+      setError(extractError(e));
     } finally {
       setLoading(false);
     }
@@ -44,16 +58,17 @@ export default function ConsoleRemediation() {
     setExecuting(true);
     try {
       const res = await base44.functions.invoke('remediateAnchorIncident', { approved: true });
-      if (res.data?.ok) {
+      const body = res?.data;
+      if (body?.ok) {
         toast.success('Remediation applied — credential re-enqueued for a genuine anchor');
-        setResult(res.data.applied);
+        setResult(body.applied);
         setAcknowledged(false);
         setConfirming(false);
       } else {
-        toast.error(res.data?.error || 'Remediation failed');
+        throw new Error(body?.error || 'Remediation execution returned an error');
       }
     } catch (e) {
-      toast.error(e?.response?.data?.error || 'Remediation failed');
+      toast.error(extractError(e));
     } finally {
       setExecuting(false);
     }
@@ -64,7 +79,8 @@ export default function ConsoleRemediation() {
   }
 
   const plan = preview;
-  const alreadyApplied = plan?.batch?.already_quarantined && plan?.credential?.already_reverted && (!plan?.achievement || plan.achievement.already_reverted);
+  const planValid = !!(plan?.batch && plan?.credential);
+  const alreadyApplied = planValid && plan.batch.already_quarantined && plan.credential.already_reverted && (!plan.achievement || plan.achievement.already_reverted);
 
   return (
     <div className="space-y-6">
@@ -97,8 +113,24 @@ export default function ConsoleRemediation() {
         </CardContent>
       </Card>
 
+      {/* Explicit error state — never silently show "no plan" */}
+      {error && (
+        <Card className="surface-card border-destructive/40">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-destructive" />
+              <h2 className="text-sm font-semibold text-foreground">Remediation preview failed</h2>
+            </div>
+            <p className="text-sm text-destructive break-words">{error}</p>
+            <p className="text-xs text-tertiary">
+              The dry-run could not be loaded. The backend may be unreachable, the caller may lack internal-admin authority, or the incident records may have changed. No remediation can be executed until a valid preview is available.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Dry-run preview */}
-      {plan ? (
+      {planValid ? (
         <Card className="surface-card">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -117,6 +149,8 @@ export default function ConsoleRemediation() {
               to={plan.batch.target_status}
               already={plan.batch.already_quarantined}
               note="Permanently quarantined — never re-claimed or re-broadcast"
+              eventLog={plan.batch.event_log}
+              newEvent={plan.batch.event}
             />
             <PlanRow
               label="Credential"
@@ -125,6 +159,8 @@ export default function ConsoleRemediation() {
               to={plan.credential.target_anchor_status}
               already={plan.credential.already_reverted}
               note="False verified status cleared, stale chain_check removed"
+              eventLog={plan.credential.event_log}
+              newEvent={plan.credential.event}
             />
             {plan.achievement ? (
               <PlanRow
@@ -134,6 +170,8 @@ export default function ConsoleRemediation() {
                 to={plan.achievement.target_status}
                 already={plan.achievement.already_reverted}
                 note="Issuer confirmation is real; only the false blockchain-verified status is removed"
+                eventLog={plan.achievement.event_log}
+                newEvent={plan.achievement.event}
               />
             ) : (
               <div className="text-xs text-tertiary">Achievement record not linked — no achievement update.</div>
@@ -153,7 +191,9 @@ export default function ConsoleRemediation() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="surface-card"><CardContent className="py-8 text-center text-sm text-muted-foreground">No remediation plan available.</CardContent></Card>
+        !error && (
+          <Card className="surface-card"><CardContent className="py-8 text-center text-sm text-muted-foreground">No remediation plan available.</CardContent></Card>
+        )
       )}
 
       {/* Execution result */}
@@ -172,14 +212,14 @@ export default function ConsoleRemediation() {
         </Card>
       )}
 
-      {/* Execute controls */}
+      {/* Execute controls — disabled when the dry-run is unavailable, incomplete or invalid */}
       {!alreadyApplied && !result && (
         <Card className="surface-card">
           <CardContent className="p-5 space-y-4">
             {!confirming ? (
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm text-muted-foreground">Review the dry-run above before executing.</p>
-                <Button onClick={() => setConfirming(true)}>
+                <Button onClick={() => setConfirming(true)} disabled={!planValid || !!error}>
                   <Lock className="h-4 w-4" /> Approve &amp; execute
                 </Button>
               </div>
@@ -198,7 +238,7 @@ export default function ConsoleRemediation() {
                 </label>
                 <div className="flex items-center justify-end gap-2">
                   <Button variant="outline" onClick={() => { setConfirming(false); setAcknowledged(false); }}>Cancel</Button>
-                  <Button onClick={execute} disabled={!acknowledged || executing}>
+                  <Button onClick={execute} disabled={!acknowledged || executing || !planValid}>
                     {executing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Execute remediation
                   </Button>
                 </div>
@@ -211,7 +251,8 @@ export default function ConsoleRemediation() {
   );
 }
 
-function PlanRow({ label, refId, from, to, already, note }) {
+function PlanRow({ label, refId, from, to, already, note, eventLog, newEvent }) {
+  const log = Array.isArray(eventLog) ? eventLog : [];
   return (
     <div className="rounded-lg border border-border bg-secondary/20 p-3">
       <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -225,6 +266,26 @@ function PlanRow({ label, refId, from, to, already, note }) {
         <span className="px-1.5 py-0.5 rounded bg-primary/15 text-primary font-medium">{to || '—'}</span>
       </div>
       {note && <p className="text-xs text-tertiary mt-1">{note}</p>}
+      {/* New event that remediation will append */}
+      {newEvent && (
+        <div className="mt-2 rounded border border-primary/20 bg-primary/5 px-2 py-1.5 text-xs">
+          <span className="text-primary font-medium">+ {newEvent.event}</span>
+          {newEvent.note ? <span className="text-muted-foreground"> — {newEvent.note}</span> : null}
+        </div>
+      )}
+      {/* Existing audit history */}
+      {log.length > 0 && (
+        <div className="mt-2">
+          <p className="text-[11px] text-tertiary flex items-center gap-1 mb-1"><History className="h-3 w-3" /> Audit history ({log.length})</p>
+          <div className="space-y-0.5 max-h-40 overflow-y-auto pr-1">
+            {log.map((e, i) => (
+              <p key={i} className="text-[11px] text-muted-foreground">
+                <span className="text-tertiary">{new Date(e.timestamp).toISOString().slice(0, 16).replace('T', ' ')}</span> · {e.event}{e.note ? ` — ${e.note}` : ''}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
