@@ -93,6 +93,7 @@ export default async function (req: Request): Promise<Response> {
         if (from !== anchorLower) continue; // any outgoing tx from the anchor wallet
         const to = String(tx.to || '').toLowerCase();
         const input = String(tx.input || '').toLowerCase();
+        const inputNoPrefix = input.startsWith('0x') ? input.slice(2) : input;
         selfBatchTxs.push({
           hash: String(tx.hash),
           block_number: Number(block.number),
@@ -103,7 +104,7 @@ export default async function (req: Request): Promise<Response> {
           gas_price_wei: tx.gasPrice ? String(tx.gasPrice) : null,
           gas_price_gwei: tx.gasPrice ? Number(tx.gasPrice) / 1e9 : 0,
           input: String(tx.input || ''),
-          is_batch_calldata: input.startsWith(BATCH_PAYLOAD_PREFIX),
+          is_batch_calldata: inputNoPrefix.startsWith(BATCH_PAYLOAD_PREFIX),
           nonce: Number(tx.nonce || 0),
         });
       }
