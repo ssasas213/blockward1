@@ -26,7 +26,8 @@ const batchPayload = (root, n) => JSON.stringify({ v: 1, t: 'blockward-batch', h
 function fixtureCred(id, n) {
   return { id, bw_id: `BW-SEC${n}`, achievement_id: 'a' + n, holder_email: `h${n}@test.local`,
     title: `Security Test ${n}`, category: 'certification', description: 'synthetic',
-    date_achieved: '2026-01-01', hash_version: 1, anchor_status: 'verified', blockchain: {}, event_log: [] };
+    date_achieved: '2026-01-01', hash_version: 1, anchor_status: 'verified', blockchain: {}, event_log: [],
+    achievement_id: 'a1b2c3d4e5f6a7b8c9d0e1f2' }; // valid 24-hex ObjectId so finalizeBatch updates the achievement
 }
 const fixtureBatch = (over = {}) => ({
   id: 'b1', batch_ref: 'AB-SEC01', status: 'ANCHOR_PENDING', network: 'polygon_amoy',
@@ -114,7 +115,7 @@ function chainHarness(options = {}) {
       default: throw new Error('Forbidden RPC: ' + method);
     }
   } });
-  const viem = { http: () => ({}), createPublicClient: () => publicClient, defineChain: (x) => x, stringToHex: hex, isAddress: (x) => /^0x[0-9a-fA-F]{40}$/.test(x), getAddress: (x) => x };
+  const viem = { http: () => ({}), createPublicClient: () => publicClient, defineChain: (x) => x, parseAbi: (x) => x, stringToHex: hex, isAddress: (x) => /^0x[0-9a-fA-F]{40}$/.test(x), getAddress: (x) => x };
   const cache = {};
   function load(file) {
     if (cache[file]) return cache[file];
@@ -177,7 +178,7 @@ test('a broadcast whose receipt cannot be verified does not confirm', async () =
 test('a genuine independently verified receipt confirms', async () => {
   const { load } = queueHarness({ verifyResult: undefined });
   const q = load(QUEUE);
-  const svc = makeSvc({ batches: [fixtureBatch({ batch_ref: 'AB-S4' })], creds: [fixtureCred('c1', 1)], achievements: [{ id: 'a1', credential_id: 'c1', title: 'T' }] });
+  const svc = makeSvc({ batches: [fixtureBatch({ batch_ref: 'AB-S4' })], creds: [fixtureCred('c1', 1)], achievements: [{ id: 'a1b2c3d4e5f6a7b8c9d0e1f2', credential_id: 'c1', title: 'T' }] });
   const summary = await q.processAnchorQueue(svc);
   assert.equal(svc._db.AnchorBatch[0].status, 'ANCHOR_CONFIRMED');
   assert.equal(summary.confirmed, 1);
