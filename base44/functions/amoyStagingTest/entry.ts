@@ -33,11 +33,11 @@
 // Requires: AMOY_STAGING_PRIVATE_KEY, AMOY_STAGING_RPC_URL, AMOY_STAGING_ANCHOR_ADDRESS.
 // ============================================================================
 import { createClientFromRequest } from "npm:@base44/sdk";
-import { resolveAmoyStagingConfig, anchorStagingBatch, reconcileStagingReceipt, probeAmoyChainId, parseStagingBatchPayload, AMOY_STAGING_CHAIN_ID } from "../../shared/amoyStaging.ts";
+import { resolveAmoyStagingConfig, anchorStagingBatch, reconcileStagingReceipt, probeAmoyChainId, AMOY_STAGING_CHAIN_ID } from "../../shared/amoyStaging.ts";
 import { merkleRoot, merkleProof, verifyMerkleProof } from "../../shared/anchorMerkle.ts";
 import { computeCredentialHash } from "../../shared/credentialHash.ts";
-import { requireInternalAdmin } from "../../shared/internalAdmin.ts";
-import { isTestSuperUser } from "../../shared/testMode.ts";
+import { isInternalAdmin } from "../../shared/internalAdmin.ts";
+import { isTestModeEnabled } from "../../shared/testMode.ts";
 
 function iso() { return new Date().toISOString(); }
 function log(step: string, extra: Record<string, unknown> = {}) {
@@ -48,12 +48,15 @@ export async function POST(req: Request) {
   const headers = { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" };
   const body = await req.json().catch(() => ({}));
 
-  // Authorization — internal admin OR test super user.
-  const client = createClientFromRequest(req);
-  const adminEmail = await requireInternalAdmin(client).catch(() => null);
-  const isSuperUser = await isTestSuperUser(client).catch(() => false);
-  if (!adminEmail && !isSuperUser) {
-    return Response.json({ ok: false, error: "unauthorized" }, { status: 401, headers });
+  // Authorization — internal admin OR test mode enabled (matches anchorFlushValidation).
+  const base44 = createClientFromRequest(req);
+  const client = base44.asServiceRole;
+  let me: any = null;
+  try { me = await base44.auth.me(); } catch { me = null; }
+  const email = String(me?.email || '').trim().toLowerCase();
+  const isAdmin = !!me && (me.role === 'admin' || isInternalAdmin(email));
+  if (!isAdmin && !isTestModeEnabled()) {
+    return Response.json({ ok: false, error: "Internal admin or test mode required" }, { status: 403, headers });
   }
 
   const runIsolationChecks = body.isolation_checks !== false;
