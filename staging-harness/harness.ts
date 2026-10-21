@@ -13,6 +13,7 @@
 // database, workflows, and signing infrastructure.
 // ============================================================================
 
+import './lib/dotenv.ts'; // side-effect: loads .env into process.env (staging-only, never Base44 Secrets)
 import { resolveConfig, AMOY_CHAIN_ID } from './lib/config.ts';
 import {
   validateConfigPresent,

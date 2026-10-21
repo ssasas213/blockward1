@@ -35,13 +35,30 @@ no secret access.
 
 ## Setup
 
-```bash
-# 1. Copy the env template
-cp .env.example .env
+The harness reads staging secrets from a local `.env` file. Secrets never
+touch Base44 Secrets or the production database.
 
-# 2. Fill in the staging secrets (for a live run only)
-#    DO NOT use production credentials.
-#    Generate a new Amoy test key and fund it from the Amoy faucet.
+### Option A — Secure masked-entry tool (recommended)
+
+```bash
+# Interactive setup with masked input — characters appear as asterisks.
+# The private key is never displayed, logged, or echoed.
+npx --yes tsx scripts/configure.ts --setup
+
+# Read-only validation (no network, no sign, no broadcast):
+npx --yes tsx scripts/configure.ts --check
+
+# Read-only validation + live chain-ID probe (read-only RPC, no sign/broadcast):
+npx --yes tsx scripts/configure.ts --check --network
+```
+
+### Option B — Manual .env creation
+
+```bash
+cp .env.example .env
+# Edit .env with a text editor — set AMOY_STAGING_* values
+# DO NOT use production credentials. Generate a new Amoy test key and
+# fund it from the Amoy faucet.
 ```
 
 ## Usage

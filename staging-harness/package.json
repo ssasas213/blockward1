@@ -7,7 +7,9 @@
   "scripts": {
     "test": "npx --yes tsx tests/offline.test.ts",
     "dry-run": "npx --yes tsx harness.ts",
-    "live": "npx --yes tsx harness.ts --live"
+    "live": "npx --yes tsx harness.ts --live",
+    "configure": "npx --yes tsx scripts/configure.ts --setup",
+    "check": "npx --yes tsx scripts/configure.ts --check"
   },
   "dependencies": {
     "viem": "^2.7.0"
