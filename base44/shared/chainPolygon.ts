@@ -201,7 +201,7 @@ function parseBatchPayload(input: string): { root: string; memberCount: number }
 // commitment-only calldata. No entity writes here — the queue engine owns
 // state. A receipt that cannot be fetched is NOT an error: the transaction
 // hash is returned with receipt=null and the queue reconciles it later.
-export async function anchorBatchRoot(opts: { rootHex: string; memberCount: number }) {
+export async function anchorBatchRoot(opts: { rootHex: string; memberCount: number; target?: TargetNetwork }) {
   const log = (step: string, extra: Record<string, unknown> = {}) =>
     console.log(JSON.stringify({ fn: 'chainPolygon.batch', step, ...extra }));
   try {
@@ -211,9 +211,24 @@ export async function anchorBatchRoot(opts: { rootHex: string; memberCount: numb
     if (!/^[0-9a-f]{64}$/.test(rootHex)) return { ok: false, error: 'invalid_root' };
     if (!Number.isInteger(opts.memberCount) || opts.memberCount < 1) return { ok: false, error: 'invalid_member_count' };
 
-    const resolved = resolvePolygonTarget();
-    if ('unsupported' in resolved) return { ok: false, error: 'unsupported_network', value: resolved.value };
-    const target = resolved.target;
+    // NETWORK-PINNED (incident §1): the batch's own network field is the
+    // source of truth. When `target` is provided, it is honoured directly —
+    // the broadcaster never re-resolves from the global issuance selector
+    // (POLYGON_NETWORK / MAINNET_BROADCAST_ENABLED). A batch pinned to Amoy
+    // anchors on Amoy, period; a batch pinned to mainnet anchors on mainnet.
+    // This closes the root-cause hole: a synthetic Amoy batch could previously
+    // broadcast on mainnet because the broadcaster read the global env.
+    // All mainnet fail-closed guards (config, signer match, chain-id) still
+    // apply when target is polygon_mainnet. Backward compat: callers that
+    // omit target fall back to env resolution (unchanged behaviour).
+    let target: TargetNetwork;
+    if (opts.target === 'polygon_amoy' || opts.target === 'polygon_mainnet') {
+      target = opts.target;
+    } else {
+      const resolved = resolvePolygonTarget();
+      if ('unsupported' in resolved) return { ok: false, error: 'unsupported_network', value: resolved.value };
+      target = resolved.target;
+    }
     const cfg = resolvePolygonConfig(target);
 
     if (target === 'polygon_mainnet') {

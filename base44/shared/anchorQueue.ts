@@ -22,7 +22,16 @@
 import { createPublicClient, http } from 'npm:viem@2.7.0';
 import { merkleRoot, merkleProof, verifyMerkleProof } from './anchorMerkle.ts';
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from './credentialHash.ts';
-import { anchorBatchRoot, resolvePolygonTarget, resolvePolygonConfig, BATCH_ANCHOR_VERSION } from './chainPolygon.ts';
+import { anchorBatchRoot, resolvePolygonTarget, resolvePolygonConfig, BATCH_ANCHOR_VERSION, type TargetNetwork } from './chainPolygon.ts';
+
+// ── Broadcaster dependency injection (incident §4/§5) ─────────────────────────
+// Production uses the real anchorBatchRoot (network-pinned to the batch's own
+// network). A test-injected mock never signs and never touches an RPC — it
+// returns a deterministic confirmed result so the finalize/proof path runs
+// end-to-end without any possibility of a production broadcast. This is the
+// PERMANENT SEPARATION between test execution and production broadcasting.
+export type BatchBroadcaster = (opts: { rootHex: string; memberCount: number; target: TargetNetwork }) => Promise<any>;
+const defaultBroadcaster: BatchBroadcaster = async (o) => anchorBatchRoot(o);
 import { verificationBindings } from './chainVerification.ts';
 import {
   resolveAnchorPolicy, estimateBatchGas, gweiToWeiPerGas, weiToPol, weiToUsd,
@@ -142,8 +151,9 @@ export async function enqueueCredentialForAnchoring(svc: any, cred: any) {
 }
 
 // ── WORKER ───────────────────────────────────────────────────────────────────
-export async function processAnchorQueue(svc: any, opts: { forceBatchRef?: string | null } = {}) {
+export async function processAnchorQueue(svc: any, opts: { forceBatchRef?: string | null; broadcaster?: BatchBroadcaster } = {}) {
   const policy = resolveAnchorPolicy();
+  const broadcaster = opts.broadcaster; // undefined = production (real broadcaster + fee gate)
   const summary: any = {
     reconciled: 0, confirmed: 0, fee_holds: 0, fee_released: 0,
     escalated: 0, critical: 0, attempted: 0, recovered: 0, errors: [],
@@ -227,7 +237,7 @@ export async function processAnchorQueue(svc: any, opts: { forceBatchRef?: strin
       return full || windowDue || !!b.escalated_at;
     });
     for (const batch of due) {
-      try { await attemptBatch(svc, batch, policy, summary); } catch (e) {
+      try { await attemptBatch(svc, batch, policy, summary, broadcaster); } catch (e) {
         summary.errors.push(`attempt ${batch.batch_ref}: ${String(e?.message || e).slice(0, 120)}`);
       }
     }
@@ -247,7 +257,7 @@ export async function processAnchorQueue(svc: any, opts: { forceBatchRef?: strin
 }
 
 // ── ONE BATCH ATTEMPT ────────────────────────────────────────────────────────
-async function attemptBatch(svc: any, batch: any, policy: any, summary: any) {
+async function attemptBatch(svc: any, batch: any, policy: any, summary: any, broadcaster?: BatchBroadcaster) {
   // Claim — conditional transition so concurrent workers never double-anchor.
   const myClaim = crypto.randomUUID();
   await svc.entities.AnchorBatch.updateMany(
@@ -327,41 +337,56 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any) {
   const payload = JSON.stringify({ v: 1, t: 'blockward-batch', hv: CREDENTIAL_HASH_VERSION, n: leaves.length, r: root });
   const gasUnits = estimateBatchGas(payload, policy);
 
-  const cfg = resolvePolygonConfig(batch.network === 'polygon_mainnet' ? 'polygon_mainnet' : 'polygon_amoy');
-  let maxFeeWei: bigint | null = null;
-  let price = { usd: policy.fallbackPolUsd, source: 'fallback_estimate' };
-  try {
-    const pub = createPublicClient({ chain: (cfg as any).chain, transport: http(cfg.rpc as string) });
-    const gasPrice = await pub.getGasPrice().catch(() => null);
-    if (gasPrice) maxFeeWei = (BigInt(gasPrice) * 125n) / 100n; // 25% headroom
-    price = await polUsdPrice();
-  } catch { /* fall back to ceiling-based gate below */ }
-  const gate = feeDecision(gasUnits, maxFeeWei ?? gweiToWeiPerGas(policy.maxFeeGwei), price.usd, policy);
+  // NETWORK-PINNED (incident §1): the batch's own network field is the
+  // authoritative target. The broadcaster (real or mock) receives it so a
+  // batch pinned to Amoy can NEVER broadcast on mainnet, regardless of the
+  // global issuance selector.
+  const batchTarget: TargetNetwork = batch.network === 'polygon_mainnet' ? 'polygon_mainnet' : 'polygon_amoy';
+  // The broadcaster: production uses the real anchorBatchRoot (network-pinned).
+  // A test-injected mock never signs — it is the permanent separation.
+  const send: BatchBroadcaster = broadcaster || defaultBroadcaster;
 
-  if (!gate.allowed && !(batch.escalated_at && gate.estUsd <= policy.absoluteMaxCostUsd && gate.reason === 'batch_budget_exceeded')) {
-    // ANCHOR_PENDING_FEE — the verified credential is PRESERVED; administrators
-    // are notified (deduped) and the batch is retried when fees fall.
-    const lastNotify = batch.fee_hold_notified_at ? Date.now() - new Date(batch.fee_hold_notified_at).getTime() : Infinity;
-    await release({
-      status: 'ANCHOR_PENDING_FEE',
-      estimated_fee_wei: String(gate.estFeeWei),
-      next_attempt_at: new Date(Date.now() + 5 * 60000).toISOString(),
-      last_error: `fee gate: ${gate.reason} (est. $${gate.estUsd})`,
-      fee_hold_notified_at: lastNotify > 6 * 3600 * 1000 ? nowIso() : batch.fee_hold_notified_at,
-      event_log: pushBatchEvent(batch.event_log, 'fee_hold', `${gate.reason} — est. $${gate.estUsd} / batch`),
-    });
-    if (lastNotify > 6 * 3600 * 1000) {
-      await notifyAnchorAdmins(svc, 'Anchoring paused by gas policy',
-        `Batch ${batch.batch_ref} (${batch.member_count} credentials) is fee-gated: ${gate.reason}, estimated $${gate.estUsd} per batch (budget $${policy.maxBatchCostUsd}). Credentials are safe; anchoring resumes automatically when fees allow.`,
-        'anchor_fee_hold', 'normal');
+  // Fee gate — PRODUCTION ONLY (broadcaster undefined). A mock broadcaster
+  // skips it: no real gas is spent, so the gas-price ceiling cannot block a
+  // deterministic test. The mock returns a confirmed result directly.
+  let price = { usd: policy.fallbackPolUsd, source: 'fallback_estimate' as string };
+  if (!broadcaster) {
+    const cfg = resolvePolygonConfig(batchTarget);
+    let maxFeeWei: bigint | null = null;
+    try {
+      const pub = createPublicClient({ chain: (cfg as any).chain, transport: http(cfg.rpc as string) });
+      const gasPrice = await pub.getGasPrice().catch(() => null);
+      if (gasPrice) maxFeeWei = (BigInt(gasPrice) * 125n) / 100n; // 25% headroom
+      price = await polUsdPrice();
+    } catch { /* fall back to ceiling-based gate below */ }
+    const gate = feeDecision(gasUnits, maxFeeWei ?? gweiToWeiPerGas(policy.maxFeeGwei), price.usd, policy);
+
+    if (!gate.allowed && !(batch.escalated_at && gate.estUsd <= policy.absoluteMaxCostUsd && gate.reason === 'batch_budget_exceeded')) {
+      // ANCHOR_PENDING_FEE — the verified credential is PRESERVED; administrators
+      // are notified (deduped) and the batch is retried when fees fall.
+      const lastNotify = batch.fee_hold_notified_at ? Date.now() - new Date(batch.fee_hold_notified_at).getTime() : Infinity;
+      await release({
+        status: 'ANCHOR_PENDING_FEE',
+        estimated_fee_wei: String(gate.estFeeWei),
+        next_attempt_at: new Date(Date.now() + 5 * 60000).toISOString(),
+        last_error: `fee gate: ${gate.reason} (est. $${gate.estUsd})`,
+        fee_hold_notified_at: lastNotify > 6 * 3600 * 1000 ? nowIso() : batch.fee_hold_notified_at,
+        event_log: pushBatchEvent(batch.event_log, 'fee_hold', `${gate.reason} — est. $${gate.estUsd} / batch`),
+      });
+      if (lastNotify > 6 * 3600 * 1000) {
+        await notifyAnchorAdmins(svc, 'Anchoring paused by gas policy',
+          `Batch ${batch.batch_ref} (${batch.member_count} credentials) is fee-gated: ${gate.reason}, estimated $${gate.estUsd} per batch (budget $${policy.maxBatchCostUsd}). Credentials are safe; anchoring resumes automatically when fees allow.`,
+          'anchor_fee_hold', 'normal');
+      }
+      summary.fee_holds++;
+      return;
     }
-    summary.fee_holds++;
-    return;
   }
 
   // Broadcast — the guards (config, signer, chain-id, zero value, commitment-
-  // only payload) all live inside anchorBatchRoot.
-  const sent = await anchorBatchRoot({ rootHex: root, memberCount: leaves.length });
+  // only payload) all live inside anchorBatchRoot. The batch's pinned network
+  // is passed through; a mock never reaches those guards.
+  const sent = await send({ rootHex: root, memberCount: leaves.length, target: batchTarget });
   if (!sent.ok) {
     const permanent = ['mainnet_config_missing', 'signer_address_mismatch', 'unsupported_network', 'invalid_root', 'invalid_member_count', 'missing_issuer_key'].includes(sent.error);
     await fail(permanent, sent.error + (sent.missing ? `: ${sent.missing.join(', ')}` : ''));

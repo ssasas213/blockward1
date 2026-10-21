@@ -5,23 +5,29 @@
 // fee-hold safety and recovery — WITHOUT touching production broadcasting,
 // gas ceilings or secrets.
 //
-// SAFETY (hard guarantees, enforced here):
-//   • No mainnet transaction is EVER possible from this harness.
-//     1. Every synthetic batch (except the one guarded live-broadcast scenario)
-//        uses NON-EXISTENT member ids, so attemptBatch hits 'no_valid_members'
-//        and returns BEFORE anchorBatchRoot (the broadcaster) is ever called.
-//     2. The harness NEVER calls the no-force scheduled worker
-//        (processAnchorQueue(svc, {})) — only targeted forceBatchRef calls.
-//     3. The one live-broadcast scenario is guarded by resolvePolygonTarget():
-//        it proceeds ONLY on polygon_amoy (testnet, free). A mainnet target is
-//        reported NOT TESTED. MAINNET_BROADCAST_ENABLED / POLYGON_NETWORK are
-//        NEVER read for modification and NEVER modified.
+// SAFETY (permanent separation — incident §4/§5/§6):
+//   • MOCK BROADCASTER: every scenario injects a mock broadcaster into
+//     processAnchorQueue. The mock NEVER signs, NEVER reads an RPC, NEVER
+//     touches a production secret. It returns a deterministic confirmed
+//     result on the batch's PINNED network. The production signing path
+//     (anchorBatchRoot → privateKeyToAccount → sendTransaction) is unreachable
+//     from scenarios 1-7 and 8a, even when MAINNET_BROADCAST_ENABLED is true
+//     and POLYGON_NETWORK is polygon_mainnet.
+//   • NETWORK-PINNED: the broadcaster receives the batch's own network field
+//     (§1). A batch pinned to polygon_amoy can NEVER broadcast on mainnet.
+//   • EXPLICIT CONSENT (§7): the ONLY live-broadcast scenario (8b) requires
+//     BOTH body.liveBroadcastConsent === true AND an Amoy target. Consent is
+//     never inferred from env, test mode or admin role. Without it, 8b is
+//     NOT TESTED and no mainnet transaction is possible.
+//   • Defence in depth: scenarios 2/4/5/6/7 use NON-EXISTENT member ids, so
+//     attemptBatch hits 'no_valid_members' BEFORE any broadcaster (mock or
+//     real) is ever called.
 //   • All synthetic records carry a BW-VAL-* marker and are deleted in finally.
 //   • Gas ceilings ($3/$5, 200 Gwei) and all secrets are untouched.
 //
 // Auth: a signed-in Blockward internal/admin OR test mode enabled.
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { processAnchorQueue } from '../../shared/anchorQueue.ts';
+import { processAnchorQueue, type BatchBroadcaster } from '../../shared/anchorQueue.ts';
 import { resolveAnchorPolicy } from '../../shared/anchorGasPolicy.ts';
 import { computeCredentialHash, CREDENTIAL_HASH_VERSION } from '../../shared/credentialHash.ts';
 import { merkleRoot, merkleProof, verifyMerkleProof } from '../../shared/anchorMerkle.ts';
@@ -54,6 +60,11 @@ export default async function (req: Request): Promise<Response> {
 
     const body = await req.json().catch(() => ({}));
     const count = Math.max(1, Math.min(Number(body.count) || 5, 20));
+    // Explicit production authorisation boundary (incident §7): the ONLY live
+    // broadcast scenario requires this literal opt-in AND an Amoy target. It is
+    // never inferred from env, test mode or admin role. Default false = no live
+    // broadcast is ever possible.
+    const liveBroadcastConsent = body.liveBroadcastConsent === true;
 
     const policy = resolveAnchorPolicy();
     const resolved = resolvePolygonTarget();
@@ -62,7 +73,33 @@ export default async function (req: Request): Promise<Response> {
     const createdCreds: string[] = [];
     const createdBatches: string[] = [];
     const txHashes: string[] = [];
+    const mockCalls: any[] = [];
     const marker = 'BW-VAL-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+
+    // ── MOCK BROADCASTER (incident §4/§5/§6) ──────────────────────────────────
+    // The permanent separation: every harness scenario injects this mock into
+    // processAnchorQueue. It NEVER signs, NEVER reads an RPC, NEVER touches a
+    // production secret. It returns a deterministic confirmed result on the
+    // batch's PINNED network so the finalize/proof path runs end-to-end. The
+    // production signing path (anchorBatchRoot → privateKeyToAccount →
+    // sendTransaction) is unreachable from this harness, even when
+    // MAINNET_BROADCAST_ENABLED is true and POLYGON_NETWORK is polygon_mainnet.
+    const mockBroadcaster: BatchBroadcaster = async ({ rootHex, memberCount, target }) => {
+      mockCalls.push({ rootHex: rootHex.slice(0, 16), memberCount, target, at: iso() });
+      return {
+        ok: true,
+        transaction_hash: '0x' + (rootHex.slice(0, 8) + '0'.repeat(56)),
+        block_number: 12345678,
+        block_timestamp: new Date().toISOString(),
+        gas_used: 26000,
+        effective_gas_price_wei: String(1000000000n),
+        network: target === 'polygon_mainnet' ? 'polygon' : 'polygon_amoy',
+        chain_id: target === 'polygon_mainnet' ? 137 : 80002,
+        testnet: target !== 'polygon_mainnet',
+        mocked: true,
+      };
+    };
+
     // Non-existent member ids in valid ObjectId format (24 hex) so the
     // Credential.filter query returns empty (not an error), and attemptBatch
     // returns 'no_valid_members' BEFORE the broadcaster runs.
@@ -187,7 +224,7 @@ export default async function (req: Request): Promise<Response> {
           close_at: iso(),
           member_count: 1,
         });
-        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref });
+        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref, broadcaster: mockBroadcaster });
         const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
         const b = (after?.items || after || [])[0];
         const pass = b && b.status === 'ANCHOR_PROCESSING' && b.anchor_claimed_by === claimA && !b.transaction_hash;
@@ -209,7 +246,7 @@ export default async function (req: Request): Promise<Response> {
           close_at: iso(),
           member_count: 1,
         });
-        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref });
+        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref, broadcaster: mockBroadcaster });
         const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
         const b = (after?.items || after || [])[0];
         const pass = b?.status === 'ANCHOR_CONFIRMED' && b?.transaction_hash === existingTx;
@@ -232,7 +269,7 @@ export default async function (req: Request): Promise<Response> {
           last_error: 'fee gate: fee_ceiling_gwei (synthetic)',
           member_count: 1,
         });
-        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref });
+        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref, broadcaster: mockBroadcaster });
         const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
         const b = (after?.items || after || [])[0];
         const released = hasEvent(b, 'fee_released') && b?.status !== 'ANCHOR_PENDING_FEE';
@@ -255,7 +292,7 @@ export default async function (req: Request): Promise<Response> {
           close_at: iso(),
           member_count: 1,
         });
-        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref });
+        await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref, broadcaster: mockBroadcaster });
         const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
         const b = (after?.items || after || [])[0];
         const recovered = b && b.status !== 'ANCHOR_PROCESSING'
@@ -265,18 +302,60 @@ export default async function (req: Request): Promise<Response> {
           `batch ${batch.batch_ref} recovered → ${b?.status}; claim cleared=${b?.anchor_claimed_by !== staleClaim}; retry_scheduled event=${hasEvent(b, 'retry_scheduled')}`));
       }
 
-      // ── Scenario 8: measured approval → blockchain confirmation ────────────
-      // The ONLY live-broadcast scenario. Guarded: proceeds ONLY on an Amoy
-      // target (testnet, free). A mainnet target → NOT TESTED (no real-money tx).
+      // ── Scenario 8a: mock broadcaster proves finalize + Merkle proof (NO signing) ─
+      // A broadcastable batch (real credential member) is driven through the
+      // queue with the MOCK broadcaster. The mock returns a deterministic
+      // confirmed result on the batch's pinned network; finalizeBatch runs,
+      // computes the inclusion proof and verifies it. The production signing
+      // path (anchorBatchRoot) is never reached. This proves the end-to-end
+      // finalize/proof machinery without any possibility of a broadcast.
       {
         const t0 = now();
-        if (!amoyActive) {
-          const reason = 'unsupported' in resolved ? resolved.value : `target=${resolved.target}`;
-          results.push(r('8. measured approval → blockchain confirmation',
+        const cred = await makeCred(50);
+        const batch = await makeBatch({
+          member_ids: [cred.id], // REAL member — broadcastable, but mock never signs
+          member_count: 1,
+          status: 'ANCHOR_PENDING',
+          close_at: new Date(t0 - 1000).toISOString(),
+          created_at: iso(),
+        });
+        const summary = await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref, broadcaster: mockBroadcaster });
+        const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
+        const b = (after?.items || after || [])[0];
+        const credAfter = await svc.entities.Credential.filter({ id: cred.id }, { limit: 1 });
+        const c = (credAfter?.items || credAfter || [])[0];
+        const proofOk = c?.blockchain?.merkle_proof ? await verifyMerkleProof(
+          await computeCredentialHash({
+            verification_id: c.bw_id, version: CREDENTIAL_HASH_VERSION,
+            achievement_title: c.title, achievement_category: c.category,
+            achievement_description: c.description || '', date_achieved: c.date_achieved,
+          }),
+          c.blockchain.merkle_proof, b?.merkle_root,
+        ) : false;
+        const mockUsed = mockCalls.some((m) => m.target === 'polygon_amoy');
+        const pass = b?.status === 'ANCHOR_CONFIRMED' && proofOk && mockUsed && !b.transaction_hash?.startsWith('0x0000');
+        results.push(r('8a. mock broadcaster proves finalize + Merkle proof (no signing)',
+          pass ? 'PASS' : 'FAIL', now() - t0,
+          `batch ${batch.batch_ref} CONFIRMED via mock; merkle proof verified=${proofOk}; mock called=${mockUsed}; mock tx=${b?.transaction_hash?.slice(0, 18) || 'none'}…`));
+      }
+
+      // ── Scenario 8b: live broadcast (EXPLICIT CONSENT + Amoy only) ──────────
+      // The ONLY scenario that can reach the real broadcaster. Requires BOTH:
+      //   1. body.liveBroadcastConsent === true (explicit opt-in, never inferred)
+      //   2. resolvePolygonTarget() === polygon_amoy (free testnet)
+      // A mainnet target OR absent consent → NOT TESTED. No mainnet transaction
+      // is ever possible from this scenario, regardless of env or admin role.
+      {
+        const t0 = now();
+        if (!amoyActive || !liveBroadcastConsent) {
+          const reason = !amoyActive
+            ? ('unsupported' in resolved ? resolved.value : `target=${resolved.target}`)
+            : 'liveBroadcastConsent not set';
+          results.push(r('8b. live broadcast (explicit consent + Amoy only)',
             'NOT TESTED', null,
-            `resolvePolygonTarget() = ${reason} — live broadcast skipped to guarantee no mainnet transaction. Set POLYGON_NETWORK=polygon_amoy (without changing MAINNET_BROADCAST_ENABLED) to measure live Amoy latency.`));
+            `Skipped — ${reason}. Pass { liveBroadcastConsent: true } AND set POLYGON_NETWORK=polygon_amoy (without changing MAINNET_BROADCAST_ENABLED) to measure live Amoy latency.`));
         } else {
-          const cred = await makeCred(50);
+          const cred = await makeCred(51);
           const tCreate = now();
           const batch = await makeBatch({
             member_ids: [cred.id], // REAL member — broadcastable on Amoy only
@@ -285,6 +364,8 @@ export default async function (req: Request): Promise<Response> {
             close_at: new Date(t0 - 1000).toISOString(),
             created_at: iso(),
           });
+          // No broadcaster injected → production path (real anchorBatchRoot,
+          // network-pinned to the batch's own Amoy network field).
           const summary = await processAnchorQueue(svc, { forceBatchRef: batch.batch_ref });
           const after = await svc.entities.AnchorBatch.filter({ id: batch.id }, { limit: 1 });
           const b = (after?.items || after || [])[0];
@@ -301,18 +382,18 @@ export default async function (req: Request): Promise<Response> {
               }),
               c.blockchain.merkle_proof, b.merkle_root,
             ) : false;
-            results.push(r('8. measured approval → blockchain confirmation',
+            results.push(r('8b. live broadcast (explicit consent + Amoy only)',
               proofOk ? 'PASS' : 'FAIL', totalMs,
-              `batch ${batch.batch_ref} CONFIRMED on Amoy; tx=${b.transaction_hash.slice(0, 18)}…; merkle proof verified=${proofOk}; summary=${JSON.stringify(summary)}`));
+              `batch ${batch.batch_ref} CONFIRMED on Amoy; tx=${b.transaction_hash.slice(0, 18)}…; merkle proof verified=${proofOk}`));
           } else if (b?.status === 'ANCHOR_SUBMITTED' && b?.transaction_hash) {
             txHashes.push(b.transaction_hash);
-            results.push(r('8. measured approval → blockchain confirmation',
+            results.push(r('8b. live broadcast (explicit consent + Amoy only)',
               'PASS', totalMs,
               `batch ${batch.batch_ref} SUBMITTED (tx=${b.transaction_hash.slice(0, 18)}…) — receipt pending, reconciled on next tick; broadcast latency ${totalMs}ms.`));
           } else {
-            results.push(r('8. measured approval → blockchain confirmation',
+            results.push(r('8b. live broadcast (explicit consent + Amoy only)',
               'NOT TESTED', totalMs,
-              `batch ${batch.batch_ref} ended ${b?.status} — last_error=${(b?.last_error || '').slice(0, 100)}; summary=${JSON.stringify(summary)}.`));
+              `batch ${batch.batch_ref} ended ${b?.status} — last_error=${(b?.last_error || '').slice(0, 100)}`));
           }
         }
       }
@@ -321,21 +402,22 @@ export default async function (req: Request): Promise<Response> {
       {
         const s1 = results.find((x) => x.scenario.startsWith('1.'));
         const s2 = results.find((x) => x.scenario.startsWith('2.'));
-        const s8 = results.find((x) => x.scenario.startsWith('8.'));
+        const s8a = results.find((x) => x.scenario.startsWith('8a.'));
+        const s8b = results.find((x) => x.scenario.startsWith('8b.'));
         const deterministicBudgetMs = 3000 + 1000 + 4000;
-        const measured = s8?.latency_ms != null ? s8.latency_ms : null;
-        const logicPass = s1?.status === 'PASS' && s2?.status === 'PASS';
+        const measured = s8b?.latency_ms != null ? s8b.latency_ms : null;
+        const logicPass = s1?.status === 'PASS' && s2?.status === 'PASS' && s8a?.status === 'PASS';
         let status: 'PASS' | 'FAIL' | 'NOT TESTED' = 'NOT TESTED';
         let detail = '';
         if (logicPass && measured != null) {
           status = measured < 60000 ? 'PASS' : 'FAIL';
-          detail = `measured ${measured}ms < 60000ms target (Amoy live broadcast).`;
+          detail = `measured ${measured}ms < 60000ms target (Amoy live broadcast, scenario 8b).`;
         } else if (logicPass) {
           status = 'PASS';
-          detail = `logic PASS; deterministic budget ${deterministicBudgetMs}ms ≪ 60000ms. Live broadcast not measured (env not Amoy); the budget holds under normal Polygon conditions when gas ≤ 160 Gwei (proposed ≤ 200 ceiling).`;
+          detail = `logic PASS (incl. 8a mock finalize); deterministic budget ${deterministicBudgetMs}ms ≪ 60000ms. Live broadcast not measured (8b not run — env not Amoy or consent not given); the budget holds under normal Polygon conditions when gas ≤ 160 Gwei (proposed ≤ 200 ceiling).`;
         } else {
           status = 'FAIL';
-          detail = 'deterministic debounce/logic checks failed — target not achievable until fixed.';
+          detail = 'deterministic debounce/logic/mock-finalize checks failed — target not achievable until fixed.';
         }
         results.push(r('9. sub-60s target realistic', status, null, detail));
       }
@@ -345,13 +427,13 @@ export default async function (req: Request): Promise<Response> {
         const logic = results.filter((x) => !x.scenario.startsWith('9.') && !x.scenario.startsWith('10.'));
         const testedLogic = logic.filter((x) => x.status === 'PASS' || x.status === 'FAIL');
         const allLogicPass = testedLogic.length > 0 && testedLogic.every((x) => x.status === 'PASS');
-        const s8 = results.find((x) => x.scenario.startsWith('8.'));
-        const liveOk = s8?.status === 'PASS';
-        const liveUntested = s8?.status === 'NOT TESTED';
+        const s8b = results.find((x) => x.scenario.startsWith('8b.'));
+        const liveOk = s8b?.status === 'PASS';
+        const liveUntested = s8b?.status === 'NOT TESTED';
         const verdict = allLogicPass && (liveOk || liveUntested);
         results.push(r('10. production readiness verdict',
           verdict ? 'PASS' : 'FAIL', null,
-          `Logic/idempotency/safety: ${allLogicPass ? 'all PASS' : 'has FAIL'}. Live Amoy broadcast: ${liveOk ? 'PASS' : 'NOT TESTED'}. Verdict: ${verdict ? 'READY to activate ANCHOR_FLUSH_DEBOUNCE_SECONDS=3 + the Anchor Batch Flush workflow on a Polygon Amoy target (no mainnet transaction). The 5-min scheduled worker remains the recovery mechanism.' : 'NOT READY — resolve failing scenarios before activation.'}`));
+          `Logic/idempotency/safety: ${allLogicPass ? 'all PASS' : 'has FAIL'}. Live Amoy broadcast (8b): ${liveOk ? 'PASS' : 'NOT TESTED'}. Verdict: ${verdict ? 'READY to activate ANCHOR_FLUSH_DEBOUNCE_SECONDS=3 + the Anchor Batch Flush workflow on a Polygon Amoy target (no mainnet transaction). The 5-min scheduled worker remains the recovery mechanism.' : 'NOT READY — resolve failing scenarios before activation.'}`));
       }
     } finally {
       // ── Cleanup: delete every synthetic record (best-effort, parallel) ────
@@ -373,6 +455,10 @@ export default async function (req: Request): Promise<Response> {
         absoluteMaxCostUsd: policy.absoluteMaxCostUsd,
       },
       mainnet_broadcast_unchanged: true,
+      live_broadcast_consent: liveBroadcastConsent,
+      production_broadcast_calls: txHashes.length, // 0 unless 8b ran on Amoy with consent
+      mock_broadcaster_calls: mockCalls.length,
+      mock_broadcaster_targets: [...new Set(mockCalls.map((m) => m.target))],
       results,
       tx_hashes: txHashes,
     });
