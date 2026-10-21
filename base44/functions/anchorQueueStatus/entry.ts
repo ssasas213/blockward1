@@ -107,6 +107,10 @@ export default async function (req: Request): Promise<Response> {
       signer_key_configured: !!cfgMain.signingKey,
     };
 
+    // ── Gas-fee monitoring (read-only) — observations, hypothetical ceiling
+    //    comparison, fee-held batch age + next retry, confirmation latency. ──
+    const gasMonitor = await buildGasMonitorData(svc, policy);
+
     return Response.json({
       ok: true,
       counts,
@@ -131,8 +135,106 @@ export default async function (req: Request): Promise<Response> {
       pol_price: price,
       volume_projection: projection,
       mainnet_readiness: readiness,
+      gas_monitor: gasMonitor,
     });
   } catch (e) {
     return Response.json({ ok: false, error: e?.message || 'Queue status failed' }, { status: 500 });
+  }
+}
+
+function median(values: number[]): number | null {
+  const v = values.filter((x) => Number.isFinite(x));
+  if (!v.length) return null;
+  const s = [...v].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+}
+
+// Read-only gas-fee monitoring aggregation for the admin dashboard. Pulls
+// recorded GasFeeObservation rows, computes the live-vs-hypothetical ceiling
+// comparison from real observations, fee-held batch age + next retry, and
+// approval→confirmation latency from recently confirmed batches. Performs no
+// writes and no transactions.
+async function buildGasMonitorData(svc: any, policy: any) {
+  try {
+    const obsRows = await svc.entities.GasFeeObservation.filter({}, { sort: '-observed_at', limit: 50 }).catch(() => null);
+    const obsList = (obsRows?.items || obsRows || []) as any[];
+    const observations = obsList.map((o) => ({
+      observed_at: o.observed_at,
+      eth_gas_price_gwei: o.eth_gas_price_gwei,
+      proposed_max_fee_per_gas_gwei: o.proposed_max_fee_per_gas_gwei,
+      estimated_fee_pol: o.estimated_fee_pol,
+      estimated_fee_usd: o.estimated_fee_usd,
+      live_decision_allowed: o.live_decision_allowed,
+      live_decision_reason: o.live_decision_reason,
+      note: o.note,
+    }));
+    const withCeilings = obsList.filter((o) => Array.isArray(o.hypothetical_ceilings) && o.hypothetical_ceilings.length);
+    const ceilingComparison = [200, 400, 500, 600, 800].map((gwei) => {
+      const matches = withCeilings.flatMap((o) => (o.hypothetical_ceilings as any[]).filter((h) => h.ceiling_gwei === gwei));
+      const pass = matches.filter((m) => m.allowed).length;
+      const costs = matches.map((m) => Number(m.est_fee_usd)).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+      const med = costs.length ? costs[Math.floor(costs.length / 2)] : null;
+      return { ceiling_gwei: gwei, pass, total: matches.length, pass_rate: matches.length ? pass / matches.length : 0, median_est_fee_usd: med };
+    });
+    const sampleTo = observations[0]?.observed_at || null;
+    const sampleFrom = observations[observations.length - 1]?.observed_at || null;
+
+    const feeHeldRows = await svc.entities.AnchorBatch.filter({ status: 'ANCHOR_PENDING_FEE' }, { sort: 'created_date', limit: 50 }).catch(() => null);
+    const feeHeldBatches = ((feeHeldRows?.items || feeHeldRows || []) as any[]).map((b) => ({
+      batch_ref: b.batch_ref,
+      member_count: b.member_count,
+      age_minutes: b.created_at ? (Date.now() - new Date(b.created_at).getTime()) / 60000 : null,
+      next_attempt_at: b.next_attempt_at || null,
+      fee_hold_age_alerted_at: b.fee_hold_age_alerted_at || null,
+    }));
+
+    // Latency from recently confirmed batches + their first member credential.
+    const confirmedRows = await svc.entities.AnchorBatch.filter({ status: 'ANCHOR_CONFIRMED' }, { sort: '-confirmed_at', limit: 10 }).catch(() => null);
+    const confirmed = (confirmedRows?.items || confirmedRows || []) as any[];
+    const firstMemberIds = confirmed.map((b) => (b.member_ids || [])[0]).filter(Boolean);
+    const credMap = new Map<string, any>();
+    if (firstMemberIds.length) {
+      const cr = await svc.entities.Credential.filter({ id: { $in: firstMemberIds } }, { limit: 20, fields: ['id', 'verified_at', 'blockchain'] }).catch(() => null);
+      for (const c of ((cr?.items || cr || []) as any[])) credMap.set(c.id, c);
+    }
+    const aq: number[] = [], qs: number[] = [], sc: number[] = [], tot: number[] = [];
+    for (const b of confirmed) {
+      const submittedAt = b.event_log?.find?.((e: any) => e.event === 'submitted')?.timestamp || null;
+      const confirmedAt = b.confirmed_at || null;
+      const cred = credMap.get((b.member_ids || [])[0]);
+      const queuedAt = cred?.blockchain?.queued_at || null;
+      const verifiedAt = cred?.verified_at || null;
+      if (verifiedAt && queuedAt) aq.push((new Date(queuedAt).getTime() - new Date(verifiedAt).getTime()) / 60000);
+      if (queuedAt && submittedAt) qs.push((new Date(submittedAt).getTime() - new Date(queuedAt).getTime()) / 60000);
+      if (submittedAt && confirmedAt) sc.push((new Date(confirmedAt).getTime() - new Date(submittedAt).getTime()) / 60000);
+      if (verifiedAt && confirmedAt) tot.push((new Date(confirmedAt).getTime() - new Date(verifiedAt).getTime()) / 60000);
+    }
+    const latency = {
+      approval_to_queue_median: median(aq),
+      queue_to_submit_median: median(qs),
+      submit_to_confirm_median: median(sc),
+      total_median: median(tot),
+      sample_size: confirmed.length,
+    };
+
+    const recentRows = await svc.entities.AnchorBatch.filter({}, { sort: '-created_date', limit: 100 }).catch(() => null);
+    const confirmAlerted = ((recentRows?.items || recentRows || []) as any[]).filter((b) => b.confirmation_sla_alerted_at).length;
+
+    return {
+      observations,
+      ceiling_comparison: ceilingComparison,
+      sample_from: sampleFrom,
+      sample_to: sampleTo,
+      fee_held_batches: feeHeldBatches,
+      latency,
+      confirmation_sla: { target_min: 5, alert_threshold_min: 10, alerted_count: confirmAlerted },
+      live_max_fee_gwei: policy.maxFeeGwei,
+      live_max_batch_cost_usd: policy.maxBatchCostUsd,
+      live_absolute_max_cost_usd: policy.absoluteMaxCostUsd,
+      worker_interval_minutes: 5,
+    };
+  } catch (e) {
+    return { observations: [], ceiling_comparison: [], fee_held_batches: [], latency: {}, confirmation_sla: {}, error: String(e?.message || e).slice(0, 160) };
   }
 }

@@ -9,6 +9,7 @@ import {
   ExternalLink, ChevronDown, DollarSign, ShieldAlert, Boxes,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import GasFeeMonitorPanel from './GasFeeMonitorPanel';
 
 // Internal blockchain monitoring dashboard — READ-ONLY. Every data field
 // comes from anchorQueueStatus, which enforces internal-admin access
@@ -260,6 +261,10 @@ export default function ConsoleBlockchain() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Gas-fee monitoring (read-only) — observations, hypothetical ceiling
+          comparison, fee-held batch age + next retry, confirmation latency. */}
+      <GasFeeMonitorPanel monitor={data.gas_monitor} />
 
     </div>
   );

@@ -31,7 +31,8 @@ import {
 import { sendTrackedEmail } from './emailDelivery.ts';
 import { holderVerifiedEmail } from './issuerEmails.ts';
 import { notifyHolder, appBaseUrl } from './verificationFlow.ts';
-import { secrets } from 'base44:runtime';
+import { notifyAnchorAdmins } from './anchorAlerts.ts';
+import { runGasFeeMonitoring } from './gasFeeMonitor.ts';
 
 const CLAIM_STALE_MS = 10 * 60 * 1000;
 const SUBMIT_RECONCILE_MAX_MINUTES = 30;
@@ -57,27 +58,8 @@ async function generateBatchRef(svc: any): Promise<string> {
   return 'AB-' + Date.now().toString(36).toUpperCase().slice(-6);
 }
 
-// Administrator alerting — in-app notifications for every internal admin,
-// plus (best-effort) an emailed ops alert for critical incidents. Recipients
-// come ONLY from server-side configuration; notification receipt grants nothing.
-function adminRecipients(): string[] {
-  const set = new Set<string>();
-  try {
-    for (const key of ['BLOCKWARD_SUPER_ADMIN_NOTIFICATION_EMAILS', 'BLOCKWARD_INTERNAL_ADMIN_EMAILS']) {
-      const raw = secrets.get(key) || '';
-      String(raw).split(',').map((x: string) => x.trim().toLowerCase()).filter(Boolean).forEach((e: string) => set.add(e));
-    }
-  } catch { /* secrets unavailable */ }
-  if (set.size === 0) ['mazen@blockward.me', 'arya@blockward.me'].forEach((e) => set.add(e));
-  return [...set];
-}
-
-async function notifyAnchorAdmins(svc: any, title: string, body: string, type: string, priority: string) {
-  const recipients = adminRecipients();
-  await Promise.allSettled(recipients.map((email) =>
-    svc.entities.Notification.create({ user_email: email, title, body, type, priority, related_id: null })
-  ));
-}
+// Administrator alerting lives in ./anchorAlerts.ts (shared with the read-only
+// gas-fee monitor) — see notifyAnchorAdmins.
 
 // ── ENQUEUE ──────────────────────────────────────────────────────────────────
 // Called by the single issuance pipeline (credentialIssuance) for EVERY newly
@@ -239,6 +221,13 @@ export async function processAnchorQueue(svc: any, opts: { forceBatchRef?: strin
   }
 
   log('tick', { ...summary });
+
+  // Read-only gas-fee monitoring — captures the mainnet eth_gasPrice
+  // observation, the live fee-policy decision, hypothetical-ceiling simulation,
+  // and the 30-min fee-hold / confirmation-SLA alerts. Runs AFTER production
+  // reconciliation so it never delays the tick; every step is non-fatal.
+  try { await runGasFeeMonitoring(svc, { batchRef: opts.forceBatchRef || null }); } catch { /* monitoring never blocks the production tick */ }
+
   return summary;
 }
 

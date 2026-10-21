@@ -1,0 +1,133 @@
+{
+  "name": "GasFeeObservation",
+  "type": "object",
+  "properties": {
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the worker observed the mainnet gas price."
+    },
+    "network": {
+      "type": "string",
+      "description": "Always polygon_mainnet for production fee monitoring."
+    },
+    "eth_gas_price_wei": {
+      "type": "string",
+      "description": "Raw eth_gasPrice RPC observation (wei, string-encoded bigint). Null when the RPC read failed (transparent \u2014 never invented)."
+    },
+    "eth_gas_price_gwei": {
+      "type": "number",
+      "description": "Observed gas price in Gwei (rounded). Null when unavailable."
+    },
+    "proposed_max_fee_per_gas_wei": {
+      "type": "string",
+      "description": "Proposed maxFeePerGas after the existing 25% headroom buffer (gasPrice * 1.25)."
+    },
+    "proposed_max_fee_per_gas_gwei": {
+      "type": "number"
+    },
+    "batch_ref": {
+      "type": "string",
+      "description": "Batch being evaluated, when the tick targeted a specific batch. Null for a general tick observation."
+    },
+    "batch_member_count": {
+      "type": "number",
+      "description": "Member count used for the cost estimate (1 = nominal single-member batch payload)."
+    },
+    "estimated_gas_units": {
+      "type": "number",
+      "description": "Estimated gas units for the batch commitment transaction (constant-size root payload)."
+    },
+    "estimated_fee_wei": {
+      "type": "string",
+      "description": "Estimated total batch fee in wei (gasUnits * proposedMaxFeePerGas)."
+    },
+    "estimated_fee_pol": {
+      "type": "string",
+      "description": "Estimated total batch fee in POL."
+    },
+    "estimated_fee_usd": {
+      "type": "number",
+      "description": "Estimated total batch fee in USD at the captured POL price."
+    },
+    "pol_price_usd": {
+      "type": "number"
+    },
+    "pol_price_source": {
+      "type": "string"
+    },
+    "live_max_fee_gwei": {
+      "type": "number",
+      "description": "The unchanged production fee ceiling at observation time (200 Gwei)."
+    },
+    "live_max_batch_cost_usd": {
+      "type": "number"
+    },
+    "live_absolute_max_cost_usd": {
+      "type": "number"
+    },
+    "live_decision_allowed": {
+      "type": "boolean",
+      "description": "Whether the unchanged live fee policy would permit broadcasting at the observed gas price."
+    },
+    "live_decision_reason": {
+      "type": "string",
+      "description": "null when allowed, else the gate reason (fee_ceiling_gwei | batch_budget_exceeded | absolute_cost_cap)."
+    },
+    "hypothetical_ceilings": {
+      "type": "array",
+      "description": "SIMULATION ONLY \u2014 pass/fail under hypothetical ceilings of 200/400/500/600/800 Gwei, using the observed gas price. Never affects broadcasting.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ceiling_gwei": {
+            "type": "number"
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "est_fee_usd": {
+            "type": "number"
+          },
+          "est_fee_pol": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ceiling_gwei",
+          "allowed"
+        ]
+      },
+      "default": []
+    },
+    "note": {
+      "type": "string",
+      "description": "tick | forced | mainnet_rpc_unconfigured | gas_price_unavailable"
+    },
+    "worker_interval_minutes": {
+      "type": "number",
+      "description": "The configured scheduled worker interval (5 min \u2014 the Base44 minimum)."
+    }
+  },
+  "required": [
+    "observed_at",
+    "network"
+  ],
+  "rls": {
+    "create": {
+      "data.network": "__service_role_only__"
+    },
+    "read": {
+      "data.network": "__service_role_only__"
+    },
+    "update": {
+      "data.network": "__service_role_only__"
+    },
+    "delete": {
+      "data.network": "__service_role_only__"
+    }
+  }
+}

@@ -68,7 +68,17 @@
     "fee_hold_notified_at": {
       "type": "string",
       "format": "date-time",
-      "description": "Last time administrators were notified about a fee hold \u2014 dedupes alerting."
+      "description": "Last time administrators were notified about a fee hold \u2014 dedupes the operational alert (6 h)."
+    },
+    "fee_hold_age_alerted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the 30-min fee-hold age alert fired (read-only monitor). Cleared when the batch leaves ANCHOR_PENDING_FEE so a new sustained hold re-alerts. Service-role only (monitor)."
+    },
+    "confirmation_sla_alerted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Set when the confirmation-SLA alert fired for a submitted batch waiting beyond the target window (read-only monitor). Cleared when the batch leaves ANCHOR_SUBMITTED. Service-role only (monitor)."
     },
     "anchor_claimed_by": {
       "type": "string",

@@ -47,17 +47,17 @@ export function resolveStatus(item) {
   // this, a blockchain_processing achievement falls through to 'draft'.
   if (r?.status === 'approved' && (a.status === 'issuer_confirmed' || a.status === 'blockchain_processing')) {
     if (!c) return { key: 'issuer_verified', ...STATUS_META.issuer_verified, detail: 'Awaiting Blockward organisation approval' };
-    if (c.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed };
-    if (c.anchor_status === 'processing') return { key: 'securing', ...STATUS_META.securing };
-    if (c.anchor_status === 'pending') return { key: 'securing', ...STATUS_META.securing, detail: 'Awaiting anchor' };
+    if (c.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed, detail: 'Blockchain confirmation delayed — retrying' };
+    if (c.anchor_status === 'processing') return { key: 'securing', ...STATUS_META.securing, detail: 'Blockchain confirmation in progress' };
+    if (c.anchor_status === 'pending') return { key: 'securing', ...STATUS_META.securing, detail: 'Awaiting blockchain confirmation — queued for the next batch' };
     return { key: 'integrity_pending', ...STATUS_META.integrity_pending, detail: 'Confirming integrity' };
   }
 
   // Defensive: credential issued + queued but the VR link is missing — the
   // achievement is clearly mid-issuance, never a draft.
   if (a.status === 'blockchain_processing') {
-    if (c?.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed };
-    return { key: 'securing', ...STATUS_META.securing, detail: 'Blockchain pending' };
+    if (c?.anchor_status === 'failed') return { key: 'anchor_failed', ...STATUS_META.anchor_failed, detail: 'Blockchain confirmation delayed — retrying' };
+    return { key: 'securing', ...STATUS_META.securing, detail: 'Awaiting blockchain confirmation — queued for the next batch' };
   }
 
   if (a.status === 'verification_requested') {
