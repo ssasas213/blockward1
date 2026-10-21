@@ -72,4 +72,14 @@ Alert channels: `anchor_escalation`, `anchor_fee_hold`, `anchor_critical` admin 
 - POL/USD price source currently `fallback_estimate` ($0.30) — conservative floor, safe for decisions.
 
 ## 8. Unresolved blockers
-- **Single blocker:** the operator's two-secret activation (§2). Everything else — infrastructure, signer, queue, worker, monitoring, rollback drill, 190/190 regression suites — is verified and ready.
+- **Resolved 2026-10-21 05:57 UTC:** the operator completed activation and the smoke test passed. See §9.
+
+## 9. SMOKE TEST RESULT — PASSED (2026-10-21 05:57 UTC, post-activation)
+- Activation confirmed: `ACTIVATED_MAINNET`, kill switch enabled by the operator, issuance resolves `polygon_mainnet`.
+- Two fictional, clearly-labelled credentials (BW-CMAH7MGR, BW-TD9SQVBM) entered the queue through the single production issuance pipeline (BW-HASH-V1 commitments, mainnet pinning, batch AB-F224C0).
+- Mainnet transaction: `0x77479eb136b720b51e72f4001a5756fc10c8a9937b90b2e1b28e712bf02d5035` — chain 137, receipt success, block 95904599, sender = recipient = anchor `0x2Af9…2D7e`, value 0, fee 0.00358 POL (140 gwei, under the 200 Gwei ceiling).
+- On-chain calldata decoded (RPC + PolygonScan independently): `{"v":1,"t":"blockward-batch","hv":1,"n":2,"r":"14afc5df…d58f"}` — matches the stored batch root; no personal data on-chain.
+- Both Merkle inclusion proofs independently recomputed (canonical BATCH-PROOF-V1 convention) to the exact on-chain root. Achievements marked VERIFIED only after confirmation.
+- Public verification page: integrity confirmed, batch proof + explorer link rendered, no PII.
+- Historical Amoy credentials (AB-E2ETST) unchanged and still verifiable on their pinned chain 80002. Queue healthy: zero failures.
+- Note: the old `polygonMainnetIntegrationTest` pre-broadcast probe now correctly refuses while issuance is on mainnet (its Gate 6 requires issuance on Amoy) — expected, historical role fulfilled.
