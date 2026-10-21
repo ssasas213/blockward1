@@ -1,0 +1,15 @@
+{
+  "name": "blockward-amoy-staging-harness",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Isolated Polygon Amoy test harness for measuring blockchain submission-to-confirmation latency. No Base44 runtime, database, or production credential access.",
+  "scripts": {
+    "test": "npx --yes tsx tests/offline.test.ts",
+    "dry-run": "npx --yes tsx harness.ts",
+    "live": "npx --yes tsx harness.ts --live"
+  },
+  "dependencies": {
+    "viem": "^2.7.0"
+  }
+}
