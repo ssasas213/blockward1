@@ -2,7 +2,8 @@
 // offline.test.ts — deterministic offline tests for the staging harness.
 //
 // Tests pure logic only: config resolution, guards, metrics, commitments,
-// Merkle proof round-trip. No network, no broadcast, no viem, no secrets.
+// Merkle proof round-trip, and secret redaction. No network, no broadcast,
+// no viem, no secrets.
 //
 // Run: npx --yes tsx tests/offline.test.ts
 // ============================================================================
@@ -31,6 +32,7 @@ import {
   parseBatchPayload,
   HARNESS_PREFIX,
 } from '../lib/commitments.ts';
+import { redactSecrets, sanitiseError, safeLog, errorToCode } from '../lib/sanitise.ts';
 
 let passed = 0;
 let failed = 0;
@@ -278,6 +280,83 @@ async function main() {
     const tampered = '0'.repeat(64);
     const ok = await verifyBatchProof(tampered, proofs[0], root);
     assert.equal(ok, false);
+  });
+
+  // ── Secret redaction ──────────────────────────────────────────────
+  console.log('\n  Secret redaction:');
+
+  await checkAsync('redactSecrets strips 0x-prefixed private keys', async () => {
+    const key = '0x' + 'a'.repeat(64);
+    const msg = `Error with key ${key} in message`;
+    const redacted = redactSecrets(msg);
+    assert.ok(!redacted.includes(key), 'private key leaked into redacted output');
+    assert.ok(redacted.includes('[REDACTED_KEY]'));
+  });
+
+  await checkAsync('redactSecrets preserves bare 64-hex Merkle roots', async () => {
+    const root = 'a'.repeat(64);
+    const msg = `Merkle root: ${root}`;
+    const redacted = redactSecrets(msg);
+    assert.ok(redacted.includes(root), 'Merkle root was incorrectly redacted');
+  });
+
+  await checkAsync('redactSecrets strips ?apikey= query parameters', async () => {
+    const msg = 'RPC failed at https://rpc.example.com?apikey=supersecret123';
+    const redacted = redactSecrets(msg);
+    assert.ok(!redacted.includes('supersecret123'), 'API key leaked into redacted output');
+    assert.ok(redacted.includes('[REDACTED]'));
+  });
+
+  await checkAsync('redactSecrets strips long tokens in URL paths', async () => {
+    const longToken = 'a'.repeat(40);
+    const msg = `RPC: https://polygon-amoy.g.alchemy.com/v2/${longToken} failed`;
+    const redacted = redactSecrets(msg);
+    assert.ok(!redacted.includes(longToken), 'URL path token leaked into redacted output');
+  });
+
+  await checkAsync('redactSecrets handles non-string input', async () => {
+    assert.equal(redactSecrets(null as any), '');
+    assert.equal(redactSecrets(undefined as any), '');
+    assert.equal(redactSecrets(123 as any), '');
+  });
+
+  await checkAsync('sanitiseError returns a stable code, not the raw object', async () => {
+    const key = '0x' + 'a'.repeat(64);
+    const err = { name: 'TransactionExecutionError', message: `tx failed ${key}` };
+    const s = sanitiseError(err);
+    assert.equal(s.code, 'tx_execution_failed');
+    assert.ok(!s.message.includes(key), 'private key leaked into sanitised message');
+  });
+
+  await checkAsync('sanitiseError handles non-Error objects', async () => {
+    const s = sanitiseError({ random: 'stuff', message: 'hello' });
+    assert.equal(s.code, 'unknown_error');
+    assert.equal(s.message, 'hello');
+  });
+
+  await checkAsync('sanitiseError handles null and undefined', async () => {
+    assert.equal(sanitiseError(null).code, 'unknown_error');
+    assert.equal(sanitiseError(null).message, '');
+    assert.equal(sanitiseError(undefined).code, 'unknown_error');
+  });
+
+  await checkAsync('errorToCode maps known viem error names', async () => {
+    assert.equal(errorToCode({ name: 'InsufficientFundsError' }), 'insufficient_funds');
+    assert.equal(errorToCode({ name: 'ChainIdMismatchError' }), 'chain_id_mismatch');
+    assert.equal(errorToCode({ name: 'TimeoutError' }), 'timeout');
+  });
+
+  await checkAsync('errorToCode returns unknown_error for unmapped names', async () => {
+    assert.equal(errorToCode({ name: 'SomeRandomError' }), 'unknown_error');
+    assert.equal(errorToCode(null), 'unknown_error');
+  });
+
+  await checkAsync('safeLog redacts private keys and truncates', async () => {
+    const key = '0x' + 'f'.repeat(64);
+    const err = { name: 'Error', message: `key=${key} ${'x'.repeat(400)}` };
+    const s = safeLog(err);
+    assert.ok(!s.includes(key), 'private key leaked into safeLog output');
+    assert.ok(s.length <= 302, `safeLog output too long: ${s.length}`);
   });
 
   // ── Summary ────────────────────────────────────────────────────────

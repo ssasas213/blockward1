@@ -27,6 +27,7 @@ import {
   type GuardResult,
 } from './guards.ts';
 import { buildBatchPayload } from './commitments.ts';
+import { safeLog } from './sanitise.ts';
 
 const AMOY_CHAIN = defineChain({
   id: 80002,
@@ -129,11 +130,16 @@ export async function broadcastBatchRoot(opts: {
   const broadcastAt = new Date().toISOString();
   const broadcastMs = Date.now();
 
-  const txHash = await wal.sendTransaction({
-    to: account.address,
-    value: 0n,
-    data: stringToHex(payload),
-  });
+  let txHash: string;
+  try {
+    txHash = await wal.sendTransaction({
+      to: account.address,
+      value: 0n,
+      data: stringToHex(payload),
+    });
+  } catch (e: unknown) {
+    return { ok: false, error: 'broadcast_failed', detail: safeLog(e) };
+  }
 
   // Bounded receipt wait (12s) — same as production anchorBatchRoot
   let receipt: any = null;

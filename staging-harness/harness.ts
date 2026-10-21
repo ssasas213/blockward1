@@ -28,6 +28,7 @@ import {
   HARNESS_PREFIX,
 } from './lib/commitments.ts';
 import { broadcastBatchRoot, reconcileReceipt, type BroadcastResult } from './lib/broadcast.ts';
+import { safeLog } from './lib/sanitise.ts';
 
 const LIVE = process.argv.includes('--live');
 
@@ -238,6 +239,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('Fatal:', e);
+  console.error('Fatal:', safeLog(e));
   process.exit(1);
 });
