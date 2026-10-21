@@ -350,6 +350,7 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
   // skips it: no real gas is spent, so the gas-price ceiling cannot block a
   // deterministic test. The mock returns a confirmed result directly.
   let price = { usd: policy.fallbackPolUsd, source: 'fallback_estimate' as string };
+  let estimatedFeeWei: string | null = null;
   if (!broadcaster) {
     const cfg = resolvePolygonConfig(batchTarget);
     let maxFeeWei: bigint | null = null;
@@ -360,6 +361,7 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
       price = await polUsdPrice();
     } catch { /* fall back to ceiling-based gate below */ }
     const gate = feeDecision(gasUnits, maxFeeWei ?? gweiToWeiPerGas(policy.maxFeeGwei), price.usd, policy);
+    estimatedFeeWei = String(gate.estFeeWei);
 
     if (!gate.allowed && !(batch.escalated_at && gate.estUsd <= policy.absoluteMaxCostUsd && gate.reason === 'batch_budget_exceeded')) {
       // ANCHOR_PENDING_FEE — the verified credential is PRESERVED; administrators
@@ -367,7 +369,7 @@ async function attemptBatch(svc: any, batch: any, policy: any, summary: any, bro
       const lastNotify = batch.fee_hold_notified_at ? Date.now() - new Date(batch.fee_hold_notified_at).getTime() : Infinity;
       await release({
         status: 'ANCHOR_PENDING_FEE',
-        estimated_fee_wei: String(gate.estFeeWei),
+        estimated_fee_wei: estimatedFeeWei,
         next_attempt_at: new Date(Date.now() + 5 * 60000).toISOString(),
         last_error: `fee gate: ${gate.reason} (est. $${gate.estUsd})`,
         fee_hold_notified_at: lastNotify > 6 * 3600 * 1000 ? nowIso() : batch.fee_hold_notified_at,
