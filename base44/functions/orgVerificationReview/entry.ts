@@ -161,7 +161,7 @@ export default async function (req: Request): Promise<Response> {
         if (!me || signedEmails.has(me) || me === (ach.holder_email || '').toLowerCase()) continue;
         const s = await svc.entities.VerificationSignature.filter({ request_id: vr.id, verifier_email: me }).catch(() => []);
         if (s?.length) continue;
-        const nud = additionalSignatureEmail({ orgName: vr.org_name, achievementTitle: ach.title, holderName: ach.holder_name || 'a holder', signedBy: verifierName, dashboardUrl: `${appBaseUrl()}/organisation` });
+        const nud = additionalSignatureEmail({ orgName: vr.org_name, achievementTitle: ach.title, holderName: ach.holder_name || 'a holder', signedBy: verifierName, dashboardUrl: `${appBaseUrl()}/organisations/dashboard` });
         await sendTrackedEmail(svc, { to: me, subject: nud.subject, html: nud.html, event_type: 'issuer_verification_request', related_type: 'achievement_request', related_id: vr.id, retryable: true }).catch(() => {});
         nudged.push(me);
       }

@@ -46,7 +46,11 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
   const verified = status.key === 'blockward_verified';
   const bc = c?.blockchain || {};
   const verifiers = c?.verifiers || [];
-  const explorerUrl = bc.transaction_hash ? `https://amoy.polygonscan.com/tx/${bc.transaction_hash}` : null;
+  // Network-aware PolygonScan link — mainnet credentials must never point at
+  // the Amoy explorer (Verify.jsx resolves this the same way).
+  const explorerUrl = bc.transaction_hash
+    ? `https://${(bc.chain_id === 137 || bc.network === 'polygon') ? '' : 'amoy.'}polygonscan.com/tx/${bc.transaction_hash}`
+    : null;
   const integrityConfirmed = verified;
 
   return (

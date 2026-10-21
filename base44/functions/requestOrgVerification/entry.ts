@@ -88,7 +88,9 @@ export default async function (req: Request): Promise<Response> {
     for (const m of members || []) {
       if ((m.user_email || '').toLowerCase() !== email) recipients.add(String(m.user_email).toLowerCase());
     }
-    const dashboardUrl = `${appBaseUrl()}/organisation`;
+    // The live organisation dashboard — /organisation is the invite-accept
+    // page, so email links must point verifiers at the dashboard route.
+    const dashboardUrl = `${appBaseUrl()}/organisations/dashboard`;
     const mail = orgNewRequestEmail({
       orgName: org.name, holderName: ach.holder_name || 'A Blockward holder',
       achievementTitle: ach.title, dateAchieved: ach.date_achieved,
