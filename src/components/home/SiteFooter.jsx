@@ -1,5 +1,6 @@
 import React from 'react';
-import { Shield, Building2, Award, FileSearch } from 'lucide-react';
+import { Building2, Award, FileSearch } from 'lucide-react';
+import { BlockwardMark } from '@/components/brand/BlockwardLogo';
 import { base44 } from '@/api/base44Client';
 
 const ORG_URL = '/ForOrganisations';
@@ -7,7 +8,7 @@ const ORG_URL = '/ForOrganisations';
 const COLUMNS = [
   { title: 'Individuals', links: [
     { label: 'Create Profile', href: '/Signup' },
-    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'How It Works', href: '/#story' },
     { label: 'Example Profile', href: '/DemoProfile' },
   ]},
   { title: 'Organisations', links: [
@@ -71,28 +72,28 @@ export default function SiteFooter() {
       <div className="max-w-7xl mx-auto">
         <TrustStats />
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-x-8 gap-y-10 mb-12">
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-3">
-              <Shield className="h-5 w-5 text-primary" />
+            <a href="/" className="inline-flex items-center gap-2 mb-3" aria-label="BlockWard home">
+              <BlockwardMark className="h-6 w-6" />
               <span className="font-semibold text-foreground">BlockWard</span>
-            </div>
+            </a>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-              Verified achievements. Proof that travels with you.
+              Issuer-verified achievements, recorded on Polygon. Proof that travels with you.
             </p>
           </div>
 
           {COLUMNS.map((col) => (
-            <div key={col.title}>
-              <h4 className="text-sm font-medium text-foreground mb-3">{col.title}</h4>
-              <ul className="space-y-2">
+            <nav key={col.title} aria-label={col.title}>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-tertiary mb-3">{col.title}</h4>
+              <ul className="space-y-1">
                 {col.links.map((link) => (
                   <li key={link.label}>
-                    <a href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</a>
+                    <a href={link.href} className="inline-block py-1 text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</a>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
         </div>
 

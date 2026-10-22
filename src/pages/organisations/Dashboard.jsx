@@ -6,6 +6,7 @@ import GlowActionButton from '@/components/ui/GlowActionButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import EmptyState from '@/components/ui/empty-state';
 import { toast } from 'sonner';
 import OrgVerificationQueue from '@/components/organisations/OrgVerificationQueue';
 import OrgSignatureCard from '@/components/organisations/OrgSignatureCard';
@@ -70,43 +71,48 @@ export default function OrgDashboard() {
   if (error) {
     return (
       <Card>
-        <CardContent className="p-8 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-          <Button variant="outline" className="mt-3" onClick={() => load(selectedOrgId)}>Try again</Button>
-        </CardContent>
+        <EmptyState
+          icon={ShieldAlert}
+          title="We couldn't load your organisation"
+          description="Something went wrong while loading this page. Your data is safe — please try again in a moment."
+        >
+          <Button variant="outline" onClick={() => load(selectedOrgId)}>Try again</Button>
+        </EmptyState>
       </Card>
     );
   }
 
   // No organisation membership yet.
   if (!data?.org) {
+    const hasMemberships = !!data?.memberships?.length;
     return (
       <Card>
-        <CardContent className="p-10 text-center">
-          <Building2 className="h-10 w-10 mx-auto mb-4 text-muted-foreground/50" />
-          <h2 className="text-lg font-bold text-foreground">
-            {data?.memberships?.length
-              ? 'Pick an organisation'
-              : "You're not part of an organisation yet"}
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1 mb-5">
-            {data?.memberships?.length
-              ? 'You belong to more than one organisation — choose one to manage.'
-              : 'Register your organisation to verify achievements and issue Blockward-verified credentials.'}
-          </p>
-          {data?.memberships?.length ? (
-            <div className="flex flex-wrap justify-center gap-2">
-              {data.memberships.map((m) => (
-                <Button key={m.org_id} variant="outline" onClick={() => load(m.org_id)}>
-                  {m.org_name}
-                  {m.status === 'invited' && <Badge variant="secondary" className="ml-2">invited</Badge>}
-                </Button>
-              ))}
-            </div>
-          ) : (
-            <GlowActionButton icon={Building2} label="Register your organisation" href="/organisations/signup" />
-          )}
-        </CardContent>
+        {hasMemberships ? (
+          <EmptyState
+            icon={Building2}
+            title="Choose an organisation"
+            description="You belong to more than one organisation. Pick the one you want to manage."
+          >
+            {data.memberships.map((m) => (
+              <Button key={m.org_id} variant="outline" onClick={() => load(m.org_id)}>
+                {m.org_name}
+                {m.status === 'invited' && <Badge variant="secondary" className="ml-1">Invited</Badge>}
+              </Button>
+            ))}
+          </EmptyState>
+        ) : (
+          <EmptyState
+            icon={Building2}
+            title="You're not part of an organisation yet"
+            description="Organisation workspaces are for issuers — schools, companies, universities and training providers — who verify achievements and issue BlockWard credentials."
+            hint="If a colleague invited you, open the link in your invitation email, or paste your invitation code on the invitation page. Your personal achievements are unaffected."
+          >
+            <GlowActionButton icon={Building2} label="Register your organisation" href="/organisations/signup" size="sm" />
+            <Button variant="outline" asChild>
+              <Link to="/organisation">Accept an invitation</Link>
+            </Button>
+          </EmptyState>
+        )}
       </Card>
     );
   }

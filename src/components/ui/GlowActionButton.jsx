@@ -10,9 +10,9 @@ import { cn } from '@/lib/utils';
 // (.gbtn-*). Sizes: xs (table actions), sm (inline/dashboard), md
 // (dashboards/forms), lg (homepage CTAs).
 const SIZES = {
-  xs: { pill: 'h-8 gap-1.5 pl-1 pr-1 text-[11px]', icon: 'h-6 w-6', iconInner: 'h-3 w-3', divider: 'my-2', arrowBox: 'h-6 w-6', arrowInner: 'h-3 w-3', label: '', sub: null },
-  sm: { pill: 'h-10 gap-2 pl-1.5 pr-1.5', icon: 'h-7 w-7', iconInner: 'h-3.5 w-3.5', divider: 'my-2.5', arrowBox: 'h-7 w-7', arrowInner: 'h-3.5 w-3.5', label: 'text-[13px]', sub: 'text-[10px]' },
-  md: { pill: 'h-12 gap-2.5 pl-2 pr-2', icon: 'h-9 w-9', iconInner: 'h-4 w-4', divider: 'my-3', arrowBox: 'h-9 w-9', arrowInner: 'h-4 w-4', label: 'text-sm', sub: 'text-[11px]' },
+  xs: { pill: 'h-9 gap-1.5 pl-1 pr-1 text-xs', icon: 'h-7 w-7', iconInner: 'h-3.5 w-3.5', divider: 'my-2', arrowBox: 'h-7 w-7', arrowInner: 'h-3.5 w-3.5', label: 'text-xs', sub: null },
+  sm: { pill: 'h-10 gap-2 pl-1.5 pr-1.5', icon: 'h-7 w-7', iconInner: 'h-3.5 w-3.5', divider: 'my-2.5', arrowBox: 'h-7 w-7', arrowInner: 'h-3.5 w-3.5', label: 'text-sm', sub: null },
+  md: { pill: 'h-12 gap-2.5 pl-2 pr-2', icon: 'h-9 w-9', iconInner: 'h-4 w-4', divider: 'my-3', arrowBox: 'h-9 w-9', arrowInner: 'h-4 w-4', label: 'text-sm', sub: 'text-xs' },
   lg: { pill: 'h-14 gap-3 pl-2.5 pr-2.5', icon: 'h-10 w-10', iconInner: 'h-[18px] w-[18px]', divider: 'my-4', arrowBox: 'h-10 w-10', arrowInner: 'h-[18px] w-[18px]', label: 'text-base', sub: 'text-xs' },
 };
 
@@ -70,7 +70,7 @@ export default function GlowActionButton({
     return <a href={href} target={target} rel={target === '_blank' ? 'noopener noreferrer' : undefined} onClick={handleClick} title={title} aria-disabled={isDisabled || undefined} className={classes}>{content}</a>;
   }
   return (
-    <button type={type} onClick={handleClick} disabled={isDisabled} title={title} className={classes}>
+    <button type={type} onClick={handleClick} disabled={isDisabled} title={title} aria-busy={loading || undefined} className={classes}>
       {content}
     </button>
   );

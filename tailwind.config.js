@@ -1,3 +1,5 @@
+const twColors = require('tailwindcss/colors');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     darkMode: ["class"],
@@ -27,6 +29,11 @@ module.exports = {
   		'brand-glow': '0 0 0 1px hsl(217 84% 53% / 0.15), 0 8px 30px hsl(0 0% 0% / 0.30), 0 0 24px hsl(217 84% 53% / 0.10)',
   		},
   		colors: {
+  			// Legacy purple/violet/fuchsia utilities from the pre-rebrand UI
+  			// resolve to the Blockward blue family app-wide.
+  			purple: twColors.blue,
+  			violet: twColors.blue,
+  			fuchsia: twColors.sky,
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

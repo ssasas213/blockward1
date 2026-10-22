@@ -664,6 +664,21 @@ img, video { max-width: 100%; height: auto; }
 .gbtn-secondary .gbtn-label { color: hsl(var(--foreground)); }
 .gbtn-secondary .gbtn-sub { color: hsl(var(--muted-foreground)); }
 
+/* ===== Shared primary button (shadcn Button default variant) =====
+   Refined dark-to-electric-blue body, subtle blue outline, restrained glow.
+   Deliberately calmer than the .gbtn hero pill. */
+.btn-primary {
+  color: #fff;
+  background: linear-gradient(180deg, #2F6FF0 0%, #2563EB 55%, #1D4FD0 100%);
+  border: 1px solid rgb(96 165 250 / 0.55);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 0 0 0 rgb(37 99 235 / 0), inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3B7BF5 0%, #2B6AF0 55%, #2056DA 100%);
+  border-color: rgb(147 197 253 / 0.7);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25), 0 0 14px rgb(37 99 235 / 0.32), inset 0 1px 0 rgb(255 255 255 / 0.2);
+}
+
 /* ===== Design system — typography scale (dashboards) ===== */
 .page-title { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
 .page-subtitle { font-size: 0.875rem; line-height: 1.5; color: hsl(var(--muted-foreground)); }
@@ -671,3 +686,13 @@ img, video { max-width: 100%; height: auto; }
 .card-title { font-size: 0.875rem; line-height: 1.4; font-weight: 600; color: hsl(var(--foreground)); }
 .caption { font-size: 0.75rem; line-height: 1.4; color: hsl(var(--muted-foreground)); }
 .stat-value { font-size: 1.5rem; line-height: 1.2; font-weight: 600; letter-spacing: -0.02em; color: hsl(var(--foreground)); font-variant-numeric: tabular-nums; }
+
+/* ===== Legibility floor — no UI text below 12px =====
+   ~280 legacy usages of 9/10/11px arbitrary sizes across the app are lifted
+   to the 12px caption size in one place, instead of per-file edits. */
+.text-\[9px\], .text-\[10px\], .text-\[11px\] { font-size: 0.75rem !important; line-height: 1rem; }
+
+/* Touch targets on small screens — interactive controls reach 40px. */
+@media (pointer: coarse) {
+  [role="tab"], [role="menuitem"], [role="option"] { min-height: 40px; }
+}

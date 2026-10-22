@@ -16,7 +16,7 @@ import SiteFooter from '@/components/home/SiteFooter';
 // → Vault → trust → verify → close. Fixed dark cinematic treatment; all
 // example content is fictional and clearly marked.
 const NAV_LINKS = [
-  { label: 'How it works', href: '#own' },
+  { label: 'How it works', href: '#story' },
   { label: 'For individuals', href: '#own' },
   { label: 'For organisations', href: '/ForOrganisations' },
   { label: 'Verify a credential', href: '#verify' },
