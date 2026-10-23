@@ -426,6 +426,12 @@ export default function MyAchievements() {
         evidence: addForm.evidence,
       });
       if (res.data?.ok) {
+        // The banner is personal presentation metadata, stored AFTER creation
+        // against the new achievement's ref — it never enters the credential.
+        const achId = res.data.achievement?.id;
+        if (achId && addForm.banner) {
+          try { await setBanner(email, `ach:${achId}`, addForm.banner); } catch { /* non-fatal */ }
+        }
         toast.success('Achievement added — now request verification from the issuer');
         setAddOpen(false);
         setAddForm(EMPTY_FORM);
@@ -635,65 +641,73 @@ export default function MyAchievements() {
 
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+      {/* ── Header — one primary action + everything else in More actions ── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">My Achievements</h1>
-          <p className="text-muted-foreground mt-1">
-            Your complete achievement portfolio — verified credentials live on Polygon
-          </p>
-          {profile?.handle && (
-            <div className="flex flex-wrap items-center gap-2 mt-3">
-              <button
-                onClick={() => window.open(`${window.location.origin}/@${profile.handle}`, '_blank')}
-                className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
-              >
-                <AtSign className="h-3.5 w-3.5" /> {profile.handle}
-              </button>
-            </div>
+          <h1 className="page-title">My Achievements</h1>
+          <p className="page-subtitle mt-1">Your achievements, beautifully organised and independently verified.</p>
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <Button onClick={() => { setAddForm(EMPTY_FORM); setAddOpen(true); }}>
+            <Plus className="h-4 w-4" /> Add Achievement
+          </Button>
+          <AchievementsMoreMenu
+            records={exportRecords}
+            profile={profile}
+            user={user}
+            onAddPast={() => { window.location.href = createPageUrl('HistoricalAchievement'); }}
+            onManageCategories={() => setCatsOpen(true)}
+          />
+        </div>
+      </div>
+
+      {/* ── Overview — one quiet horizontal summary ── */}
+      <div className="surface-card flex items-stretch divide-x divide-border rounded-xl px-5 py-3">
+        {[['Total achievements', counts?.total], ['Blockward Verified', counts?.verified], ['Awaiting verification', counts?.pending]].map(([label, v], i) => (
+          <div key={label} className={`flex-1 ${i === 0 ? 'pr-5' : 'px-5'}`}>
+            <p className="caption">{label}</p>
+            <p className="stat-value">{v ?? '…'}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Toolbar — search, status, category, sort, view ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[200px] max-w-sm flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tertiary" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search achievements…" className="pl-9" />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></button>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PortfolioActions records={exportRecords} profile={profile} user={user} />
-          <Button variant="outline" onClick={() => setCatsOpen(true)}>
-            <FolderKanban className="h-4 w-4 mr-2" /> Categories
-          </Button>
-          <GlowActionButton
-            variant="secondary" size="md" icon={History}
-            label="Add past achievement" to={createPageUrl('HistoricalAchievement')}
-          />
-          <GlowActionButton size="md" icon={Plus} label="Add achievement" onClick={() => { setAddForm(EMPTY_FORM); setAddOpen(true); }} />
-        </div>
-      </div>
-
-      {/* ── Summary ── */}
-      <div className="grid grid-cols-3 gap-3 max-w-xl">
-        <div className="surface-card rounded-xl px-4 py-3">
-          <p className="caption">Total</p>
-          <p className="stat-value">{counts === null ? '…' : counts.total}</p>
-        </div>
-        <div className="surface-card rounded-xl px-4 py-3">
-          <p className="caption">Blockward Verified</p>
-          <p className="stat-value">{counts === null ? '…' : counts.verified}</p>
-        </div>
-        <div className="surface-card rounded-xl px-4 py-3">
-          <p className="caption">Pending</p>
-          <p className="stat-value">{counts === null ? '…' : counts.pending}</p>
-        </div>
-      </div>
-
-      {/* ── Toolbar: tabs, search, category filter, sort, organise, view ── */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">Pending{counts ? ` (${counts.pending})` : ''}</TabsTrigger>
-              <TabsTrigger value="verified">Verified{counts ? ` (${counts.verified})` : ''}</TabsTrigger>
-              <TabsTrigger value="archived">Archived</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <div className="flex-1" />
+        <Select value={activeTab} onValueChange={setActiveTab}>
+          <SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All achievements</SelectItem>
+            <SelectItem value="pending">Pending verification{counts ? ` (${counts.pending})` : ''}</SelectItem>
+            <SelectItem value="verified">Blockward Verified{counts ? ` (${counts.verified})` : ''}</SelectItem>
+            <SelectItem value="archived">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={catFilter} onValueChange={setCatFilter}>
+          <SelectTrigger className="w-[210px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="none">Uncategorised</SelectItem>
+            {(cats || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={sort} onValueChange={setSort}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="order">My order</SelectItem>
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="oldest">Oldest</SelectItem>
+            <SelectItem value="title">Alphabetical</SelectItem>
+            <SelectItem value="issuer">Issuer</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="ml-auto flex items-center gap-2">
           <Button
             variant={selectMode ? 'default' : 'outline'} size="sm"
             onClick={() => { setSelectMode(!selectMode); setSelected(new Set()); }}
@@ -711,33 +725,6 @@ export default function MyAchievements() {
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-tertiary pointer-events-none" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search titles, descriptions, categories, issuers…" className="pl-9" />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary hover:text-foreground" aria-label="Clear search"><X className="h-3.5 w-3.5" /></button>
-            )}
-          </div>
-          <Select value={catFilter} onValueChange={setCatFilter}>
-            <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              <SelectItem value="none">Uncategorised</SelectItem>
-              {(cats || []).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="order">My order</SelectItem>
-              <SelectItem value="newest">Newest</SelectItem>
-              <SelectItem value="oldest">Oldest</SelectItem>
-              <SelectItem value="title">Alphabetical</SelectItem>
-              <SelectItem value="issuer">Issuer</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       {/* ── Content ── */}
@@ -745,59 +732,69 @@ export default function MyAchievements() {
         <AchievementGridSkeleton />
       ) : (
         <>
-          {/* Featured section — All tab, top */}
-          {activeTab === 'all' && featuredItems.length > 0 && (
+          {/* Browse by category — All tab */}
+          {activeTab === 'all' && (cats || []).length > 0 && (
             <section>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="section-heading">Browse by category</h3>
+                {catFilter !== 'all' && (
+                  <button className="text-xs text-primary hover:underline" onClick={() => setCatFilter('all')}>View all achievements</button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                {(cats || []).map((c) => {
+                  const Icon = CATEGORY_ICONS[c.icon] || CATEGORY_ICONS.Shapes;
+                  const active = catFilter === c.id;
+                  const n = catCounts.get(c.id) || 0;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setCatFilter(active ? 'all' : c.id)}
+                      className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-left transition-colors ${active ? 'border-primary bg-primary/10' : 'border-border bg-card hover:bg-hover'}`}
+                    >
+                      <span className={`inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border ${CATEGORY_COLORS[c.color] || CATEGORY_COLORS.slate}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground">{c.name}</span>
+                        <span className="block text-xs text-tertiary">{n} achievement{n === 1 ? '' : 's'}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Featured section — All tab, top */}
+          {activeTab === 'all' && featuredView.length > 0 && (
+            <section>
+              <div className="mb-3 flex items-center gap-2">
                 <Star className="h-4 w-4 text-warning" />
                 <h3 className="section-heading">Featured</h3>
                 <span className="caption">Your most important achievements for applications and CVs</span>
               </div>
-              <UnifiedGrid
-                items={featuredItems}
-                viewMode={viewMode}
-                selectMode={selectMode}
-                selectedRefs={selected}
-                onToggleSelect={toggleSelect}
-                onOpen={openItem}
-                onShare={setShareTarget}
-                onGetVerified={handleGetVerified}
-                onEdit={(card) => setEditTarget({ kind: 'self', data: card?.raw || card })}
-              />
+              <PortfolioGrid items={featuredView} {...gridCommon} />
             </section>
           )}
 
           {/* Main list for the active tab */}
           {activeTab === 'all' ? (
-            <UnifiedGrid
-              items={sorted || []}
-              viewMode={viewMode}
+            <PortfolioGrid
+              items={viewItems || []}
               loading={loadingAll}
-              dndEnabled={viewMode === 'grid' && !selectMode && (sorted || []).length > 1}
+              dndEnabled={viewMode === 'grid' && !selectMode && (viewItems || []).length > 1}
               onDragEnd={handleDragEnd}
-              selectMode={selectMode}
-              selectedRefs={selected}
-              onToggleSelect={toggleSelect}
-              onOpen={openItem}
-              onShare={setShareTarget}
-              onGetVerified={handleGetVerified}
-              onEdit={(card) => setEditTarget({ kind: 'self', data: card?.raw || card })}
+              {...gridCommon}
               emptyTitle="No achievements here yet"
               emptyDescription="Add your first achievement — certificates, competition results, courses, awards — and connect the issuing organisation to get it Blockward Verified."
               emptyAction={<GlowActionButton size="md" icon={Plus} label="Add achievement" onClick={() => { setAddForm(EMPTY_FORM); setAddOpen(true); }} />}
             />
           ) : (
             <div className="space-y-6">
-              <UnifiedGrid
-                items={sorted || []}
-                viewMode={viewMode}
-                selectMode={selectMode}
-                selectedRefs={selected}
-                onToggleSelect={toggleSelect}
-                onOpen={openItem}
-                onShare={setShareTarget}
-                onGetVerified={handleGetVerified}
-                onEdit={(card) => setEditTarget({ kind: 'self', data: card?.raw || card })}
+              <PortfolioGrid
+                items={viewItems || []}
+                {...gridCommon}
                 emptyTitle={
                   activeTab === 'pending' ? 'Nothing awaiting verification'
                     : activeTab === 'verified' ? 'No verified achievements yet'
@@ -868,16 +865,27 @@ export default function MyAchievements() {
         onChanged={async () => { try { setCats(await loadCategories()); } catch { /* ignore */ } }}
       />
 
-      {/* ── Detail surfaces (one per record kind — all pre-existing) ── */}
-      <AchievementDetailDrawer
+      {/* ── Detail surfaces (one per record kind) ── */}
+      <AchievementDetail
         item={detail}
+        bannerUrl={detail ? (metaByRef.get(`ach:${detail.id}`)?.banner_url || null) : null}
         open={!!detail}
         onOpenChange={(v) => !v && setDetail(null)}
+        onEditCover={(a) => setBannerTarget({ ref: `ach:${a.id}`, url: metaByRef.get(`ach:${a.id}`)?.banner_url || null })}
         onResend={openRequest}
         onRetry={retryAnchor}
         retrying={retryingId}
         onVisibility={handleVisibility}
         visibilityBusy={visibilityBusy}
+        profile={profile}
+      />
+      <BannerEditDialog
+        open={!!bannerTarget}
+        onOpenChange={(o) => { if (!o) setBannerTarget(null); }}
+        ownerEmail={email}
+        achievementRef={bannerTarget?.ref}
+        initialUrl={bannerTarget?.url || null}
+        onSaved={refreshMetas}
       />
       <BlockWardDetailModal
         blockWard={selectedBlockWard}
@@ -925,6 +933,21 @@ export default function MyAchievements() {
             <div className="space-y-1.5 sm:col-span-2">
               <Label>What is it?</Label>
               <Textarea value={addForm.description} onChange={(e) => setV('description', e.target.value)} rows={3} placeholder="What you did, where and when" />
+            </div>
+
+            <div className="sm:col-span-2 space-y-2">
+              <Label>Achievement banner <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Add a cover image to personalise how this achievement appears in your portfolio.
+                (You can change or remove this image later.)
+              </p>
+              <BannerPicker
+                value={addForm.banner || null}
+                onChange={(url) => setV('banner', url || '')}
+              />
+              <p className="text-xs text-tertiary">
+                Decorative presentation only — a banner is never used as evidence and never affects verification.
+              </p>
             </div>
 
             <div className="sm:col-span-2 space-y-2 rounded-lg border border-border bg-secondary/30 p-3">
