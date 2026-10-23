@@ -1,0 +1,72 @@
+{
+  "name": "BlockTalksReport",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string",
+      "description": "BlockTalksPost.id being reported. Service-role only \u2014 reports are invisible to ordinary users."
+    },
+    "reporter_email": {
+      "type": "string",
+      "description": "Reporting user's email \u2014 visible to internal admins only."
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "spam",
+        "harassment",
+        "inappropriate",
+        "impersonation",
+        "misrepresented_verification",
+        "other"
+      ],
+      "description": "Standardised moderation reason."
+    },
+    "details": {
+      "type": "string",
+      "description": "Optional free-text detail (max 500 chars)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "reviewed",
+        "actioned",
+        "dismissed"
+      ],
+      "default": "open",
+      "description": "Moderation state, updated by internal admins."
+    },
+    "handled_by": {
+      "type": "string",
+      "description": "Admin email who handled the report."
+    },
+    "handled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolution_note": {
+      "type": "string",
+      "description": "Admin's resolution note."
+    }
+  },
+  "required": [
+    "post_id",
+    "reporter_email",
+    "reason"
+  ],
+  "rls": {
+    "read": {
+      "data.post_id": "__service_role_only__"
+    },
+    "create": {
+      "data.reporter_email": "{{user.email}}"
+    },
+    "update": {
+      "data.post_id": "__service_role_only__"
+    },
+    "delete": {
+      "data.post_id": "__service_role_only__"
+    }
+  }
+}

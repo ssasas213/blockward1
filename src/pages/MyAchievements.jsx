@@ -18,6 +18,7 @@ import {
 import { downloadCertificatePDF } from '@/lib/portfolioPdf';
 import { cardFromRequest, cardFromSelf, cardFromVault } from '@/components/achievements/AchievementCard';
 import ShareCardDialog from '@/components/network/ShareCardDialog';
+import PostComposer from '@/components/blocktalks/PostComposer';
 import VerifiedCelebration from '@/components/network/VerifiedCelebration';
 import EvidenceUpload from '@/components/evidence/EvidenceUpload';
 import PortfolioGrid from '@/components/achievements/PortfolioGrid';
@@ -121,6 +122,7 @@ export default function MyAchievements() {
   const [requesting, setRequesting] = useState(false);
   const [retryingId, setRetryingId] = useState(null);
   const [shareTarget, setShareTarget] = useState(null);
+  const [btTarget, setBtTarget] = useState(null); // BlockTalks post composer target
   const [celebrateQueue, setCelebrateQueue] = useState([]);
   const [celebrating, setCelebrating] = useState(null);
   const [verifySelf, setVerifySelf] = useState(null);
@@ -309,6 +311,23 @@ export default function MyAchievements() {
   };
   const viewItems = useMemo(() => (sorted || []).map(enrich), [sorted, metaByRef, catById]);
   const featuredView = useMemo(() => featuredItems.map(enrich), [featuredItems, metaByRef, catById]);
+
+  // ── BlockTalks shareable list — ONLY verified, public-facing items. Private
+  // credentials are excluded; evidence is never part of a post. ──
+  const blocktalkShareable = useMemo(() => (viewItems || []).filter((it) => {
+    if (it.kind === 'vault') {
+      return !['revoked', 'superseded'].includes(it.card.status) && !!it.card.verification_id;
+    }
+    if (it.kind !== 'achievement') return false;
+    const c = it.raw?.credential;
+    return it.card.status === 'verified' && !!it.card.verification_id
+      && c?.anchor_status === 'confirmed' && c?.status === 'active' && !c?.revocation
+      && c?.is_public !== false;
+  }).map((it) => ({
+    ref: it.ref, kind: it.kind, title: it.card.title, category: it.card.category,
+    org: it.card.org || null, banner: it.banner || null,
+    verification_id: it.card.verification_id,
+  })), [viewItems]);
 
   const counts = useMemo(() => {
     if (!items) return null;
@@ -602,7 +621,21 @@ export default function MyAchievements() {
     const m = metaByRef.get(it.ref) || {};
     const actions = [];
     if (it.card.verification_id) {
-      actions.push({ label: 'Share to BlockTalks', Icon: Share2, group: 'record', onSelect: () => setShareTarget({ ...it.card, banner: m.banner_url || it.card.cover || null, verified_at: it.raw?.verified_at || null }) });
+      actions.push({
+        label: 'Share to BlockTalks',
+        Icon: Share2,
+        group: 'record',
+        onSelect: () => {
+          // Private credentials stay private — posting requires a public
+          // verification page; the holder changes visibility explicitly.
+          const c = it.raw?.credential;
+          if (it.kind === 'achievement' && c && c.is_public === false) {
+            toast.error('This achievement\'s verification page is private — change its visibility first.');
+            return;
+          }
+          setBtTarget(it.ref);
+        },
+      });
       actions.push({ label: 'Download certificate', Icon: Download, group: 'record', onSelect: () => handleCertificate(it) });
     }
     if (it.kind === 'self') {
@@ -1081,6 +1114,16 @@ export default function MyAchievements() {
         onOpenChange={(o) => { if (!o) setShareTarget(null); }}
         item={shareTarget}
         holderName={profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''}
+      />
+      {/* ── BlockTalks post composer — menu action "Share to BlockTalks" ── */}
+      <PostComposer
+        open={!!btTarget}
+        onOpenChange={(o) => { if (!o) setBtTarget(null); }}
+        profile={profile}
+        meEmail={email}
+        shareable={blocktalkShareable}
+        orgs={[]}
+        preselectedRef={btTarget}
       />
     </div>
   );

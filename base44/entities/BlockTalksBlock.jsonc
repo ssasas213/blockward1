@@ -1,0 +1,37 @@
+{
+  "name": "BlockTalksBlock",
+  "type": "object",
+  "properties": {
+    "blocker_email": {
+      "type": "string",
+      "description": "The user who blocked \u2014 RLS anchor. Only this user can read, create or remove the block."
+    },
+    "blocked_email": {
+      "type": "string",
+      "description": "The blocked user's email \u2014 their posts are filtered out of the blocker's feed and they cannot be re-blocked redundantly."
+    },
+    "blocked_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the block was applied."
+    }
+  },
+  "required": [
+    "blocker_email",
+    "blocked_email"
+  ],
+  "rls": {
+    "read": {
+      "data.blocker_email": "{{user.email}}"
+    },
+    "create": {
+      "data.blocker_email": "{{user.email}}"
+    },
+    "update": {
+      "data.blocker_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.blocker_email": "{{user.email}}"
+    }
+  }
+}

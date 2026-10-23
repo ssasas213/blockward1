@@ -1,0 +1,179 @@
+{
+  "name": "BlockTalksPost",
+  "type": "object",
+  "properties": {
+    "author_email": {
+      "type": "string",
+      "description": "Publishing account email \u2014 RLS anchor and delete/report authority. Never public."
+    },
+    "author_kind": {
+      "type": "string",
+      "enum": [
+        "individual",
+        "organisation"
+      ],
+      "default": "individual",
+      "description": "individual = a holder sharing their own verified achievement; organisation = an issuer publishing a recognition post."
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Public display name snapshot at publish time (holder name, or organisation name for org posts)."
+    },
+    "author_avatar_url": {
+      "type": "string",
+      "description": "Public profile image snapshot, where the author permitted one."
+    },
+    "author_handle": {
+      "type": "string",
+      "description": "Public /@handle of the individual author, for profile linking."
+    },
+    "org_id": {
+      "type": "string",
+      "description": "IssuerOrganisation.id for organisation posts \u2014 powers the official issuer indicator."
+    },
+    "org_name": {
+      "type": "string",
+      "description": "Organisation name snapshot for org posts."
+    },
+    "org_handle": {
+      "type": "string",
+      "description": "Organisation public handle for org posts."
+    },
+    "holder_email": {
+      "type": "string",
+      "description": "Achievement holder email \u2014 consent anchor for organisation recognition posts (the post publishes only when this holder approves). Never public. Null for individual posts."
+    },
+    "achievement_ref": {
+      "type": "string",
+      "description": "Namespaced reference to the shared achievement (ach:/vault:/credential:). Pure reference \u2014 removing the post never touches the achievement."
+    },
+    "achievement_title": {
+      "type": "string",
+      "description": "Achievement title snapshot \u2014 public."
+    },
+    "achievement_category": {
+      "type": "string",
+      "description": "Achievement category snapshot."
+    },
+    "issuer_org": {
+      "type": "string",
+      "description": "Issuing organisation name snapshot \u2014 public."
+    },
+    "banner_url": {
+      "type": "string",
+      "description": "Decorative cover image, copied from the holder's own AchievementMeta presentation data at publish time. Optional."
+    },
+    "verification_id": {
+      "type": "string",
+      "description": "Blockward Credential bw_id \u2014 the post links to /verify/:id. Only set when the achievement carries a verifiable credential."
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Server-stamped at publish time from live credential state (active, unrevoked, unexpired, anchored). Only true posts may render the Blockward Verified badge. Never client-writable."
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "confirmed",
+        "pending",
+        "unverified"
+      ],
+      "default": "unverified",
+      "description": "Snapshot of the achievement's verification state at publish time."
+    },
+    "caption": {
+      "type": "string",
+      "description": "Optional short caption written by the author (max 500 chars, plain text)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_holder_consent",
+        "active",
+        "hidden",
+        "removed"
+      ],
+      "default": "active",
+      "description": "pending_holder_consent = org recognition post awaiting the holder's approval (invisible on the feed). active = live on the feed. hidden/removed = moderated out."
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the post went live on the feed (consent granted, or immediate for individual posts)."
+    },
+    "celebrated_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Emails of users who celebrated this post. Toggled only through the server-side blocktalkAction."
+    },
+    "saved_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Emails of users who saved this post. Toggled only through the server-side blocktalkAction."
+    },
+    "report_count": {
+      "type": "number",
+      "default": 0,
+      "description": "How many times this post has been reported \u2014 visible to admins for moderation."
+    }
+  },
+  "required": [
+    "author_email",
+    "author_kind",
+    "achievement_title"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.status": "active"
+        },
+        {
+          "data.author_email": "{{user.email}}"
+        },
+        {
+          "data.holder_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.author_email": "{{user.email}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.author_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.author_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
