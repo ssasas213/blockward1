@@ -109,7 +109,6 @@ export default function Layout({ children, currentPageName }) {
       { label: 'My achievements', items: [
         { name: 'Today', icon: LayoutDashboard, page: 'StudentDashboard', path: '/StudentDashboard' },
         { name: 'My achievements', icon: Shield, page: 'Achievements', path: '/Achievements' },
-        { name: 'Credentials', icon: FileText, page: 'StudentBlockWards', path: '/StudentBlockWards' },
       ]},
     ],
   };

@@ -1,0 +1,54 @@
+{
+  "name": "AchievementMeta",
+  "type": "object",
+  "properties": {
+    "owner_email": {
+      "type": "string",
+      "description": "Owner email \u2014 RLS anchor. Personal organisational metadata only; NEVER touches issuer-signed content, the blockchain commitment or verification state."
+    },
+    "achievement_ref": {
+      "type": "string",
+      "description": "Namespaced reference to the achievement this metadata decorates (e.g. 'ach:<Achievement.id>', 'vault:<StudentRecord.id>', 'req:<request id>', 'self:<SelfReportedAchievement.id>'). One row per owner per ref."
+    },
+    "category_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "AchievementCategory.id values this achievement is filed under. One or many. Purely personal organisation \u2014 deleting a category leaves these ids orphaned and the achievement shows as uncategorised."
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Featured achievements surface in the portfolio's top section."
+    },
+    "card_order": {
+      "type": "number",
+      "description": "Drag-and-drop card position. Lower = higher. Missing = default (newest first)."
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Archived achievements leave the main dashboard views and appear in the Archived tab."
+    }
+  },
+  "required": [
+    "owner_email",
+    "achievement_ref"
+  ],
+  "rls": {
+    "create": {
+      "data.owner_email": "{{user.email}}"
+    },
+    "read": {
+      "data.owner_email": "{{user.email}}"
+    },
+    "update": {
+      "data.owner_email": "{{user.email}}"
+    },
+    "delete": {
+      "data.owner_email": "{{user.email}}"
+    }
+  }
+}

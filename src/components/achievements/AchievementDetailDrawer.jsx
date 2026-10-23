@@ -36,7 +36,7 @@ function Field({ label, value, mono }) {
  * built only from real audit data. Verified achievements render the premium
  * Blockward Verified credential card.
  */
-export default function AchievementDetailDrawer({ item, open, onOpenChange, onResend, onRetry, retrying }) {
+export default function AchievementDetailDrawer({ item, open, onOpenChange, onResend, onRetry, retrying, onVisibility, visibilityBusy = false }) {
   const [shareOpen, setShareOpen] = useState(false);
   if (!item) return null;
   const a = item;
@@ -190,6 +190,28 @@ export default function AchievementDetailDrawer({ item, open, onOpenChange, onRe
               <VerificationTimeline item={a} />
             </div>
           </Section>
+
+          {/* Visibility — the holder decides who sees this achievement.
+              Private achievements are excluded from public profiles and
+              portfolio endpoints server-side. */}
+          {onVisibility && (
+            <Section title="Public profile">
+              <div className="surface-card rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{a.is_public === false ? 'Private' : 'Public'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.is_public === false
+                      ? 'Hidden from your public profile and portfolio endpoints.'
+                      : 'Shown on your public profile and shareable portfolio.'}
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={() => onVisibility(a.is_public === false)} disabled={visibilityBusy}>
+                  {visibilityBusy && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                  {a.is_public === false ? 'Make public' : 'Make private'}
+                </Button>
+              </div>
+            </Section>
+          )}
 
           {/* Actions */}
           {!verified && (

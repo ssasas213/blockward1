@@ -63,7 +63,6 @@ import StudentDashboard from './pages/StudentDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Profile from './pages/Profile';
-import StudentBlockWards from './pages/StudentBlockWards';
 import MyAchievements from './pages/MyAchievements';
 import PastAchievements from './pages/PastAchievements';
 import HistoricalAchievement from './pages/HistoricalAchievement';
@@ -160,7 +159,8 @@ const AuthenticatedApp = () => {
       <Route path="/TeacherDashboard" element={<LayoutWrapper currentPageName="TeacherDashboard"><ProtectedRoute><TeacherDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/AdminDashboard" element={<LayoutWrapper currentPageName="AdminDashboard"><ProtectedRoute><AdminDashboard /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/Profile" element={<LayoutWrapper currentPageName="Profile"><ProtectedRoute><Profile /></ProtectedRoute></LayoutWrapper>} />
-      <Route path="/StudentBlockWards" element={<LayoutWrapper currentPageName="StudentBlockWards"><ProtectedRoute><StudentBlockWards /></ProtectedRoute></LayoutWrapper>} />
+      {/* /StudentBlockWards merged into the unified achievements dashboard */}
+      <Route path="/StudentBlockWards" element={<Navigate to="/Achievements" replace />} />
       <Route path="/Achievements" element={<LayoutWrapper currentPageName="Achievements"><ProtectedRoute><MyAchievements /></ProtectedRoute></LayoutWrapper>} />
       <Route path="/PastAchievements" element={<LayoutWrapper currentPageName="PastAchievements"><ProtectedRoute><PastAchievements /></ProtectedRoute></LayoutWrapper>} />
       {/* Historical achievement verification — two-stage: Super Admin authorises
