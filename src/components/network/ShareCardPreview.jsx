@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * ShareCardPreview — renders the four Blockward Network share-card templates
+ * ShareCardPreview — renders the four BlockTalks share-card templates
  * at their real pixel sizes. Purely presentational (inline styles for
  * pixel-exact rendering at 1200/1080px widths) so the same node can be
  * captured with html2canvas for PNG download.

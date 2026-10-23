@@ -16,7 +16,7 @@ export default function VerifyGrowthSection() {
       <div className="rounded-2xl border border-border surface-card p-6 text-center">
         <h2 className="font-display text-xl tracking-tight text-foreground">Your achievements deserve to be trusted.</h2>
         <p className="mt-2 text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
-          Blockward helps individuals showcase achievements that organisations can independently verify.
+          Blockward helps individuals showcase achievements that organisations can independently verify — and on BlockTalks, verified achievements start conversations.
         </p>
         <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
           <Button variant="outline" asChild>

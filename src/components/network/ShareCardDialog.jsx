@@ -11,7 +11,7 @@ import ShareCard, { CARD_TEMPLATES, CARD_FORMATS } from './ShareCardPreview';
 import { cn } from '@/lib/utils';
 
 /**
- * ShareCardDialog — the Blockward Network share-card studio (Phase 1).
+ * ShareCardDialog — the BlockTalks share-card studio (Phase 1).
  * Four professional templates × three platform formats, live preview,
  * one-click PNG download and direct LinkedIn / X / WhatsApp sharing.
  *
@@ -114,9 +114,9 @@ export default function ShareCardDialog({ open, onOpenChange, item, holderName }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Share your achievement</DialogTitle>
+          <DialogTitle>Share to BlockTalks</DialogTitle>
           <DialogDescription>
-            Pick a professional card and platform — the card carries a QR code straight to the permanent verification page.
+            Where achievements start conversations. Pick a professional card and platform — the card carries a QR code straight to the permanent verification page.
           </DialogDescription>
         </DialogHeader>
 

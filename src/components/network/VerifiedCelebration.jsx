@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Linkedin, MessageCircle, Share2, Copy, Check, PartyPopper, ExternalLink, Download, X } from 'lucide-react';
+import { Linkedin, MessageCircle, Share2, Copy, Check, PartyPopper, ExternalLink, MessagesSquare, X } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -73,7 +73,7 @@ export default function VerifiedCelebration({ item, onDismiss, onOpenStudio }) {
             {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />} Copy link
           </Button>
           <Button onClick={() => onOpenStudio(item)}>
-            <Download className="h-4 w-4" /> Download card
+            <MessagesSquare className="h-4 w-4" /> Share to BlockTalks
           </Button>
         </div>
 

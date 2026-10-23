@@ -602,7 +602,7 @@ export default function MyAchievements() {
     const m = metaByRef.get(it.ref) || {};
     const actions = [];
     if (it.card.verification_id) {
-      actions.push({ label: 'Share', Icon: Share2, group: 'record', onSelect: () => setShareTarget({ ...it.card, banner: m.banner_url || it.card.cover || null, verified_at: it.raw?.verified_at || null }) });
+      actions.push({ label: 'Share to BlockTalks', Icon: Share2, group: 'record', onSelect: () => setShareTarget({ ...it.card, banner: m.banner_url || it.card.cover || null, verified_at: it.raw?.verified_at || null }) });
       actions.push({ label: 'Download certificate', Icon: Download, group: 'record', onSelect: () => handleCertificate(it) });
     }
     if (it.kind === 'self') {
@@ -1070,7 +1070,7 @@ export default function MyAchievements() {
         saving={saving}
       />
 
-      {/* ── Celebration + Blockward Network share-card studio ── */}
+      {/* ── Celebration + BlockTalks share-card studio ── */}
       <VerifiedCelebration
         item={celebrating}
         onDismiss={() => setCelebrating(null)}
