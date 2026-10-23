@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Namespaced reference to the achievement this metadata decorates (e.g. 'ach:<Achievement.id>', 'vault:<StudentRecord.id>', 'req:<request id>', 'self:<SelfReportedAchievement.id>'). One row per owner per ref."
     },
+    "banner_url": {
+      "type": "string",
+      "description": "Optional decorative cover image the holder uploaded for portfolio presentation. Pure presentation metadata: editable and removable by the owner at any time, never evidence, never part of the signed credential, the BW-HASH-V1 commitment or verification state. Rendered only where the achievement itself is visible; public endpoints never read this field."
+    },
     "category_ids": {
       "type": "array",
       "items": {

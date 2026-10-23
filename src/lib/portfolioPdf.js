@@ -1,151 +1,150 @@
-// Client-side PDF export of the full verified portfolio, with a QR code
-// linking to the live public profile.
-import { DOMAIN_ORDER, DOMAIN_LABELS } from '@/lib/achievementDomains';
+// Portfolio PDF generation — shared by the My Achievements header "More
+// actions" menu and the achievement detail view. Moved out of
+// PortfolioActions so both entry points use the exact same documents.
+import { format } from 'date-fns';
 
-const M = 14; // page margin (mm)
-const W = 210; // A4 width
+const CATEGORY_WEIGHT = { academic: 1, leadership: 2, sports: 3, arts: 4, community: 5, special: 9, behaviour: 9 };
 
-const fmt = (iso) => {
-  if (!iso) return '';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-};
-
-async function qrDataUrl(url) {
-  try {
-    const res = await fetch(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=6&data=${encodeURIComponent(url)}`);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * exportPortfolioPdf — renders the verified portfolio (grouped by category,
- * every organisation included) to a downloadable A4 PDF.
- * `data` is the publicProfileData response; `profileUrl` is the live URL
- * encoded into the QR code.
- */
-export async function exportPortfolioPdf(data, profileUrl) {
-  const { student, orgs = [], achievements = [] } = data;
-  // jsPDF is a large dependency — only load it when an export actually runs.
+/** Full / university / CV portfolio export. */
+export async function exportPortfolioPDF(records, profile, user, type) {
   const { jsPDF } = await import('jspdf');
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = new jsPDF();
+  const studentName = profile ? `${profile.first_name} ${profile.last_name}` : user?.email;
+  const left = 14;
+  let y = 20;
 
-  // ── Header band ─────────────────────────────────────────────────────────
-  doc.setFillColor(11, 10, 16);
-  doc.rect(0, 0, W, 46, 'F');
-  doc.setTextColor(247, 245, 250);
-  doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  doc.text(student.name || 'Student', M, 17);
+  doc.setTextColor(37, 99, 235);
+  doc.text('BlockWard Portfolio', left, y);
+  y += 8;
+  doc.setFontSize(11);
+  doc.setTextColor(100);
+  const subtitle = type === 'university' ? 'University Application Portfolio'
+    : type === 'cv' ? 'CV Achievement Summary'
+    : 'Complete Achievement Portfolio';
+  doc.text(subtitle, left, y);
+  y += 6;
+  doc.text(`Student: ${studentName}`, left, y);
+  if (profile?.grade_level) { y += 5; doc.text(`Grade: ${profile.grade_level}`, left, y); }
+  y += 5;
+  doc.text(`Generated: ${format(new Date(), 'MMM d, yyyy')}`, left, y);
+  y += 4;
+  doc.setDrawColor(37, 99, 235);
+  doc.line(left, y, 196, y);
+  y += 8;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10.5);
-  doc.setTextColor(167, 139, 250);
-  doc.text(`@${student.handle} · BlockWard verified portfolio`, M, 24);
+  const list = type === 'university'
+    ? [...records].sort((a, b) => (CATEGORY_WEIGHT[a.category] || 9) - (CATEGORY_WEIGHT[b.category] || 9))
+    : records;
 
-  doc.setTextColor(180, 173, 190);
-  doc.setFontSize(9);
-  let hy = 30;
-  if (student.bio) {
-    doc.text(doc.splitTextToSize(student.bio, W - 2 * M - 32), M, hy);
-    hy += 5;
-  }
-  const orgLine = orgs.map((o) => o.name).filter(Boolean).join('  ·  ');
-  if (orgLine) {
-    doc.text(doc.splitTextToSize(orgLine, W - 2 * M - 32), M, hy);
-  }
-
-  const qr = await qrDataUrl(profileUrl);
-  if (qr) {
-    doc.addImage(qr, 'PNG', W - M - 26, 8, 26, 26);
-    doc.setFontSize(7);
-    doc.setTextColor(180, 173, 190);
-    doc.text('Scan to verify live', W - M - 26, 37.5);
-  }
-
-  // ── Summary line ────────────────────────────────────────────────────────
-  let y = 56;
-  doc.setTextColor(23, 18, 31);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  const summary = `${achievements.length} verified achievement${achievements.length === 1 ? '' : 's'} across ${orgs.length} organisation${orgs.length === 1 ? '' : 's'}`;
-  doc.text(summary, M, y);
-  y += 9;
-
-  // ── Grouped sections ────────────────────────────────────────────────────
-  const groups = {};
-  for (const a of achievements) {
-    const d = a.domain || 'other';
-    (groups[d] = groups[d] || []).push(a);
-  }
-
-  for (const d of DOMAIN_ORDER) {
-    const items = (groups[d] || []).sort((a, b) =>
-      new Date(b.date_achieved || b.date_delivered || 0) - new Date(a.date_achieved || a.date_delivered || 0)
-    );
-    if (!items.length) continue;
-
-    if (y > 270) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'bold');
+  if (list.length === 0) {
     doc.setFontSize(12);
-    doc.setTextColor(124, 58, 237);
-    doc.text(`${DOMAIN_LABELS[d] || d}  (${items.length})`, M, y);
-    y += 2.5;
-    doc.setDrawColor(215, 210, 225);
-    doc.line(M, y, W - M, y);
+    doc.setTextColor(150);
+    doc.text('No achievements to display.', left, y);
+  }
+
+  list.forEach((rec, idx) => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.setFontSize(13);
+    doc.setTextColor(30);
+    doc.text(`${idx + 1}. ${rec.title}`, left, y);
     y += 6;
-
-    for (const a of items) {
-      if (y > 272) { doc.addPage(); y = 20; }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(10.5);
-      doc.setTextColor(23, 18, 31);
-      const titleLines = doc.splitTextToSize(a.title || 'Achievement', W - 2 * M);
-      doc.text(titleLines, M, y);
-      y += titleLines.length * 5;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(110, 104, 120);
-      const meta = [
-        a.organisation_name,
-        a.date_achieved && `achieved ${fmt(a.date_achieved)}`,
-        a.verification_id,
-        a.endorsement_count > 0 ? `${a.endorsement_count} peer endorsement${a.endorsement_count === 1 ? '' : 's'}` : null,
-      ].filter(Boolean).join('  ·  ');
-      const metaLines = doc.splitTextToSize(meta, W - 2 * M);
-      doc.text(metaLines, M, y);
-      y += metaLines.length * 4.4 + 2.5;
+    doc.setFontSize(9);
+    doc.setTextColor(120);
+    const meta = [
+      rec.category ? `Category: ${rec.category}` : '',
+      rec.date_achieved ? `Date: ${format(new Date(rec.date_achieved), 'MMM d, yyyy')}` : '',
+      rec.points ? `Points: ${rec.points}` : '',
+      rec.verify_id ? `Verify ID: ${rec.verify_id}` : '',
+    ].filter(Boolean).join('  |  ');
+    doc.text(meta, left, y);
+    y += 5;
+    if (type !== 'cv' && rec.description) {
+      const desc = doc.splitTextToSize(rec.description, 180);
+      doc.setTextColor(90);
+      doc.text(desc, left, y);
+      y += desc.length * 5;
+    }
+    if (rec.teacher_name || rec.admin_name) {
+      doc.setTextColor(110);
+      const sig = [
+        rec.teacher_name ? `Teacher: ${rec.teacher_name}` : '',
+        rec.admin_name ? `Admin: ${rec.admin_name}` : '',
+      ].filter(Boolean).join('  |  ');
+      doc.text(sig, left, y);
+      y += 5;
     }
     y += 4;
+  });
+
+  const pages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`BlockWard — Verified Digital Portfolio  |  Page ${i} of ${pages}`, left, 290);
   }
 
-  // ── Self-reported note + footer ─────────────────────────────────────────
-  const selfCount = (data.self_reported || []).length;
-  if (selfCount > 0) {
-    if (y > 265) { doc.addPage(); y = 20; }
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(150, 145, 160);
-    doc.text(doc.splitTextToSize(
-      `${selfCount} further achievement${selfCount === 1 ? '' : 's'} on this profile ${selfCount === 1 ? 'is' : 'are'} self-reported and not yet verified — see the live profile for their status.`,
-      W - 2 * M,
-    ), M, y);
+  const fileName = `BlockWard_${type === 'university' ? 'University' : type === 'cv' ? 'CV' : 'Portfolio'}_${studentName.replace(/\s+/g, '_')}.pdf`;
+  doc.save(fileName);
+}
+
+/** Single-achievement certificate download. */
+export async function downloadCertificatePDF(rec, profile) {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF();
+  const studentName = profile ? `${profile.first_name} ${profile.last_name}` : rec.student_name;
+  doc.setFillColor(37, 99, 235);
+  doc.rect(0, 0, 210, 40, 'F');
+  doc.setTextColor(255);
+  doc.setFontSize(22);
+  doc.text('BlockWard Verified Achievement', 105, 25, { align: 'center' });
+
+  doc.setTextColor(30);
+  doc.setFontSize(18);
+  let y = 60;
+  doc.text(rec.title, 105, y, { align: 'center' });
+  y += 10;
+  doc.setFontSize(12);
+  doc.setTextColor(100);
+  doc.text(`Awarded to ${studentName}`, 105, y, { align: 'center' });
+  y += 14;
+  doc.setDrawColor(37, 99, 235);
+  doc.line(60, y, 150, y);
+  y += 12;
+
+  doc.setFontSize(11);
+  const rows = [
+    ['Category', rec.category || '—'],
+    ['Date Achieved', rec.date_achieved ? format(new Date(rec.date_achieved), 'MMM d, yyyy') : '—'],
+    ['Points', rec.points ? String(rec.points) : '—'],
+    ['Teacher', rec.teacher_name || '—'],
+    ['Admin', rec.admin_name || '—'],
+    ['Verification ID', rec.verify_id || '—'],
+    ['Status', 'Delivered to BlockWard Vault'],
+  ];
+  rows.forEach(([k, v]) => {
+    doc.setTextColor(120);
+    doc.text(`${k}:`, 50, y);
+    doc.setTextColor(40);
+    doc.text(String(v), 90, y);
+    y += 8;
+  });
+
+  if (rec.description) {
+    y += 4;
+    doc.setTextColor(120);
+    doc.text('Description:', 50, y);
+    y += 6;
+    const desc = doc.splitTextToSize(rec.description, 120);
+    doc.setTextColor(50);
+    doc.text(desc, 50, y);
   }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(150, 145, 160);
-  doc.text(`Generated ${new Date().toLocaleDateString('en-GB')} · ${profileUrl}`, M, 288);
+  doc.setFontSize(9);
+  doc.setTextColor(150);
+  doc.text(`Verify at: ${window.location.origin}/verify/${rec.verify_id || rec.id}`, 105, 285, { align: 'center' });
+  doc.text(`Generated by BlockWard on ${format(new Date(), 'MMM d, yyyy')}`, 105, 290, { align: 'center' });
 
-  doc.save(`blockward-portfolio-${student.handle || 'student'}.pdf`);
+  doc.save(`BlockWard_Certificate_${rec.title.replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30)}.pdf`);
 }

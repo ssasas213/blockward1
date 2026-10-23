@@ -86,6 +86,39 @@ export async function processEvidenceImage(file) {
   return canvasToFile(canvas, file);
 }
 
+/**
+ * Achievement banner: the holder's decorative 16:9 cover, cropped with the
+ * user's chosen zoom + reposition and compressed before upload. Presentation
+ * metadata only — never evidence, never part of the credential.
+ */
+export const BANNER_ASPECT = 16 / 9;
+
+export async function processBannerImage(file, { zoom = 1, offsetX = 0.5, offsetY = 0.5 } = {}) {
+  const err = validateImageFile(file);
+  if (err) throw new Error(err);
+  const img = await readImage(file);
+  // Cover-fit crop for 16:9, then the user's zoom shrinks the crop window.
+  const aspect = img.width / img.height;
+  let cropW;
+  let cropH;
+  if (aspect > BANNER_ASPECT) { cropH = img.height; cropW = cropH * BANNER_ASPECT; }
+  else { cropW = img.width; cropH = cropW / BANNER_ASPECT; }
+  const z = Math.min(Math.max(zoom, 1), 2.5);
+  cropW /= z;
+  cropH = cropW / BANNER_ASPECT;
+  if (cropH > img.height) { cropH = img.height; cropW = cropH * BANNER_ASPECT; }
+  const cl = (v) => Math.min(Math.max(v, 0), 1);
+  const sx = Math.round((img.width - cropW) * cl(offsetX));
+  const sy = Math.round((img.height - cropH) * cl(offsetY));
+  const outW = Math.min(Math.round(cropW), MAX_WIDTH);
+  const outH = Math.round(outW / BANNER_ASPECT);
+  const canvas = document.createElement('canvas');
+  canvas.width = outW;
+  canvas.height = outH;
+  canvas.getContext('2d').drawImage(img, sx, sy, cropW, cropH, 0, 0, outW, outH);
+  return canvasToFile(canvas, file);
+}
+
 // "image" vs "file" classification used by StudentRecord.file_type.
 export function evidenceFileType(url, type) {
   if (type?.startsWith('image/')) return 'image';

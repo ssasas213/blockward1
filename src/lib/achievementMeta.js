@@ -86,6 +86,13 @@ export async function upsertMetas(ownerEmail, refs, patch) {
 export const assignCategories = (ownerEmail, refs, ids) => upsertMetas(ownerEmail, refs, { category_ids: ids || [] });
 export const setFeatured = (ownerEmail, refs, on) => upsertMetas(ownerEmail, refs, { featured: !!on });
 export const setArchived = (ownerEmail, refs, on) => upsertMetas(ownerEmail, refs, { archived: !!on });
+
+/**
+ * Optional decorative banner (cover image) for one achievement — pure
+ * presentation metadata, owner-editable at any time. It is never evidence,
+ * never part of the credential and never changes verification state.
+ */
+export const setBanner = (ownerEmail, ref, url) => upsertMetas(ownerEmail, [ref], { banner_url: url || null });
 export async function setCardOrder(ownerEmail, orderedRefs) {
   return upsertMetas(ownerEmail, orderedRefs, { card_order: null });
 }
