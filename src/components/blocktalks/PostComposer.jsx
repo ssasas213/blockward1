@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import {
   ShieldCheck, Building2, MessagesSquare, PartyPopper, Loader2, Check, ExternalLink,
@@ -46,6 +46,10 @@ export default function PostComposer({
 
   const hasOrgs = orgs.length > 0;
   const effectiveMode = hasOrgs ? mode : 'individual';
+
+  // Keep the selection in sync with whoever opened the composer (the
+  // /Achievements menu preselects; the feed's button opens unselected).
+  useEffect(() => { setRef(preselectedRef); setStage('edit'); }, [preselectedRef]);
 
   const selectedItem = useMemo(
     () => shareable.find((s) => s.ref === ref) || null,
