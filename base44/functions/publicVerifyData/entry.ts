@@ -38,6 +38,34 @@ export default async function (req: Request): Promise<Response> {
     // response fields are preserved, this attaches a `trust` object.
     const trust = await calculateCredentialTrust(svc, cred, { integrity });
 
+    // ── Presentation extras (Blockward Network, Phase 1) — all public-safe
+    // and strictly gated:
+    //   - banner: the holder's decorative cover image (AchievementMeta —
+    //     pure presentation metadata, never part of the signed credential or
+    //     the BW-HASH-V1 commitment). Only shown when the holder's profile is
+    //     not private.
+    //   - holder_handle: deep link to the holder's public /@handle profile,
+    //     ONLY when the holder opted into a public or link-only profile.
+    //   - issuer_logo_url: the verified issuer organisation's public logo.
+    let bannerUrl: string | null = null;
+    let holderHandle: string | null = null;
+    let issuerLogoUrl: string | null = null;
+    try {
+      const metaRows = await svc.entities.AchievementMeta.filter({ achievement_ref: `ach:${cred.achievement_id}` });
+      bannerUrl = metaRows?.[0]?.banner_url || null;
+    } catch { /* presentation only — never block verification */ }
+    try {
+      const profs = await svc.entities.UserProfile.filter({ user_email: cred.holder_email });
+      const prof = profs?.[0];
+      if (prof && prof.profile_visibility !== 'private' && prof.handle) holderHandle = prof.handle;
+    } catch { /* holder stays anonymous */ }
+    if (cred.org_id) {
+      try {
+        const org = await svc.entities.IssuerOrganisation.get(cred.org_id);
+        if (org?.status === 'verified' && org?.logo_url) issuerLogoUrl = org.logo_url;
+      } catch { /* logo is decorative */ }
+    }
+
     // Expiry-derived validity — an expired credential is never "currently valid".
     const today = new Date().toISOString().slice(0, 10);
     let validity = 'valid';
@@ -63,6 +91,9 @@ export default async function (req: Request): Promise<Response> {
         schema_version: cred.schema_version || 1,
         status: cred.status,
         validity,
+        banner_url: bannerUrl,
+        holder_handle: holderHandle,
+        issuer_logo_url: issuerLogoUrl,
       },
       blockchain: {
         secured: trust.integrity_status === 'confirmed',

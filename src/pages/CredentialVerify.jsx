@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import BrandHeader from '@/components/public/BrandHeader';
+import VerifyGrowthSection from '@/components/network/VerifyGrowthSection';
 import {
   Shield, ShieldCheck, CheckCircle2, AlertCircle, Clock, ExternalLink,
   Hash, Network, Layers, Copy, Building2, Calendar, UserCheck, Loader2, ChevronDown,
@@ -120,6 +121,15 @@ function NewCredentialView({ data }) {
           </div>
         </div>
 
+        {/* Achievement cover — the holder's decorative banner, only present
+            when the holder opted into a public profile. Pure presentation:
+            never part of the signed credential or the on-chain commitment. */}
+        {cred.banner_url && (
+          <div className="rounded-2xl overflow-hidden border border-border mb-6 max-h-[320px]">
+            <img src={cred.banner_url} alt="" className="w-full h-auto object-cover" style={{ aspectRatio: '16 / 9' }} />
+          </div>
+        )}
+
         {/* Credential */}
         <Card className="surface-card mb-6">
           <CardContent className="p-6">
@@ -127,7 +137,9 @@ function NewCredentialView({ data }) {
             <h1 className="font-display text-2xl tracking-tight text-foreground leading-snug">{cred.title}</h1>
             {cred.description && <p className="text-sm text-muted-foreground mt-3 leading-relaxed">{cred.description}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 mt-4">
-              <Row icon={UserCheck} label="Holder" value={cred.holder_display_name} />
+              <Row icon={UserCheck} label="Holder" value={cred.holder_handle ? (
+                <a href={`/@${cred.holder_handle}`} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{cred.holder_display_name}</a>
+              ) : cred.holder_display_name} />
               <Row icon={Building2} label="Issued by" value={
                 cred.issuer_org ? (cred.issuer_website ? (
                   <a href={cred.issuer_website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{cred.issuer_org}</a>
@@ -238,6 +250,9 @@ function NewCredentialView({ data }) {
           This check ran live against the blockchain — anyone can repeat it at any time.
           Anchoring proves a commitment of record existed at a point in time; it is not a judgement about the achievement itself.
         </p>
+
+        {/* Growth channel — always below the verification details, never before them */}
+        <VerifyGrowthSection />
       </div>
     </div>
   );

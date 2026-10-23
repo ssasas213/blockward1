@@ -17,7 +17,8 @@ import {
 } from '@/lib/achievementMeta';
 import { downloadCertificatePDF } from '@/lib/portfolioPdf';
 import { cardFromRequest, cardFromSelf, cardFromVault } from '@/components/achievements/AchievementCard';
-import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
+import ShareCardDialog from '@/components/network/ShareCardDialog';
+import VerifiedCelebration from '@/components/network/VerifiedCelebration';
 import EvidenceUpload from '@/components/evidence/EvidenceUpload';
 import PortfolioGrid from '@/components/achievements/PortfolioGrid';
 import AchievementDetail from '@/components/achievements/detail/AchievementDetail';
@@ -28,7 +29,7 @@ import AchievementGridSkeleton from '@/components/achievements/AchievementGridSk
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import CredentialEditDialog from '@/components/achievements/edit/CredentialEditDialog';
 import RequestForm from '@/components/achievements/RequestForm';
-import CelebrationDialog from '@/components/achievements/CelebrationDialog';
+
 import HistoricalVaultCard from '@/components/historical/HistoricalVaultCard';
 import CategoryManager from '@/components/achievements/unified/CategoryManager';
 import { CategoryChip, CATEGORY_ICONS, CATEGORY_COLORS } from '@/components/achievements/unified/CategoryVisual';
@@ -559,7 +560,7 @@ export default function MyAchievements() {
       }
       const celebrated = JSON.parse(localStorage.getItem('bw_celebrated') || '[]');
       const fresh = items.filter((it) => it.card.status === 'verified' && it.card.verification_id && !celebrated.includes(it.card.verification_id));
-      if (fresh.length) setCelebrateQueue(fresh.map((it) => it.card));
+      if (fresh.length) setCelebrateQueue(fresh.map((it) => ({ ...it.card, banner: metaByRef.get(it.ref)?.banner_url || null })));
     } catch { /* never block the page */ }
   }, [items]);
   useEffect(() => {
@@ -601,7 +602,7 @@ export default function MyAchievements() {
     const m = metaByRef.get(it.ref) || {};
     const actions = [];
     if (it.card.verification_id) {
-      actions.push({ label: 'Share', Icon: Share2, group: 'record', onSelect: () => setShareTarget(it.card) });
+      actions.push({ label: 'Share', Icon: Share2, group: 'record', onSelect: () => setShareTarget({ ...it.card, banner: m.banner_url || it.card.cover || null, verified_at: it.raw?.verified_at || null }) });
       actions.push({ label: 'Download certificate', Icon: Download, group: 'record', onSelect: () => handleCertificate(it) });
     }
     if (it.kind === 'self') {
@@ -1069,13 +1070,18 @@ export default function MyAchievements() {
         saving={saving}
       />
 
-      {/* ── Celebration ── */}
-      <CelebrationDialog
+      {/* ── Celebration + Blockward Network share-card studio ── */}
+      <VerifiedCelebration
         item={celebrating}
         onDismiss={() => setCelebrating(null)}
-        onShare={(card) => { setCelebrating(null); setShareTarget(card); }}
+        onOpenStudio={(card) => { setCelebrating(null); setShareTarget(card); }}
       />
-      <AchievementShareDialog open={!!shareTarget} onOpenChange={(o) => { if (!o) setShareTarget(null); }} achievement={shareTarget ? { verification_id: shareTarget.verification_id, title: shareTarget.title } : null} />
+      <ShareCardDialog
+        open={!!shareTarget}
+        onOpenChange={(o) => { if (!o) setShareTarget(null); }}
+        item={shareTarget}
+        holderName={profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : ''}
+      />
     </div>
   );
 }
