@@ -2,13 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import EmptyState from '@/components/ui/empty-state';
 import GlowActionButton from '@/components/ui/GlowActionButton';
 import { useSchool } from '@/lib/SchoolContext';
 import { loadEarnedAchievements, invalidateAchievementCache } from '@/lib/achievementLifecycle';
@@ -18,7 +16,7 @@ import {
   setFeatured, setArchived, saveCardOrder, setBanner,
 } from '@/lib/achievementMeta';
 import { downloadCertificatePDF } from '@/lib/portfolioPdf';
-import AchievementCard, { cardFromRequest, cardFromSelf, cardFromVault } from '@/components/achievements/AchievementCard';
+import { cardFromRequest, cardFromSelf, cardFromVault } from '@/components/achievements/AchievementCard';
 import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
 import EvidenceUpload from '@/components/evidence/EvidenceUpload';
 import PortfolioGrid from '@/components/achievements/PortfolioGrid';
@@ -39,7 +37,6 @@ import {
   ShieldCheck, Clock, UserPlus, Star, Archive, ArchiveRestore, FolderKanban,
   LayoutGrid, List, X, CheckSquare, Share2, Download, ImagePlus, PenLine,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
 
 const ACH_CATEGORIES = [

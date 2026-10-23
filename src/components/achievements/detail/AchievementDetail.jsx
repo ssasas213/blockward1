@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -67,6 +67,7 @@ export default function AchievementDetail({ item, bannerUrl, open, onOpenChange,
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex max-w-4xl flex-col gap-0 overflow-hidden p-0 max-h-[92vh]">
+          <DialogTitle className="sr-only">{item.title} — achievement detail</DialogTitle>
           {/* ── Banner hero ── */}
           <div className="relative aspect-video max-h-[280px] w-full flex-shrink-0 overflow-hidden bg-secondary">
             {bannerUrl ? (
