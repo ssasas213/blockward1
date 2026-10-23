@@ -45,6 +45,7 @@ import Invitations from './pages/Invitations';
 import ExternalVerify from './pages/ExternalVerify';
 import GuardianConsent from './pages/GuardianConsent';
 import ForOrganisations from './pages/ForOrganisations';
+import BlockTalks from './pages/BlockTalks';
 import DemoProfile from './pages/DemoProfile';
 import SampleVerification from './pages/SampleVerification';
 import RoleDashboardRedirect from '@/components/auth/RoleDashboardRedirect';
@@ -174,6 +175,9 @@ const AuthenticatedApp = () => {
       {/* Issuer organisation registration — persistent IssuerOrganisation record */}
       <Route path="/register-organisation" element={<Register />} />
       <Route path="/ForOrganisations" element={<ForOrganisations />} />
+      {/* BlockTalks — BlockWard's professional achievement-sharing platform
+          (introductory page; the feed itself ships in a later phase). */}
+      <Route path="/BlockTalks" element={<BlockTalks />} />
       <Route path="/DemoProfile" element={<DemoProfile />} />
       {/* BlockWard AI is hidden during beta — any link to it lands on the
           user's own dashboard instead of a 404. Restore the original page

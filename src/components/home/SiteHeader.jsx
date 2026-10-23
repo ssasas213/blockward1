@@ -22,6 +22,21 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
     scrolled || menuOpen ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
   );
 
+  // Standard nav link tone.
+  const ghostLink = cn(
+    "transition-colors",
+    scrolled || menuOpen ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
+  );
+
+  // Accent nav link (BlockTalks) — Blockward-blue with a soft glow that warms
+  // up on hover, distinct from the neutral ghost links.
+  const accentText = cn(
+    "font-medium",
+    scrolled || menuOpen
+      ? "text-primary hover:text-accent"
+      : "text-brand-violet hover:text-blue-300 drop-shadow-[0_0_8px_rgb(37_99_235/0.35)] hover:drop-shadow-[0_0_10px_rgb(96_165_250/0.5)]"
+  );
+
   return (
     <header className={cn(
       "fixed top-0 left-0 right-0 z-50 transition-all duration-200",
@@ -47,11 +62,18 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
               key={link.href}
               href={link.href}
               className={cn(
-                "text-sm transition-colors",
-                scrolled ? "text-muted-foreground hover:text-foreground" : "text-white/70 hover:text-white"
+                link.accent ? accentText : ghostLink,
+                "group relative text-sm transition-all duration-200",
               )}
             >
               {link.label}
+              {/* Accent links get a subtle animated underline on hover */}
+              {link.accent && (
+                <span
+                  className="absolute inset-x-0 -bottom-1 h-px origin-left scale-x-0 bg-primary transition-transform duration-200 group-hover:scale-x-100"
+                  aria-hidden="true"
+                />
+              )}
             </a>
           ))}
         </nav>
@@ -93,7 +115,12 @@ export default function SiteHeader({ user, profile, navLinks, ctaLabel = 'Get St
                 key={link.href}
                 href={link.href}
                 onClick={() => setMenuOpen(false)}
-                className="block px-3 py-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground hover:bg-hover transition-colors"
+                className={cn(
+                  "block rounded-lg px-3 py-2.5 text-sm transition-colors hover:bg-hover",
+                  link.accent
+                    ? "font-medium text-primary hover:text-accent"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
                 {link.label}
               </a>

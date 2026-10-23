@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { UserRound } from 'lucide-react';
+import { UserRound, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GlowActionButton from '@/components/ui/GlowActionButton';
 import HeroFilm from '@/components/home2/HeroFilm';
@@ -69,6 +69,15 @@ export default function Hero() {
             Issuing achievements?{' '}
             <a href="/register-organisation" className="text-brand-violet hover:underline">
               Register your organisation →
+            </a>
+          </motion.p>
+          <motion.p {...rise(0.38)} className="text-sm text-white/60 [text-shadow:0_1px_12px_rgb(0_0_0/0.6)]">
+            <a
+              href="/BlockTalks"
+              className="group inline-flex items-center gap-1.5 font-medium text-brand-violet transition-colors hover:text-blue-300"
+            >
+              Explore BlockTalks
+              <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
           </motion.p>
         </div>

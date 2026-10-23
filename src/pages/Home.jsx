@@ -19,6 +19,7 @@ const NAV_LINKS = [
   { label: 'How it works', href: '#story' },
   { label: 'For individuals', href: '#own' },
   { label: 'For organisations', href: '/ForOrganisations' },
+  { label: 'BlockTalks', href: '/BlockTalks', accent: true },
   { label: 'Verify a credential', href: '#verify' },
 ];
 
