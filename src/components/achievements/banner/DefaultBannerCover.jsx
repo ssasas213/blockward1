@@ -1,5 +1,5 @@
-import { CATEGORY_ICONS, CATEGORY_COLORS } from '@/components/achievements/unified/CategoryVisual';
-import { GraduationCap, Trophy, Medal, HeartHandshake, Briefcase, FileBadge, Crown, Rocket, Palette, Shapes, Star, Award, BookOpen, Wrench, Zap } from 'lucide-react';
+import { CATEGORY_ICONS } from '@/components/achievements/unified/CategoryVisual';
+import { GraduationCap, Trophy, Briefcase, FileBadge, Shapes, Award, BookOpen, Wrench, Zap } from 'lucide-react';
 
 /**
  * DefaultBannerCover — the attractive category-based default cover shown when

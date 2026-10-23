@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import EmptyState from '@/components/ui/empty-state';
 import GlowActionButton from '@/components/ui/GlowActionButton';
 import { useSchool } from '@/lib/SchoolContext';
@@ -16,26 +15,29 @@ import { loadEarnedAchievements, invalidateAchievementCache } from '@/lib/achiev
 import { hasVerifiedIntegrity, integrityCheckIsStale } from '@/lib/credentialIntegrity';
 import {
   ensureDefaultCategories, loadCategories, loadMeta, assignCategories,
-  setFeatured, setArchived, saveCardOrder,
+  setFeatured, setArchived, saveCardOrder, setBanner,
 } from '@/lib/achievementMeta';
+import { downloadCertificatePDF } from '@/lib/portfolioPdf';
 import AchievementCard, { cardFromRequest, cardFromSelf, cardFromVault } from '@/components/achievements/AchievementCard';
 import AchievementShareDialog from '@/components/publicProfile/AchievementShareDialog';
 import EvidenceUpload from '@/components/evidence/EvidenceUpload';
-import AchievementDetailDrawer from '@/components/achievements/AchievementDetailDrawer';
+import PortfolioGrid from '@/components/achievements/PortfolioGrid';
+import AchievementDetail from '@/components/achievements/detail/AchievementDetail';
+import BannerEditDialog from '@/components/achievements/banner/BannerEditDialog';
+import BannerPicker from '@/components/achievements/banner/BannerPicker';
+import AchievementsMoreMenu from '@/components/achievements/AchievementsMoreMenu';
 import AchievementGridSkeleton from '@/components/achievements/AchievementGridSkeleton';
 import BlockWardDetailModal from '@/components/blockwards/BlockWardDetailModal';
 import CredentialEditDialog from '@/components/achievements/edit/CredentialEditDialog';
 import RequestForm from '@/components/achievements/RequestForm';
-import PortfolioActions from '@/components/student/achievements/PortfolioActions';
 import CelebrationDialog from '@/components/achievements/CelebrationDialog';
 import HistoricalVaultCard from '@/components/historical/HistoricalVaultCard';
 import CategoryManager from '@/components/achievements/unified/CategoryManager';
-import UnifiedGrid from '@/components/achievements/unified/UnifiedGrid';
-import { CategoryChip } from '@/components/achievements/unified/CategoryVisual';
+import { CategoryChip, CATEGORY_ICONS, CATEGORY_COLORS } from '@/components/achievements/unified/CategoryVisual';
 import {
   Plus, Search, Building2, Loader2, FileText,
-  ShieldCheck, Clock, UserPlus, Star, Archive, FolderKanban,
-  LayoutGrid, List, X, History, CheckSquare, AtSign,
+  ShieldCheck, Clock, UserPlus, Star, Archive, ArchiveRestore, FolderKanban,
+  LayoutGrid, List, X, CheckSquare, Share2, Download, ImagePlus, PenLine,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { createPageUrl } from '@/utils';
@@ -50,7 +52,7 @@ const EMPTY_FORM = {
   title: '', category: '', description: '', date: '', expires: '',
   issuer_org: '', issuer_org_id: '', issuer_status: '', issuer_email: '', issuer_website: '',
   certificate_url: '', certificate_name: '',
-  evidence: [], linkUrl: '', linkName: '',
+  evidence: [], linkUrl: '', linkName: '', banner: '',
 };
 
 const TABS = ['all', 'pending', 'verified', 'archived'];
@@ -124,6 +126,7 @@ export default function MyAchievements() {
   const [celebrateQueue, setCelebrateQueue] = useState([]);
   const [celebrating, setCelebrating] = useState(null);
   const [verifySelf, setVerifySelf] = useState(null);
+  const [bannerTarget, setBannerTarget] = useState(null);  // cover-image editor target
 
   const setV = (k, v) => setAddForm((f) => ({ ...f, [k]: v }));
 
@@ -283,6 +286,31 @@ export default function MyAchievements() {
       return m?.featured && !m?.archived;
     }).sort((a, b) => ((metaByRef.get(a.ref)?.card_order ?? Infinity) - (metaByRef.get(b.ref)?.card_order ?? Infinity)));
   }, [items, metaByRef]);
+
+  const catCounts = useMemo(() => {
+    const map = new Map();
+    if (!items) return map;
+    for (const it of items) {
+      const m = metaByRef.get(it.ref);
+      if (m?.archived) continue;
+      for (const id of (m?.category_ids || [])) map.set(id, (map.get(id) || 0) + 1);
+    }
+    return map;
+  }, [items, metaByRef]);
+
+  // View enrichment — banner / featured / personal categories come from the
+  // owner's AchievementMeta rows, layered over the unified item model.
+  const enrich = (it) => {
+    const m = metaByRef.get(it.ref);
+    return {
+      ...it,
+      banner: m?.banner_url || it.card.cover || null,
+      featured: !!m?.featured,
+      cats: (m?.category_ids || []).map((id) => catById.get(id)).filter(Boolean),
+    };
+  };
+  const viewItems = useMemo(() => (sorted || []).map(enrich), [sorted, metaByRef, catById]);
+  const featuredView = useMemo(() => featuredItems.map(enrich), [featuredItems, metaByRef, catById]);
 
   const counts = useMemo(() => {
     if (!items) return null;
@@ -541,6 +569,57 @@ export default function MyAchievements() {
       localStorage.setItem('bw_celebrated', JSON.stringify([...celebrated, next.verification_id]));
     } catch { /* ignore */ }
   }, [celebrateQueue, celebrating]);
+
+  // ── Card menu / single-item actions ──
+  const handleFeature = async (it, on) => {
+    try {
+      await setFeatured(email, [it.ref], on);
+      toast.success(on ? 'Added to Featured' : 'Removed from Featured');
+      await refreshMetas();
+    } catch { toast.error('Could not update'); }
+  };
+  const handleArchiveOne = async (it, on) => {
+    try {
+      await setArchived(email, [it.ref], on);
+      toast.success(on ? 'Moved to Archived' : 'Restored');
+      await refreshMetas();
+    } catch { toast.error('Could not update'); }
+  };
+  const handleCertificate = (it) => {
+    downloadCertificatePDF({
+      title: it.card.title,
+      category: it.card.category,
+      date_achieved: it.card.date,
+      description: it.kind === 'achievement' ? (it.raw.description || '') : (it.description || ''),
+      verify_id: it.card.verification_id || null,
+    }, profile).catch((e) => toast.error('Download failed: ' + e.message));
+  };
+  const menuActionsFor = (it) => {
+    const m = metaByRef.get(it.ref) || {};
+    const actions = [];
+    if (it.card.verification_id) {
+      actions.push({ label: 'Share', Icon: Share2, group: 'record', onSelect: () => setShareTarget(it.card) });
+      actions.push({ label: 'Download certificate', Icon: Download, group: 'record', onSelect: () => handleCertificate(it) });
+    }
+    if (it.kind === 'self') {
+      actions.push({ label: 'Get this verified', Icon: ShieldCheck, group: 'edit', onSelect: () => handleGetVerified(it.card) });
+      actions.push({ label: 'Edit', Icon: PenLine, group: 'edit', onSelect: () => setEditTarget({ kind: 'self', data: it.raw }) });
+    }
+    if (it.kind === 'request') {
+      actions.push({ label: 'Edit', Icon: PenLine, group: 'edit', onSelect: () => setEditTarget({ kind: 'request', data: it.raw }) });
+    }
+    actions.push({ label: m.banner_url ? 'Change cover image' : 'Add cover image', Icon: ImagePlus, group: 'organise', onSelect: () => setBannerTarget({ ref: it.ref, url: m.banner_url || null }) });
+    actions.push({ label: m.featured ? 'Remove from Featured' : 'Add to Featured', Icon: Star, group: 'organise', onSelect: () => handleFeature(it, !m.featured) });
+    actions.push({ label: m.archived ? 'Restore from archive' : 'Archive', Icon: m.archived ? ArchiveRestore : Archive, group: 'organise', onSelect: () => handleArchiveOne(it, !m.archived) });
+    return actions;
+  };
+
+  const gridCommon = {
+    viewMode, selectMode, selectedRefs: selected, onToggleSelect: toggleSelect, onOpen: openItem,
+    onGetVerified: handleGetVerified, onEdit: (card) => setEditTarget({ kind: 'self', data: card?.raw || card }),
+    bannerOf: (it) => it.banner, catsOf: (it) => it.cats || [], featuredOf: (it) => !!it.featured,
+    menuActionsOf: menuActionsFor,
+  };
 
   const allLoaded = items !== null && cats !== null && metas !== null;
   const exportRecords = useMemo(() => ([
