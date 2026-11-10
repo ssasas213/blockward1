@@ -81,7 +81,24 @@ export default async function (req: Request): Promise<Response> {
     const rows = matched
       .sort((a: any, b: any) => (a.status === 'verified' ? 0 : 1) - (b.status === 'verified' ? 0 : 1))
       .slice(0, 8);
-    return Response.json({ ok: true, results: rows || [] });
+    // PUBLIC PROJECTION — a holder needs the issuer's name, type and business
+    // contact to send a request. Private organisation fields (owner_email,
+    // suggested_by_email, created_by_email, verified_by, info_request, the
+    // audit log) must never leave the server on a search call.
+    const publicRows = (rows || []).map((o: any) => ({
+      id: o.id,
+      name: o.name,
+      handle: o.handle || null,
+      org_type: o.org_type || 'other',
+      status: o.status,
+      website: o.website || null,
+      email_domain: o.email_domain || null,
+      contact_email: o.contact_email || null,
+      logo_url: o.logo_url || null,
+      country: o.country || null,
+      description: o.description || null,
+    }));
+    return Response.json({ ok: true, results: publicRows });
   } catch (error) {
     return Response.json({ error: error?.message || 'Issuer search failed' }, { status: 500 });
   }

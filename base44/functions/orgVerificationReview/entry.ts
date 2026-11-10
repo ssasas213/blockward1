@@ -110,7 +110,6 @@ export default async function (req: Request): Promise<Response> {
       }).catch(() => {});
     }
 
-    const newCount = (vr.signature_count || 0) + 1;
     const required = Math.max(1, Number(vr.required_signatures) || 1);
     const verifierName = membership.full_name || email;
     const verifierTitle = membership.job_title || 'Verifier';
@@ -130,6 +129,12 @@ export default async function (req: Request): Promise<Response> {
       signed_at: nowIso,
       decision_ip: ip,
     });
+
+    // The count is DERIVED from the persisted signature records rather than a
+    // read-then-write increment, so two verifiers signing at the same moment
+    // cannot both compute "threshold reached".
+    const sigSoFar = await svc.entities.VerificationSignature.filter({ request_id: vr.id });
+    const newCount = (sigSoFar || []).length;
 
     await svc.entities.VerificationRequest.update(vr.id, {
       signature_count: newCount,
@@ -173,6 +178,15 @@ export default async function (req: Request): Promise<Response> {
     }
 
     // ── Threshold reached → ISSUER VERIFIED → credential → Polygon ──
+
+    // Single-winner guard: a concurrent approval (another verifier crossing the
+    // threshold at the same moment) must never complete this request twice.
+    const freshRows = await svc.entities.VerificationRequest.filter({ id: vr.id });
+    const freshVr = freshRows?.[0];
+    if (!freshVr || !['pending', 'opened'].includes(freshVr.status)) {
+      return Response.json({ ok: true, outcome: 'signed', signatures: newCount, required, already_completed: true });
+    }
+
     await svc.entities.VerificationRequest.update(vr.id, {
       status: 'approved',
       decision: 'confirmed',
@@ -202,6 +216,19 @@ export default async function (req: Request): Promise<Response> {
     const verifiers = (sigRecords || [])
       .sort((a: any, b: any) => new Date(a.signed_at).getTime() - new Date(b.signed_at).getTime())
       .map((s: any) => ({ name: s.verifier_name, title: s.verifier_title, signed_at: s.signed_at }));
+
+    // Credential idempotency: if a credential already exists for this
+    // achievement (resumed held request, or a retried approval), return it
+    // instead of minting a second Blockward Verified credential.
+    const existingCreds = await svc.entities.Credential.filter({ achievement_id: ach.id }).catch(() => []);
+    if (existingCreds?.[0]) {
+      return Response.json({
+        ok: true,
+        outcome: 'complete',
+        credential: { bw_id: existingCreds[0].bw_id },
+        duplicate: true,
+      });
+    }
 
     const issuance = await issueCredential(svc, {
       ach, vr, method, verifiers, methodNote: String(body.method_note || '').slice(0, 500) || null, actorEmail: email,

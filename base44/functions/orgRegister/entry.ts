@@ -6,6 +6,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { authActor, ORG_TYPES, slugifyHandle } from '../../shared/orgVerification.ts';
 import { getActorProfile, pushEvent } from '../../shared/verificationFlow.ts';
 import { internalAdminRecipients } from '../../shared/internalAdmin.ts';
+import { isDisposableEmail } from '../../shared/independentVerification.ts';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -26,6 +27,9 @@ export default async function (req: Request): Promise<Response> {
     if (website && !/^https:\/\//i.test(website)) return Response.json({ error: 'Website must start with https://' }, { status: 400 });
     const contactEmail = String(body.contact_email || email).trim().toLowerCase();
     if (!EMAIL_RE.test(contactEmail)) return Response.json({ error: 'A valid organisation contact email is required' }, { status: 400 });
+    // Same rule the holder-facing issuer suggestion already enforces: a throwaway
+    // inbox can never establish organisational authority.
+    if (isDisposableEmail(contactEmail)) return Response.json({ error: 'Disposable email addresses cannot be used for an organisation' }, { status: 400 });
     const emailDomain = String(body.email_domain || '').trim().toLowerCase().replace(/^@/, '').slice(0, 120);
     const logoUrl = String(body.logo_url || '').trim() || null;
     if (logoUrl && !/^https:\/\//i.test(logoUrl)) return Response.json({ error: 'Logo must be an https URL' }, { status: 400 });
